@@ -10,7 +10,7 @@ const STORAGE_VERSION = 1;
    Types
 ------------------------------------------ */
 
-export type Plan = "30" | "100" | "500" | "1000";
+export type Plan = "30" |  "50" | "100" | "500" | "1000";
 export type Chain = "BEP20" | "TRC20";
 
 export type Draft = {

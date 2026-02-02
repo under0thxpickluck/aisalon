@@ -57,12 +57,129 @@ export default function Page() {
         </div>
       </section>
 
-      {/* =====================
+      <section className="mt-10">
+        <div className="mx-auto max-w-5xl px-4">
+          <h1 className="text-2xl font-bold text-neutral-900 md:text-3xl">
+            LIFAIはこんなところ！
+          </h1>
+
+          <div className="mt-4 mb-5 overflow-hidden rounded-xl border bg-neutral-50">
+            <div className="relative mx-auto aspect-[16/9] w-full max-w-3xl">
+              <Image
+                src="/mainv.png"
+                alt="LIFAI | AI×LIFE副業"
+                fill
+                className="object-cover rounded-xl"
+                priority
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ✅ ADD START: 画像の下 / 副業内容の上（追加だけ） */}
+      <section className="mx-auto max-w-5xl px-4 pb-12">
+        <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <h2 className="text-xl font-bold text-neutral-900">
+            会員ランクで「できること」が増える
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-neutral-700">
+            金額というより使える権利の範囲が広がるイメージです。まずはStarterからでもOK。必要に応じて上に上がればOKです。
+          </p>
+
+          {/* ランク（横一列 + バブルで比較） */}
+          <div className="mt-6 overflow-x-auto">
+            <div className="flex min-w-max gap-4 pb-2">
+              <RankCard
+                name="Starter"
+                badge="$30 / 体験"
+                chips={[
+                  { label: "講座", value: "基礎AI副業（動画/記事）" },
+                  { label: "テンプレ", value: "月3個（コピペ型）" },
+                  { label: "コミュニティ", value: "閲覧のみ" },
+                  { label: "ポイ活", value: "ストリーミング 25回/日" },
+                  { label: "月交換上限", value: "2,000円" },
+                  { label: "紹介上限", value: "月2人まで" },
+                  { label: "EP通常", value: "4EP=1円" },
+                  { label: "MAX", value: "なし" },
+                ]}
+              />
+
+              <RankCard
+                name="Builder"
+                badge="$50 / 実践"
+                chips={[
+                  { label: "情報", value: "実践テンプレ / SNS台本" },
+                  { label: "実行", value: "ワークフロー簡易版" },
+                  { label: "コミュニティ", value: "書込OK（成果NG）" },
+                  { label: "月交換上限", value: "4,000円" },
+                  { label: "紹介上限", value: "月5人まで" },
+                  { label: "EP通常", value: "4EP=1円" },
+                  { label: "MAX", value: "3EP=1円" },
+                ]}
+              />
+
+              <RankCard
+                name="Automation"
+                badge="$100 / 仕組み"
+                chips={[
+                  { label: "テンプレ", value: "フル解放 / 広告 / 設計" },
+                  { label: "実行", value: "AI生成環境" },
+                  { label: "VPS", value: "限定抽選枠" },
+                  { label: "コミュニティ", value: "成果OK / 共有ルーム" },
+                  { label: "先行権", value: "先行発表 / β応募" },
+                  { label: "月交換上限", value: "8,000円" },
+                  { label: "紹介上限", value: "月10人まで" },
+                  { label: "EP通常", value: "4EP=1円" },
+                  { label: "MAX", value: "2.5EP=1円" },
+                ]}
+              />
+
+              <RankCard
+                name="Core"
+                badge="$500 / 中核"
+                chips={[
+                  { label: "情報", value: "非公開案件 / 統計共有" },
+                  { label: "VPS", value: "優先枠" },
+                  { label: "部屋", value: "専用作業部屋" },
+                  { label: "テンプレ", value: "無料チケット / 無償提供" },
+                  { label: "コミュニティ", value: "成果達成 / 戦略参加" },
+                  { label: "先行権", value: "優先 / 利用優先" },
+                  { label: "月交換上限", value: "15,000円" },
+                  { label: "紹介上限", value: "上限なし" },
+                  { label: "EP通常", value: "4EP=1円" },
+                  { label: "MAX", value: "2EP=1円" },
+                ]}
+              />
+
+              <RankCard
+                name="Infra"
+                badge="$1,000 / 影響"
+                chips={[
+                  { label: "情報", value: "企画段階 / 運営データ" },
+                  { label: "VPS", value: "専用枠（上限付）" },
+                  { label: "PJ", value: "共同PJ 優先" },
+                  { label: "テンプレ", value: "無制限DL（管理あり）" },
+                  { label: "コミュニティ", value: "限定グループ" },
+                  { label: "権限", value: "企画提案 / 投票（配当NG）" },
+                  { label: "月交換上限", value: "30,000円" },
+                  { label: "紹介上限", value: "上限なし" },
+                  { label: "EP通常", value: "4EP=1円" },
+                  { label: "MAX", value: "2EP=1円" },
+                ]}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* ✅ ADD END */}
+
+      {/* =====================>
           今できる副業一覧（4つ）
       ====================== */}
       <section className="mx-auto max-w-5xl px-4 pb-12">
         <div className="rounded-2xl bg-white p-8 shadow-sm">
-          <h2 className="text-xl font-bold text-neutral-900">今できる副業（4つ）</h2>
+          <h2 className="text-xl font-bold text-neutral-900">今できる副業例</h2>
           <p className="mt-3 text-sm leading-7 text-neutral-700">
             LIFAIで今すぐ始められる副業はこの4つです。
             まずは「できそう」と思うものを1つ選んで、型に沿って進めるだけでOK。
@@ -467,5 +584,41 @@ export default function Page() {
         </div>
       </footer>
     </main>
+  );
+}
+
+/* ✅ ADD: JSXの外に置く（ビルドエラー回避のため） */
+function RankCard({
+  name,
+  badge,
+  chips,
+}: {
+  name: string;
+  badge: string;
+  chips: { label: string; value: string }[];
+}) {
+  return (
+    <div className="w-[320px] shrink-0 rounded-2xl border bg-neutral-50 p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold text-neutral-900">{name}</p>
+        <span className="rounded-full bg-white px-2 py-1 text-xs text-neutral-600">
+          {badge}
+        </span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {chips.map((c) => (
+          <span
+            key={`${c.label}-${c.value}`}
+            className="inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs text-neutral-700"
+            title={`${c.label}：${c.value}`}
+          >
+            <span className="font-bold text-neutral-900">{c.label}</span>
+            <span className="text-neutral-600">:</span>
+            <span className="text-neutral-700">{c.value}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

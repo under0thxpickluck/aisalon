@@ -1,6 +1,101 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+/** ✅ カウントダウン + 調達バー（returnの外に置く） */
+function pad2(n: number) {
+  return String(Math.max(0, n)).padStart(2, "0");
+}
+function formatMoney(n: number) {
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function PresaleHeader({
+  endAtISO,
+  raised,
+  goal,
+  currencyLabel = "USDT",
+}: {
+  endAtISO: string;
+  raised: number;
+  goal: number;
+  currencyLabel?: string;
+}) {
+  const endMs = useMemo(() => new Date(endAtISO).getTime(), [endAtISO]);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const diff = Math.max(0, endMs - now);
+  const totalSec = Math.floor(diff / 1000);
+
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+
+  const pct = goal > 0 ? Math.min(100, Math.max(0, (raised / goal) * 100)) : 0;
+
+  return (
+    <div className="mt-10 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-extrabold text-slate-700">
+            プレセール期間中！
+          </p>
+
+          <div className="mt-2 flex items-center gap-2">
+            <TimeBox label="日" value={pad2(days)} />
+            <TimeBox label="時" value={pad2(hours)} />
+            <TimeBox label="分" value={pad2(mins)} />
+            <TimeBox label="秒" value={pad2(secs)} />
+          </div>
+
+          {diff === 0 && (
+            <p className="mt-2 text-xs font-semibold text-rose-600">
+              プレセールは終了しました
+            </p>
+          )}
+        </div>
+
+        <div className="w-full md:max-w-md">
+          <div className="flex items-end justify-between">
+            <p className="text-xs font-extrabold text-slate-700">
+              {currencyLabel}調達額
+            </p>
+            <p className="text-sm font-extrabold text-slate-900">
+              {formatMoney(raised)} / {formatMoney(goal)}
+            </p>
+          </div>
+
+          <div className="mt-2 h-3 w-full overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+
+          <p className="mt-2 text-xs text-slate-600">進捗：{pct.toFixed(1)}%</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimeBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+      <p className="text-lg font-extrabold leading-none text-slate-900">
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] font-bold text-slate-500">{label}</p>
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -37,7 +132,7 @@ export default function HomePage() {
               href="/start"
               className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-indigo-700 transition"
             >
-              どんな副業できる？
+              LIFAIって何？
             </Link>
 
             <Link
@@ -61,7 +156,6 @@ export default function HomePage() {
           </div>
         </div>
 
-
         {/* ===== メインメッセージ ===== */}
         <div className="mt-14 text-center">
           <h1 className="text-3xl md:text-4xl font-extrabold leading-tight">
@@ -75,6 +169,14 @@ export default function HomePage() {
             実践型オンラインサロンです。
           </p>
         </div>
+
+        {/* ✅ ここに追加：カウントダウン + 調達バー */}
+        <PresaleHeader
+          endAtISO="2026-03-01T23:59:59+09:00"
+          raised={4882450.37}
+          goal={8000000}
+          currencyLabel="USDT"
+        />
 
         {/* ===== メインCTA ===== */}
         <div className="mt-10 grid gap-4 max-w-md mx-auto">
@@ -120,6 +222,16 @@ export default function HomePage() {
           <p className="text-sm text-slate-600 leading-relaxed">
             現在確認中の可能性があります。通常は数時間〜24時間以内に対応いたします。
           </p>
+        </div>
+
+        {/* ===== 利用規約 / rule ===== */}
+        <div className="mt-10 grid grid-cols-2 gap-2 max-w-md mx-auto">
+          <Link
+            href="/rule"
+            className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100 transition"
+          >
+            利用規約
+          </Link>
         </div>
 
         <div className="mt-12 text-center text-xs text-slate-400">
