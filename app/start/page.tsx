@@ -174,6 +174,202 @@ export default function Page() {
       </section>
       {/* ✅ ADD END */}
 
+
+      {/* =====================
+          POINT SYSTEM
+      ====================== */}
+      <section className="mx-auto max-w-5xl px-4 py-12">
+        <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <header className="mb-6">
+            <p className="mb-2 text-xs font-bold tracking-wide text-neutral-500">
+              Point System
+            </p>
+            <h2 className="text-xl font-bold text-neutral-900 md:text-2xl">
+              LIFAIのポイントについて
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+              LIFAIでは、用途の異なる2種類のポイントを採用しています。
+            </p>
+          </header>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* EP */}
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-6">
+              <h3 className="text-lg font-bold text-neutral-900">
+                EP（Exchange Point）
+              </h3>
+              <p className="mt-2 text-sm text-neutral-700">
+                特典やギフトと交換できるポイントです。
+              </p>
+
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-neutral-900">
+                  獲得できる主な方法
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-neutral-700">
+                  <li>紹介サービス</li>
+                  <li>LIFAI独自のポイ活</li>
+                  <li>ミニゲームへの参加</li>
+                </ul>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-neutral-900">
+                  利用・交換について
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-neutral-700">
+                  <li>サロン内特典・ギフトと交換可能</li>
+                  <li>Amazonギフト券などへの交換（条件あり）</li>
+                  <li>4EP＝1円相当（1EP＝0.25円相当）</li>
+                  <li>月ごとの交換上限・有効期限あり</li>
+                </ul>
+              </div>
+
+              <p className="mt-4 text-xs text-neutral-500">
+                ※ 現金化・振込・出金はできません
+              </p>
+            </div>
+
+            {/* BP */}
+            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-6">
+              <h3 className="text-lg font-bold text-neutral-900">
+                BP（Bonus Point）
+              </h3>
+              <p className="mt-2 text-sm text-neutral-700">
+                LIFAI内の体験や機能を広げるためのポイントです。
+              </p>
+
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-neutral-900">
+                  獲得できる主な方法
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-neutral-700">
+                  <li>毎日占いなどのコンテンツ利用</li>
+                  <li>ログインや簡単なアクション</li>
+                  <li>広告視聴（対象者のみ）</li>
+                </ul>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-neutral-900">
+                  利用できる内容
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-neutral-700">
+                  <li>コミュニティ内の称号・優先権</li>
+                  <li>抽選・キャンペーンへの参加</li>
+                  <li>一部機能・サービスのアンロック</li>
+                </ul>
+              </div>
+
+              <p className="mt-4 text-xs text-neutral-500">
+                ※ ギフト交換・現金化はできません
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-6 text-xs leading-relaxed text-neutral-500">
+            ※ ポイントの付与条件・上限・交換内容は、ランクや運営状況により変更される場合があります。
+          </p>
+        </div>
+      </section>
+
+      {/* =====================
+          RANK UP (TEXT + TABLE)
+      ====================== */}
+      <section className="mx-auto max-w-5xl px-4 pb-16">
+        <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <header className="mb-6">
+            <p className="mb-2 text-xs font-bold tracking-wide text-neutral-500">
+              Rank Up
+            </p>
+            <h2 className="text-xl font-bold text-neutral-900 md:text-2xl">
+              ランクアップの仕組みについて
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+              LIFAIでは、サービスの利用状況やアクションに応じて会員ランクが段階的に上がる仕組みを採用しています。
+              ランクアップは<span className="font-semibold">「一定の条件を達成すること」</span>で行われ、
+              金額だけでなく、実際の利用や行動でも条件を満たすことができます。
+            </p>
+          </header>
+
+          {/* Explanation */}
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-6">
+            <h3 className="text-base font-bold text-neutral-900">
+              ランクアップ条件の考え方
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+              各プランには、<span className="font-semibold">「条件達成MAX」</span>が設定されています。
+              これは、いずれかの条件を満たすことで次のランクへ進める、という意味です。
+              無理にすべてを達成する必要はなく、
+              <span className="font-semibold">自分の使い方に合った方法を選べる設計</span>
+              になっています。
+            </p>
+          </div>
+
+          {/* Table (2 columns only) */}
+          <div className="mt-6 overflow-hidden rounded-2xl border border-neutral-200">
+            <div className="grid grid-cols-2 bg-neutral-50 text-xs font-bold text-neutral-600">
+              <div className="p-4">プラン</div>
+              <div className="p-4">条件達成MAX</div>
+            </div>
+
+            {/* $50 */}
+            <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
+              <div className="p-4 font-semibold text-neutral-900">$50</div>
+              <div className="p-4 text-neutral-800">
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>ワークフロー3件購入</li>
+                  <li>14日ログインを継続</li>
+                </ul>
+                <p className="mt-2 text-xs text-neutral-500">※いずれか達成でOK</p>
+              </div>
+            </div>
+
+            {/* $100 */}
+            <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
+              <div className="p-4 font-semibold text-neutral-900">$100</div>
+              <div className="p-4 text-neutral-800">
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>ワークフロー5件購入</li>
+                  <li>BPを1,000消費</li>
+                </ul>
+                <p className="mt-2 text-xs text-neutral-500">※いずれか達成でOK</p>
+              </div>
+            </div>
+
+            {/* $500 */}
+            <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
+              <div className="p-4 font-semibold text-neutral-900">$500</div>
+              <div className="p-4 text-neutral-800">
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>ワークフロー10件購入</li>
+                  <li>BPの消費合計が3,000に到達</li>
+                </ul>
+                <p className="mt-2 text-xs text-neutral-500">※いずれか達成でOK</p>
+              </div>
+            </div>
+
+            {/* $1000 */}
+            <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
+              <div className="p-4 font-semibold text-neutral-900">$1000</div>
+              <div className="p-4 text-neutral-800">
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>BPを5,000消費</li>
+                  <li>紹介者が20人に到達</li>
+                  <li>自社広告を1回出稿</li>
+                </ul>
+                <p className="mt-2 text-xs text-neutral-500">※いずれか達成でOK</p>
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-4 text-xs leading-relaxed text-neutral-500">
+            ※ 条件の内容や必要数は、運営状況により変更される場合があります。
+          </p>
+        </div>
+      </section>
+
+
       {/* =====================>
           今できる副業一覧（4つ）
       ====================== */}

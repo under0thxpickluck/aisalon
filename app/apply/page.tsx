@@ -2,21 +2,86 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StepHeader } from "@/components/StepHeader";
 import { Field } from "@/components/Field";
 import { Select } from "@/components/Select";
 import { loadDraft, saveDraft, type Draft } from "@/components/storage";
 
-const REGIONS = [
+const AGE_BANDS = [
+  { value: "10s", label: "10代" },
+  { value: "20s", label: "20代" },
+  { value: "30s", label: "30代" },
+  { value: "40s", label: "40代" },
+  { value: "50s", label: "50代" },
+  { value: "60s", label: "60代〜" },
+];
+
+const JOBS = [
+  { value: "company_employee", label: "会社員" },
+  { value: "freelance", label: "フリーランス" },
+  { value: "self_employed", label: "自営業" },
+  { value: "management", label: "経営者" },
+  { value: "student", label: "学生" },
+  { value: "housework", label: "主婦・主夫" },
+  { value: "part_time", label: "アルバイト・パート" },
+  { value: "public_servant", label: "公務員" },
+  { value: "engineer", label: "エンジニア" },
+  { value: "creator", label: "クリエイター" },
+  { value: "sales", label: "営業" },
+  { value: "medical", label: "医療・福祉" },
+  { value: "education", label: "教育" },
+  { value: "other", label: "その他" },
+];
+
+const PREFS = [
   { value: "hokkaido", label: "北海道" },
-  { value: "tohoku", label: "東北" },
-  { value: "kanto", label: "関東" },
-  { value: "chubu", label: "中部" },
-  { value: "kinki", label: "近畿" },
-  { value: "chugoku", label: "中国" },
-  { value: "shikoku", label: "四国" },
-  { value: "kyushu", label: "九州" },
+  { value: "aomori", label: "青森県" },
+  { value: "iwate", label: "岩手県" },
+  { value: "miyagi", label: "宮城県" },
+  { value: "akita", label: "秋田県" },
+  { value: "yamagata", label: "山形県" },
+  { value: "fukushima", label: "福島県" },
+  { value: "ibaraki", label: "茨城県" },
+  { value: "tochigi", label: "栃木県" },
+  { value: "gunma", label: "群馬県" },
+  { value: "saitama", label: "埼玉県" },
+  { value: "chiba", label: "千葉県" },
+  { value: "tokyo", label: "東京都" },
+  { value: "kanagawa", label: "神奈川県" },
+  { value: "niigata", label: "新潟県" },
+  { value: "toyama", label: "富山県" },
+  { value: "ishikawa", label: "石川県" },
+  { value: "fukui", label: "福井県" },
+  { value: "yamanashi", label: "山梨県" },
+  { value: "nagano", label: "長野県" },
+  { value: "gifu", label: "岐阜県" },
+  { value: "shizuoka", label: "静岡県" },
+  { value: "aichi", label: "愛知県" },
+  { value: "mie", label: "三重県" },
+  { value: "shiga", label: "滋賀県" },
+  { value: "kyoto", label: "京都府" },
+  { value: "osaka", label: "大阪府" },
+  { value: "hyogo", label: "兵庫県" },
+  { value: "nara", label: "奈良県" },
+  { value: "wakayama", label: "和歌山県" },
+  { value: "tottori", label: "鳥取県" },
+  { value: "shimane", label: "島根県" },
+  { value: "okayama", label: "岡山県" },
+  { value: "hiroshima", label: "広島県" },
+  { value: "yamaguchi", label: "山口県" },
+  { value: "tokushima", label: "徳島県" },
+  { value: "kagawa", label: "香川県" },
+  { value: "ehime", label: "愛媛県" },
+  { value: "kochi", label: "高知県" },
+  { value: "fukuoka", label: "福岡県" },
+  { value: "saga", label: "佐賀県" },
+  { value: "nagasaki", label: "長崎県" },
+  { value: "kumamoto", label: "熊本県" },
+  { value: "oita", label: "大分県" },
+  { value: "miyazaki", label: "宮崎県" },
+  { value: "kagoshima", label: "鹿児島県" },
+  { value: "okinawa", label: "沖縄県" },
 ];
 
 function isEmail(v: string) {
@@ -34,7 +99,6 @@ function Box({ title, children }: { title: string; children: React.ReactNode }) 
   );
 }
 
-/** 入力欄の視認性を上げるラッパー（Field/Selectの見た目が薄い時の保険） */
 function InputWrap({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-slate-300/70 bg-slate-50 px-4 py-3">
@@ -44,17 +108,47 @@ function InputWrap({ children }: { children: React.ReactNode }) {
 }
 
 export default function ApplyPage() {
-  const initial = useMemo(() => loadDraft(), []);
-  const [draft, setDraft] = useState<Draft>(() => ({
-    plan: initial.plan,
-    email: initial.email ?? "",
-    name: initial.name ?? "",
-    nameKana: initial.nameKana ?? "",
-    discordId: initial.discordId ?? "",
-    refName: initial.refName ?? "",
-    refId: initial.refId ?? "",
-    region: initial.region ?? "",
-  }));
+  // ✅ 重要：初回レンダーは常に同じ値（SSRと一致）にしておく
+  const emptyDraft = useMemo<Draft>(
+    () => ({
+      plan: undefined,
+      email: "",
+      name: "",
+      nameKana: "",
+      discordId: "",
+      refName: "",
+      refId: "",
+      // 追加
+      ageBand: "",
+      prefecture: "",
+      city: "",
+      job: "",
+    }),
+    []
+  );
+
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+
+  // ✅ 重要：localStorage の読み込みは「マウント後」に行う（Hydration対策）
+  useEffect(() => {
+    const initial = loadDraft();
+    const merged: Draft = {
+      ...emptyDraft,
+      ...initial,
+      // null/undefined の保険
+      email: initial.email ?? "",
+      name: initial.name ?? "",
+      nameKana: initial.nameKana ?? "",
+      discordId: initial.discordId ?? "",
+      refName: initial.refName ?? "",
+      refId: initial.refId ?? "",
+      ageBand: initial.ageBand ?? "",
+      prefecture: initial.prefecture ?? "",
+      city: initial.city ?? "",
+      job: initial.job ?? "",
+    };
+    setDraft(merged);
+  }, [emptyDraft]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     const next = { ...draft, [key]: value };
@@ -68,13 +162,25 @@ export default function ApplyPage() {
     nameKana: !draft.nameKana ? "カタカナは必須です" : "",
     discordId: !draft.discordId ? "Discord ID は必須です" : "",
     plan: !draft.plan ? "権利（プラン）が未選択です（前のページで選択してください）" : "",
+    ageBand: !draft.ageBand ? "年齢帯を選択してください" : "",
+    prefecture: !draft.prefecture ? "都道府県を選択してください" : "",
+    city: !draft.city ? "市町村を入力してください" : "",
+    job: !draft.job ? "職業を選択してください" : "",
   };
 
-  const canGoNext = !errors.email && !errors.name && !errors.nameKana && !errors.discordId && !errors.plan;
+  const canGoNext =
+    !errors.email &&
+    !errors.name &&
+    !errors.nameKana &&
+    !errors.discordId &&
+    !errors.plan &&
+    !errors.ageBand &&
+    !errors.prefecture &&
+    !errors.city &&
+    !errors.job;
 
   return (
     <main className="min-h-screen text-slate-900">
-      {/* ✅ 背景：白すぎない・コントラスト確保 */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.22),transparent_60%),radial-gradient(900px_600px_at_115%_0%,rgba(34,211,238,.18),transparent_55%),linear-gradient(180deg,#F4F6FB,#FFFFFF_45%,#F4F6FB)]" />
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.12]"
@@ -86,7 +192,6 @@ export default function ApplyPage() {
       />
 
       <div className="mx-auto max-w-[920px] px-4 py-10">
-        {/* ✅ 上部ナビ（視認性UP） */}
         <div className="mb-6 flex items-center justify-between gap-3">
           <Link
             href="/purchase"
@@ -114,12 +219,10 @@ export default function ApplyPage() {
           </div>
         </div>
 
-        {/* ✅ 本体カード（枠/影を強めて見やすく） */}
         <div className="rounded-[28px] border border-slate-300/70 bg-white p-6 shadow-[0_28px_80px_rgba(2,6,23,.14)]">
           <StepHeader step={2} total={3} title="参加申請フォーム" subtitle="必要情報を入力して、最終確認へ進みます" />
 
           <div className="mt-6 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-            {/* 左：必須 */}
             <Box title="基本情報（必須）">
               <div className="mb-4 text-xs font-semibold text-slate-600">
                 入力内容は端末内に一時保存されます（UIのみ）。
@@ -169,15 +272,60 @@ export default function ApplyPage() {
                     value={draft.discordId ?? ""}
                     onChange={(v) => set("discordId", v)}
                     placeholder="例：lifai_member"
-                    hint="※今は必須のまま。将来Discord不要ならここも削除できます。"
                   />
                   {errors.discordId ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.discordId}</div> : null}
                 </InputWrap>
               </div>
             </Box>
 
-            {/* 右：任意＋次へ */}
             <aside className="grid gap-5">
+              <Box title="プロフィール（必須）">
+                <div className="grid gap-4">
+                  <InputWrap>
+                    <Select
+                      label="年齢帯"
+                      value={draft.ageBand ?? ""}
+                      onChange={(v) => set("ageBand", v)}
+                      options={AGE_BANDS}
+                      placeholder="選択"
+                    />
+                    {errors.ageBand ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.ageBand}</div> : null}
+                  </InputWrap>
+
+                  <InputWrap>
+                    <Select
+                      label="都道府県"
+                      value={draft.prefecture ?? ""}
+                      onChange={(v) => set("prefecture", v)}
+                      options={PREFS}
+                      placeholder="選択"
+                    />
+                    {errors.prefecture ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.prefecture}</div> : null}
+                  </InputWrap>
+
+                  <InputWrap>
+                    <Field
+                      label="市町村"
+                      value={draft.city ?? ""}
+                      onChange={(v) => set("city", v)}
+                      placeholder="例：札幌市 / 渋谷区 など"
+                    />
+                    {errors.city ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.city}</div> : null}
+                  </InputWrap>
+
+                  <InputWrap>
+                    <Select
+                      label="職業"
+                      value={draft.job ?? ""}
+                      onChange={(v) => set("job", v)}
+                      options={JOBS}
+                      placeholder="選択"
+                    />
+                    {errors.job ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.job}</div> : null}
+                  </InputWrap>
+                </div>
+              </Box>
+
               <Box title="紹介情報（任意）">
                 <div className="grid gap-4">
                   <InputWrap>
@@ -191,16 +339,6 @@ export default function ApplyPage() {
                       onChange={(v) => set("refId", v)}
                       placeholder="例：001234"
                       hint="不明なら空欄でOK。"
-                    />
-                  </InputWrap>
-
-                  <InputWrap>
-                    <Select
-                      label="地域"
-                      value={draft.region ?? ""}
-                      onChange={(v) => set("region", v)}
-                      options={REGIONS}
-                      placeholder="選択"
                     />
                   </InputWrap>
                 </div>

@@ -224,13 +224,17 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* ===== 利用規約 / rule ===== */}
-        <div className="mt-10 grid grid-cols-2 gap-2 max-w-md mx-auto">
-          <Link
-            href="/rule"
-            className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100 transition"
-          >
+        <div className="mt-10 grid grid-cols-3 gap-2 max-w-md mx-auto">
+          <Link href="/invest" className="...">
+            出資者様専用
+          </Link>
+
+          <Link href="/rule" className="...">
             利用規約
+          </Link>
+
+          <Link href="/referral" className="...">
+            紹介プログラム
           </Link>
         </div>
 

@@ -17,6 +17,9 @@ export async function loginMock(id: string, password: string): Promise<LoginResu
   // ちょい待ち（実際のAPIっぽく）
   await new Promise((r) => setTimeout(r, 500));
 
+  // ✅ 一時的に「全部OK」にする（誰でもTOPへ）
+  return { ok: true };
+}
   const u = MOCK_USERS[id];
   if (!u) return { ok: false, reason: "invalid" };
   if (u.password !== password) return { ok: false, reason: "invalid" };

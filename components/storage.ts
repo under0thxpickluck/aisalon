@@ -32,6 +32,10 @@ export type Draft = {
   txid?: string;
 
   updatedAt?: number;
+  ageBand?: string;
+  prefecture?: string;
+  city?: string;
+  job?: string;
 };
 
 /* -----------------------------------------
