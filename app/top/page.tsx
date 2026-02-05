@@ -11,6 +11,7 @@ type Tile = {
   badge?: string;
   icon: React.ReactNode;
   tint?: "indigo" | "cyan" | "violet" | "emerald" | "amber" | "rose";
+  comingSoon?: boolean; 
 };
 
 function tintClass(tint: Tile["tint"]) {
@@ -33,40 +34,53 @@ function tintClass(tint: Tile["tint"]) {
 }
 
 function AppIconCard({ t }: { t: Tile }) {
+  const isSoon = t.comingSoon ?? true; // ← デフォルト全部準備中
+
   return (
-    <Link
-      href={t.href}
-      className="group relative rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] active:translate-y-0"
+    <div
+      className={[
+        "relative rounded-[24px] border p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition",
+        isSoon
+          ? "border-slate-200 bg-slate-100 opacity-70 cursor-not-allowed"
+          : "border-slate-200 bg-white hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] active:translate-y-0",
+      ].join(" ")}
     >
-      {t.badge ? (
-        <div className="absolute right-3 top-3 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-          {t.badge}
+      {/* 準備中バッジ */}
+      {isSoon && (
+        <div className="absolute right-3 top-3 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-white">
+          準備中
         </div>
-      ) : null}
+      )}
 
       <div className="flex items-center gap-4">
         <div
           className={[
-            "relative grid h-14 w-14 place-items-center rounded-[18px] text-white shadow-[0_14px_30px_rgba(2,6,23,.18)]",
-            "bg-gradient-to-br",
-            tintClass(t.tint),
+            "relative grid h-14 w-14 place-items-center rounded-[18px] text-white shadow-[0_10px_20px_rgba(2,6,23,.12)]",
+            isSoon
+              ? "bg-gradient-to-br from-slate-500 to-slate-400"
+              : ["bg-gradient-to-br", tintClass(t.tint)].join(" "),
           ].join(" ")}
         >
           <div className="text-[22px] leading-none">{t.icon}</div>
         </div>
 
         <div className="min-w-0">
-          <div className="text-sm font-extrabold text-slate-900">{t.title}</div>
-          <div className="mt-1 line-clamp-2 text-xs text-slate-600">{t.desc}</div>
+          <div className="text-sm font-extrabold text-slate-700">
+            {t.title}
+          </div>
+          <div className="mt-1 line-clamp-2 text-xs text-slate-500">
+            {t.desc}
+          </div>
         </div>
       </div>
 
-      <div className="mt-3 text-right text-xs font-semibold text-slate-500 group-hover:text-slate-800">
-        開く →
+      <div className="mt-3 text-right text-xs font-semibold text-slate-500">
+        {isSoon ? "公開予定" : "開く →"}
       </div>
-    </Link>
+    </div>
   );
 }
+
 
 /** ✅ カウントダウン + 調達バー（returnの外に置く） */
 function pad2(n: number) {
@@ -259,7 +273,7 @@ export default function AppHomePage() {
               </div>
 
               <h1 className="mt-4 text-xl font-extrabold tracking-tight text-slate-900">
-                TOP（ログイン後）
+                LIFAIへようこそ
               </h1>
               <p className="mt-2 text-sm text-slate-600">
                 使いたい機能を「アプリアイコン」から開けます。
@@ -276,9 +290,9 @@ export default function AppHomePage() {
 
           {/* ✅ここ：ヘッダー直下、タイル一覧の直前 */}
           <PresaleHeader
-            endAtISO="2026-03-01T23:59:59+09:00"
-            raised={4882450.37}
-            goal={8000000}
+            endAtISO="2026-04-01T23:59:59+09:00"
+            raised={4825}
+            goal={10000}
             currencyLabel="USDT"
           />
 
@@ -289,7 +303,7 @@ export default function AppHomePage() {
           </div>
 
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            ※ まだページ未作成の機能（/music など）は、リンク先を作ったら動きます。
+            問い合わせはTOPページにございます。
           </div>
         </div>
 

@@ -23,12 +23,19 @@ function PresaleHeader({
   currencyLabel?: string;
 }) {
   const endMs = useMemo(() => new Date(endAtISO).getTime(), [endAtISO]);
-  const [now, setNow] = useState(() => Date.now());
+
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // 👇 SSR中は何も表示しない
+  if (now === null) {
+    return null;
+  }
 
   const diff = Math.max(0, endMs - now);
   const totalSec = Math.floor(diff / 1000);
@@ -38,7 +45,9 @@ function PresaleHeader({
   const mins = Math.floor((totalSec % 3600) / 60);
   const secs = totalSec % 60;
 
-  const pct = goal > 0 ? Math.min(100, Math.max(0, (raised / goal) * 100)) : 0;
+  const pct =
+    goal > 0 ? Math.min(100, Math.max(0, (raised / goal) * 100)) : 0;
+
 
   return (
     <div className="mt-10 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
@@ -172,9 +181,9 @@ export default function HomePage() {
 
         {/* ✅ ここに追加：カウントダウン + 調達バー */}
         <PresaleHeader
-          endAtISO="2026-03-01T23:59:59+09:00"
-          raised={4882450.37}
-          goal={8000000}
+          endAtISO="2026-04-01T23:59:59+09:00"
+          raised={4852}
+          goal={10000}
           currencyLabel="USDT"
         />
 
@@ -224,9 +233,10 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="mt-10 grid grid-cols-3 gap-2 max-w-md mx-auto">
+        <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-lg mx-auto">
+
           <Link href="/invest" className="...">
-            出資者様専用
+            広告主様専用
           </Link>
 
           <Link href="/rule" className="...">
@@ -235,6 +245,14 @@ export default function HomePage() {
 
           <Link href="/referral" className="...">
             紹介プログラム
+          </Link>
+          <Link
+            href="https://lin.ee/ERKwqcj"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-center text-sm font-semibold text-green-700 hover:bg-green-100 transition"
+          >
+            お問い合わせ
           </Link>
         </div>
 

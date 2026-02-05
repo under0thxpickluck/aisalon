@@ -25,10 +25,10 @@ type EarningModel = {
 
 const growth = {
   // ※後でAPI化してOK。いまは固定値で「見える化」優先。
-  members: 128,
-  fundUSD: 8240,
+  members: 82,
+  fundUSD: 4831,
   gpuUnits: 1,
-  vpsActive: 34,
+  vpsActive: 14,
   nextGoalUSD: 10000,
 };
 

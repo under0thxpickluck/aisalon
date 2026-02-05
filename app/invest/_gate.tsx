@@ -79,7 +79,7 @@ export default function InvestGate({ children }: { children: React.ReactNode }) 
           </button>
 
           <p className="mt-3 text-xs text-neutral-500 leading-relaxed">
-            ※このロックは「簡易」方式です（同端末のローカルストレージに保持）。
+            ※広告主様の募集は代理店へお問い合わせください。
           </p>
         </div>
       </main>

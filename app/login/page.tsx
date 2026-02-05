@@ -112,8 +112,7 @@ export default function LoginPage() {
             </button>
 
             <div className="text-center text-xs text-slate-400">
-              （モック） demo01 / pass01 → TOP　
-              demo02 / pass02 → 承認待ち
+              不明な場合は代理店様へお問い合わせください。
             </div>
           </div>
         </div>

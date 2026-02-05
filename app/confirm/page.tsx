@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { StepHeader } from "@/components/StepHeader";
-import { CopyField } from "@/components/CopyField";
 import { clearDraft, loadDraft, type Draft } from "@/components/storage";
 import { toast } from "@/components/useToast";
 
@@ -14,6 +14,9 @@ export default function ConfirmPage() {
 
   // ✅ Hydration対策：localStorage はマウント後に読む
   const [draft, setDraft] = useState<Partial<Draft> | null>(null);
+
+  // ✅ 「支払い完了しました」チェック（ローカルでよい）
+  const [paidChecked, setPaidChecked] = useState(false);
 
   useEffect(() => {
     setDraft(loadDraft());
@@ -28,6 +31,8 @@ export default function ConfirmPage() {
     return !draft.plan || !draft.email || !draft.name || !draft.nameKana;
   }, [draft]);
 
+  const canSubmit = !missing && paidChecked && !loading;
+
   const submit = async () => {
     setErr(null);
 
@@ -38,6 +43,11 @@ export default function ConfirmPage() {
 
     if (missing) {
       toast("必須項目が足りません。Step2 に戻って入力してください。");
+      return;
+    }
+
+    if (!paidChecked) {
+      toast("支払い完了後に「支払い完了しました」にチェックを入れてください。");
       return;
     }
 
@@ -109,17 +119,18 @@ export default function ConfirmPage() {
           ) : null}
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            {/* 左：申請内容 */}
             <section className="rounded-[22px] border border-slate-200 bg-white p-5">
               <div className="text-sm font-extrabold text-slate-900">申請内容</div>
               <div className="mt-4 grid gap-3 text-sm">
-                <Row k="プラン" v={draft?.plan ?? ""} />
-                <Row k="メール" v={draft?.email ?? ""} />
-                <Row k="お名前" v={draft?.name ?? ""} />
-                <Row k="カタカナ" v={draft?.nameKana ?? ""} />
+                <Row k="プラン" v={String(draft?.plan ?? "")} />
+                <Row k="メール" v={String(draft?.email ?? "")} />
+                <Row k="お名前" v={String(draft?.name ?? "")} />
+                <Row k="カタカナ" v={String(draft?.nameKana ?? "")} />
 
-                <Row k="紹介者名" v={draft?.refName ?? "（なし）"} muted={!draft?.refName} />
-                <Row k="紹介者ID" v={draft?.refId ?? "（なし）"} muted={!draft?.refId} />
-                <Row k="地域" v={draft?.region ?? "（未選択）"} muted={!draft?.region} />
+                <Row k="紹介者名" v={draft?.refName ? String(draft.refName) : "（なし）"} muted={!draft?.refName} />
+                <Row k="紹介者ID" v={draft?.refId ? String(draft.refId) : "（なし）"} muted={!draft?.refId} />
+                <Row k="地域" v={draft?.region ? String(draft.region) : "（未選択）"} muted={!draft?.region} />
               </div>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
@@ -130,26 +141,65 @@ export default function ConfirmPage() {
               </div>
             </section>
 
+            {/* 右：支払い方法 + チェック */}
             <aside className="grid gap-5">
               <div className="rounded-[22px] border border-slate-200 bg-white p-5">
-                <div className="text-sm font-extrabold text-slate-900">送金情報</div>
+                <div className="text-sm font-extrabold text-slate-900">支払い方法</div>
+                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                  お支払い完了後、このページに戻って「支払い完了」チェックを入れてから送信してください。
+                </p>
 
-                <div className="mt-4 grid gap-3">
-                  <CopyField label="USDT（BEP20）" value="0xf8f82c0478cdd9d1bb631a8782d9e1234bfdb85" />
-                  <CopyField label="USDT（TRC20）" value="UQD8MjIPZzvvINae7cxoi_PFpSy7DP_Gin_k5BgGh0h6cveu0" />
+                {/* ✅ MEXCバナー（仮想通貨を持ってない人向け） */}
+                <a
+                  href="https://promote.mexc.com/r/m54hsj74"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:opacity-95 transition"
+                >
+                  <Image
+                    src="/mexc.png"
+                    alt="仮想通貨をこれから買う方はこちら（MEXC）"
+                    width={1280}
+                    height={1600}
+                    className="h-auto w-full"
+                  />
+                </a>
+                <div className="mt-2 px-1 text-[11px] text-slate-500">
+                  ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                  ネットワーク選択ミス（BEP20 / TRC20）に注意してください。
+                {/* ✅ 支払い完了チェック */}
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-sm font-semibold text-slate-900">支払い完了後</div>
+                  <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    支払いが完了したら、下のチェックをONにしてください（ONにしないと送信できません）。
+                  </p>
+
+                  <label className="mt-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={paidChecked}
+                      onChange={(e) => setPaidChecked(e.target.checked)}
+                      disabled={missing}
+                    />
+                    <div className="text-sm">
+                      <div className="font-extrabold text-slate-900">支払い完了しました</div>
+                      <div className="text-xs text-slate-600">
+                        ※未完了のまま送信すると、承認が遅れる可能性があります
+                      </div>
+                    </div>
+                  </label>
                 </div>
               </div>
 
+              {/* 送信 */}
               <button
                 onClick={submit}
-                disabled={missing || loading}
+                disabled={!canSubmit}
                 className={[
                   "w-full rounded-2xl px-4 py-4 text-base font-extrabold transition",
-                  missing || loading
+                  !canSubmit
                     ? "cursor-not-allowed bg-slate-100 text-slate-400"
                     : "bg-gradient-to-r from-indigo-600 to-cyan-500 text-white hover:opacity-95 active:scale-[0.99]",
                 ].join(" ")}
