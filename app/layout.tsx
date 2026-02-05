@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description: "AI × LIFE × 副業。学びを収益に変えるオンラインサロン。",
     images: [
       {
-        url: "/ogp.png",
+        url: "/ogp2.png",
         width: 1200,
         height: 630,
         alt: "LIFAI",
