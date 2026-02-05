@@ -256,6 +256,27 @@ export default function HomePage() {
           </Link>
         </div>
 
+        {/* ===== ホーム画面に追加 ===== */}
+        <div className="mt-10 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-center shadow-sm">
+          <div className="text-sm font-extrabold text-indigo-800">
+            📱 アプリのように使えます
+          </div>
+
+          <p className="mt-2 text-xs text-indigo-700 leading-relaxed">
+            Safariでこのページを開き、
+            「共有」→「ホーム画面に追加」を押してください。
+          </p>
+
+          <button
+            onClick={() =>
+              alert("Safariで開いて\n共有 → ホーム画面に追加\nを押してください")
+            }
+            className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 transition"
+          >
+            ホーム画面に追加する
+          </button>
+        </div>
+
         <div className="mt-12 text-center text-xs text-slate-400">
           © LIFAI AI Salon
         </div>
