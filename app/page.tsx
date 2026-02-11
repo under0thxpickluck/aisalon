@@ -89,6 +89,7 @@ function PresaleHeader({
           </div>
 
           <p className="mt-2 text-xs text-slate-600">進捗：{pct.toFixed(1)}%</p>
+          <p className="mt-2 text-xs text-slate-600">プレセール期間中に設定された目標金額に達しなかった場合、役務提供開始前に限り、全額USDTにて返金を行います。ネットワーク手数料が発生する場合があります。</p>
         </div>
       </div>
     </div>
@@ -233,34 +234,53 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-lg mx-auto">
+        {/* ===== フッター：リンク & お問い合わせ ===== */}
+        <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* リンク群 */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              <Link href="/invest" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+                広告主様専用
+              </Link>
 
-          <Link href="/invest" className="...">
-            広告主様専用
-          </Link>
+              <Link href="/rule" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+                利用規約
+              </Link>
 
-          <Link href="/rule" className="...">
-            利用規約
-          </Link>
+              <Link href="/referral" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+                紹介プログラム
+              </Link>
 
-          <Link href="/referral" className="...">
-            紹介プログラム
-          </Link>
-          <Link
-            href="https://lin.ee/ERKwqcj"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-center text-sm font-semibold text-green-700 hover:bg-green-100 transition"
-          >
-            お問い合わせ
-          </Link>
+              {/* ✅ 追加 */}
+              <Link href="/privacy" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+                プライバシーポリシー
+              </Link>
+
+              <Link href="/tokushoho" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+                特定商取引法に基づく表記
+              </Link>
+            </div>
+
+            {/* お問い合わせボタン */}
+            <div className="sm:pl-4">
+              <a
+                href="https://lin.ee/ERKwqcj"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+              >
+                お問い合わせ（公式LINE）
+              </a>
+              <div className="mt-1 text-[11px] text-slate-400">
+                ※返信保証はありません（順次対応）
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* ===== ホーム画面に追加 ===== */}
-        <div className="mt-10 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-center shadow-sm">
-          <div className="text-sm font-extrabold text-indigo-800">
-            📱 アプリのように使えます
-          </div>
+        {/* ===== ホーム画面に追加（PWA案内） ===== */}
+        <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-center shadow-sm">
+          <div className="text-sm font-extrabold text-indigo-800">📱 アプリのように使えます</div>
 
           <p className="mt-2 text-xs text-indigo-700 leading-relaxed">
             Safariでこのページを開き、
@@ -268,17 +288,16 @@ export default function HomePage() {
           </p>
 
           <button
-            onClick={() =>
-              alert("Safariで開いて\n共有 → ホーム画面に追加\nを押してください")
-            }
-            className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 transition"
+            onClick={() => alert("Safariで開いて\n共有 → ホーム画面に追加\nを押してください")}
+            className="mt-4 inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-700 transition"
           >
             ホーム画面に追加する
           </button>
         </div>
 
-        <div className="mt-12 text-center text-xs text-slate-400">
-          © LIFAI AI Salon
+        {/* ===== コピーライト ===== */}
+        <div className="mt-10 text-center text-xs text-slate-400">
+          © {new Date().getFullYear()} LIFAI AI Salon
         </div>
       </div>
     </main>

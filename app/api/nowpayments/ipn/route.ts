@@ -1,78 +1,80 @@
+// app/api/nowpayments/ipn/route.ts
 import { NextResponse } from "next/server";
-import crypto from "crypto";
-
-// ✅ Vercel/NextでEdgeに行くとcryptoが死ぬので Node 固定
+import * as crypto from "crypto";
+import { Buffer } from "buffer";
 export const runtime = "nodejs";
 
+function verifyNowpaymentsSig(rawBody: string, sigHeader: string | null, ipnSecret: string) {
+  if (!sigHeader) return false;
+  const hmac = crypto.createHmac("sha512", ipnSecret);
+  hmac.update(rawBody);
+  const digest = hmac.digest("hex");
+  // 一応タイミング攻撃対策
+  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(sigHeader));
+}
+
 export async function POST(req: Request) {
-  const body = await req.text();
-
-  const secret = process.env.NOWPAYMENTS_IPN_SECRET;
-  if (!secret) return new NextResponse("NOWPAYMENTS_IPN_SECRET missing", { status: 500 });
-
-  // ✅ ヘッダー名揺れ対策（どっちでも拾う）
-  const signature =
-    req.headers.get("x-nowpayments-sig") ||
-    req.headers.get("x-nowpayments-signature") ||
-    "";
-
-  const hmac = crypto.createHmac("sha512", secret).update(body).digest("hex");
-
-  // ✅ まずは確実に動く“文字列比較”でOK（ここで落ちるのが一番ダルい）
-  if (!signature || hmac !== signature) {
-    console.log("IPN invalid signature", { signature, hmac });
-    return new NextResponse("Invalid signature", { status: 400 });
-  }
-
-  const data = JSON.parse(body);
-  const status = String(data.payment_status || "");
-  const orderId = String(data.order_id || "");
-
-  console.log("IPN received", { status, orderId });
-
-  // ✅ 成功扱い（NOWPaymentsは段階がある）
-  const SUCCESS = new Set(["confirmed", "finished", "sending"]);
-  if (!SUCCESS.has(status)) {
-    return NextResponse.json({ received: true, ignored: true, status });
-  }
-
-  // ✅ order_id: lifai_${applyId} から applyId を抜く
-  const applyId = orderId.startsWith("lifai_") ? orderId.slice("lifai_".length) : "";
-  if (!applyId) {
-    console.log("applyId not found in order_id", { orderId });
-    return NextResponse.json({ received: true, error: "applyId missing" });
-  }
-
-  // ✅ ここが「自動承認」本体：GASに approve 通知
+  const ipnSecret = process.env.NOWPAYMENTS_IPN_SECRET; // NOWPayments側で設定したIPN Secret
   const gasUrl = process.env.GAS_WEBAPP_URL;
-  const gasAdminKey = process.env.GAS_ADMIN_KEY;
-  if (!gasUrl || !gasAdminKey) {
-    console.log("GAS env missing", { gasUrl: !!gasUrl, gasAdminKey: !!gasAdminKey });
-    return NextResponse.json({ received: true, error: "GAS env missing" });
+  const gasKey = process.env.GAS_API_KEY;
+
+  // raw body を取る（署名検証のため）
+  const raw = await req.text();
+  const sig = req.headers.get("x-nowpayments-sig");
+
+  // 署名検証（強く推奨）
+  if (ipnSecret) {
+    const ok = verifyNowpaymentsSig(raw, sig, ipnSecret);
+    if (!ok) {
+      return NextResponse.json({ ok: false, error: "bad signature" }, { status: 401 });
+    }
   }
 
-  const approveRes = await fetch(gasUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "admin_approve",
-      admin_key: gasAdminKey,
-      applyId,
-      payment: {
-        provider: "nowpayments",
-        payment_id: data.payment_id,
-        status,
-        pay_currency: data.pay_currency,
-        price_amount: data.price_amount,
-        pay_amount: data.pay_amount,
-        actually_paid: data.actually_paid,
-        txid: data.txid,
-      },
-    }),
-  });
+  let payload: any;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
+  }
 
-  const approveJson = await approveRes.json().catch(() => null);
-  console.log("GAS approve result", approveRes.status, approveJson);
+  // NOWPayments IPNの主な項目
+  const orderId = payload?.order_id as string | undefined;  // "lifai_XXXX"
+  const paymentStatus = payload?.payment_status as string | undefined; // finished/confirmed/waiting/failed など
+  const invoiceId = payload?.invoice_id ?? payload?.payment_id; // どちらか入ることが多い
+  const actuallyPaid = payload?.pay_amount ?? payload?.actually_paid; // あると便利
 
-  return NextResponse.json({ received: true, approved: approveRes.ok, applyId });
+  if (!orderId) {
+    return NextResponse.json({ ok: false, error: "order_id missing", payload }, { status: 400 });
+  }
+
+  // order_id から applyId を復元
+  const applyId = orderId.startsWith("lifai_") ? orderId.slice("lifai_".length) : orderId;
+
+  // 入金確定扱いにするステータス（運用で調整）
+  const isPaid =
+    paymentStatus === "finished" ||
+    paymentStatus === "confirmed";
+
+  // GASに「支払いステータス更新」を投げる（applyの仕組みと同じ）
+  if (gasUrl && gasKey) {
+    const url = `${gasUrl}?key=${encodeURIComponent(gasKey)}`;
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({
+        action: "payment_update",
+        applyId,
+        orderId,
+        paymentStatus,
+        isPaid,
+        invoiceId,
+        actuallyPaid,
+        raw: payload,
+      }),
+    });
+  }
+
+  // NOWPaymentsには基本200返せばOK（リトライ抑制）
+  return NextResponse.json({ ok: true });
 }
