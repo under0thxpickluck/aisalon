@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   const { amount, plan, applyId } = await req.json();
 
@@ -10,8 +11,11 @@ export async function POST(req: Request) {
     );
   }
 
+  // ✅ どっちのenv名でも拾えるようにする（保険）
   const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://aisalon-sigma.vercel.app";
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://aisalon.vercel.app";
 
   const apiKey = process.env.NOWPAYMENTS_API_KEY;
   if (!apiKey) {
