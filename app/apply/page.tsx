@@ -123,6 +123,8 @@ export default function ApplyPage() {
       prefecture: "",
       city: "",
       job: "",
+      // applyId（Draftに追加済み前提）
+      applyId: "",
     }),
     []
   );
@@ -132,9 +134,16 @@ export default function ApplyPage() {
   // ✅ 重要：localStorage の読み込みは「マウント後」に行う（Hydration対策）
   useEffect(() => {
     const initial = loadDraft();
+
+    // ✅ URLの applyId / plan を draft に反映（決済後に /apply?applyId=... で戻ってくる想定）
+    const qs = new URLSearchParams(window.location.search);
+    const applyIdFromUrl = qs.get("applyId") ?? "";
+    const planFromUrl = qs.get("plan");
+
     const merged: Draft = {
       ...emptyDraft,
       ...initial,
+
       // null/undefined の保険
       email: initial.email ?? "",
       name: initial.name ?? "",
@@ -146,8 +155,20 @@ export default function ApplyPage() {
       prefecture: initial.prefecture ?? "",
       city: initial.city ?? "",
       job: initial.job ?? "",
+
+      // ✅ applyId は URL 優先で上書き
+      applyId: applyIdFromUrl || (initial.applyId ?? ""),
+
+      // ✅ plan は「すでに入ってるなら維持」、無ければ URL が数値なら採用
+      plan:
+        initial.plan ??
+        (planFromUrl && /^\d+$/.test(planFromUrl) ? Number(planFromUrl) : undefined),
     };
+
     setDraft(merged);
+
+    // ✅ URLから来た applyId/plan を確実に次画面へ渡すため保存
+    saveDraft(merged);
   }, [emptyDraft]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {

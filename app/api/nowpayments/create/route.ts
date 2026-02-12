@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       order_id: `lifai_${applyId}`,
       order_description: `LIFAI plan ${plan || amount}`,
       ipn_callback_url: `${baseUrl}/api/nowpayments/ipn`,
-      success_url: `${baseUrl}/apply`,
+      success_url: `${baseUrl}/apply?applyId=${encodeURIComponent(applyId)}`,
       cancel_url: `${baseUrl}/purchase`,
     }),
   });

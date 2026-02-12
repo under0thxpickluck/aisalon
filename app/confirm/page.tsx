@@ -9,6 +9,87 @@ import { StepHeader } from "@/components/StepHeader";
 import { clearDraft, loadDraft, type Draft } from "@/components/storage";
 import { toast } from "@/components/useToast";
 
+const AGE_BAND_LABEL: Record<string, string> = {
+  "10s": "10代",
+  "20s": "20代",
+  "30s": "30代",
+  "40s": "40代",
+  "50s": "50代",
+  "60s": "60代〜",
+};
+
+const JOB_LABEL: Record<string, string> = {
+  company_employee: "会社員",
+  freelance: "フリーランス",
+  self_employed: "自営業",
+  management: "経営者",
+  student: "学生",
+  housework: "主婦・主夫",
+  part_time: "アルバイト・パート",
+  public_servant: "公務員",
+  engineer: "エンジニア",
+  creator: "クリエイター",
+  sales: "営業",
+  medical: "医療・福祉",
+  education: "教育",
+  other: "その他",
+};
+
+const PREF_LABEL: Record<string, string> = {
+  hokkaido: "北海道",
+  aomori: "青森県",
+  iwate: "岩手県",
+  miyagi: "宮城県",
+  akita: "秋田県",
+  yamagata: "山形県",
+  fukushima: "福島県",
+  ibaraki: "茨城県",
+  tochigi: "栃木県",
+  gunma: "群馬県",
+  saitama: "埼玉県",
+  chiba: "千葉県",
+  tokyo: "東京都",
+  kanagawa: "神奈川県",
+  niigata: "新潟県",
+  toyama: "富山県",
+  ishikawa: "石川県",
+  fukui: "福井県",
+  yamanashi: "山梨県",
+  nagano: "長野県",
+  gifu: "岐阜県",
+  shizuoka: "静岡県",
+  aichi: "愛知県",
+  mie: "三重県",
+  shiga: "滋賀県",
+  kyoto: "京都府",
+  osaka: "大阪府",
+  hyogo: "兵庫県",
+  nara: "奈良県",
+  wakayama: "和歌山県",
+  tottori: "鳥取県",
+  shimane: "島根県",
+  okayama: "岡山県",
+  hiroshima: "広島県",
+  yamaguchi: "山口県",
+  tokushima: "徳島県",
+  kagawa: "香川県",
+  ehime: "愛媛県",
+  kochi: "高知県",
+  fukuoka: "福岡県",
+  saga: "佐賀県",
+  nagasaki: "長崎県",
+  kumamoto: "熊本県",
+  oita: "大分県",
+  miyazaki: "宮崎県",
+  kagoshima: "鹿児島県",
+  okinawa: "沖縄県",
+};
+
+function labelOrRaw(map: Record<string, string>, v?: string) {
+  if (!v) return "";
+  return map[v] ?? v;
+}
+
 export default function ConfirmPage() {
   const router = useRouter();
 
@@ -49,9 +130,20 @@ export default function ConfirmPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // ✅ Apply（Step2）と同じ必須条件に揃える
   const missing = useMemo(() => {
     if (!draft) return true;
-    return !draft.plan || !draft.email || !draft.name || !draft.nameKana;
+    return (
+      !draft.plan ||
+      !draft.email ||
+      !draft.name ||
+      !draft.nameKana ||
+      !draft.discordId ||
+      !draft.ageBand ||
+      !draft.prefecture ||
+      !draft.city ||
+      !draft.job
+    );
   }, [draft]);
 
   // ✅ 送信条件：必須項目OK + チェックON（isPaidは必須にしない）
@@ -150,9 +242,15 @@ export default function ConfirmPage() {
                 <Row k="メール" v={String(draft?.email ?? "")} />
                 <Row k="お名前" v={String(draft?.name ?? "")} />
                 <Row k="カタカナ" v={String(draft?.nameKana ?? "")} />
+                <Row k="Discord ID" v={String(draft?.discordId ?? "")} />
+
+                <Row k="年齢帯" v={draft?.ageBand ? labelOrRaw(AGE_BAND_LABEL, String(draft.ageBand)) : "（未選択）"} muted={!draft?.ageBand} />
+                <Row k="都道府県" v={draft?.prefecture ? labelOrRaw(PREF_LABEL, String(draft.prefecture)) : "（未選択）"} muted={!draft?.prefecture} />
+                <Row k="市町村" v={draft?.city ? String(draft.city) : "（未入力）"} muted={!draft?.city} />
+                <Row k="職業" v={draft?.job ? labelOrRaw(JOB_LABEL, String(draft.job)) : "（未選択）"} muted={!draft?.job} />
+
                 <Row k="紹介者名" v={draft?.refName ? String(draft.refName) : "（なし）"} muted={!draft?.refName} />
                 <Row k="紹介者ID" v={draft?.refId ? String(draft.refId) : "（なし）"} muted={!draft?.refId} />
-                <Row k="地域" v={draft?.region ? String(draft.region) : "（未選択）"} muted={!draft?.region} />
               </div>
             </section>
 
