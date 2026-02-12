@@ -36,6 +36,7 @@ export type Draft = {
   prefecture?: string;
   city?: string;
   job?: string;
+  applyId?: string;
 };
 
 /* -----------------------------------------
