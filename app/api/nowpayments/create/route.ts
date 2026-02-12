@@ -12,10 +12,7 @@ export async function POST(req: Request) {
   }
 
   // ✅ どっちのenv名でも拾えるようにする（保険）
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "https://aisalon.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lifai.vercel.app";
 
   const apiKey = process.env.NOWPAYMENTS_API_KEY;
   if (!apiKey) {
@@ -32,7 +29,7 @@ export async function POST(req: Request) {
       "x-api-key": apiKey,
     },
     body: JSON.stringify({
-      price_amount: 10,
+      price_amount: amount,
       price_currency: "usd",
       pay_currency: "usdttrc20",
       order_id: `lifai_${applyId}`,

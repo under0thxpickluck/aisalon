@@ -9,7 +9,7 @@ import { loadDraft, saveDraft, type Plan } from "@/components/storage";
 const ENABLE_PRESALE = true;
 
 // ✅ 表示用：プレセール割引率（表示だけ）
-const PRESALE_OFF_PCT = 15;
+const PRESALE_OFF_PCT = 25;
 
 // ✅ 表示用：BP配布（表示だけ）
 const BP_BONUS: Partial<Record<Plan, number>> = {
@@ -33,7 +33,7 @@ type PlanDef = {
 const PLANS: PlanDef[] = [
   {
     id: "30" as Plan,
-    priceLabel: "34 USDT",
+    priceLabel: "30 USDT",
     originalPriceLabel: "40 USDT",
     title: "Starter",
     desc: "まず体験して全体像を掴む",
@@ -41,7 +41,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "50" as Plan,
-    priceLabel: "56.95 USDT",
+    priceLabel: "50 USDT",
     originalPriceLabel: "67 USDT",
     title: "Builder",
     desc: "実践テンプレで手を動かして伸ばす",
@@ -49,7 +49,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "100" as Plan,
-    priceLabel: "113.9 USDT",
+    priceLabel: "100 USDT",
     originalPriceLabel: "134 USDT",
     title: "Automation",
     desc: "仕組み化の自動化ワークフローを使う",
@@ -58,7 +58,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "500" as Plan,
-    priceLabel: "566.95 USDT",
+    priceLabel: "500 USDT",
     originalPriceLabel: "667 USDT",
     title: "Core",
     desc: "中核メンバー枠：運用と案件を前に進める",
@@ -67,7 +67,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "1000" as Plan,
-    priceLabel: "1,133.9 USDT",
+    priceLabel: "1,000 USDT",
     originalPriceLabel: "1,334 USDT",
     title: "Infra",
     desc: "影響層：インフラ整備と共同PJを牽引する",
@@ -152,7 +152,7 @@ function PlanCard({
 
               {ENABLE_PRESALE ? (
                 <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-extrabold text-amber-900">
-                  プレセール限定価格！ {PRESALE_OFF_PCT}%OFF
+                  コラボ期間中！ {PRESALE_OFF_PCT}%OFF
                 </span>
               ) : null}
 
@@ -240,6 +240,20 @@ export default function PurchasePage() {
       />
 
       <div className="mx-auto max-w-[980px] px-4 py-10">
+
+        {/* ✅ 最上部ヒーローバナー */}
+        <div className="mb-8 overflow-hidden rounded-2xl">
+          <Image
+            src="/hero-collab.png" // ← publicに置いた画像
+            alt="JAM DAO × LIFAI コラボ先行配信セール"
+            width={1400}
+            height={900}
+            className="w-full h-auto"
+            priority
+          />
+        </div>
+
+
         <div className="mb-6 flex items-center justify-between gap-3">
           <Link
             href="/"
@@ -257,6 +271,7 @@ export default function PurchasePage() {
         </div>
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_rgba(2,6,23,.10)]">
+
           <StepHeaderLite
             title="購入プランを選択"
             subtitle="①プラン選択 → ②支払い → ③「支払い完了」チェック → ④次へ（申請入力）"
@@ -349,54 +364,22 @@ export default function PurchasePage() {
                     ].join(" ")}
                     onClick={async () => {
                       if (!selectedPlan) return;
+                      const applyId = `tmp_${Date.now()}`; // 本番はapplyで発行したIDに差し替え
+                      const amount = Number(String(selectedPlan.priceLabel).replace(/[^\d.]/g, ""));
+                      const res = await fetch("/api/nowpayments/create", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ amount, plan: selectedPlan.id, applyId }),
+                      });
 
-                      try {
-                        const applyId = `lifai_${Date.now()}`;
-
-                        // ① 先にGASへ仮登録
-                        const createRes = await fetch("/api/apply/create", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            plan: selectedPlan.id,
-                            applyId,
-                          }),
-                        });
-
-                        const createData = await createRes.json();
-                        if (!createData.ok) {
-                          alert("申請ID作成に失敗しました");
-                          return;
-                        }
-
-                        // ② 金額抽出
-                        const amount = Number(
-                          String(selectedPlan.priceLabel).replace(/[^\d.]/g, "")
-                        );
-
-                        // ③ 決済作成
-                        const res = await fetch("/api/nowpayments/create", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            amount,
-                            plan: selectedPlan.id,
-                            applyId,
-                          }),
-                        });
-
-                        const data = await res.json();
-                        if (!data.ok) {
-                          alert(data.error || "決済作成に失敗しました");
-                          return;
-                        }
-
-                        window.location.href = data.invoice_url;
-                      } catch (e) {
-                        alert("エラーが発生しました");
+                      const data = await res.json();
+                      if (!data.ok) {
+                        alert(data.error || "決済作成に失敗しました");
+                        return;
                       }
+                      // invoice_url 方式前提（createの返却がinvoice_urlになっている想定）
+                      window.location.href = data.invoice_url;
                     }}
-
                   >
                     <div className="text-sm font-extrabold text-slate-900">暗号通貨（NOWPayments）</div>
                     <div className="mt-1 text-xs text-slate-600">

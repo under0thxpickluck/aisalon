@@ -9,7 +9,7 @@ import { loadDraft, saveDraft, type Plan } from "@/components/storage";
 const ENABLE_PRESALE = true;
 
 // ✅ 表示用：プレセール割引率（表示だけ）
-const PRESALE_OFF_PCT = 15;
+const PRESALE_OFF_PCT = 25;
 
 // ✅ 表示用：BP配布（表示だけ）
 const BP_BONUS: Partial<Record<Plan, number>> = {
@@ -33,7 +33,7 @@ type PlanDef = {
 const PLANS: PlanDef[] = [
   {
     id: "30" as Plan,
-    priceLabel: "34 USDT",
+    priceLabel: "30 USDT",
     originalPriceLabel: "40 USDT",
     title: "Starter",
     desc: "まず体験して全体像を掴む",
@@ -41,7 +41,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "50" as Plan,
-    priceLabel: "56.95 USDT",
+    priceLabel: "50 USDT",
     originalPriceLabel: "67 USDT",
     title: "Builder",
     desc: "実践テンプレで手を動かして伸ばす",
@@ -49,7 +49,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "100" as Plan,
-    priceLabel: "113.9 USDT",
+    priceLabel: "100 USDT",
     originalPriceLabel: "134 USDT",
     title: "Automation",
     desc: "仕組み化の自動化ワークフローを使う",
@@ -58,7 +58,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "500" as Plan,
-    priceLabel: "566.95 USDT",
+    priceLabel: "500 USDT",
     originalPriceLabel: "667 USDT",
     title: "Core",
     desc: "中核メンバー枠：運用と案件を前に進める",
@@ -67,7 +67,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "1000" as Plan,
-    priceLabel: "1,133.9 USDT",
+    priceLabel: "1,000 USDT",
     originalPriceLabel: "1,334 USDT",
     title: "Infra",
     desc: "影響層：インフラ整備と共同PJを牽引する",
@@ -349,54 +349,22 @@ export default function PurchasePage() {
                     ].join(" ")}
                     onClick={async () => {
                       if (!selectedPlan) return;
+                      const applyId = `tmp_${Date.now()}`; // 本番はapplyで発行したIDに差し替え
+                      const amount = Number(String(selectedPlan.priceLabel).replace(/[^\d.]/g, ""));
+                      const res = await fetch("/api/nowpayments/create", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ amount, plan: selectedPlan.id, applyId }),
+                      });
 
-                      try {
-                        const applyId = `lifai_${Date.now()}`;
-
-                        // ① 先にGASへ仮登録
-                        const createRes = await fetch("/api/apply/create", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            plan: selectedPlan.id,
-                            applyId,
-                          }),
-                        });
-
-                        const createData = await createRes.json();
-                        if (!createData.ok) {
-                          alert("申請ID作成に失敗しました");
-                          return;
-                        }
-
-                        // ② 金額抽出
-                        const amount = Number(
-                          String(selectedPlan.priceLabel).replace(/[^\d.]/g, "")
-                        );
-
-                        // ③ 決済作成
-                        const res = await fetch("/api/nowpayments/create", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            amount,
-                            plan: selectedPlan.id,
-                            applyId,
-                          }),
-                        });
-
-                        const data = await res.json();
-                        if (!data.ok) {
-                          alert(data.error || "決済作成に失敗しました");
-                          return;
-                        }
-
-                        window.location.href = data.invoice_url;
-                      } catch (e) {
-                        alert("エラーが発生しました");
+                      const data = await res.json();
+                      if (!data.ok) {
+                        alert(data.error || "決済作成に失敗しました");
+                        return;
                       }
+                      // invoice_url 方式前提（createの返却がinvoice_urlになっている想定）
+                      window.location.href = data.invoice_url;
                     }}
-
                   >
                     <div className="text-sm font-extrabold text-slate-900">暗号通貨（NOWPayments）</div>
                     <div className="mt-1 text-xs text-slate-600">

@@ -12,26 +12,45 @@ import { toast } from "@/components/useToast";
 export default function ConfirmPage() {
   const router = useRouter();
 
-  // ✅ Hydration対策：localStorage はマウント後に読む
   const [draft, setDraft] = useState<Partial<Draft> | null>(null);
 
-  // ✅ 「支払い完了しました」チェック（ローカルでよい）
-  const [paidChecked, setPaidChecked] = useState(false);
+  // ✅ 支払いステータス（IPN確認）
+  const [isPaid, setIsPaid] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    setDraft(loadDraft());
+    const d = loadDraft();
+    setDraft(d);
+
+    // applyIdがあれば支払い確認
+    if (d?.applyId) {
+      checkPayment(d.applyId);
+    }
   }, []);
+
+  const checkPayment = async (applyId: string) => {
+    try {
+      setChecking(true);
+      const res = await fetch(`/api/apply/status?applyId=${applyId}`);
+      const data = await res.json();
+      if (data?.ok && data?.status === "paid") {
+        setIsPaid(true);
+      }
+    } catch {}
+    finally {
+      setChecking(false);
+    }
+  };
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // draftがまだ読み込めてない間は描画を安定させる
   const missing = useMemo(() => {
     if (!draft) return true;
     return !draft.plan || !draft.email || !draft.name || !draft.nameKana;
   }, [draft]);
 
-  const canSubmit = !missing && paidChecked && !loading;
+  const canSubmit = !missing && isPaid && !loading;
 
   const submit = async () => {
     setErr(null);
@@ -46,8 +65,8 @@ export default function ConfirmPage() {
       return;
     }
 
-    if (!paidChecked) {
-      toast("支払い完了後に「支払い完了しました」にチェックを入れてください。");
+    if (!isPaid) {
+      toast("支払い確認中です。完了後に送信できます。");
       return;
     }
 
@@ -119,7 +138,6 @@ export default function ConfirmPage() {
           ) : null}
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            {/* 左：申請内容 */}
             <section className="rounded-[22px] border border-slate-200 bg-white p-5">
               <div className="text-sm font-extrabold text-slate-900">申請内容</div>
               <div className="mt-4 grid gap-3 text-sm">
@@ -127,73 +145,13 @@ export default function ConfirmPage() {
                 <Row k="メール" v={String(draft?.email ?? "")} />
                 <Row k="お名前" v={String(draft?.name ?? "")} />
                 <Row k="カタカナ" v={String(draft?.nameKana ?? "")} />
-
                 <Row k="紹介者名" v={draft?.refName ? String(draft.refName) : "（なし）"} muted={!draft?.refName} />
                 <Row k="紹介者ID" v={draft?.refId ? String(draft.refId) : "（なし）"} muted={!draft?.refId} />
                 <Row k="地域" v={draft?.region ? String(draft.region) : "（未選択）"} muted={!draft?.region} />
               </div>
-
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
-                <div className="font-bold">確認</div>
-                <div className="mt-1 leading-relaxed">
-                  入力内容に誤りがないか確認してください。
-                </div>
-              </div>
             </section>
 
-            {/* 右：支払い方法 + チェック */}
             <aside className="grid gap-5">
-              <div className="rounded-[22px] border border-slate-200 bg-white p-5">
-                <div className="text-sm font-extrabold text-slate-900">支払い方法</div>
-                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                  お支払い完了後、このページに戻って「支払い完了」チェックを入れてから送信してください。
-                </p>
-
-                {/* ✅ MEXCバナー（仮想通貨を持ってない人向け） */}
-                <a
-                  href="https://promote.mexc.com/r/m54hsj74"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:opacity-95 transition"
-                >
-                  <Image
-                    src="/mexc.png"
-                    alt="仮想通貨をこれから買う方はこちら（MEXC）"
-                    width={1280}
-                    height={1600}
-                    className="h-auto w-full"
-                  />
-                </a>
-                <div className="mt-2 px-1 text-[11px] text-slate-500">
-                  ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
-                </div>
-
-                {/* ✅ 支払い完了チェック */}
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-sm font-semibold text-slate-900">支払い完了後</div>
-                  <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                    支払いが完了したら、下のチェックをONにしてください（ONにしないと送信できません）。
-                  </p>
-
-                  <label className="mt-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4"
-                      checked={paidChecked}
-                      onChange={(e) => setPaidChecked(e.target.checked)}
-                      disabled={missing}
-                    />
-                    <div className="text-sm">
-                      <div className="font-extrabold text-slate-900">支払い完了しました</div>
-                      <div className="text-xs text-slate-600">
-                        ※未完了のまま送信すると、承認が遅れる可能性があります
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* 送信 */}
               <button
                 onClick={submit}
                 disabled={!canSubmit}
