@@ -38,12 +38,18 @@ export async function POST(req: Request) {
   const raw = await req.text();
   const sig = req.headers.get("x-nowpayments-sig");
 
+  // ✅ テスト用：このヘッダが付いてたら署名チェックをスキップ（課金なしテスト用）
+  // PowerShellなどから叩くときに `x-test-ipn: 1` を付ける
+  const isTest = req.headers.get("x-test-ipn") === "1";
+
   console.log("[IPN] hit", new Date().toISOString());
+  console.log("[IPN] isTest", isTest);
   console.log("[IPN] sig", sig);
   console.log("[IPN] raw", raw.slice(0, 200));
 
   // 署名検証（ipnSecretがある時だけ）
-  if (ipnSecret) {
+  // ✅ ただしテストの時はスキップ
+  if (ipnSecret && !isTest) {
     const ok = verifyNowpaymentsSig(raw, sig, ipnSecret);
     console.log("[IPN] sig_ok", ok);
 
@@ -51,6 +57,8 @@ export async function POST(req: Request) {
       console.warn("[IPN] bad signature");
       return NextResponse.json({ ok: false, error: "bad signature" }, { status: 401 });
     }
+  } else {
+    console.log("[IPN] signature skipped (test or no secret)");
   }
 
   let payload: any;
@@ -59,6 +67,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
   }
+
   console.log("[IPN] payment_status", payload?.payment_status, "order_id", payload?.order_id);
 
   const orderId = payload?.order_id as string | undefined;
@@ -77,7 +86,7 @@ export async function POST(req: Request) {
   if (gasUrl && gasKey) {
     const url = `${gasUrl}?key=${encodeURIComponent(gasKey)}`;
     try {
-      await fetch(url, {
+      const r = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -90,12 +99,17 @@ export async function POST(req: Request) {
           invoiceId,
           actuallyPaid,
           raw: payload,
+          isTest, // ←GAS側でログに出したい時用
         }),
       });
+
+      console.log("[IPN] GAS status", r.status);
     } catch (e) {
       console.error("GAS notify failed", e);
     }
+  } else {
+    console.log("[IPN] GAS skipped (missing env)", { gasUrl: !!gasUrl, gasKey: !!gasKey });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, isTest });
 }
