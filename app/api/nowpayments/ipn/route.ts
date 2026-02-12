@@ -38,11 +38,17 @@ export async function POST(req: Request) {
   const raw = await req.text();
   const sig = req.headers.get("x-nowpayments-sig");
 
+  console.log("[IPN] hit", new Date().toISOString());
+  console.log("[IPN] sig", sig);
+  console.log("[IPN] raw", raw.slice(0, 200));
+
   // 署名検証（ipnSecretがある時だけ）
   if (ipnSecret) {
     const ok = verifyNowpaymentsSig(raw, sig, ipnSecret);
+    console.log("[IPN] sig_ok", ok);
+
     if (!ok) {
-      // 署名NGなら401（ここは運用で200にしてもいいが、基本は401推奨）
+      console.warn("[IPN] bad signature");
       return NextResponse.json({ ok: false, error: "bad signature" }, { status: 401 });
     }
   }
@@ -53,6 +59,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
   }
+  console.log("[IPN] payment_status", payload?.payment_status, "order_id", payload?.order_id);
 
   const orderId = payload?.order_id as string | undefined;
   const paymentStatus = payload?.payment_status as string | undefined;
@@ -86,7 +93,7 @@ export async function POST(req: Request) {
         }),
       });
     } catch (e) {
-      // console.error("GAS notify failed", e);
+      console.error("GAS notify failed", e);
     }
   }
 
