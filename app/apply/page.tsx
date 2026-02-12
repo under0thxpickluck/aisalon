@@ -162,7 +162,9 @@ export default function ApplyPage() {
       // ✅ plan は「すでに入ってるなら維持」、無ければ URL が数値なら採用
       plan:
         initial.plan ??
-        (planFromUrl && /^\d+$/.test(planFromUrl) ? Number(planFromUrl) : undefined),
+        (planFromUrl && /^\d+$/.test(planFromUrl)
+          ? (planFromUrl as Plan)
+          : undefined),
     };
 
     setDraft(merged);
