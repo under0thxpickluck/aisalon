@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { StepHeader } from "@/components/StepHeader";
 import { Field } from "@/components/Field";
 import { Select } from "@/components/Select";
-import { loadDraft, saveDraft, type Draft } from "@/components/storage";
+import { loadDraft, saveDraft, type Draft, type Plan } from "@/components/storage";
+
 
 const AGE_BANDS = [
   { value: "10s", label: "10代" },
