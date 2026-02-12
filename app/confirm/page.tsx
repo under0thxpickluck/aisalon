@@ -14,15 +14,18 @@ export default function ConfirmPage() {
 
   const [draft, setDraft] = useState<Partial<Draft> | null>(null);
 
-  // ✅ 支払いステータス（IPN確認）
+  // ✅ 支払いステータス（IPN確認：参考用。送信条件にはしない）
   const [isPaid, setIsPaid] = useState(false);
   const [checking, setChecking] = useState(false);
+
+  // ✅ 「支払い完了しました」チェック（ローカルでよい）
+  const [paidChecked, setPaidChecked] = useState(false);
 
   useEffect(() => {
     const d = loadDraft();
     setDraft(d);
 
-    // applyIdがあれば支払い確認
+    // applyIdがあれば支払い確認（参考表示用）
     if (d?.applyId) {
       checkPayment(d.applyId);
     }
@@ -31,13 +34,14 @@ export default function ConfirmPage() {
   const checkPayment = async (applyId: string) => {
     try {
       setChecking(true);
-      const res = await fetch(`/api/apply/status?applyId=${applyId}`);
+      const res = await fetch(`/api/apply/status?applyId=${applyId}`, { cache: "no-store" });
       const data = await res.json();
       if (data?.ok && data?.status === "paid") {
         setIsPaid(true);
       }
-    } catch {}
-    finally {
+    } catch {
+      // noop
+    } finally {
       setChecking(false);
     }
   };
@@ -50,7 +54,8 @@ export default function ConfirmPage() {
     return !draft.plan || !draft.email || !draft.name || !draft.nameKana;
   }, [draft]);
 
-  const canSubmit = !missing && isPaid && !loading;
+  // ✅ 送信条件：必須項目OK + チェックON（isPaidは必須にしない）
+  const canSubmit = !missing && paidChecked && !loading;
 
   const submit = async () => {
     setErr(null);
@@ -65,8 +70,8 @@ export default function ConfirmPage() {
       return;
     }
 
-    if (!isPaid) {
-      toast("支払い確認中です。完了後に送信できます。");
+    if (!paidChecked) {
+      toast("支払い完了後に「支払い完了しました」にチェックを入れてください。");
       return;
     }
 
@@ -152,6 +157,63 @@ export default function ConfirmPage() {
             </section>
 
             <aside className="grid gap-5">
+              {/* ✅ 支払い完了チェック（復活） */}
+              <div className="rounded-[22px] border border-slate-200 bg-white p-5">
+                <div className="text-sm font-extrabold text-slate-900">支払い方法</div>
+                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                  お支払い完了後、このページに戻って「支払い完了」チェックを入れてから送信してください。
+                </p>
+
+                {/* ✅ MEXCバナー（仮想通貨を持ってない人向け） */}
+                <a
+                  href="https://promote.mexc.com/r/m54hsj74"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:opacity-95 transition"
+                >
+                  <Image
+                    src="/mexc.png"
+                    alt="仮想通貨をこれから買う方はこちら（MEXC）"
+                    width={1280}
+                    height={1600}
+                    className="h-auto w-full"
+                  />
+                </a>
+                <div className="mt-2 px-1 text-[11px] text-slate-500">
+                  ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-sm font-semibold text-slate-900">支払い完了後</div>
+                  <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                    支払いが完了したら、下のチェックをONにしてください（ONにしないと送信できません）。
+                  </p>
+
+                  <label className="mt-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4"
+                      checked={paidChecked}
+                      onChange={(e) => setPaidChecked(e.target.checked)}
+                      disabled={missing}
+                    />
+                    <div className="text-sm">
+                      <div className="font-extrabold text-slate-900">支払い完了しました</div>
+                      <div className="text-xs text-slate-600">
+                        ※未完了のまま送信すると、承認が遅れる可能性があります
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* 参考表示（文章いじらないため、表示だけ小さく） */}
+                  {draft?.applyId ? (
+                    <div className="mt-3 text-[11px] text-slate-500">
+                      {checking ? "支払い状況を確認中..." : isPaid ? "支払い状況：paid" : "支払い状況：未確認"}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
               <button
                 onClick={submit}
                 disabled={!canSubmit}
