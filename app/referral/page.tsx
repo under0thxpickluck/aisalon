@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 type PlanRow = {
-  plan: "30" | "50" | "100" | "500" | "1000";
+  plan: "40" | "67" | "134" | "667" | "1334";
   label: string;
   maxRefPerMonth: string; // 表現は柔らかく（例：2人まで / 10人まで / 制限なし）
   epCapPerMonth: string; // 例：2000EP
@@ -174,22 +174,22 @@ function ArrowDown() {
 export default function ReferralPage() {
   const planRows = useMemo<PlanRow[]>(
     () => [
-      { plan: "30", label: "ENTRY", maxRefPerMonth: "2人まで", epCapPerMonth: "2,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "—" },
-      { plan: "50", label: "BUILDER", maxRefPerMonth: "5人まで", epCapPerMonth: "4,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "3EP=1円" },
-      { plan: "100", label: "AUTOMATION", maxRefPerMonth: "10人まで", epCapPerMonth: "8,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2.5EP=1円" },
-      { plan: "500", label: "CORE", maxRefPerMonth: "上限なし", epCapPerMonth: "15,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2EP=1円" },
-      { plan: "1000", label: "INFRA", maxRefPerMonth: "上限なし", epCapPerMonth: "30,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2EP=1円" },
+      { plan: "40", label: "ENTRY", maxRefPerMonth: "2人まで", epCapPerMonth: "2,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "—" },
+      { plan: "67", label: "BUILDER", maxRefPerMonth: "5人まで", epCapPerMonth: "4,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "3EP=1円" },
+      { plan: "134", label: "AUTOMATION", maxRefPerMonth: "10人まで", epCapPerMonth: "8,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2.5EP=1円" },
+      { plan: "667", label: "CORE", maxRefPerMonth: "上限なし", epCapPerMonth: "15,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2EP=1円" },
+      { plan: "1334", label: "INFRA", maxRefPerMonth: "上限なし", epCapPerMonth: "30,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2EP=1円" },
     ],
     []
   );
 
   const epRows = useMemo<EpRow[]>(
     () => [
-      { amountUsd: 30, first20Usd: 6, add10Usd: 3 },
-      { amountUsd: 50, first20Usd: 10, add10Usd: 5 },
-      { amountUsd: 100, first20Usd: 20, add10Usd: 10 },
-      { amountUsd: 500, first20Usd: 100, add10Usd: 50 },
-      { amountUsd: 1000, first20Usd: 200, add10Usd: 100 },
+      { amountUsd: 40, first20Usd: 8, add10Usd: 4 },
+      { amountUsd: 67, first20Usd: 13, add10Usd: 7 },
+      { amountUsd: 134, first20Usd: 26, add10Usd: 13 },
+      { amountUsd: 667, first20Usd: 134, add10Usd: 67 },
+      { amountUsd: 1334, first20Usd: 267, add10Usd: 133 },
     ],
     []
   );

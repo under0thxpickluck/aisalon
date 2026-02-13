@@ -31,7 +31,18 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(data, { status: 200 });
+    // ✅ ここがポイント：
+    // GASは { ok:true, items:[...] } を返す想定
+    // AdminPageは { ok:true, rows:[...] } を期待しているので整形して返す
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    return NextResponse.json(
+      {
+        ok: !!data?.ok,
+        rows: items,
+      },
+      { status: 200 }
+    );
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }

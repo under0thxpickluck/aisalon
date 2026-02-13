@@ -1,13 +1,15 @@
+// app/login/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { loginMock } from "@/components/auth";
+import { setAuth } from "@/app/lib/auth"; // ✅ 追加（パスが違うなら調整）
 
 export default function LoginPage() {
   const router = useRouter();
+
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,16 +23,26 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: id.trim(), code: pw }),
-      }).then(r => r.json());
+      }).then((r) => r.json());
 
       if (res.ok) {
+        // ✅ ログイン状態を保存
+        setAuth({
+          status: "approved",
+          id: id.trim(),
+          token: res.token, // tokenが無いなら消してOK
+        });
         router.push("/top");
         return;
       }
+
       if (res.reason === "pending") {
+        // ✅ pendingも保存（/pendingガードに使える）
+        setAuth({ status: "pending", id: id.trim() });
         router.push("/pending");
         return;
       }
+
       setErr("IDまたはワンタイムコードが違います。");
     } finally {
       setLoading(false);

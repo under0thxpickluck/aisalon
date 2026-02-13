@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -19,11 +21,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "bad_rowIndex" }, { status: 400 });
     }
 
-    const res = await fetch(`${url}?key=${encodeURIComponent(key)}`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "admin_approve", adminKey, rowIndex }),
       cache: "no-store",
+      body: JSON.stringify({
+        action: "admin_approve",
+        key,
+        adminKey,
+        rowIndex,
+      }),
     });
 
     const text = await res.text();

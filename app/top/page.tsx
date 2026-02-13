@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { clearAuth, getAuth, type AuthState } from "../lib/auth";
 
 type Tile = {
@@ -11,7 +12,7 @@ type Tile = {
   badge?: string;
   icon: React.ReactNode;
   tint?: "indigo" | "cyan" | "violet" | "emerald" | "amber" | "rose";
-  comingSoon?: boolean; 
+  comingSoon?: boolean;
 };
 
 function tintClass(tint: Tile["tint"]) {
@@ -65,9 +66,7 @@ function AppIconCard({ t }: { t: Tile }) {
         </div>
 
         <div className="min-w-0">
-          <div className="text-sm font-extrabold text-slate-700">
-            {t.title}
-          </div>
+          <div className="text-sm font-extrabold text-slate-700">{t.title}</div>
           <div className="mt-1 line-clamp-2 text-xs text-slate-500">
             {t.desc}
           </div>
@@ -80,7 +79,6 @@ function AppIconCard({ t }: { t: Tile }) {
     </div>
   );
 }
-
 
 /** ✅ カウントダウン + 調達バー（returnの外に置く） */
 function pad2(n: number) {
@@ -177,17 +175,22 @@ function TimeBox({ label, value }: { label: string; value: string }) {
 }
 
 export default function AppHomePage() {
+  const router = useRouter();
   const [auth, setAuthState] = useState<AuthState | null>(null);
 
   useEffect(() => {
-    setAuthState(getAuth());
-  }, []);
+    const a = getAuth();
+    setAuthState(a);
 
-  useEffect(() => {
-    if (auth === null) return;
-    if (!auth) window.location.href = "/login";
-    if (auth?.status === "pending") window.location.href = "/pending";
-  }, [auth]);
+    if (!a) {
+      router.replace("/login");
+      return;
+    }
+    if (a.status === "pending") {
+      router.replace("/pending");
+      return;
+    }
+  }, [router]);
 
   const tiles = useMemo<Tile[]>(
     () => [
@@ -248,8 +251,11 @@ export default function AppHomePage() {
 
   const logout = () => {
     clearAuth();
-    window.location.href = "/";
+    router.replace("/");
   };
+
+  // ✅ 認証判定が終わるまで一瞬も中身を描画しない（チラ見え防止）
+  if (auth === null) return null;
 
   return (
     <main className="min-h-screen text-slate-900">

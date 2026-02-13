@@ -12,6 +12,7 @@ type ApplyRow = {
   ref_id?: string | number;
   region?: string;
   status?: string;
+  rowIndex?: number; // ✅ GAS admin_list が返してる想定に合わせて追加
   // 追加があっても壊れない
   [k: string]: any;
 };
@@ -48,8 +49,16 @@ export default function AdminPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  // ✅ pending判定：現場運用で詰まりやすいので広めに拾う
+  // - pending
+  // - paid（支払い済みで承認待ち）
+  // - pending_payment（仮作成後の状態）
   const pendingRows = useMemo(
-    () => rows.filter((r) => (r.status ?? "pending") === "pending"),
+    () =>
+      rows.filter((r) => {
+        const st = String(r.status ?? "pending");
+        return st === "pending" || st === "paid" || st === "pending_payment";
+      }),
     [rows]
   );
 
@@ -58,11 +67,20 @@ export default function AdminPage() {
     setMsg(null);
     setLoading(true);
     try {
-      // ✅ 既存のAPIに合わせてここを変えてOK
-      const res = await fetch("/api/admin/pending", { cache: "no-store" });
+      // ✅ ここだけ「実際のAPI」に合わせる（/api/admin/list）
+      const res = await fetch("/api/admin/list", { cache: "no-store" });
       const json = await res.json();
+
       if (!res.ok || !json?.ok) throw new Error(json?.error || "failed");
-      setRows(Array.isArray(json.rows) ? json.rows : []);
+
+      // ✅ GAS/Next の返却ゆれ対策：items/rowsどっちでも拾う
+      const arr = Array.isArray(json.items)
+        ? json.items
+        : Array.isArray(json.rows)
+        ? json.rows
+        : [];
+
+      setRows(arr);
     } catch (e: any) {
       setErr(String(e?.message ?? e));
     } finally {
@@ -82,13 +100,19 @@ export default function AdminPage() {
     setBusyKey(key);
 
     try {
+      // ✅ ここが重要：GASは rowIndex で承認する実装にしてある
+      // rowIndex が無い場合は事故るのでエラーにする
+      const rowIndex = Number(row.rowIndex || 0);
+      if (!rowIndex || rowIndex < 2) {
+        throw new Error("rowIndex_missing");
+      }
+
       // ✅ 既存のAPIに合わせてここを変えてOK
       const res = await fetch("/api/admin/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: row.email,
-          created_at: row.created_at,
+          rowIndex,
         }),
       });
       const json = await res.json();
@@ -97,9 +121,18 @@ export default function AdminPage() {
         throw new Error(json?.error || "approve_failed");
       }
 
-      // ワンタイムコードが返ってくる想定（返ってこなくてもOK）
-      const code = json?.oneTimeCode || json?.code || "";
-      if (code) {
+      // ✅ 新仕様（loginId/tempPassword）
+      const loginId = String(json?.loginId || "");
+      const tempPassword = String(json?.tempPassword || "");
+
+      // ✅ 旧互換（oneTimeCode）も残す（返ってきても壊れない）
+      const code = String(json?.oneTimeCode || json?.code || "");
+
+      if (loginId && tempPassword) {
+        const payload = `ID: ${loginId}\nPW: ${tempPassword}`;
+        await copyToClipboard(payload);
+        setMsg(`承認しました。ワンタイムコードをコピーしました：${payload}`);
+      } else if (code) {
         await copyToClipboard(code);
         setMsg(`承認しました。ワンタイムコードをコピーしました：${code}`);
       } else {
@@ -171,20 +204,14 @@ export default function AdminPage() {
         <section className="mb-6 grid gap-3 sm:grid-cols-3">
           <StatCard label="pending 件数" value={String(pendingRows.length)} />
           <StatCard label="合計行数" value={String(rows.length)} />
-          <StatCard
-            label="状態"
-            value={loading ? "loading" : "ready"}
-            tone={loading ? "slate" : "indigo"}
-          />
+          <StatCard label="状態" value={loading ? "loading" : "ready"} tone={loading ? "slate" : "indigo"} />
         </section>
 
         {/* メインカード */}
         <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_70px_rgba(2,6,23,.10)]">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-extrabold text-slate-900">pending 一覧</div>
-            <div className="text-xs text-slate-500">
-              表が見にくい問題を解消：列整列 / 省略 / スマホ縦対応
-            </div>
+            <div className="text-xs text-slate-500">表が見にくい問題を解消：列整列 / 省略 / スマホ縦対応</div>
           </div>
 
           <div className="mt-4">
@@ -213,12 +240,8 @@ export default function AdminPage() {
                         const busy = busyKey === `${r.email ?? ""}_${r.created_at ?? ""}`;
                         return (
                           <tr key={key} className="border-t border-slate-200">
-                            <Td className="whitespace-nowrap text-slate-700">
-                              {formatDate(r.created_at)}
-                            </Td>
-                            <Td className="whitespace-nowrap font-bold text-slate-900">
-                              {String(r.plan ?? "")}
-                            </Td>
+                            <Td className="whitespace-nowrap text-slate-700">{formatDate(r.created_at)}</Td>
+                            <Td className="whitespace-nowrap font-bold text-slate-900">{String(r.plan ?? "")}</Td>
                             <Td className="max-w-[220px]">
                               <div className="font-bold text-slate-900">{r.name ?? ""}</div>
                               <div className="text-xs text-slate-500">{r.name_kana ?? ""}</div>
@@ -238,19 +261,11 @@ export default function AdminPage() {
                             </Td>
                             <Td className="max-w-[220px]">
                               <div className="truncate text-slate-800">
-                                {r.ref_name ? (
-                                  <span className="font-semibold">{r.ref_name}</span>
-                                ) : (
-                                  <span className="text-slate-400">（なし）</span>
-                                )}
+                                {r.ref_name ? <span className="font-semibold">{r.ref_name}</span> : <span className="text-slate-400">（なし）</span>}
                               </div>
-                              <div className="text-xs text-slate-500">
-                                {r.ref_id ? `ID: ${r.ref_id}` : ""}
-                              </div>
+                              <div className="text-xs text-slate-500">{r.ref_id ? `ID: ${r.ref_id}` : ""}</div>
                             </Td>
-                            <Td className="whitespace-nowrap font-semibold text-slate-800">
-                              {r.region ?? ""}
-                            </Td>
+                            <Td className="whitespace-nowrap font-semibold text-slate-800">{r.region ?? ""}</Td>
                             <Td className="whitespace-nowrap p-3 text-right">
                               <button
                                 onClick={() => approve(r)}
@@ -296,8 +311,7 @@ function StatCard({
   value: string;
   tone?: "emerald" | "indigo" | "slate";
 }) {
-  const dot =
-    tone === "emerald" ? "bg-emerald-500" : tone === "indigo" ? "bg-indigo-500" : "bg-slate-500";
+  const dot = tone === "emerald" ? "bg-emerald-500" : tone === "indigo" ? "bg-indigo-500" : "bg-slate-500";
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">

@@ -92,7 +92,7 @@ export default function Page() {
             <div className="flex min-w-max gap-4 pb-2">
               <RankCard
                 name="Starter"
-                badge="$30 / 体験"
+                badge="$40 / 体験"
                 chips={[
                   { label: "講座", value: "基礎AI副業（動画/記事）" },
                   { label: "テンプレ", value: "月3個（コピペ型）" },
@@ -107,7 +107,7 @@ export default function Page() {
 
               <RankCard
                 name="Builder"
-                badge="$50 / 実践"
+                badge="$67 / 実践"
                 chips={[
                   { label: "情報", value: "実践テンプレ / SNS台本" },
                   { label: "実行", value: "ワークフロー簡易版" },
@@ -121,7 +121,7 @@ export default function Page() {
 
               <RankCard
                 name="Automation"
-                badge="$100 / 仕組み"
+                badge="$134 / 仕組み"
                 chips={[
                   { label: "テンプレ", value: "フル解放 / 広告 / 設計" },
                   { label: "実行", value: "AI生成環境" },
@@ -137,7 +137,7 @@ export default function Page() {
 
               <RankCard
                 name="Core"
-                badge="$500 / 中核"
+                badge="$667 / 中核"
                 chips={[
                   { label: "情報", value: "非公開案件 / 統計共有" },
                   { label: "VPS", value: "優先枠" },
@@ -154,7 +154,7 @@ export default function Page() {
 
               <RankCard
                 name="Infra"
-                badge="$1,000 / 影響"
+                badge="$1,340 / 影響"
                 chips={[
                   { label: "情報", value: "企画段階 / 運営データ" },
                   { label: "VPS", value: "専用枠（上限付）" },
@@ -315,7 +315,7 @@ export default function Page() {
 
             {/* $50 */}
             <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
-              <div className="p-4 font-semibold text-neutral-900">$50</div>
+              <div className="p-4 font-semibold text-neutral-900">$67</div>
               <div className="p-4 text-neutral-800">
                 <ul className="list-disc space-y-1 pl-5">
                   <li>ワークフロー3件購入</li>
@@ -327,7 +327,7 @@ export default function Page() {
 
             {/* $100 */}
             <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
-              <div className="p-4 font-semibold text-neutral-900">$100</div>
+              <div className="p-4 font-semibold text-neutral-900">$134</div>
               <div className="p-4 text-neutral-800">
                 <ul className="list-disc space-y-1 pl-5">
                   <li>ワークフロー5件購入</li>
@@ -339,7 +339,7 @@ export default function Page() {
 
             {/* $500 */}
             <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
-              <div className="p-4 font-semibold text-neutral-900">$500</div>
+              <div className="p-4 font-semibold text-neutral-900">$667</div>
               <div className="p-4 text-neutral-800">
                 <ul className="list-disc space-y-1 pl-5">
                   <li>ワークフロー10件購入</li>
@@ -351,7 +351,7 @@ export default function Page() {
 
             {/* $1000 */}
             <div className="grid grid-cols-2 border-t border-neutral-200 text-sm">
-              <div className="p-4 font-semibold text-neutral-900">$1000</div>
+              <div className="p-4 font-semibold text-neutral-900">$1340</div>
               <div className="p-4 text-neutral-800">
                 <ul className="list-disc space-y-1 pl-5">
                   <li>BPを5,000消費</li>
