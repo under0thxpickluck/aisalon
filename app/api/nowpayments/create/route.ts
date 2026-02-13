@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       "x-api-key": apiKey,
     },
     body: JSON.stringify({
-      price_amount: amount,
+      price_amount: Number(amount),
       price_currency: "usd",
       pay_currency: "usdttrc20",
       order_id: `lifai_${applyId}`,
