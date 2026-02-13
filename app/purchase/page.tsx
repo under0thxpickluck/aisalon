@@ -23,6 +23,7 @@ const BP_BONUS: Partial<Record<Plan, number>> = {
 type PlanDef = {
   id: Plan;
   priceLabel: string; // 支払う金額（割引後）
+  originalPriceLabel?: string;
   title: string;
   desc: string;
   bullets: string[];
@@ -33,21 +34,24 @@ type PlanDef = {
 const PLANS: PlanDef[] = [
   {
     id: "30" as Plan,
-    priceLabel: "30 USDT",
+    priceLabel: "34 USDT",
+    originalPriceLabel: "40 USDT",
     title: "Starter",
     desc: "まず体験して全体像を掴む",
     bullets: ["基礎AI副業講座（動画/記事）", "テンプレ：月3個（コピペ型）", "コミュニティ：閲覧のみ"],
   },
   {
     id: "50" as Plan,
-    priceLabel: "50 USDT",
+    priceLabel: "57 USDT",
+    originalPriceLabel: "67 USDT",
     title: "Builder",
     desc: "実践テンプレで手を動かして伸ばす",
     bullets: ["実践テンプレ追加（投稿/台本/プロンプト）", "SNS運用テンプレ（X/TikTok/YouTube短尺）", "コミュニティ：投稿OK（制限あり）"],
   },
   {
     id: "100" as Plan,
-    priceLabel: "100 USDT",
+    priceLabel: "114 USDT",
+    originalPriceLabel: "134 USDT",
     title: "Automation",
     desc: "仕組み化の自動化ワークフローを使う",
     bullets: ["自動化ワークフロー（例：10本）", "AI生成環境：フル解放", "成果共有ルーム：参加"],
@@ -55,7 +59,8 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "500" as Plan,
-    priceLabel: "500 USDT",
+    priceLabel: "567 USDT",
+    originalPriceLabel: "667 USDT",
     title: "Core",
     desc: "中核メンバー枠：運用と案件を前に進める",
     bullets: ["新ツール優先利用（βアクセス）", "共同企画：参加（作業部屋/週1MTG）", "VPS枠：優先（上限付き）"],
@@ -63,7 +68,8 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "1000" as Plan,
-    priceLabel: "1,000 USDT",
+    priceLabel: "1,134 USDT",
+    originalPriceLabel: "1,334 USDT",
     title: "Infra",
     desc: "影響層：インフラ整備と共同PJを牽引する",
     bullets: ["インフラ整備：参加権（運営側の手伝い/アイデア枠）", "共同プロジェクト：優先（先行参加）", "テンプレ無料購入チケット：上限付き"],
