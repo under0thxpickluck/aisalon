@@ -23,7 +23,7 @@ const BP_BONUS: Partial<Record<Plan, number>> = {
 type PlanDef = {
   id: Plan;
   priceLabel: string;
-  originalPriceLabel?: string; // ✅ 通常価格（プレセール時だけ表示）
+  originalPriceLabel?: string;
   title: string;
   desc: string;
   bullets: string[];
@@ -98,7 +98,6 @@ function StepHeaderLite({ title, subtitle }: { title: string; subtitle?: string 
   );
 }
 
-/** ✅ 見た目を崩さず “最小限で伝わる” へ：カード内は短く */
 function PlanCard({
   plan,
   selected,
@@ -202,14 +201,47 @@ function PlanCard({
   );
 }
 
-export default function PurchasePage() {
-  const [draft, setDraft] = useState<ReturnType<typeof loadDraft> | null>(null);
+function parseAmountFromLabel(label: string): number {
+  // "1,000 USDT" / "56.95 USDT" など対応
+  const n = Number(String(label).replace(/,/g, "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
 
-  // ✅ 「支払い完了しました」チェック（ローカルでよい）
+function isValidPlanId(p?: string | null): p is Plan {
+  if (!p) return false;
+  return PLANS.some((x) => String(x.id) === String(p));
+}
+
+function isValidApplyId(v?: string | null): boolean {
+  if (!v) return false;
+  // 極端に変な値を弾く（長さだけでも十分）
+  if (v.length < 6 || v.length > 80) return false;
+  return true;
+}
+
+export default function PurchaseJamPage() {
+  const [draft, setDraft] = useState<ReturnType<typeof loadDraft> | null>(null);
   const [paidChecked, setPaidChecked] = useState(false);
 
+  // ✅ 決済作成中の二重クリック防止
+  const [payBusy, setPayBusy] = useState(false);
+
   useEffect(() => {
-    setDraft(loadDraft());
+    const d = loadDraft();
+
+    // ✅ NowPayments success_url から戻った時：applyId/plan をDraftへ反映して復帰できるようにする
+    const sp = new URLSearchParams(window.location.search);
+    const applyIdFromUrl = sp.get("applyId");
+    const planFromUrl = sp.get("plan");
+
+    const next = {
+      ...d,
+      ...(isValidApplyId(applyIdFromUrl) ? { applyId: applyIdFromUrl! } : null),
+      ...(isValidPlanId(planFromUrl) ? { plan: planFromUrl as Plan } : null),
+    };
+
+    saveDraft(next);
+    setDraft(next);
   }, []);
 
   function setPlan(p: Plan) {
@@ -217,7 +249,20 @@ export default function PurchasePage() {
     const next = { ...draft, plan: p };
     saveDraft(next);
     setDraft(next);
-    setPaidChecked(false); // ✅ プラン変えたらチェックは戻す（事故防止）
+    setPaidChecked(false);
+  }
+
+  function ensureApplyId(): string | null {
+    if (!draft) return null;
+    if (draft.applyId && isValidApplyId(draft.applyId)) return draft.applyId;
+
+    // ✅ JAMDAO用 prefix
+    const applyId = `jam_${Date.now()}`;
+
+    const next = { ...draft, applyId };
+    saveDraft(next);
+    setDraft(next);
+    return applyId;
   }
 
   const selectedPlan = useMemo(() => {
@@ -225,7 +270,12 @@ export default function PurchasePage() {
     return PLANS.find((p) => draft.plan === p.id);
   }, [draft]);
 
-  const canGoNext = !!selectedPlan && paidChecked;
+  const nextHref =
+    draft?.applyId && selectedPlan
+      ? `/apply?applyId=${encodeURIComponent(draft.applyId)}&plan=${encodeURIComponent(selectedPlan.id)}&src=jamdao`
+      : "/apply?src=jamdao";
+
+  const canGoNext = !!selectedPlan && !!draft?.applyId && paidChecked;
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -240,11 +290,10 @@ export default function PurchasePage() {
       />
 
       <div className="mx-auto max-w-[980px] px-4 py-10">
-
         {/* ✅ 最上部ヒーローバナー */}
         <div className="mb-8 overflow-hidden rounded-2xl">
           <Image
-            src="/hero-collab.png" // ← publicに置いた画像
+            src="/hero-collab.png"
             alt="JAM DAO × LIFAI コラボ先行配信セール"
             width={1400}
             height={900}
@@ -252,7 +301,6 @@ export default function PurchasePage() {
             priority
           />
         </div>
-
 
         <div className="mb-6 flex items-center justify-between gap-3">
           <Link
@@ -271,9 +319,8 @@ export default function PurchasePage() {
         </div>
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_rgba(2,6,23,.10)]">
-
           <StepHeaderLite
-            title="購入プランを選択"
+            title="JAMDAO コラボ購入（専用）"
             subtitle="①プラン選択 → ②支払い → ③「支払い完了」チェック → ④次へ（申請入力）"
           />
 
@@ -284,27 +331,19 @@ export default function PurchasePage() {
                 購入プラン <span className="text-rose-600">*</span>
               </div>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                金額ではなく「使える権利の範囲」が増えていくイメージです。選択するとカードが色付きになります。
+                JAMDAOコラボ限定条件で購入できます。選択するとカードが色付きになります。
               </p>
 
               {!draft ? (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {Array.from({ length: PLANS.length }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-[170px] rounded-2xl border border-slate-200 bg-slate-50 animate-pulse"
-                    />
+                    <div key={i} className="h-[170px] rounded-2xl border border-slate-200 bg-slate-50 animate-pulse" />
                   ))}
                 </div>
               ) : (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {PLANS.map((p) => (
-                    <PlanCard
-                      key={String(p.id)}
-                      plan={p}
-                      selected={draft.plan === p.id}
-                      onSelect={() => setPlan(p.id)}
-                    />
+                    <PlanCard key={String(p.id)} plan={p} selected={draft.plan === p.id} onSelect={() => setPlan(p.id)} />
                   ))}
                 </div>
               )}
@@ -328,6 +367,13 @@ export default function PurchasePage() {
                     <span className="text-slate-500">未選択（どれか選んでください）</span>
                   )}
                 </div>
+
+                {/* applyId表示（問い合わせ・復帰用） */}
+                {draft?.applyId ? (
+                  <div className="mt-2 text-[11px] text-slate-500">
+                    申請ID：<span className="font-mono text-slate-700">{draft.applyId}</span>
+                  </div>
+                ) : null}
 
                 {selectedPlan ? (
                   <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
@@ -357,34 +403,78 @@ export default function PurchasePage() {
                   {/* ✅ NOWPayments */}
                   <button
                     type="button"
-                    disabled={!selectedPlan}
+                    disabled={!selectedPlan || payBusy}
                     className={[
                       "w-full rounded-2xl border px-4 py-4 text-left transition",
-                      selectedPlan ? "border-indigo-200 bg-indigo-50 hover:bg-indigo-100" : "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed",
+                      selectedPlan && !payBusy
+                        ? "border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
+                        : "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed",
                     ].join(" ")}
                     onClick={async () => {
                       if (!selectedPlan) return;
-                      const applyId = `tmp_${Date.now()}`; // 本番はapplyで発行したIDに差し替え
-                      const amount = Number(String(selectedPlan.priceLabel).replace(/[^\d.]/g, ""));
-                      const res = await fetch("/api/nowpayments/create", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ amount, plan: selectedPlan.id, applyId }),
-                      });
+                      if (payBusy) return;
 
-                      const data = await res.json();
-                      if (!data.ok) {
-                        alert(data.error || "決済作成に失敗しました");
-                        return;
+                      setPayBusy(true);
+                      try {
+                        const applyId = ensureApplyId();
+                        if (!applyId) return;
+
+                        // ① 先にGASへ仮登録（分裂防止）
+                        const createRes = await fetch("/api/apply/create", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            plan: selectedPlan.id,
+                            applyId,
+                            refName: "JAMDAO",
+                            refId: "jamdao",
+                          }),
+                        });
+
+                        const createData = await createRes.json();
+                        if (!createData.ok) {
+                          alert(createData.error || "申請ID作成に失敗しました");
+                          return;
+                        }
+
+                        // ② 金額抽出
+                        const amount = parseAmountFromLabel(selectedPlan.priceLabel);
+                        if (!amount || amount <= 0) {
+                          alert("金額の取得に失敗しました");
+                          return;
+                        }
+
+                        // ③ 決済作成（/api/nowpayments/create の仕様に合わせる）
+                        const res = await fetch("/api/nowpayments/create", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            amount,
+                            plan: selectedPlan.id,
+                            applyId,
+                            src: "jamdao", // ✅ これが重要（cancel_urlなど導線維持）
+                          }),
+                        });
+
+                        const data = await res.json();
+                        if (!data.ok) {
+                          alert(data.error || "決済作成に失敗しました");
+                          return;
+                        }
+
+                        // ✅ NowPaymentsへ
+                        window.location.href = data.invoice_url;
+                      } catch {
+                        alert("エラーが発生しました");
+                      } finally {
+                        setPayBusy(false);
                       }
-                      // invoice_url 方式前提（createの返却がinvoice_urlになっている想定）
-                      window.location.href = data.invoice_url;
                     }}
                   >
-                    <div className="text-sm font-extrabold text-slate-900">暗号通貨（NOWPayments）</div>
-                    <div className="mt-1 text-xs text-slate-600">
-                      USDTなどで支払い（ウォレットがある方向け）
+                    <div className="text-sm font-extrabold text-slate-900">
+                      {payBusy ? "決済ページを準備中…" : "暗号通貨（NOWPayments）"}
                     </div>
+                    <div className="mt-1 text-xs text-slate-600">USDTなどで支払い（ウォレットがある方向け）</div>
                   </button>
 
                   {/* ✅ 仮想通貨を持ってない人向け：MEXC誘導バナー */}
@@ -407,8 +497,6 @@ export default function PurchasePage() {
                   <div className="px-1 text-[11px] text-slate-500">
                     ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
                   </div>
-
-
 
                   {/* ✅ 今後の追加枠 */}
                   <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 opacity-80">
@@ -435,9 +523,7 @@ export default function PurchasePage() {
                     />
                     <div className="text-sm">
                       <div className="font-extrabold text-slate-900">支払い完了しました</div>
-                      <div className="text-xs text-slate-600">
-                        ※支払いが未完了のまま進むと、承認が遅れます
-                      </div>
+                      <div className="text-xs text-slate-600">※支払いが未完了のまま進むと、承認が遅れます</div>
                     </div>
                   </label>
                 </div>
@@ -445,7 +531,7 @@ export default function PurchasePage() {
 
               {/* 次へ */}
               <Link
-                href="/apply"
+                href={nextHref}
                 className={[
                   "inline-flex w-full items-center justify-center rounded-2xl px-4 py-4 text-base font-extrabold text-white",
                   canGoNext ? "bg-slate-900 hover:opacity-95 active:scale-[0.99]" : "bg-slate-300 cursor-not-allowed",
