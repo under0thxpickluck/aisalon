@@ -22,13 +22,14 @@ const BP_BONUS: Partial<Record<Plan, number>> = {
 
 type PlanDef = {
   id: Plan;
-  priceLabel: string;          // 支払う金額（割引後）
+  priceLabel: string; // 支払う金額（割引後）
   title: string;
   desc: string;
   bullets: string[];
   badges?: string[];
 };
 
+// ✅ 通常版の支払額（あなたの設計通り：30/50/100/500/1000）
 const PLANS: PlanDef[] = [
   {
     id: "30" as Plan,
@@ -93,21 +94,21 @@ function StepHeaderLite({ title, subtitle }: { title: string; subtitle?: string 
 }
 
 function parseAmountFromLabel(label: string): number {
-  // "1,000 USDT" / "56.95 USDT" など対応
   const n = Number(String(label).replace(/,/g, "").replace(/[^\d.]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 
-function formatUsdtn(n: number): string {
-  // 表示は整数に寄せる（小数が嫌ならこれが安全）
-  const v = Math.round(n);
-  return v >= 1000 ? `${v.toLocaleString("en-US")} USDT` : `${v} USDT`;
+function formatUsdt(n: number): string {
+  // 表示は2桁まで（.00は消す）
+  const fixed = Math.round(n * 100) / 100;
+  const s = fixed.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return `${s} USDT`;
 }
 
-function calcOriginalLabel(discounted: number): string {
-  // 15%OFF表示を「矛盾なく」するために、割引後から逆算して通常価格を表示
+// ✅ ここがミソ：15%OFF表示に「矛盾が出ない」よう、表示上の通常価格を逆算
+function calcOriginalLabelFromDiscounted(discounted: number): string {
   const original = discounted / (1 - PRESALE_OFF_PCT / 100);
-  return formatUsdtn(original);
+  return formatUsdt(original);
 }
 
 function PlanCard({
@@ -120,9 +121,8 @@ function PlanCard({
   onSelect: () => void;
 }) {
   const isBest = plan.id === ("100" as Plan);
-
   const discountedAmount = parseAmountFromLabel(plan.priceLabel);
-  const originalLabel = ENABLE_PRESALE && discountedAmount > 0 ? calcOriginalLabel(discountedAmount) : plan.priceLabel;
+  const originalLabel = ENABLE_PRESALE && discountedAmount > 0 ? calcOriginalLabelFromDiscounted(discountedAmount) : plan.priceLabel;
 
   return (
     <button
@@ -219,14 +219,11 @@ function PlanCard({
 export default function PurchasePage() {
   const [draft, setDraft] = useState<ReturnType<typeof loadDraft> | null>(null);
   const [paidChecked, setPaidChecked] = useState(false);
-
-  // ✅ 決済作成中の二重クリック防止
   const [payBusy, setPayBusy] = useState(false);
 
   useEffect(() => {
     const d = loadDraft();
 
-    // ✅ 決済戻りURLから復帰（/apply?applyId=...&plan=... を想定）
     const sp = new URLSearchParams(window.location.search);
     const applyIdFromUrl = sp.get("applyId") || undefined;
     const planFromUrl = (sp.get("plan") as Plan | null) || undefined;
@@ -253,9 +250,7 @@ export default function PurchasePage() {
     if (!draft) return null;
     if (draft.applyId) return draft.applyId;
 
-    // ✅ 通常版 prefix（コラボと衝突しない）
     const applyId = `lifai_${Date.now()}`;
-
     const next = { ...draft, applyId };
     saveDraft(next);
     setDraft(next);
@@ -267,7 +262,6 @@ export default function PurchasePage() {
     return PLANS.find((p) => draft.plan === p.id);
   }, [draft]);
 
-  // ✅ 通常版：src は付けない（コラボと区別したいなら別途付ける）
   const nextHref =
     draft?.applyId && selectedPlan
       ? `/apply?applyId=${encodeURIComponent(draft.applyId)}&plan=${encodeURIComponent(selectedPlan.id)}`
@@ -288,7 +282,7 @@ export default function PurchasePage() {
       />
 
       <div className="mx-auto max-w-[980px] px-4 py-10">
-        {/* ✅ 通常版：ヒーロー（コラボバナーではない） */}
+        {/* ✅ 画像：public/hero.png */}
         <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="relative">
             <Image
@@ -328,7 +322,6 @@ export default function PurchasePage() {
           />
 
           <div className="mt-6 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
-            {/* 左：プラン */}
             <section className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="text-sm font-semibold text-slate-900">
                 購入プラン <span className="text-rose-600">*</span>
@@ -376,24 +369,9 @@ export default function PurchasePage() {
                     申請ID：<span className="font-mono text-slate-700">{draft.applyId}</span>
                   </div>
                 ) : null}
-
-                {selectedPlan ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="text-sm font-extrabold text-slate-900">選択中プランの内容</div>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                      {selectedPlan.bullets.map((t) => (
-                        <li key={t} className="flex items-start gap-2">
-                          <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
-                          <span className="leading-6">{t}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
               </div>
             </section>
 
-            {/* 右：支払い方法 */}
             <aside className="grid gap-5">
               <div className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="text-sm font-semibold text-slate-900">支払い方法</div>
@@ -402,7 +380,6 @@ export default function PurchasePage() {
                 </p>
 
                 <div className="mt-4 grid gap-3">
-                  {/* ✅ NOWPayments */}
                   <button
                     type="button"
                     disabled={!selectedPlan || payBusy}
@@ -421,16 +398,14 @@ export default function PurchasePage() {
                         const applyId = ensureApplyId();
                         if (!applyId) return;
 
-                        // ① 先にGASへ仮登録（分裂防止）
                         const createRes = await fetch("/api/apply/create", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             plan: selectedPlan.id,
                             applyId,
-                            // ✅ 通常版は固定しない（ユーザーがフォームで入れるなら後で上書きされる）
-                            refName: draft?.refName || "",
-                            refId: draft?.refId || "",
+                            refName: (draft as any)?.refName || "",
+                            refId: (draft as any)?.refId || "",
                           }),
                         });
 
@@ -440,14 +415,12 @@ export default function PurchasePage() {
                           return;
                         }
 
-                        // ② 金額抽出（priceLabelから）
                         const amount = parseAmountFromLabel(selectedPlan.priceLabel);
                         if (!amount || amount <= 0) {
                           alert("金額の取得に失敗しました");
                           return;
                         }
 
-                        // ③ 決済作成（/api/nowpayments/create）
                         const res = await fetch("/api/nowpayments/create", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -478,7 +451,6 @@ export default function PurchasePage() {
                     <div className="mt-1 text-xs text-slate-600">USDTなどで支払い（ウォレットがある方向け）</div>
                   </button>
 
-                  {/* ✅ 仮想通貨を持ってない人向け：導線（必要なら差し替え） */}
                   <a
                     href="https://promote.mexc.com/r/m54hsj74"
                     target="_blank"
