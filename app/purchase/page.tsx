@@ -8,10 +8,10 @@ import { loadDraft, saveDraft, type Plan } from "@/components/storage";
 // ✅ プレセール表示を一括ON/OFF
 const ENABLE_PRESALE = true;
 
-// ✅ 表示用：プレセール割引率（表示だけ）
-const PRESALE_OFF_PCT = 25;
+// ✅ 通常プレリリース割引率（表示だけ）
+const PRESALE_OFF_PCT = 15;
 
-// ✅ 表示用：BP配布（表示だけ）
+// ✅ BP配布（表示だけ）
 const BP_BONUS: Partial<Record<Plan, number>> = {
   "30": 300,
   "50": 600,
@@ -22,8 +22,7 @@ const BP_BONUS: Partial<Record<Plan, number>> = {
 
 type PlanDef = {
   id: Plan;
-  priceLabel: string;
-  originalPriceLabel?: string;
+  priceLabel: string;          // 支払う金額（割引後）
   title: string;
   desc: string;
   bullets: string[];
@@ -34,7 +33,6 @@ const PLANS: PlanDef[] = [
   {
     id: "30" as Plan,
     priceLabel: "30 USDT",
-    originalPriceLabel: "40 USDT",
     title: "Starter",
     desc: "まず体験して全体像を掴む",
     bullets: ["基礎AI副業講座（動画/記事）", "テンプレ：月3個（コピペ型）", "コミュニティ：閲覧のみ"],
@@ -42,7 +40,6 @@ const PLANS: PlanDef[] = [
   {
     id: "50" as Plan,
     priceLabel: "50 USDT",
-    originalPriceLabel: "67 USDT",
     title: "Builder",
     desc: "実践テンプレで手を動かして伸ばす",
     bullets: ["実践テンプレ追加（投稿/台本/プロンプト）", "SNS運用テンプレ（X/TikTok/YouTube短尺）", "コミュニティ：投稿OK（制限あり）"],
@@ -50,7 +47,6 @@ const PLANS: PlanDef[] = [
   {
     id: "100" as Plan,
     priceLabel: "100 USDT",
-    originalPriceLabel: "134 USDT",
     title: "Automation",
     desc: "仕組み化の自動化ワークフローを使う",
     bullets: ["自動化ワークフロー（例：10本）", "AI生成環境：フル解放", "成果共有ルーム：参加"],
@@ -59,7 +55,6 @@ const PLANS: PlanDef[] = [
   {
     id: "500" as Plan,
     priceLabel: "500 USDT",
-    originalPriceLabel: "667 USDT",
     title: "Core",
     desc: "中核メンバー枠：運用と案件を前に進める",
     bullets: ["新ツール優先利用（βアクセス）", "共同企画：参加（作業部屋/週1MTG）", "VPS枠：優先（上限付き）"],
@@ -68,7 +63,6 @@ const PLANS: PlanDef[] = [
   {
     id: "1000" as Plan,
     priceLabel: "1,000 USDT",
-    originalPriceLabel: "1,334 USDT",
     title: "Infra",
     desc: "影響層：インフラ整備と共同PJを牽引する",
     bullets: ["インフラ整備：参加権（運営側の手伝い/アイデア枠）", "共同プロジェクト：優先（先行参加）", "テンプレ無料購入チケット：上限付き"],
@@ -98,6 +92,24 @@ function StepHeaderLite({ title, subtitle }: { title: string; subtitle?: string 
   );
 }
 
+function parseAmountFromLabel(label: string): number {
+  // "1,000 USDT" / "56.95 USDT" など対応
+  const n = Number(String(label).replace(/,/g, "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatUsdtn(n: number): string {
+  // 表示は整数に寄せる（小数が嫌ならこれが安全）
+  const v = Math.round(n);
+  return v >= 1000 ? `${v.toLocaleString("en-US")} USDT` : `${v} USDT`;
+}
+
+function calcOriginalLabel(discounted: number): string {
+  // 15%OFF表示を「矛盾なく」するために、割引後から逆算して通常価格を表示
+  const original = discounted / (1 - PRESALE_OFF_PCT / 100);
+  return formatUsdtn(original);
+}
+
 function PlanCard({
   plan,
   selected,
@@ -108,6 +120,9 @@ function PlanCard({
   onSelect: () => void;
 }) {
   const isBest = plan.id === ("100" as Plan);
+
+  const discountedAmount = parseAmountFromLabel(plan.priceLabel);
+  const originalLabel = ENABLE_PRESALE && discountedAmount > 0 ? calcOriginalLabel(discountedAmount) : plan.priceLabel;
 
   return (
     <button
@@ -151,7 +166,7 @@ function PlanCard({
 
               {ENABLE_PRESALE ? (
                 <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-extrabold text-amber-900">
-                  コラボ期間中！ {PRESALE_OFF_PCT}%OFF
+                  プレリリース中！ {PRESALE_OFF_PCT}%OFF
                 </span>
               ) : null}
 
@@ -164,7 +179,7 @@ function PlanCard({
 
             {ENABLE_PRESALE ? (
               <div className="mt-1 text-[11px] text-slate-500">
-                通常価格： <span className="line-through opacity-80">{plan.originalPriceLabel ?? plan.priceLabel}</span>
+                通常価格： <span className="line-through opacity-80">{originalLabel}</span>
               </div>
             ) : null}
           </div>
@@ -201,12 +216,7 @@ function PlanCard({
   );
 }
 
-function parseAmountFromLabel(label: string): number {
-  const n = Number(String(label).replace(/,/g, "").replace(/[^\d.]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-export default function PurchaseJamPage() {
+export default function PurchasePage() {
   const [draft, setDraft] = useState<ReturnType<typeof loadDraft> | null>(null);
   const [paidChecked, setPaidChecked] = useState(false);
 
@@ -243,8 +253,8 @@ export default function PurchaseJamPage() {
     if (!draft) return null;
     if (draft.applyId) return draft.applyId;
 
-    // ✅ JAMDAO用 prefix
-    const applyId = `jam_${Date.now()}`;
+    // ✅ 通常版 prefix（コラボと衝突しない）
+    const applyId = `lifai_${Date.now()}`;
 
     const next = { ...draft, applyId };
     saveDraft(next);
@@ -257,10 +267,10 @@ export default function PurchaseJamPage() {
     return PLANS.find((p) => draft.plan === p.id);
   }, [draft]);
 
-  // ✅ Applyへ「applyId/plan/src」を確実に渡す（普通版より強い）
+  // ✅ 通常版：src は付けない（コラボと区別したいなら別途付ける）
   const nextHref =
     draft?.applyId && selectedPlan
-      ? `/apply?applyId=${encodeURIComponent(draft.applyId)}&plan=${encodeURIComponent(selectedPlan.id)}&src=jamdao`
+      ? `/apply?applyId=${encodeURIComponent(draft.applyId)}&plan=${encodeURIComponent(selectedPlan.id)}`
       : "/apply";
 
   const canGoNext = !!selectedPlan && !!draft?.applyId && paidChecked;
@@ -278,16 +288,21 @@ export default function PurchaseJamPage() {
       />
 
       <div className="mx-auto max-w-[980px] px-4 py-10">
-        {/* ✅ 最上部ヒーローバナー */}
-        <div className="mb-8 overflow-hidden rounded-2xl">
-          <Image
-            src="/hero-collab.png"
-            alt="JAM DAO × LIFAI コラボ先行配信セール"
-            width={1400}
-            height={900}
-            className="w-full h-auto"
-            priority
-          />
+        {/* ✅ 通常版：ヒーロー（コラボバナーではない） */}
+        <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="relative">
+            <Image
+              src="/hero.png"
+              alt="LIFAI プレリリース"
+              width={1400}
+              height={700}
+              className="w-full h-auto"
+              priority
+            />
+            <div className="absolute bottom-4 left-4 rounded-2xl bg-white/85 px-4 py-2 text-xs font-extrabold text-slate-900 shadow-sm">
+              プレリリース {PRESALE_OFF_PCT}%OFF 実施中
+            </div>
+          </div>
         </div>
 
         <div className="mb-6 flex items-center justify-between gap-3">
@@ -308,7 +323,7 @@ export default function PurchaseJamPage() {
 
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_rgba(2,6,23,.10)]">
           <StepHeaderLite
-            title="JAMDAO コラボ購入（専用）"
+            title="購入（通常）"
             subtitle="①プラン選択 → ②支払い → ③「支払い完了」チェック → ④次へ（申請入力）"
           />
 
@@ -319,7 +334,7 @@ export default function PurchaseJamPage() {
                 購入プラン <span className="text-rose-600">*</span>
               </div>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                JAMDAOコラボ限定条件で購入できます。選択するとカードが色付きになります。
+                プレリリース価格で購入できます。選択するとカードが色付きになります。
               </p>
 
               {!draft ? (
@@ -356,7 +371,6 @@ export default function PurchaseJamPage() {
                   )}
                 </div>
 
-                {/* applyId表示（問い合わせ・復帰用） */}
                 {draft?.applyId ? (
                   <div className="mt-2 text-[11px] text-slate-500">
                     申請ID：<span className="font-mono text-slate-700">{draft.applyId}</span>
@@ -407,16 +421,16 @@ export default function PurchaseJamPage() {
                         const applyId = ensureApplyId();
                         if (!applyId) return;
 
-                        // ① 先にGASへ仮登録（普通版と合わせる）
+                        // ① 先にGASへ仮登録（分裂防止）
                         const createRes = await fetch("/api/apply/create", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             plan: selectedPlan.id,
                             applyId,
-                            // GAS側が無視しても害はない（ログ/分類用）
-                            refName: "JAMDAO",
-                            refId: "jamdao",
+                            // ✅ 通常版は固定しない（ユーザーがフォームで入れるなら後で上書きされる）
+                            refName: draft?.refName || "",
+                            refId: draft?.refId || "",
                           }),
                         });
 
@@ -426,14 +440,14 @@ export default function PurchaseJamPage() {
                           return;
                         }
 
-                        // ② 金額抽出
+                        // ② 金額抽出（priceLabelから）
                         const amount = parseAmountFromLabel(selectedPlan.priceLabel);
                         if (!amount || amount <= 0) {
                           alert("金額の取得に失敗しました");
                           return;
                         }
 
-                        // ③ 決済作成
+                        // ③ 決済作成（/api/nowpayments/create）
                         const res = await fetch("/api/nowpayments/create", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
@@ -464,7 +478,7 @@ export default function PurchaseJamPage() {
                     <div className="mt-1 text-xs text-slate-600">USDTなどで支払い（ウォレットがある方向け）</div>
                   </button>
 
-                  {/* ✅ 仮想通貨を持ってない人向け：MEXC誘導バナー */}
+                  {/* ✅ 仮想通貨を持ってない人向け：導線（必要なら差し替え） */}
                   <a
                     href="https://promote.mexc.com/r/m54hsj74"
                     target="_blank"
@@ -485,7 +499,6 @@ export default function PurchaseJamPage() {
                     ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
                   </div>
 
-                  {/* ✅ 今後の追加枠 */}
                   <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 opacity-80">
                     <div className="text-sm font-extrabold text-slate-900">クレカ / 銀行振込（準備中）</div>
                     <div className="mt-1 text-xs text-slate-600">
@@ -516,7 +529,6 @@ export default function PurchaseJamPage() {
                 </div>
               </div>
 
-              {/* 次へ */}
               <Link
                 href={nextHref}
                 className={[
