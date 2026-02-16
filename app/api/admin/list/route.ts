@@ -4,11 +4,11 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    const url = process.env.GAS_WEBAPP_URL!;
+    const base = process.env.GAS_WEBAPP_URL!;
     const key = process.env.GAS_API_KEY!;
     const adminKey = process.env.GAS_ADMIN_KEY!;
 
-    if (!url || !key || !adminKey) {
+    if (!base || !key || !adminKey) {
       return NextResponse.json(
         {
           ok: false,
@@ -19,30 +19,24 @@ export async function GET() {
       );
     }
 
+    // 🔥 GAS用URL（GETクエリ）
+    const url =
+      `${base}?action=admin_list` +
+      `&key=${encodeURIComponent(key)}` +
+      `&adminKey=${encodeURIComponent(adminKey)}`;
+
     const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "GET",
       cache: "no-store",
-      body: JSON.stringify({
-        action: "admin_list",
-        key,
-        adminKey,
-      }),
     });
 
-    const text = await res.text();
-    let data: any;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return NextResponse.json(
-        { ok: false, error: "gas_not_json", raw: text.slice(0, 500) },
-        { status: 502 }
-      );
-    }
+    const data = await res.json();
 
     return NextResponse.json(data, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: String(e) },
+      { status: 500 }
+    );
   }
 }
