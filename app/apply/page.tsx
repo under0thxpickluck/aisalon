@@ -249,7 +249,7 @@ export default function ApplyPage() {
           <div className="mt-6 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
             <Box title="基本情報（必須）">
               <div className="mb-4 text-xs font-semibold text-slate-600">
-                入力内容は端末内に一時保存されます（UIのみ）。
+                入力内容は端末内に一時保存されます。
               </div>
 
               <div className="grid gap-4">

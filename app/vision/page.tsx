@@ -710,11 +710,11 @@ export default function VisionPage() {
               </ul>
 
               <div className="mt-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 ring-1 ring-zinc-200 p-4">
-                <div className="text-sm font-semibold">ランブルの代替（健全版）</div>
+                <div className="text-sm font-semibold">毎日の繰り返しを価値に</div>
                 <div className="mt-1 text-sm text-zinc-600">
                   参加無料の「デイリーチャレンジ」や「抽選イベント」で +5クレなど。
                   <br />
-                  “賭け”ではなく、楽しさと継続の仕掛けにします。
+                  “作業”ではなく、楽しさと継続の仕掛けにします。
                 </div>
               </div>
 
