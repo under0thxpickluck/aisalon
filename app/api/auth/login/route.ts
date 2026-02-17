@@ -19,13 +19,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "id/code required" }, { status: 400 });
     }
 
-    const r = await fetch(url, {
+    // ✅ 重要：GASは pickKey_(e) で URLクエリの key を見ている
+    // なので body に key を入れるのではなく URL に ?key= を付与する
+    const hasQuery = url.includes("?");
+    const gasUrl = `${url}${hasQuery ? "&" : "?"}key=${encodeURIComponent(key)}`;
+
+    const r = await fetch(gasUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
       body: JSON.stringify({
         action: "login",
-        key,
         id,
         code,
       }),
