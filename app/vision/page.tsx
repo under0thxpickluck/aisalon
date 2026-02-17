@@ -129,7 +129,7 @@ const earningModels: EarningModel[] = [
     title: "受託（LP/PWA/自動ツール）",
     target: "月 +5〜20万円（目安）",
     steps: ["LIFAI内で型を使って最短で形にする", "実例をポートフォリオ化", "企業/個人の要望に合わせて納品"],
-    note: "本業に近い人ほど伸びやすい。年長者にも強い。",
+    note: "本業に近い人ほど伸びやすい。",
   },
 ];
 
@@ -589,7 +589,7 @@ export default function VisionPage() {
               <div className="text-sm font-semibold">“払った以上の価値”はどう作る？</div>
               <div className="mt-2 text-sm text-zinc-600 leading-relaxed">
                 LIFAIは金融ではありません。なので「配当」ではなく、
-                <span className="font-semibold">体験価値（無料枠・優遇・イベント・環境拡張）</span>で“得した感”を作ります。
+                <span className="font-semibold">体験価値（無料枠・優遇・イベント・環境拡張）</span>で“価値”を作ります。
               </div>
               <ul className="mt-4 space-y-2">
                 {["無料枠の拡張（VPS/GPU）", "全員参加の“無料デー”や解放イベント", "テンプレ/ワークフローの無償公開枠", "環境が強いほど、作れるものが増える（＝副業が進む）"].map((t, i) => (
@@ -679,7 +679,7 @@ export default function VisionPage() {
             title="LIFAIクレジット（アプリ内専用）"
             desc={
               <>
-                わかりやすさ重視。<span className="font-semibold">{credit.starterUSD}ドル → {credit.starterCredits}クレジット</span>{" "}
+                <span className="font-semibold">{credit.starterUSD}ドル → {credit.starterCredits}クレジット</span>{" "}
                 のように “体験ポイント” として使います。
               </>
             }
@@ -702,7 +702,7 @@ export default function VisionPage() {
             </div>
 
             <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
-              <div className="text-sm font-semibold">安心のために（重要）</div>
+              <div className="text-sm font-semibold">安心のために</div>
               <ul className="mt-3 space-y-2">
                 {credit.notes.map((n, i) => (
                   <li key={i} className="text-sm text-zinc-700">・{n}</li>
@@ -718,7 +718,7 @@ export default function VisionPage() {
                 </div>
               </div>
 
-              <div className="mt-4 text-xs text-zinc-500">※外部価値がないことで、法的リスク・トラブルを避けやすくなります</div>
+              <div className="mt-4 text-xs text-zinc-500">※EPやBPの価値は『LIFAIとは』のページをご確認ください。</div>
             </div>
           </div>
         </section>
