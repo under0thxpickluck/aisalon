@@ -211,6 +211,7 @@ export default function AppHomePage() {
         icon: "🎵",
         tint: "indigo",
         badge: "NEW",
+        comingSoon: true,
       },
       {
         title: "note記事生成",
@@ -218,6 +219,7 @@ export default function AppHomePage() {
         href: "/note",
         icon: "📝",
         tint: "violet",
+        comingSoon: true,
       },
       {
         title: "ワークフロー生成",
@@ -225,6 +227,7 @@ export default function AppHomePage() {
         href: "/workflow",
         icon: "🧩",
         tint: "cyan",
+        comingSoon: true,
       },
       {
         title: "アプリ作成",
