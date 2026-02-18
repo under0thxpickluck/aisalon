@@ -41,8 +41,7 @@ export default function ColumnHomePage() {
         id: "2026-01-31-feature-add",
         type: "news",
         title: "LIFAI：コラム機能を追加しました",
-        excerpt:
-          "ログイン後TOPからコラムへアクセスできます。\n次は管理者投稿画面を追加して、NEWS/コラムを更新できるようにします。",
+        excerpt:"サービス開始まで今しばらくお待ちください。"
         createdAt: "2026-01-31T05:10:00.000Z",
         href: "/column/posts/2026-01-31-feature-add",
       },
@@ -90,7 +89,7 @@ export default function ColumnHomePage() {
               </Link>
               <h1 className="mt-3 text-xl font-extrabold tracking-tight text-slate-900">NEWS / コラム</h1>
               <p className="mt-2 text-sm text-slate-600">
-                NEWSは更新情報、コラムは日記（長文OK）として残していきます。
+                NEWSは更新情報、コラムはプチPOINTとして残していきます。
               </p>
             </div>
           </div>
@@ -156,8 +155,7 @@ export default function ColumnHomePage() {
 
           {/* 運用メモ（消してもOK） */}
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            ※ 投稿を増やすときは <span className="font-semibold">/column/posts/</span> にフォルダを追加して、
-            上の配列に1行追加するだけでOKです。
+            ※ 投稿は不定期となります。
           </div>
         </div>
 
