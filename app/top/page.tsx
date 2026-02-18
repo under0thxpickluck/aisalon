@@ -232,6 +232,7 @@ export default function AppHomePage() {
         href: "/app-builder",
         icon: "📱",
         tint: "emerald",
+        comingSoon: true,
       },
       {
         title: "毎日占い",
