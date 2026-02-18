@@ -41,7 +41,7 @@ export default function ColumnHomePage() {
         id: "2026-01-31-feature-add",
         type: "news",
         title: "LIFAI：コラム機能を追加しました",
-        excerpt:"サービス開始まで今しばらくお待ちください。"
+        excerpt:"サービス開始まで今しばらくお待ちください。",
         createdAt: "2026-01-31T05:10:00.000Z",
         href: "/column/posts/2026-01-31-feature-add",
       },
