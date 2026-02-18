@@ -35,9 +35,9 @@ function tintClass(tint: Tile["tint"]) {
 }
 
 function AppIconCard({ t }: { t: Tile }) {
-  const isSoon = t.comingSoon ?? true; // ← デフォルト全部準備中
+  const isSoon = t.comingSoon ?? false; // ← デフォルト全部準備中
 
-  return (
+  const card = (
     <div
       className={[
         "relative rounded-[24px] border p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition",
@@ -46,7 +46,6 @@ function AppIconCard({ t }: { t: Tile }) {
           : "border-slate-200 bg-white hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] active:translate-y-0",
       ].join(" ")}
     >
-      {/* 準備中バッジ */}
       {isSoon && (
         <div className="absolute right-3 top-3 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-white">
           準備中
@@ -67,9 +66,7 @@ function AppIconCard({ t }: { t: Tile }) {
 
         <div className="min-w-0">
           <div className="text-sm font-extrabold text-slate-700">{t.title}</div>
-          <div className="mt-1 line-clamp-2 text-xs text-slate-500">
-            {t.desc}
-          </div>
+          <div className="mt-1 line-clamp-2 text-xs text-slate-500">{t.desc}</div>
         </div>
       </div>
 
@@ -77,6 +74,19 @@ function AppIconCard({ t }: { t: Tile }) {
         {isSoon ? "公開予定" : "開く →"}
       </div>
     </div>
+  );
+
+  if (isSoon) return card;
+
+  const isExternal = /^https?:\/\//.test(t.href);
+
+  // ✅ 外部URLはaタグ、内部はNext Link
+  return isExternal ? (
+    <a href={t.href} target="_blank" rel="noopener noreferrer">
+      {card}
+    </a>
+  ) : (
+    <Link href={t.href}>{card}</Link>
   );
 }
 
@@ -226,9 +236,10 @@ export default function AppHomePage() {
       {
         title: "毎日占い",
         desc: "今日の運勢をサクッと確認",
-        href: "/fortune",
+        href: "https://dango-fortune-ee8a.vercel.app",
         icon: "🔮",
         tint: "amber",
+        comingSoon: false,
       },
       {
         title: "コラム",
