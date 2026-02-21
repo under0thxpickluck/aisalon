@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearAuth, getAuth, type AuthState } from "../lib/auth";
+import { clearAuth, getAuth, getAuthSecret, type AuthState } from "../lib/auth";
 
 type Tile = {
   title: string;
@@ -131,9 +131,7 @@ function PresaleHeader({
     <div className="mt-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-extrabold text-slate-700">
-            プレセール終了まで
-          </p>
+          <p className="text-xs font-extrabold text-slate-700">プレセール終了まで</p>
 
           <div className="mt-2 flex items-center gap-2">
             <TimeBox label="日" value={pad2(days)} />
@@ -143,17 +141,13 @@ function PresaleHeader({
           </div>
 
           {diff === 0 && (
-            <p className="mt-2 text-xs font-semibold text-rose-600">
-              プレセールは終了しました
-            </p>
+            <p className="mt-2 text-xs font-semibold text-rose-600">プレセールは終了しました</p>
           )}
         </div>
 
         <div className="w-full md:max-w-md">
           <div className="flex items-end justify-between">
-            <p className="text-xs font-extrabold text-slate-700">
-              {currencyLabel}調達額
-            </p>
+            <p className="text-xs font-extrabold text-slate-700">{currencyLabel}調達額</p>
             <p className="text-sm font-extrabold text-slate-900">
               {formatMoney(raised)} / {formatMoney(goal)}
             </p>
@@ -176,10 +170,244 @@ function PresaleHeader({
 function TimeBox({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-      <p className="text-lg font-extrabold leading-none text-slate-900">
-        {value}
-      </p>
+      <p className="text-lg font-extrabold leading-none text-slate-900">{value}</p>
       <p className="mt-1 text-[10px] font-bold text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function BalanceBadge({ auth }: { auth: AuthState }) {
+  const [bp, setBp] = useState<number>(0);
+  const [ep, setEp] = useState<number>(0);
+  const [err, setErr] = useState<string>("");
+
+  useEffect(() => {
+    const id =
+      (auth as any)?.id ||
+      (auth as any)?.loginId ||
+      (auth as any)?.login_id ||
+      "";
+
+    if (!id) {
+      setErr("no_login_id");
+      return;
+    }
+
+    (async () => {
+      try {
+        const r = await fetch("/api/wallet/balance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ id }),
+        });
+
+        const data: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
+
+        if (!data.ok) {
+          setErr(data.error || "failed");
+          return;
+        }
+
+        setBp(Number(data.bp || 0));
+        setEp(Number(data.ep || 0));
+      } catch (e: any) {
+        setErr(String(e));
+      }
+    })();
+  }, [auth]);
+
+  return (
+    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+      <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-extrabold text-white">
+        WALLET
+      </span>
+      <span>BP</span>
+      <span className="font-extrabold text-slate-900">{bp}</span>
+      <span className="opacity-40">/</span>
+      <span>EP</span>
+      <span className="font-extrabold text-slate-900">{ep}</span>
+      {err ? <span className="ml-2 text-[10px] opacity-50">({err})</span> : null}
+    </div>
+  );
+}
+
+/**
+ * ✅ 紹介コード表示（/api/me を叩いて my_ref_code を取得）
+ * - auth から id/code を拾ってPOST
+ * - 取得した紹介URLをコピーできる
+ * - 失敗しても壊さない（UIで理由を出す）
+ */
+function ReferralCard({ auth }: { auth: AuthState }) {
+  const [refCode, setRefCode] = useState<string>("");
+  const [refUrl, setRefUrl] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [err, setErr] = useState<string>("");
+  const [copied, setCopied] = useState<string>("");
+
+  useEffect(() => {
+    const id =
+      (auth as any)?.id ||
+      (auth as any)?.loginId ||
+      (auth as any)?.login_id ||
+      (auth as any)?.email ||
+      "";
+
+    const code =
+      getAuthSecret() ||
+      (auth as any)?.code ||
+      (auth as any)?.pw ||
+      (auth as any)?.password ||
+      (auth as any)?.token || // 念のため（ただし通常は使わない）
+      "";
+
+    // baseUrl（コピー用リンクのドメイン）
+    // envはクライアントで読めない場合があるので、locationでフォールバック
+    const base =
+      (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "";
+
+    // 共有先は purchase に refCode をつける（applyの refCode に入れる想定）
+    // 例：/purchase?refCode=R-lifai_xxxxxx
+    const buildShare = (rc: string) => {
+      if (!base) return `/purchase?refCode=${encodeURIComponent(rc)}`;
+      return `${base}/purchase?refCode=${encodeURIComponent(rc)}`;
+    };
+
+    if (!id) {
+      setLoading(false);
+      setErr("no_id");
+      return;
+    }
+    if (!code) {
+      // ここが出る場合：getAuth() が code を保持していない
+      // → その場合は /api/me が叩けないので、まず auth 保存側の設計を揃える必要がある
+      setLoading(false);
+      setErr("no_code_in_auth");
+      return;
+    }
+
+    (async () => {
+      setLoading(true);
+      setErr("");
+      try {
+        const r = await fetch("/api/me", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ id, code }),
+        });
+
+        const data: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
+
+        if (!data?.ok) {
+          const reason = String(data?.reason || "");
+          setErr(reason || String(data?.error || "failed"));
+          setLoading(false);
+          return;
+        }
+
+        const me = data?.me;
+        const rc = String(me?.my_ref_code || "");
+        if (!rc) {
+          setErr("no_ref_code_returned");
+          setLoading(false);
+          return;
+        }
+
+        setRefCode(rc);
+        setRefUrl(buildShare(rc));
+        setLoading(false);
+      } catch (e: any) {
+        setErr(String(e));
+        setLoading(false);
+      }
+    })();
+  }, [auth]);
+
+  const copy = async (text: string, kind: "code" | "url") => {
+    try {
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      setTimeout(() => setCopied(""), 1200);
+    } catch (e: any) {
+      setErr("clipboard_failed");
+    }
+  };
+
+  return (
+    <div className="mt-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-extrabold text-slate-700">あなたの紹介コード</p>
+          <p className="mt-1 text-xs text-slate-500">
+            このコード（またはリンク）を渡すと、申請時に紹介者として紐づきます（最大3段追跡）。
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {loading ? (
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+              読み込み中…
+            </span>
+          ) : refCode ? (
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-900">
+              {refCode}
+            </span>
+          ) : (
+            <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+              取得できません
+            </span>
+          )}
+
+          <button
+            onClick={() => copy(refCode, "code")}
+            disabled={!refCode}
+            className={[
+              "rounded-2xl border px-4 py-2 text-xs font-semibold transition",
+              refCode
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed",
+            ].join(" ")}
+          >
+            {copied === "code" ? "コピーしました" : "コードをコピー"}
+          </button>
+
+          <button
+            onClick={() => copy(refUrl, "url")}
+            disabled={!refUrl}
+            className={[
+              "rounded-2xl border px-4 py-2 text-xs font-semibold transition",
+              refUrl
+                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed",
+            ].join(" ")}
+          >
+            {copied === "url" ? "コピーしました" : "リンクをコピー"}
+          </button>
+        </div>
+      </div>
+
+      {refUrl ? (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-[10px] font-bold text-slate-500">共有リンク</p>
+          <p className="mt-1 break-all text-xs font-semibold text-slate-700">{refUrl}</p>
+          <p className="mt-2 text-[11px] text-slate-500">
+            渡す相手は「権利購入（申請）」から進んで、フォームに自動で紹介コードが入る想定です。
+          </p>
+        </div>
+      ) : null}
+
+      {err ? (
+        <p className="mt-3 text-[11px] font-semibold text-rose-600">
+          エラー: {err}
+          {err === "no_code_in_auth" ? (
+            <span className="ml-2 text-slate-500">
+              （getAuth() が code を保持していない可能性。login時に code を保存する設計に揃える必要あり）
+            </span>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -196,7 +424,7 @@ export default function AppHomePage() {
       router.replace("/login");
       return;
     }
-    if (a.status === "pending") {
+    if ((a as any).status === "pending") {
       router.replace("/pending");
       return;
     }
@@ -301,12 +529,16 @@ export default function AppHomePage() {
               </p>
             </div>
 
-            <button
-              onClick={logout}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              ログアウト
-            </button>
+            <div className="flex items-center gap-2">
+              <BalanceBadge auth={auth} />
+
+              <button
+                onClick={logout}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                ログアウト
+              </button>
+            </div>
           </div>
 
           {/* ✅ここ：ヘッダー直下、タイル一覧の直前 */}
@@ -316,6 +548,9 @@ export default function AppHomePage() {
             goal={10000}
             currencyLabel="USDT"
           />
+
+          {/* ✅ 追加：紹介コード表示（/api/me 経由で取得） */}
+          <ReferralCard auth={auth} />
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {tiles.map((t) => (

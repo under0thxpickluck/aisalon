@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { setAuth } from "@/app/lib/auth"; // ✅ 追加（パスが違うなら調整）
+import { setAuth, setAuthSecret } from "@/app/lib/auth"; // ✅ ここだけ追加
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,26 +19,34 @@ export default function LoginPage() {
     setErr(null);
     setLoading(true);
     try {
+      const trimmedId = id.trim();
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: id.trim(), code: pw }),
+        body: JSON.stringify({ id: trimmedId, code: pw }),
       }).then((r) => r.json());
 
       if (res.ok) {
-        // ✅ ログイン状態を保存
+        // ✅ ログイン状態を保存（localStorage）
         setAuth({
           status: "approved",
-          id: id.trim(),
-          token: res.token, // tokenが無いなら消してOK
+          id: trimmedId,
+          token: res.token, // tokenが無いなら消してOK（今のGAS返してないなら undefined のままでもOK）
         });
+
+        // ✅ 追加：パスワード(code)は sessionStorage にだけ保存（ブラウザを閉じると消える）
+        // /api/me など「本人専用情報」を引く時に使う
+        setAuthSecret(pw);
+
         router.push("/top");
         return;
       }
 
       if (res.reason === "pending") {
         // ✅ pendingも保存（/pendingガードに使える）
-        setAuth({ status: "pending", id: id.trim() });
+        // ※ pending では secret を保存しない（まだ承認前）
+        setAuth({ status: "pending", id: trimmedId });
         router.push("/pending");
         return;
       }
