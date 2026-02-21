@@ -559,7 +559,7 @@ export default function AppHomePage() {
 
           {/* ✅ここ：ヘッダー直下、タイル一覧の直前 */}
           <PresaleHeader
-            endAtISO="2026-04-01T23:59:59+09:00"
+            endAtISO="2026-05-01T23:59:59+09:00"
             raised={4825}
             goal={10000}
             currencyLabel="USDT"
