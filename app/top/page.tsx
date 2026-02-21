@@ -357,7 +357,7 @@ function ReferralCard({ auth }: { auth: AuthState }) {
         <div>
           <p className="text-xs font-extrabold text-slate-700">あなたの紹介コード</p>
           <p className="mt-1 text-xs text-slate-500">
-            このコード（またはリンク）を渡すと、申請時に紹介者として紐づきます（最大3段追跡）。
+            お友達を紹介する際は下記コードをお使いください。詳しい内容は『紹介プログラムページ』まで。
           </p>
         </div>
 
@@ -409,7 +409,7 @@ function ReferralCard({ auth }: { auth: AuthState }) {
           <p className="text-[10px] font-bold text-slate-500">共有リンク</p>
           <p className="mt-1 break-all text-xs font-semibold text-slate-700">{refUrl}</p>
           <p className="mt-2 text-[11px] text-slate-500">
-            渡す相手は「権利購入（申請）」から進んで、フォームに自動で紹介コードが入る想定です。
+            紹介コードは登録後に紐づけることはできません。
           </p>
         </div>
       ) : null}
@@ -419,7 +419,7 @@ function ReferralCard({ auth }: { auth: AuthState }) {
           エラー: {err}
           {err === "no_code_in_auth" ? (
             <span className="ml-2 text-slate-500">
-              （getAuth() が code を保持していない可能性。login時に code を保存する設計に揃える必要あり）
+              （getAuth() が code を保持していない可能性。）
             </span>
           ) : null}
         </p>
