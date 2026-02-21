@@ -35,7 +35,7 @@ function tintClass(tint: Tile["tint"]) {
 }
 
 function AppIconCard({ t }: { t: Tile }) {
-  const isSoon = t.comingSoon ?? false;
+  const isSoon = t.comingSoon ?? false; // ← デフォルト全部準備中
 
   const card = (
     <div
@@ -80,6 +80,7 @@ function AppIconCard({ t }: { t: Tile }) {
 
   const isExternal = /^https?:\/\//.test(t.href);
 
+  // ✅ 外部URLはaタグ、内部はNext Link
   return isExternal ? (
     <a href={t.href} target="_blank" rel="noopener noreferrer">
       {card}
@@ -89,6 +90,7 @@ function AppIconCard({ t }: { t: Tile }) {
   );
 }
 
+/** ✅ カウントダウン + 調達バー（returnの外に置く） */
 function pad2(n: number) {
   return String(Math.max(0, n)).padStart(2, "0");
 }
@@ -230,6 +232,12 @@ function BalanceBadge({ auth }: { auth: AuthState }) {
   );
 }
 
+/**
+ * ✅ 紹介コード表示（/api/me を叩いて my_ref_code を取得）
+ * - auth から id/code を拾ってPOST
+ * - 取得した紹介URLをコピーできる
+ * - 失敗しても壊さない（UIで理由を出す）
+ */
 function ReferralCard({ auth }: { auth: AuthState }) {
   const [refCode, setRefCode] = useState<string>("");
   const [refUrl, setRefUrl] = useState<string>("");
@@ -260,11 +268,22 @@ function ReferralCard({ auth }: { auth: AuthState }) {
       (auth as any)?.email ||
       "";
 
-    const code = secretReady;
+    const code =
+      secretReady ||
+      getAuthSecret() ||
+      (auth as any)?.code ||
+      (auth as any)?.pw ||
+      (auth as any)?.password ||
+      (auth as any)?.token ||
+      "";
 
+    // baseUrl（コピー用リンクのドメイン）
+    // envはクライアントで読めない場合があるので、locationでフォールバック
     const base =
       (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "";
 
+    // 共有先は purchase に refCode をつける（applyの refCode に入れる想定）
+    // 例：/purchase?refCode=R-lifai_xxxxxx
     const buildShare = (rc: string) => {
       if (!base) return `/purchase?refCode=${encodeURIComponent(rc)}`;
       return `${base}/purchase?refCode=${encodeURIComponent(rc)}`;
@@ -276,6 +295,8 @@ function ReferralCard({ auth }: { auth: AuthState }) {
       return;
     }
     if (!code) {
+      // ここが出る場合：getAuth() が code を保持していない
+      // → その場合は /api/me が叩けないので、まず auth 保存側の設計を揃える必要がある
       setLoading(false);
       setErr("no_code_in_auth");
       return;
@@ -492,6 +513,7 @@ export default function AppHomePage() {
     router.replace("/");
   };
 
+  // ✅ 認証判定が終わるまで一瞬も中身を描画しない（チラ見え防止）
   if (auth === null) return null;
 
   return (
@@ -535,6 +557,7 @@ export default function AppHomePage() {
             </div>
           </div>
 
+          {/* ✅ここ：ヘッダー直下、タイル一覧の直前 */}
           <PresaleHeader
             endAtISO="2026-04-01T23:59:59+09:00"
             raised={4825}
@@ -542,6 +565,7 @@ export default function AppHomePage() {
             currencyLabel="USDT"
           />
 
+          {/* ✅ 追加：紹介コード表示（/api/me 経由で取得） */}
           <ReferralCard auth={auth} />
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">

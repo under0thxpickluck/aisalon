@@ -32,7 +32,7 @@ export default function LoginPage() {
         setAuth({
           status: "approved",
           id: trimmedId,
-          token: res.token, // tokenが無いなら消してOK（今のGAS返してないなら undefined のままでもOK）
+          token: res.token ?? pw, // ✅ ここだけ修正：tokenが無い場合はpwを入れる（壊さない保険）
         });
 
         // ✅ 追加：パスワード(code)は sessionStorage にだけ保存（ブラウザを閉じると消える）
