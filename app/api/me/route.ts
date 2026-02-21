@@ -161,7 +161,7 @@ export async function POST(req: Request) {
       : undefined;
 
   return jsonError(502, { ok: false, error: errMsg || "unknown_error" });
-
+} 
 export async function GET() {
   return NextResponse.json(
     { ok: true, hint: "POST {id, code} to get my_ref_code" },
