@@ -143,11 +143,16 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!gasRes.ok && (gasRes.reason === "pending" || gasRes.reason === "invalid")) {
-    return NextResponse.json(
-      { ok: false, reason: gasRes.reason },
-      { status: 200, headers: { "Cache-Control": "no-store" } }
-    );
+  // ✅ ★ここだけ修正（型を明示 narrowing）
+  if (!gasRes.ok) {
+    const reason = (gasRes as Extract<GasMeResponse, { ok: false }>).reason;
+
+    if (reason === "pending" || reason === "invalid") {
+      return NextResponse.json(
+        { ok: false, reason },
+        { status: 200, headers: { "Cache-Control": "no-store" } }
+      );
+    }
   }
 
   return jsonError(502, { ok: false, error: gasRes.error || "unknown_error" });
