@@ -143,7 +143,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (gasRes.reason === "pending" || gasRes.reason === "invalid") {
+  if (!gasRes.ok && (gasRes.reason === "pending" || gasRes.reason === "invalid")) {
     return NextResponse.json(
       { ok: false, reason: gasRes.reason },
       { status: 200, headers: { "Cache-Control": "no-store" } }
