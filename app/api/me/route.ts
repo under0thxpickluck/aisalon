@@ -155,8 +155,12 @@ export async function POST(req: Request) {
     }
   }
 
-  return jsonError(502, { ok: false, error: gasRes.error || "unknown_error" });
-}
+  const errMsg =
+    !gasRes.ok
+      ? (gasRes as Extract<GasMeResponse, { ok: false }>).error
+      : undefined;
+
+  return jsonError(502, { ok: false, error: errMsg || "unknown_error" });
 
 export async function GET() {
   return NextResponse.json(
