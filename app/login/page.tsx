@@ -25,7 +25,12 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: trimmedId, code: pw }),
-      }).then((r) => r.json());
+      }).then((r) => r.json()).catch(() => null);
+
+      if (!res) {
+        setErr("サーバーエラーが発生しました。しばらく待ってから再度お試しください。");
+        return;
+      }
 
       if (res.ok) {
         // ✅ ログイン状態を保存（localStorage）

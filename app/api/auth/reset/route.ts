@@ -15,8 +15,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const url = process.env.GAS_WEBAPP_URL!;
-    const key = process.env.GAS_API_KEY!;
+    const url = process.env.GAS_WEBAPP_URL;
+    const key = process.env.GAS_API_KEY;
+
+    if (!url || !key) {
+      return NextResponse.json(
+        { ok: false, error: "env_missing", need: ["GAS_WEBAPP_URL", "GAS_API_KEY"] },
+        { status: 500 }
+      );
+    }
 
     const res = await fetch(
       `${url}?action=reset_password&key=${encodeURIComponent(key)}`,

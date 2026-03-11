@@ -11,6 +11,7 @@ type Props = {
   placeholder?: string;
   hint?: string;
   error?: string; // ← 追加：エラー文を直接渡せる
+  maxLength?: number;
 };
 
 export function Field({
@@ -22,6 +23,7 @@ export function Field({
   placeholder,
   hint,
   error,
+  maxLength,
 }: Props) {
   const id = useId();
   const hasError = Boolean(error);
@@ -45,6 +47,7 @@ export function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          maxLength={maxLength}
           className="w-full bg-transparent text-[15px] font-semibold text-slate-900 placeholder:text-slate-400 outline-none"
           autoComplete="off"
         />

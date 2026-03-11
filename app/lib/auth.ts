@@ -6,6 +6,7 @@ export type AuthState = {
   id: string;
   // 将来API化したら token を使う想定（今はモック）
   token?: string;
+  plan?: string; // /api/me 取得後にキャッシュ（sessionStorage消滅時のフォールバック用）
   updatedAt: number;
 };
 

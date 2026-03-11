@@ -30,7 +30,16 @@ export async function GET() {
       cache: "no-store",
     });
 
-    const data = await res.json();
+    const text = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: "gas_not_json", raw: text.slice(0, 500) },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json(data, { status: 200 });
   } catch (e: any) {

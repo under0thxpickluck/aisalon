@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(node:*)",
+      "WebSearch",
+      "WebFetch(domain:replicate.com)",
+      "WebFetch(domain:docs.aimlapi.com)",
+      "WebFetch(domain:www.aimodels.fyi)",
+      "WebFetch(domain:api.replicate.com)",
+      "WebFetch(domain:www.segmind.com)",
+      "Read(//c/Users/unitu/**)",
+      "Bash(xargs grep:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
+    ]
+  }
+}

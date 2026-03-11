@@ -15,6 +15,7 @@ type GasMeResponse =
       login_id: string;
       email: string;
       status: string;
+      plan: string;
       my_ref_code: string;
       ref_path?: string;
       referrer_login_id?: string;
@@ -28,7 +29,9 @@ type GasMeResponse =
     };
 
 function str(v: unknown): string {
-  return typeof v === "string" ? v : "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return String(v); // GASが数値で返した場合も文字列化
+  return "";
 }
 
 function jsonError(status: number, payload: Record<string, unknown>) {
@@ -96,6 +99,7 @@ async function callGasMe(gasUrl: string, gasKey: string, id: string, code: strin
         login_id: str(data.login_id),
         email: str(data.email),
         status: str(data.status),
+        plan: str(data.plan),
         my_ref_code: str(data.my_ref_code),
         ref_path: str(data.ref_path),
         referrer_login_id: str(data.referrer_login_id),

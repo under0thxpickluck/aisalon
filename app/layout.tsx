@@ -2,6 +2,8 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { ToastHost } from "@/components/Toast";
+import { AIBotProvider } from "@/components/AIBot";
+import { AIBotWidget } from "@/components/AIBot";
 
 export const metadata: Metadata = {
   title: {
@@ -54,8 +56,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ja">
       <body>
-        <ToastHost />
-        {children}
+        <AIBotProvider>
+          <ToastHost />
+          {children}
+          <AIBotWidget />
+        </AIBotProvider>
       </body>
     </html>
   );

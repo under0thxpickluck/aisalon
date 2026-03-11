@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearAuth, getAuth, getAuthSecret, type AuthState } from "../lib/auth";
+import { useAIBot } from "@/components/AIBot";
+import BPGrantModal from "@/components/BPGrantModal";
+import LoginBonusModal from "@/components/LoginBonusModal";
+import MissionCard from "@/components/MissionCard";
+import GachaModal from "@/components/GachaModal";
+import StakingModal from "@/components/StakingModal";
+import RadioCard from "@/components/RadioCard";
 
 type Tile = {
   title: string;
@@ -13,6 +20,7 @@ type Tile = {
   icon: React.ReactNode;
   tint?: "indigo" | "cyan" | "violet" | "emerald" | "amber" | "rose";
   comingSoon?: boolean;
+  onClick?: () => void;
 };
 
 function tintClass(tint: Tile["tint"]) {
@@ -77,6 +85,14 @@ function AppIconCard({ t }: { t: Tile }) {
   );
 
   if (isSoon) return card;
+
+  if (t.onClick) {
+    return (
+      <div onClick={t.onClick} style={{ cursor: "pointer" }}>
+        {card}
+      </div>
+    );
+  }
 
   const isExternal = /^https?:\/\//.test(t.href);
 
@@ -176,12 +192,12 @@ function TimeBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BalanceBadge({ auth }: { auth: AuthState }) {
+function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigger?: number }) {
   const [bp, setBp] = useState<number>(0);
   const [ep, setEp] = useState<number>(0);
   const [err, setErr] = useState<string>("");
 
-  useEffect(() => {
+  const fetchBalance = useCallback(async () => {
     const id =
       (auth as any)?.id ||
       (auth as any)?.loginId ||
@@ -193,29 +209,31 @@ function BalanceBadge({ auth }: { auth: AuthState }) {
       return;
     }
 
-    (async () => {
-      try {
-        const r = await fetch("/api/wallet/balance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({ id }),
-        });
+    try {
+      const r = await fetch("/api/wallet/balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ id }),
+      });
 
-        const data: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
+      const data: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
 
-        if (!data.ok) {
-          setErr(data.error || "failed");
-          return;
-        }
-
-        setBp(Number(data.bp || 0));
-        setEp(Number(data.ep || 0));
-      } catch (e: any) {
-        setErr(String(e));
+      if (!data.ok) {
+        setErr(data.error || "failed");
+        return;
       }
-    })();
+
+      setBp(Number(data.bp || 0));
+      setEp(Number(data.ep || 0));
+    } catch (e: any) {
+      setErr(String(e));
+    }
   }, [auth]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance, refreshTrigger]);
 
   return (
     <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
@@ -431,6 +449,25 @@ function ReferralCard({ auth }: { auth: AuthState }) {
 export default function AppHomePage() {
   const router = useRouter();
   const [auth, setAuthState] = useState<AuthState | null>(null);
+  const { trackEvent } = useAIBot();
+
+  // 未受取BP通知
+  const [bpGrantModal, setBpGrantModal] = useState<{ amount: number } | null>(null);
+
+  // ログインボーナス通知
+  const [loginBonus, setLoginBonus] = useState<{
+    bp_earned: number;
+    streak: number;
+  } | null>(null);
+
+  // BPガチャ
+  const [showGacha, setShowGacha] = useState(false);
+
+  // BPステーキング
+  const [showStaking, setShowStaking] = useState(false);
+
+  // 残高更新トリガー
+  const [balanceTrigger, setBalanceTrigger] = useState(0);
 
   useEffect(() => {
     const a = getAuth();
@@ -444,18 +481,105 @@ export default function AppHomePage() {
       router.replace("/pending");
       return;
     }
+
+    // 未受取BPチェック
+    const id = (a as any)?.id || (a as any)?.loginId || (a as any)?.login_id || "";
+    const code = getAuthSecret() || (a as any)?.token || "";
+    if (id && code) {
+      (async () => {
+        try {
+          const res = await fetch("/api/user/pending-bp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({ id, code }),
+          });
+          const data = await res.json().catch(() => ({ ok: false }));
+          if (data.ok && data.hasPending && data.amount > 0) {
+            setBpGrantModal({ amount: data.amount });
+          }
+        } catch {
+          // 通知失敗はサイレントに無視
+        }
+      })();
+    }
+
+    // ログインボーナス
+    const loginId = (a as any)?.loginId ?? (a as any)?.login_id ?? (a as any)?.id ?? "";
+    if (loginId) {
+      fetch("/api/daily-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok && data.bp_earned > 0) {
+            setLoginBonus({ bp_earned: data.bp_earned, streak: data.streak });
+          }
+        })
+        .catch(() => {});
+    }
   }, [router]);
+
+  // AIBot: /top入場イベント（残高付き）
+  useEffect(() => {
+    if (!auth) return;
+    const id =
+      (auth as any)?.id ||
+      (auth as any)?.loginId ||
+      (auth as any)?.login_id ||
+      "";
+    if (!id) {
+      trackEvent("page_view", { page_id: "top_home", bp: "0", ep: "0" });
+      return;
+    }
+    (async () => {
+      try {
+        const r = await fetch("/api/wallet/balance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ id }),
+        });
+        const data = await r.json().catch(() => ({ ok: false }));
+        trackEvent("page_view", {
+          page_id: "top_home",
+          bp: String(data.ok ? (data.bp ?? 0) : 0),
+          ep: String(data.ok ? (data.ep ?? 0) : 0),
+        });
+      } catch {
+        trackEvent("page_view", { page_id: "top_home", bp: "0", ep: "0" });
+      }
+    })();
+  }, [auth, trackEvent]);
 
   const tiles = useMemo<Tile[]>(
     () => [
+      {
+        title: "音楽生成 NEW",
+        desc: "歌詞・構成・音楽を3ステップで生成（10BP）",
+        href: "/music2",
+        icon: "🎼",
+        tint: "violet",
+        badge: "NEW",
+        comingSoon: true,
+      },
       {
         title: "音楽生成",
         desc: "テーマを入力してBGM/ループ案を生成",
         href: "/music",
         icon: "🎵",
         tint: "indigo",
-        badge: "NEW",
-        comingSoon: true,
+        comingSoon: false,
+      },
+      {
+        title: "マーケット",
+        desc: "メンバー同士でコンテンツを売買できます",
+        href: "/market",
+        icon: "🛒",
+        tint: "emerald",
+        comingSoon: false,
       },
       {
         title: "note記事生成",
@@ -504,6 +628,32 @@ export default function AppHomePage() {
         icon: "🧾",
         tint: "rose",
       },
+      {
+        title: "メンバーシップ",
+        desc: "サブスク・クレジット管理",
+        href: "/membership",
+        icon: "💎",
+        tint: "indigo",
+        comingSoon: false,
+      },
+      {
+        title: "BPガチャ",
+        desc: "100BPで抽選・最大5000BP",
+        href: "#",
+        icon: "🎰",
+        tint: "amber",
+        comingSoon: false,
+        onClick: () => setShowGacha(true),
+      },
+      {
+        title: "BPステーキング",
+        desc: "BPを預けて利息を得る",
+        href: "#",
+        icon: "🔒",
+        tint: "cyan",
+        comingSoon: false,
+        onClick: () => setShowStaking(true),
+      },
     ],
     []
   );
@@ -513,10 +663,65 @@ export default function AppHomePage() {
     router.replace("/");
   };
 
+  const handleBpModalClose = async () => {
+    setBpGrantModal(null);
+    // 受取完了をGASに通知
+    const a = getAuth();
+    const id = (a as any)?.id || (a as any)?.loginId || (a as any)?.login_id || "";
+    const code = getAuthSecret() || (a as any)?.token || "";
+    if (id && code) {
+      await fetch("/api/user/claim-bp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, code }),
+      }).catch(() => {});
+    }
+  };
+
   // ✅ 認証判定が終わるまで一瞬も中身を描画しない（チラ見え防止）
   if (auth === null) return null;
 
   return (
+    <>
+    {bpGrantModal && (
+      <BPGrantModal amount={bpGrantModal.amount} onClose={handleBpModalClose} />
+    )}
+    {loginBonus && (
+      <LoginBonusModal
+        bp_earned={loginBonus.bp_earned}
+        streak={loginBonus.streak}
+        onClose={() => {
+          setLoginBonus(null);
+          setBalanceTrigger((n) => n + 1);
+        }}
+      />
+    )}
+    {showGacha && (
+      <GachaModal
+        loginId={
+          (auth as any)?.loginId ??
+          (auth as any)?.login_id ??
+          (auth as any)?.id ??
+          ""
+        }
+        onClose={() => setShowGacha(false)}
+        onBpEarned={(_amount) => {
+          setBalanceTrigger((n) => n + 1);
+        }}
+      />
+    )}
+    {showStaking && (
+      <StakingModal
+        loginId={
+          (auth as any)?.loginId ??
+          (auth as any)?.login_id ??
+          (auth as any)?.id ??
+          ""
+        }
+        onClose={() => setShowStaking(false)}
+        onBpChanged={() => setBalanceTrigger((n) => n + 1)}
+      />
+    )}
     <main className="min-h-screen text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
       <div
@@ -546,7 +751,7 @@ export default function AppHomePage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <BalanceBadge auth={auth} />
+              <BalanceBadge auth={auth} refreshTrigger={balanceTrigger} />
 
               <button
                 onClick={logout}
@@ -568,6 +773,28 @@ export default function AppHomePage() {
           {/* ✅ 追加：紹介コード表示（/api/me 経由で取得） */}
           <ReferralCard auth={auth} />
 
+          <MissionCard
+            loginId={
+              (auth as any)?.loginId ??
+              (auth as any)?.login_id ??
+              (auth as any)?.id ??
+              ""
+            }
+            onBpEarned={(_amount) => {
+              setBalanceTrigger((n) => n + 1);
+            }}
+          />
+
+          <RadioCard
+            loginId={
+              (auth as any)?.loginId ??
+              (auth as any)?.login_id ??
+              (auth as any)?.id ??
+              ""
+            }
+            onEpEarned={() => setBalanceTrigger((n) => n + 1)}
+          />
+
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {tiles.map((t) => (
               <AppIconCard key={t.href} t={t} />
@@ -582,5 +809,6 @@ export default function AppHomePage() {
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
     </main>
+    </>
   );
 }

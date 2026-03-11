@@ -24,10 +24,10 @@ export function WalletBadge() {
   const [bp, setBp] = useState<number>(0);
   const [ep, setEp] = useState<number>(0);
   const [err, setErr] = useState<string>("");
+  const loginId = getLoginId();
 
   useEffect(() => {
-    const id = getLoginId();
-    if (!id) {
+    if (!loginId) {
       setErr("no_login_id");
       return;
     }
@@ -38,7 +38,7 @@ export function WalletBadge() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id: loginId }),
         });
 
         const data: Balance = await r.json().catch(() => ({ ok: false, error: "not_json" }));
@@ -54,7 +54,7 @@ export function WalletBadge() {
         setErr(String(e));
       }
     })();
-  }, []);
+  }, [loginId]);
 
   return (
     <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">

@@ -86,7 +86,7 @@ const PREFS = [
 ];
 
 function isEmail(v: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
 }
 
 function Box({ title, children }: { title: string; children: React.ReactNode }) {
@@ -261,6 +261,7 @@ export default function ApplyPage() {
                     value={draft.email ?? ""}
                     onChange={(v) => set("email", v)}
                     placeholder="example@gmail.com"
+                    maxLength={254}
                   />
                   {errors.email ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.email}</div> : null}
                 </InputWrap>
@@ -273,6 +274,7 @@ export default function ApplyPage() {
                     onChange={(v) => set("name", v)}
                     placeholder="例：山田太郎（スペースなし）"
                     hint="姓と名の間はスペースを空けずに入力してください。"
+                    maxLength={50}
                   />
                   {errors.name ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.name}</div> : null}
                 </InputWrap>
@@ -285,6 +287,7 @@ export default function ApplyPage() {
                     onChange={(v) => set("nameKana", v)}
                     placeholder="例：ヤマダタロウ（スペースなし）"
                     hint="姓と名の間はスペースを空けずに入力してください。"
+                    maxLength={50}
                   />
                   {errors.nameKana ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.nameKana}</div> : null}
                 </InputWrap>
@@ -296,6 +299,7 @@ export default function ApplyPage() {
                     value={draft.discordId ?? ""}
                     onChange={(v) => set("discordId", v)}
                     placeholder="例：lifai_member"
+                    maxLength={100}
                   />
                   {errors.discordId ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.discordId}</div> : null}
                 </InputWrap>
@@ -333,6 +337,7 @@ export default function ApplyPage() {
                       value={draft.city ?? ""}
                       onChange={(v) => set("city", v)}
                       placeholder="例：札幌市 / 渋谷区 など"
+                      maxLength={50}
                     />
                     {errors.city ? <div className="mt-1 text-xs font-semibold text-rose-700">{errors.city}</div> : null}
                   </InputWrap>
@@ -353,7 +358,7 @@ export default function ApplyPage() {
               <Box title="紹介情報（任意）">
                 <div className="grid gap-4">
                   <InputWrap>
-                    <Field label="ご紹介者名" value={draft.refName ?? ""} onChange={(v) => set("refName", v)} placeholder="例：山田花子" />
+                    <Field label="ご紹介者名" value={draft.refName ?? ""} onChange={(v) => set("refName", v)} placeholder="例：山田花子" maxLength={50} />
                   </InputWrap>
 
                   <InputWrap>
@@ -363,6 +368,7 @@ export default function ApplyPage() {
                       onChange={(v) => set("refId", v)}
                       placeholder="例：001234"
                       hint="不明なら空欄でOK。"
+                      maxLength={20}
                     />
                   </InputWrap>
                 </div>

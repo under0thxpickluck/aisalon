@@ -16,7 +16,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "env_missing" }, { status: 500 });
     }
 
-    const url = `${gasUrl}?key=${encodeURIComponent(apiKey)}&action=admin_list&adminKey=${process.env.GAS_ADMIN_KEY}`;
+    const adminKey = process.env.GAS_ADMIN_KEY;
+    const url = `${gasUrl}?key=${encodeURIComponent(apiKey)}&action=admin_list${adminKey ? `&adminKey=${encodeURIComponent(adminKey)}` : ""}`;
 
     const r = await fetch(url, { cache: "no-store" });
     const data = await r.json();

@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   // ✅ テスト用：このヘッダが付いてたら署名チェックをスキップ（課金なしテスト用）
   // PowerShellなどから叩くときに `x-test-ipn: 1` を付ける
-  const isTest = req.headers.get("x-test-ipn") === "1";
+  const isTest = process.env.NODE_ENV !== "production" && req.headers.get("x-test-ipn") === "1";
 
   console.log("[IPN] hit", new Date().toISOString());
   console.log("[IPN] isTest", isTest);
@@ -73,14 +73,25 @@ export async function POST(req: Request) {
   const orderId = payload?.order_id as string | undefined;
   const paymentStatus = payload?.payment_status as string | undefined;
   const invoiceId = payload?.invoice_id ?? payload?.payment_id;
-  const actuallyPaid = payload?.pay_amount ?? payload?.actually_paid;
+
+  // ✅ “軸”を揃えるために通貨/金額情報を拾う（GASで突合に使える）
+  const payAmount = payload?.pay_amount ?? payload?.actually_paid;
+  const payCurrency = payload?.pay_currency ?? payload?.pay_currency_code;
+  const priceAmount = payload?.price_amount ?? payload?.amount;
+  const priceCurrency = payload?.price_currency ?? payload?.price_currency_code;
+
+  // ✅ 参考：NOWPaymentsが返す可能性のある別名も拾う（壊さない）
+  const actuallyPaid = payload?.actually_paid ?? payload?.pay_amount ?? payload?.amount_received;
 
   if (!orderId) {
     return NextResponse.json({ ok: false, error: "order_id missing", payload }, { status: 400 });
   }
 
   const applyId = orderId.startsWith("lifai_") ? orderId.slice("lifai_".length) : orderId;
-  const isPaid = paymentStatus === "finished" || paymentStatus === "confirmed";
+
+  // ✅ isPaid 判定を GAS 側の集合に揃える（finished/confirmed/paid）
+  const isPaid =
+    paymentStatus === "finished" || paymentStatus === "confirmed" || paymentStatus === "paid";
 
   // GASへ通知（失敗してもIPNは200で返す）
   if (gasUrl && gasKey) {
@@ -97,13 +108,29 @@ export async function POST(req: Request) {
           paymentStatus,
           isPaid,
           invoiceId,
+
+          // ✅ 既存の actuallyPaid は残す（壊さない）
           actuallyPaid,
+
+          // ✅ 追加：金額突合に必要な “軸” 情報（壊さない）
+          payAmount,
+          payCurrency,
+          priceAmount,
+          priceCurrency,
+
+          // ✅ 既存：生ログ（壊さない）
           raw: payload,
-          isTest, // ←GAS側でログに出したい時用
+
+          // ←GAS側でログに出したい時用
+          isTest,
         }),
       });
 
       console.log("[IPN] GAS status", r.status);
+      try {
+        const t = await r.text();
+        console.log("[IPN] GAS body", t.slice(0, 300));
+      } catch {}
     } catch (e) {
       console.error("GAS notify failed", e);
     }
