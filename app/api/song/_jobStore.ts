@@ -1,6 +1,6 @@
 // app/api/song/_jobStore.ts
 // メモリキャッシュ、4時間TTL
-import { BP_COSTS } from "@/lib/bp-config";
+import { BP_COSTS } from "@/app/lib/bp-config";
 
 export type SongStatus =
   | "queued"

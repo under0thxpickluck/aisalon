@@ -1,7 +1,7 @@
 // app/api/song/approve-structure/route.ts
 import { NextResponse } from "next/server";
 import { getJob, updateJob, type SongJob } from "../_jobStore";
-import { BP_COSTS } from "@/lib/bp-config";
+import { BP_COSTS } from "@/app/lib/bp-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
