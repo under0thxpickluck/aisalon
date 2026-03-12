@@ -1,25 +1,46 @@
+// app/api/fortune-bp/route.ts
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
+  let body: Record<string, unknown>;
   try {
-    const { loginId } = await req.json();
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
+  }
 
-    if (!loginId) {
-      return NextResponse.json({ ok: false, error: 'loginId_required' }, { status: 400 });
-    }
+  const loginId = String(body?.loginId ?? '');
+  if (!loginId) {
+    return NextResponse.json({ ok: false, error: 'loginId_required' }, { status: 400 });
+  }
 
-    const gasUrl  = process.env.GAS_WEBAPP_URL!;
-    const adminKey = process.env.GAS_ADMIN_KEY!;
+  const gasUrl      = process.env.GAS_WEBAPP_URL;
+  const gasKey      = process.env.GAS_API_KEY;
+  const gasAdminKey = process.env.GAS_ADMIN_KEY;
 
-    const res = await fetch(gasUrl, {
+  if (!gasUrl || !gasKey || !gasAdminKey) {
+    return NextResponse.json({ ok: false, error: 'env_missing' }, { status: 500 });
+  }
+
+  try {
+    const url = `${gasUrl}${gasUrl.includes('?') ? '&' : '?'}key=${encodeURIComponent(gasKey)}`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'fortune_daily_bp', loginId, adminKey }),
+      cache: 'no-store',
+      body: JSON.stringify({
+        action:   'fortune_daily_bp',
+        adminKey: gasAdminKey,
+        loginId,
+      }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ ok: false, error: 'invalid_response' }));
     return NextResponse.json(data);
   } catch {
-    return NextResponse.json({ ok: false, error: 'failed' });
+    return NextResponse.json({ ok: false, error: 'failed' }, { status: 502 });
   }
 }
