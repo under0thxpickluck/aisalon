@@ -1713,6 +1713,74 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // fortune_daily_bp（毎日の占い閲覧 → BP付与）
+  // - adminKey 認証必須（GAS_ADMIN_KEY）
+  // - mission_fortune_date が今日なら already_claimed を返す
+  // - 付与額: +10 BP
+  // =========================================================
+  if (action === "fortune_daily_bp") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const loginId = str_(body.loginId);
+    if (!loginId) return json_({ ok: false, error: "loginId_required" });
+
+    let values = sheet.getDataRange().getValues();
+    let header = values[0];
+
+    ensureCols_(sheet, header, [
+      "login_id", "email", "bp_balance", "mission_fortune_date",
+    ]);
+
+    values = sheet.getDataRange().getValues();
+    header = values[0];
+
+    const idx  = indexMap_(header);
+    const rows = values.slice(1);
+
+    let hitRowIndex = 0;
+    let hitRow      = null;
+    let hitEmail    = "";
+
+    for (let i = 0; i < rows.length; i++) {
+      if (str_(rows[i][idx["login_id"]]) === loginId) {
+        hitRowIndex = i + 2;
+        hitRow      = rows[i];
+        hitEmail    = str_(rows[i][idx["email"]]);
+        break;
+      }
+    }
+
+    if (!hitRowIndex) return json_({ ok: false, error: "not_found" });
+
+    const nowJst   = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayStr = nowJst.toISOString().slice(0, 10);
+
+    const existingDate = str_(hitRow[idx["mission_fortune_date"]]);
+    if (existingDate === todayStr) {
+      return json_({ ok: false, reason: "already_claimed" });
+    }
+
+    const BP_REWARD = 10;
+    const currentBp = Number(hitRow[idx["bp_balance"]] || 0);
+    const newBp     = currentBp + BP_REWARD;
+
+    sheet.getRange(hitRowIndex, idx["mission_fortune_date"] + 1).setValue(todayStr);
+    sheet.getRange(hitRowIndex, idx["bp_balance"]           + 1).setValue(newBp);
+
+    appendWalletLedger_({
+      kind:     "fortune_daily",
+      login_id: loginId,
+      email:    hitEmail,
+      amount:   BP_REWARD,
+      memo:     "毎日の占いBP",
+    });
+
+    return json_({ ok: true, bp_earned: BP_REWARD, bp_balance: newBp });
+  }
+
+  // =========================================================
   // gacha_spin（BPガチャ：100BP消費 → 重み付き抽選でBP付与）
   // - adminKey 認証必須（GAS_ADMIN_KEY）
   // - bp_balance < 100 なら insufficient_bp を返す

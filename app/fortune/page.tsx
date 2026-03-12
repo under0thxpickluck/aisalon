@@ -49,7 +49,7 @@ const DANGO_IMG: Record<string, string> = {
   zunda: '/fortune/dango/zunda.png',
 };
 
-const LS_RESULT = 'dango_result';
+const LS_RESULT  = 'dango_result';
 const LS_INSTALL = 'dango_install_id';
 const LS_FORTUNE = 'dango_fortune_cache';
 
@@ -275,33 +275,33 @@ function calcTodayFortune(
   const h = stableHash(seed);
 
   const mainBlock = fortuneJson.by_main?.[stored.mainId] ?? fortuneJson.by_main?.['anko'];
-  const subBlock = fortuneJson.by_sub_pattern?.[stored.subPattern] ?? fortuneJson.by_sub_pattern?.['A'];
+  const subBlock  = fortuneJson.by_sub_pattern?.[stored.subPattern] ?? fortuneJson.by_sub_pattern?.['A'];
 
   const fromMain = (key: string): string[] => (mainBlock[key] as any[]).map(e => String(e));
-  const fromSub = (key: string): string[] => (subBlock[key] as any[]).map(e => String(e));
+  const fromSub  = (key: string): string[] => (subBlock[key] as any[]).map(e => String(e));
   const luckyNumbers = (subBlock['lucky_number'] as any[]).map(e => parseInt(String(e)));
 
   return {
-    ymd: todayYmd,
-    recommended_move: pickFromList(fromMain('recommended_move'), h, 7),
-    day_theme: pickFromList(fromMain('day_theme'), h, 11),
-    recommended_action: pickFromList(fromMain('recommended_action'), h, 29),
-    caution: pickFromList(fromMain('caution'), h, 53),
-    love_fortune: pickFromList(fromMain('love_fortune'), h, 97),
-    work_fortune: pickFromList(fromMain('work_fortune'), h, 131),
-    money_fortune: pickFromList(fromMain('money_fortune'), h, 173),
-    crush_advice: pickFromList(fromMain('crush_advice'), h, 199),
-    lucky_color: pickFromList(fromSub('lucky_color'), h, 223),
-    lucky_item: pickFromList(fromSub('lucky_item'), h, 251),
-    lucky_number: pickFromList(luckyNumbers, h, 277),
-    luck_tip: pickFromList(fromMain('luck_tip'), h, 307),
+    ymd:               todayYmd,
+    recommended_move:  pickFromList(fromMain('recommended_move'),  h, 7),
+    day_theme:         pickFromList(fromMain('day_theme'),          h, 11),
+    recommended_action:pickFromList(fromMain('recommended_action'), h, 29),
+    caution:           pickFromList(fromMain('caution'),            h, 53),
+    love_fortune:      pickFromList(fromMain('love_fortune'),       h, 97),
+    work_fortune:      pickFromList(fromMain('work_fortune'),       h, 131),
+    money_fortune:     pickFromList(fromMain('money_fortune'),      h, 173),
+    crush_advice:      pickFromList(fromMain('crush_advice'),       h, 199),
+    lucky_color:       pickFromList(fromSub('lucky_color'),         h, 223),
+    lucky_item:        pickFromList(fromSub('lucky_item'),          h, 251),
+    lucky_number:      pickFromList(luckyNumbers,                   h, 277),
+    luck_tip:          pickFromList(fromMain('luck_tip'),           h, 307),
   };
 }
 
 // ─── Diagnosis Detail Text ────────────────────────────────────────────────────
 function buildDiagnosisDetail(mainId: string, subId: string, mainJson: any, subJson: any): string {
   const main = mainJson?.main_types?.[mainId];
-  const sub = subJson?.sub_types?.[subId];
+  const sub  = subJson?.sub_types?.[subId];
   if (!main || !sub) return `診断データが見つかりませんでした。mainId=${mainId} / subId=${subId}`;
 
   const toLines = (v: any): string =>
@@ -323,10 +323,48 @@ function buildDiagnosisDetail(mainId: string, subId: string, mainJson: any, subJ
 
   if (main.pitfall) parts.push('', '■ 落とし穴', main.pitfall);
   parts.push('', '■ 恋が始まるときはこんな感じ', sub.nuance ?? '');
-  if (sub.tone_tags?.length) parts.push('', '■ あなたを一言で表すなら', toLines(sub.tone_tags));
+  if (sub.tone_tags?.length)  parts.push('', '■ あなたを一言で表すなら',     toLines(sub.tone_tags));
   if (main.best_match?.length) parts.push('', '■ あなたと相性がいいタイプ', toLines(main.best_match));
 
   return parts.join('\n');
+}
+
+// ─── Ad Modal ─────────────────────────────────────────────────────────────────
+function AdModal({ onClose }: { onClose: () => void }) {
+  const [count, setCount] = useState(5);
+
+  useEffect(() => {
+    if (count <= 0) return;
+    const timer = setTimeout(() => setCount(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [count]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
+      <div className="bg-zinc-800 rounded-2xl p-6 w-80 flex flex-col gap-4">
+        <p className="text-zinc-500 text-xs">広告</p>
+
+        {/* Ad content */}
+        <div className="bg-gradient-to-br from-purple-900 to-pink-900 p-8 rounded-xl text-center">
+          <p className="text-white font-bold text-lg mb-2">🎯 LIFAI プレミアム会員募集中</p>
+          <p className="text-white/80 text-sm mb-3">AIで副業収入を加速しよう</p>
+          <p className="text-white/60 text-xs">今なら特別価格でご参加できます</p>
+        </div>
+
+        {/* Countdown / close button */}
+        {count > 0 ? (
+          <p className="text-center text-zinc-500 text-sm">あと {count} 秒</p>
+        ) : (
+          <button
+            onClick={onClose}
+            className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded-xl transition-colors"
+          >
+            占いを見る ✨
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── UI Components ────────────────────────────────────────────────────────────
@@ -358,21 +396,26 @@ export default function FortunePage() {
   const [view, setView] = useState<View>('loading');
 
   // JSON data
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [diagConfig, setDiagConfig] = useState<any>(null);
+  const [questions,   setQuestions]   = useState<Question[]>([]);
+  const [diagConfig,  setDiagConfig]  = useState<any>(null);
   const [fortuneJson, setFortuneJson] = useState<any>(null);
-  const [mainJson, setMainJson] = useState<any>(null);
-  const [subJson, setSubJson] = useState<any>(null);
+  const [mainJson,    setMainJson]    = useState<any>(null);
+  const [subJson,     setSubJson]     = useState<any>(null);
 
   // User state
   const [installId, setInstallId] = useState('');
-  const [stored, setStored] = useState<StoredDiagnosis | null>(null);
+  const [stored,    setStored]    = useState<StoredDiagnosis | null>(null);
 
   // View state
   const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
-  const [quizIdx, setQuizIdx] = useState(0);
+  const [quizIdx,     setQuizIdx]     = useState(0);
   const [displayDiag, setDisplayDiag] = useState<StoredDiagnosis | null>(null);
-  const [fortune, setFortune] = useState<TodayFortune | null>(null);
+  const [fortune,     setFortune]     = useState<TodayFortune | null>(null);
+
+  // Ad modal & BP toast
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [adDiag,      setAdDiag]      = useState<StoredDiagnosis | null>(null);
+  const [toast,       setToast]       = useState<string | null>(null);
 
   // ── Load all data on mount ─────────────────────────────────────────────────
   useEffect(() => {
@@ -441,6 +484,7 @@ export default function FortunePage() {
     setView('result');
   }
 
+  // openFortune: compute fortune data, then show ad modal
   function openFortune(s: StoredDiagnosis) {
     const todayYmd = toYmd(new Date());
     let cached: TodayFortune | null = null;
@@ -452,14 +496,42 @@ export default function FortunePage() {
       }
     } catch { /* ignore */ }
 
-    if (cached) {
-      setFortune(cached);
-    } else {
-      const f = calcTodayFortune(s, installId, fortuneJson, todayYmd);
-      localStorage.setItem(LS_FORTUNE, JSON.stringify(f));
-      setFortune(f);
-    }
+    const f = cached ?? (() => {
+      const newF = calcTodayFortune(s, installId, fortuneJson, todayYmd);
+      localStorage.setItem(LS_FORTUNE, JSON.stringify(newF));
+      return newF;
+    })();
+
+    setFortune(f);
+    setAdDiag(s);
+    setShowAdModal(true);
+  }
+
+  // closeAdModal: dismiss ad, show fortune, grant BP
+  async function closeAdModal() {
+    setShowAdModal(false);
     setView('fortune');
+
+    // BP grant
+    const loginId =
+      localStorage.getItem('lifai_login_id') ||
+      localStorage.getItem(LS_INSTALL);
+
+    if (loginId) {
+      try {
+        const res  = await fetch('/api/fortune-bp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loginId }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setToast('+10BP獲得！');
+          setTimeout(() => setToast(null), 3000);
+        }
+        // already_claimed → silently ignore
+      } catch { /* ignore */ }
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -472,213 +544,204 @@ export default function FortunePage() {
     </div>
   );
 
-  if (view === 'loading') {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-white/60 text-sm">読み込み中…</p>
-      </div>
-    );
-  }
+  const diag = displayDiag ?? stored;
 
-  // ── Home ──────────────────────────────────────────────────────────────────
-  if (view === 'home') {
-    return (
-      <div className="min-h-screen bg-black text-white">
-        {header}
-        <div className="max-w-md mx-auto px-4 py-10 flex flex-col items-center gap-6">
-          <h1 className="text-3xl font-bold tracking-tight">あなだん</h1>
-          <p className="text-white/40 text-sm text-center">
-            20問の性格診断で、あなたの「団子タイプ」を見つけよう
-          </p>
+  return (
+    <div className="min-h-screen bg-black text-white">
 
-          {stored ? (
-            <>
-              {/* Hero card */}
-              <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-4 items-center">
-                <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-white/5 rounded-xl overflow-hidden">
-                  <DangoImage mainId={stored.mainId} className="w-full h-full object-contain" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-lg leading-snug">{stored.finalLabel}</p>
-                  <p className="text-sm text-white/40 mt-1 truncate">
-                    メイン: {stored.mainLabel} / サブ: {stored.subLabel}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => openFortune(stored)}
-                className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors"
-              >
-                今日の占いへ 🔮
-              </button>
-
-              <p className="text-white/30 text-xs text-center">
-                あなたの性格診断は確定済み。毎日の運勢を見よう。
-              </p>
-
-              <button
-                onClick={() => { setDisplayDiag(stored); setView('result'); }}
-                className="text-sm text-white/40 hover:text-white/70 transition-colors border border-white/10 rounded-lg px-4 py-2"
-              >
-                診断結果を見る 🍡
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={startQuiz}
-                className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors"
-              >
-                診断をはじめる 🍡
-              </button>
-              <p className="text-white/30 text-xs text-center">
-                まずは20問の性格診断でタイプを決めよう。
-              </p>
-            </>
-          )}
+      {/* ── Loading ─────────────────────────────────────────────────────── */}
+      {view === 'loading' && (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-white/60 text-sm">読み込み中…</p>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  // ── Quiz ──────────────────────────────────────────────────────────────────
-  if (view === 'quiz') {
-    const q = questions[quizIdx];
-    const choiceKeys = ['A', 'B', 'C', 'D'];
-    const progress = ((quizIdx + 1) / questions.length) * 100;
+      {/* ── Home ────────────────────────────────────────────────────────── */}
+      {view === 'home' && (
+        <>
+          {header}
+          <div className="max-w-md mx-auto px-4 py-10 flex flex-col items-center gap-6">
+            <h1 className="text-3xl font-bold tracking-tight">あなだん</h1>
+            <p className="text-white/40 text-sm text-center">
+              20問の性格診断で、あなたの「団子タイプ」を見つけよう
+            </p>
 
-    return (
-      <div className="min-h-screen bg-black text-white">
-        {header}
-        <div className="max-w-md mx-auto px-4 py-8">
-          {/* Progress */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-white/40">診断中</span>
-            <span className="text-sm font-bold text-pink-400">{quizIdx + 1} / {questions.length}</span>
+            {stored ? (
+              <>
+                <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-4 items-center">
+                  <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-white/5 rounded-xl overflow-hidden">
+                    <DangoImage mainId={stored.mainId} className="w-full h-full object-contain" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-lg leading-snug">{stored.finalLabel}</p>
+                    <p className="text-sm text-white/40 mt-1 truncate">
+                      メイン: {stored.mainLabel} / サブ: {stored.subLabel}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => openFortune(stored)}
+                  className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors"
+                >
+                  今日の占いへ 🔮
+                </button>
+
+                <p className="text-white/30 text-xs text-center">
+                  あなたの性格診断は確定済み。毎日の運勢を見よう。
+                </p>
+
+                <button
+                  onClick={() => { setDisplayDiag(stored); setView('result'); }}
+                  className="text-sm text-white/40 hover:text-white/70 transition-colors border border-white/10 rounded-lg px-4 py-2"
+                >
+                  診断結果を見る 🍡
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={startQuiz}
+                  className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors"
+                >
+                  診断をはじめる 🍡
+                </button>
+                <p className="text-white/30 text-xs text-center">
+                  まずは20問の性格診断でタイプを決めよう。
+                </p>
+              </>
+            )}
           </div>
-          <div className="w-full bg-white/10 rounded-full h-1 mb-8">
-            <div
-              className="bg-pink-500 h-1 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+        </>
+      )}
 
-          {/* Question */}
-          <p className="text-lg font-bold mb-8 leading-relaxed">{q.text}</p>
+      {/* ── Quiz ────────────────────────────────────────────────────────── */}
+      {view === 'quiz' && questions.length > 0 && (
+        <>
+          {header}
+          <div className="max-w-md mx-auto px-4 py-8">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-white/40">診断中</span>
+              <span className="text-sm font-bold text-pink-400">{quizIdx + 1} / {questions.length}</span>
+            </div>
+            <div className="w-full bg-white/10 rounded-full h-1 mb-8">
+              <div
+                className="bg-pink-500 h-1 rounded-full transition-all duration-300"
+                style={{ width: `${((quizIdx + 1) / questions.length) * 100}%` }}
+              />
+            </div>
 
-          {/* Choices */}
-          <div className="flex flex-col gap-3">
-            {choiceKeys.map(key => (
+            <p className="text-lg font-bold mb-8 leading-relaxed">{questions[quizIdx].text}</p>
+
+            <div className="flex flex-col gap-3">
+              {(['A', 'B', 'C', 'D'] as const).map(key => (
+                <button
+                  key={key}
+                  onClick={() => pickAnswer(key)}
+                  className="w-full text-left bg-white/5 hover:bg-pink-600/20 border border-white/10 hover:border-pink-500/50 rounded-xl px-4 py-3 transition-all"
+                >
+                  <span className="text-pink-400 font-bold mr-2">{key}.</span>
+                  <span className="text-white/90">{questions[quizIdx].choices[key]}</span>
+                </button>
+              ))}
+            </div>
+
+            {quizIdx > 0 && (
               <button
-                key={key}
-                onClick={() => pickAnswer(key)}
-                className="w-full text-left bg-white/5 hover:bg-pink-600/20 border border-white/10 hover:border-pink-500/50 rounded-xl px-4 py-3 transition-all"
+                onClick={() => setQuizIdx(quizIdx - 1)}
+                className="mt-6 text-sm text-white/30 hover:text-white/60 transition-colors"
               >
-                <span className="text-pink-400 font-bold mr-2">{key}.</span>
-                <span className="text-white/90">{q.choices[key]}</span>
+                ← ひとつ戻る
               </button>
-            ))}
+            )}
           </div>
+        </>
+      )}
 
-          {quizIdx > 0 && (
+      {/* ── Result ──────────────────────────────────────────────────────── */}
+      {view === 'result' && diag && (
+        <>
+          {header}
+          <div className="max-w-md mx-auto px-4 py-8">
+            <h2 className="text-2xl font-bold mb-4">{diag.finalLabel}</h2>
+
+            <div className="w-full bg-white/5 rounded-2xl overflow-hidden flex items-center justify-center h-52 mb-4">
+              <DangoImage mainId={diag.mainId} className="h-full object-contain" />
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
+              <p className="text-sm font-bold text-pink-400 mb-3">恋愛分析レポート</p>
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">
+                {buildDiagnosisDetail(diag.mainId, diag.subId, mainJson, subJson)}
+              </p>
+            </div>
+
             <button
-              onClick={() => setQuizIdx(quizIdx - 1)}
-              className="mt-6 text-sm text-white/30 hover:text-white/60 transition-colors"
+              onClick={() => openFortune(diag)}
+              className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors mb-3"
             >
-              ← ひとつ戻る
+              占いに進む 🔮
             </button>
-          )}
-        </div>
-      </div>
-    );
-  }
 
-  // ── Result ────────────────────────────────────────────────────────────────
-  if (view === 'result') {
-    const diag = displayDiag ?? stored;
-    if (!diag) return null;
-    const detail = buildDiagnosisDetail(diag.mainId, diag.subId, mainJson, subJson);
-
-    return (
-      <div className="min-h-screen bg-black text-white">
-        {header}
-        <div className="max-w-md mx-auto px-4 py-8">
-          <h2 className="text-2xl font-bold mb-4">{diag.finalLabel}</h2>
-
-          {/* Dango image */}
-          <div className="w-full bg-white/5 rounded-2xl overflow-hidden flex items-center justify-center h-52 mb-4">
-            <DangoImage mainId={diag.mainId} className="h-full object-contain" />
+            <button
+              onClick={() => setView('home')}
+              className="w-full bg-white/5 hover:bg-white/10 text-white/50 py-3 rounded-xl transition-colors"
+            >
+              ホームに戻る
+            </button>
           </div>
+        </>
+      )}
 
-          {/* Detail report */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
-            <p className="text-sm font-bold text-pink-400 mb-3">恋愛分析レポート</p>
-            <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">{detail}</p>
+      {/* ── Fortune ─────────────────────────────────────────────────────── */}
+      {view === 'fortune' && fortune && (
+        <>
+          {header}
+          <div className="max-w-md mx-auto px-4 py-8">
+            <h2 className="text-xl font-bold">今日の運勢</h2>
+            <p className="text-white/30 text-xs mt-1 mb-1">{formatYmdJa(fortune.ymd)}</p>
+            {(adDiag ?? diag) && (
+              <p className="text-base font-bold text-pink-400 mb-6">{(adDiag ?? diag)!.finalLabel}</p>
+            )}
+
+            <div className="flex flex-col gap-3">
+              {([
+                { title: 'こんな行動がおすすめ！',      body: fortune.recommended_move   },
+                { title: '今日はこんな日になるかも',    body: fortune.day_theme          },
+                { title: 'おすすめ行動！',              body: fortune.recommended_action },
+                { title: 'これに注意！',                body: fortune.caution            },
+                { title: '恋愛運',                      body: fortune.love_fortune       },
+                { title: '仕事運',                      body: fortune.work_fortune       },
+                { title: '金運',                        body: fortune.money_fortune      },
+                { title: '気になるあの人に対して',      body: fortune.crush_advice       },
+                { title: 'ラッキーカラー',              body: fortune.lucky_color        },
+                { title: 'ラッキーアイテム',            body: fortune.lucky_item         },
+                { title: 'ラッキーナンバー',            body: String(fortune.lucky_number) },
+                { title: '運気上昇のコツ',              body: fortune.luck_tip           },
+              ] as { title: string; body: string }[]).map(({ title, body }) => (
+                <SectionCard key={title} title={title} body={body} />
+              ))}
+            </div>
+
+            <button
+              onClick={() => setView('result')}
+              className="mt-6 w-full bg-white/5 hover:bg-white/10 text-white/50 py-3 rounded-xl transition-colors"
+            >
+              診断結果へ戻る
+            </button>
           </div>
+        </>
+      )}
 
-          <button
-            onClick={() => openFortune(diag)}
-            className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors mb-3"
-          >
-            占いに進む 🔮
-          </button>
+      {/* ── Ad Modal Overlay ─────────────────────────────────────────────── */}
+      {showAdModal && <AdModal onClose={closeAdModal} />}
 
-          <button
-            onClick={() => setView('home')}
-            className="w-full bg-white/5 hover:bg-white/10 text-white/50 py-3 rounded-xl transition-colors"
-          >
-            ホームに戻る
-          </button>
+      {/* ── BP Toast ─────────────────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-black font-bold rounded-full px-4 py-2 text-sm shadow-lg">
+          {toast}
         </div>
-      </div>
-    );
-  }
-
-  // ── Fortune ───────────────────────────────────────────────────────────────
-  if (view === 'fortune' && fortune) {
-    const diag = displayDiag ?? stored;
-    const cards: Array<{ title: string; body: string }> = [
-      { title: 'こんな行動がおすすめ！', body: fortune.recommended_move },
-      { title: '今日はこんな日になるかも', body: fortune.day_theme },
-      { title: 'おすすめ行動！', body: fortune.recommended_action },
-      { title: 'これに注意！', body: fortune.caution },
-      { title: '恋愛運', body: fortune.love_fortune },
-      { title: '仕事運', body: fortune.work_fortune },
-      { title: '金運', body: fortune.money_fortune },
-      { title: '気になるあの人に対して', body: fortune.crush_advice },
-      { title: 'ラッキーカラー', body: fortune.lucky_color },
-      { title: 'ラッキーアイテム', body: fortune.lucky_item },
-      { title: 'ラッキーナンバー', body: String(fortune.lucky_number) },
-      { title: '運気上昇のコツ', body: fortune.luck_tip },
-    ];
-
-    return (
-      <div className="min-h-screen bg-black text-white">
-        {header}
-        <div className="max-w-md mx-auto px-4 py-8">
-          <h2 className="text-xl font-bold">今日の運勢</h2>
-          <p className="text-white/30 text-xs mt-1 mb-1">{formatYmdJa(fortune.ymd)}</p>
-          {diag && (
-            <p className="text-base font-bold text-pink-400 mb-6">{diag.finalLabel}</p>
-          )}
-
-          <div className="flex flex-col gap-3">
-            {cards.map(({ title, body }) => (
-              <SectionCard key={title} title={title} body={body} />
-            ))}
-          </div>
-
-          <button
-            onClick={() => setView('result')}
-            className="mt-6 w-full bg-white/5 hover:bg-white/10 text-white/50 py-3 rounded-xl transition-colors"
-          >
-            診断結果へ戻る
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+      )}
+    </div>
+  );
 }
