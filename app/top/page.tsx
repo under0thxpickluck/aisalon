@@ -11,6 +11,7 @@ import MissionCard from "@/components/MissionCard";
 import GachaModal from "@/components/GachaModal";
 import StakingModal from "@/components/StakingModal";
 import RadioCard from "@/components/RadioCard";
+import LifaiCat from "@/components/LifaiCat";
 
 type Tile = {
   title: string;
@@ -809,6 +810,15 @@ export default function AppHomePage() {
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
     </main>
+    <LifaiCat
+      loginId={
+        (auth as any)?.loginId ??
+        (auth as any)?.login_id ??
+        (auth as any)?.id ??
+        ""
+      }
+      currentPage="top"
+    />
     </>
   );
 }
