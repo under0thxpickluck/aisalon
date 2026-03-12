@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, getAuthSecret } from "../../lib/auth";
-import { useAIBot } from "@/components/AIBot";
+import { useLifaiCat } from "@/components/LifaiCat";
 
 const ITEM_TYPES = [
   { value: "image_pack", label: "🖼️ 画像パック", minAsset: 100, assetUnit: "枚" },
@@ -14,7 +14,7 @@ const ITEM_TYPES = [
 
 export default function MarketCreatePage() {
   const router = useRouter();
-  const { trackEvent } = useAIBot();
+  const { trackEvent } = useLifaiCat();
   const [myId, setMyId]   = useState("");
   const [myCode, setMyCode] = useState("");
   const [epBalance, setEpBalance] = useState<number | null>(null);

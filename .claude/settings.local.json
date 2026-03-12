@@ -14,7 +14,12 @@
       "Bash(grep:*)",
       "Bash(git add:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(mkdir -p /c/Users/unitu/aisalon/public/fortune/config /c/Users/unitu/aisalon/public/fortune/dango && cp /c/Users/unitu/dango_fortune/assets/config/*.json /c/Users/unitu/aisalon/public/fortune/config/ && cp /c/Users/unitu/dango_fortune/assets/dango/*.png /c/Users/unitu/aisalon/public/fortune/dango/ && echo \"done\")",
+      "Bash(cat /c/Users/unitu/dango_fortune/assets/config/questions.json | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d[:2] if isinstance\\(d,list\\) else d.get\\('questions',d\\)[:2], ensure_ascii=False, indent=2\\)\\)\")",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

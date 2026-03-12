@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearAuth, getAuth, getAuthSecret, type AuthState } from "../lib/auth";
-import { useAIBot } from "@/components/AIBot";
+import { useLifaiCat } from "@/components/LifaiCat";
 import BPGrantModal from "@/components/BPGrantModal";
 import LoginBonusModal from "@/components/LoginBonusModal";
 import MissionCard from "@/components/MissionCard";
@@ -450,7 +450,7 @@ function ReferralCard({ auth }: { auth: AuthState }) {
 export default function AppHomePage() {
   const router = useRouter();
   const [auth, setAuthState] = useState<AuthState | null>(null);
-  const { trackEvent } = useAIBot();
+  const { trackEvent } = useLifaiCat();
 
   // 未受取BP通知
   const [bpGrantModal, setBpGrantModal] = useState<{ amount: number } | null>(null);

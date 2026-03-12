@@ -1,9 +1,248 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Rules (AIBot/rules.ts から統合) ─────────────────────────────────────────
+type Cat = 'normal' | 'confused';
+
+type CTADef = {
+  label: string;
+  action: 'scroll_to' | 'navigate' | 'dismiss';
+  target?: string;
+};
+
+type Rule = {
+  id: string;
+  trigger: 'page_view' | 'error_event';
+  page_id?: string;
+  error_code?: string;
+  delay_ms: number;
+  cat: Cat;
+  message: string;
+  cta: CTADef[];
+  condition?: (payload: Record<string, string>) => boolean;
+};
+
+const CAT_RULES: Rule[] = [
+  {
+    id: 'market_home',
+    trigger: 'page_view',
+    page_id: 'market_home',
+    delay_ms: 3000,
+    cat: 'normal',
+    message: '人気の画像パックや音楽パックがあります。見てみますか？',
+    cta: [
+      { label: '商品を見る', action: 'scroll_to', target: 'item-grid' },
+      { label: 'あとで', action: 'dismiss' },
+    ],
+  },
+  {
+    id: 'market_create',
+    trigger: 'page_view',
+    page_id: 'market_create',
+    delay_ms: 2000,
+    cat: 'normal',
+    message: '出品ルール：画像は100枚〜、音楽は10曲〜、最低価格は50からです。',
+    cta: [
+      { label: '出品を始める', action: 'scroll_to', target: 'create-form' },
+      { label: '閉じる', action: 'dismiss' },
+    ],
+  },
+  {
+    id: 'insufficient_balance',
+    trigger: 'error_event',
+    error_code: 'insufficient_balance',
+    delay_ms: 0,
+    cat: 'confused',
+    message: '残高が足りないみたいです。ウォレットを確認しますか？',
+    cta: [
+      { label: '残高を見る', action: 'navigate', target: '/wallet' },
+      { label: '閉じる', action: 'dismiss' },
+    ],
+  },
+  {
+    id: 'top_home',
+    trigger: 'page_view',
+    page_id: 'top_home',
+    delay_ms: 5000,
+    cat: 'normal',
+    message: '使いたい機能をアイコンから選んでね。音楽生成やマーケットが人気だよ！',
+    cta: [
+      { label: '音楽生成を試す', action: 'navigate', target: '/music' },
+      { label: 'マーケットを見る', action: 'navigate', target: '/market' },
+    ],
+  },
+  {
+    id: 'top_wallet',
+    trigger: 'page_view',
+    page_id: 'top_home',
+    delay_ms: 10000,
+    cat: 'normal',
+    message: 'BPやEPが溜まってるね！マーケットで使えるよ。',
+    cta: [
+      { label: 'マーケットを見る', action: 'navigate', target: '/market' },
+      { label: '閉じる', action: 'dismiss' },
+    ],
+    condition: (payload) =>
+      Number(payload.bp ?? 0) >= 1000 || Number(payload.ep ?? 0) >= 1000,
+  },
+];
+
+// ─── Context types ────────────────────────────────────────────────────────────
+type BotMessage = {
+  ruleId: string;
+  cat: Cat;
+  message: string;
+  cta: CTADef[];
+};
+
+type LifaiCatContextType = {
+  trackEvent: (eventName: string, payload?: Record<string, string>) => void;
+  currentMessage: BotMessage | null;
+  hasUnread: boolean;
+  bubbleVisible: boolean;
+  isOpen: boolean;
+  setIsOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
+  dismissMessage: () => void;
+  dismissBubble: () => void;
+};
+
+const LifaiCatContext = createContext<LifaiCatContextType | null>(null);
+
+// localStorage key — AIBot から引き継ぐため同一キー
+const SEEN_KEY = 'lifai_aibot_seen_v1';
+const COOLDOWN_MS = 60_000;
+const BUBBLE_DURATION_MS = 8_000;
+
+function getSeenFlags(): Record<string, boolean> {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function markSeen(ruleId: string) {
+  const flags = getSeenFlags();
+  flags[ruleId] = true;
+  localStorage.setItem(SEEN_KEY, JSON.stringify(flags));
+}
+
+// ─── LifaiCatProvider ─────────────────────────────────────────────────────────
+export function LifaiCatProvider({ children }: { children: React.ReactNode }) {
+  const [currentMessage, setCurrentMessage] = useState<BotMessage | null>(null);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const lastFiredAt = useRef<number>(0);
+  const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showMessage = useCallback((msg: BotMessage) => {
+    setCurrentMessage(msg);
+    setHasUnread(true);
+    setBubbleVisible(true);
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+    bubbleTimerRef.current = setTimeout(
+      () => setBubbleVisible(false),
+      BUBBLE_DURATION_MS,
+    );
+  }, []);
+
+  const trackEvent = useCallback(
+    (eventName: string, payload?: Record<string, string>) => {
+      const now = Date.now();
+      if (now - lastFiredAt.current < COOLDOWN_MS) return;
+
+      const seenFlags = getSeenFlags();
+
+      for (const rule of CAT_RULES) {
+        if (seenFlags[rule.id]) continue;
+
+        const matches =
+          (rule.trigger === 'page_view' &&
+            eventName === 'page_view' &&
+            rule.page_id === payload?.page_id) ||
+          (rule.trigger === 'error_event' &&
+            eventName === 'error_event' &&
+            rule.error_code === payload?.error_code);
+
+        if (!matches) continue;
+        if (rule.condition && !rule.condition(payload ?? {})) continue;
+
+        lastFiredAt.current = now;
+        markSeen(rule.id);
+
+        const msg: BotMessage = {
+          ruleId: rule.id,
+          cat: rule.cat,
+          message: rule.message,
+          cta: rule.cta,
+        };
+
+        if (rule.delay_ms > 0) {
+          setTimeout(() => showMessage(msg), rule.delay_ms);
+        } else {
+          showMessage(msg);
+        }
+        break;
+      }
+    },
+    [showMessage],
+  );
+
+  const dismissMessage = useCallback(() => {
+    setCurrentMessage(null);
+    setHasUnread(false);
+    setBubbleVisible(false);
+  }, []);
+
+  const dismissBubble = useCallback(() => {
+    setBubbleVisible(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+    };
+  }, []);
+
+  return (
+    <LifaiCatContext.Provider
+      value={{
+        trackEvent,
+        currentMessage,
+        hasUnread,
+        bubbleVisible,
+        isOpen,
+        setIsOpen,
+        dismissMessage,
+        dismissBubble,
+      }}
+    >
+      {children}
+    </LifaiCatContext.Provider>
+  );
+}
+
+// ─── useLifaiCat hook ─────────────────────────────────────────────────────────
+export function useLifaiCat(): LifaiCatContextType {
+  const ctx = useContext(LifaiCatContext);
+  if (!ctx) throw new Error('useLifaiCat must be used within LifaiCatProvider');
+  return ctx;
+}
+
+// ─── LifaiCat Widget Props ────────────────────────────────────────────────────
 interface LifaiCatProps {
   loginId?: string;
   bp?: number;
@@ -13,7 +252,7 @@ interface LifaiCatProps {
   currentPage?: 'top' | 'fortune' | 'mission' | 'radio' | 'gacha' | 'other';
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Props-based serif ────────────────────────────────────────────────────────
 function getSerif(props: LifaiCatProps): string {
   const { missions, radioToday, bp } = props;
   if (missions?.fortune === false) return '今日の占い、もう見た？🔮';
@@ -25,7 +264,7 @@ function getSerif(props: LifaiCatProps): string {
   return '今日はなにから進める？';
 }
 
-function hasBadge(props: LifaiCatProps): boolean {
+function hasPropsBadge(props: LifaiCatProps): boolean {
   const { missions, radioToday } = props;
   if (missions?.fortune === false) return true;
   if (missions?.login === false)   return true;
@@ -34,28 +273,39 @@ function hasBadge(props: LifaiCatProps): boolean {
   return false;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── LifaiCat Widget ──────────────────────────────────────────────────────────
 export default function LifaiCat(props: LifaiCatProps) {
   const { bp, ep, missions, radioToday } = props;
+  const router = useRouter();
 
-  const [isOpen,     setIsOpen]     = useState(false);
-  const [showBubble, setShowBubble] = useState(false);
+  const {
+    currentMessage,
+    hasUnread,
+    bubbleVisible,
+    isOpen,
+    setIsOpen,
+    dismissMessage,
+    dismissBubble,
+  } = useLifaiCat();
 
-  const serif = getSerif(props);
-  const badge = hasBadge(props);
+  // Props-based auto-bubble（trackEvent メッセージがない時に表示）
+  const [showPropsBubble, setShowPropsBubble] = useState(false);
+  const currentMessageRef = useRef(currentMessage);
+  currentMessageRef.current = currentMessage;
 
-  // ── Auto-bubble timer ─────────────────────────────────────────────────────
   useEffect(() => {
-    // 1.5s 後に初回表示
     const initial = setTimeout(() => {
-      setShowBubble(true);
-      setTimeout(() => setShowBubble(false), 5000);
+      if (!currentMessageRef.current) {
+        setShowPropsBubble(true);
+        setTimeout(() => setShowPropsBubble(false), 5000);
+      }
     }, 1500);
 
-    // その後 90s ごとに表示
     const interval = setInterval(() => {
-      setShowBubble(true);
-      setTimeout(() => setShowBubble(false), 5000);
+      if (!currentMessageRef.current) {
+        setShowPropsBubble(true);
+        setTimeout(() => setShowPropsBubble(false), 5000);
+      }
     }, 90_000);
 
     return () => {
@@ -64,64 +314,145 @@ export default function LifaiCat(props: LifaiCatProps) {
     };
   }, []);
 
-  // ── Todo list ─────────────────────────────────────────────────────────────
+  const catSrc =
+    currentMessage?.cat === 'confused'
+      ? '/aibot/cat_confused.png'
+      : '/aibot/cat_normal.png';
+
+  const serif = getSerif(props);
+  const badge = hasUnread || hasPropsBadge(props);
+
+  // 表示するバブル: trackEvent メッセージ優先、なければ props ベース
+  const showTrackBubble = bubbleVisible && !!currentMessage && !isOpen;
+  const showSelfBubble  = showPropsBubble && !currentMessage && !isOpen;
+
+  const handleCTA = (action: string, target?: string) => {
+    if (action === 'dismiss') {
+      dismissMessage();
+      setIsOpen(false);
+    } else if (action === 'scroll_to' && target) {
+      const el = document.getElementById(target);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      dismissMessage();
+      setIsOpen(false);
+    } else if (action === 'navigate' && target) {
+      router.push(target);
+      dismissMessage();
+      setIsOpen(false);
+    }
+  };
+
+  // Todo list
   const todos: { label: string; href: string }[] = [];
   if (missions?.fortune === false)
-    todos.push({ label: '🔮 占いを見る +10BP',            href: '/fortune'    });
+    todos.push({ label: '🔮 占いを見る +10BP',        href: '/fortune'   });
   if (missions?.login === false)
-    todos.push({ label: '✨ ログインボーナス受け取る',     href: '/top'        });
+    todos.push({ label: '✨ ログインボーナス受け取る', href: '/top'       });
   if (missions?.music === false)
-    todos.push({ label: '📋 ミッションを確認',             href: '/top'        });
+    todos.push({ label: '📋 ミッションを確認',         href: '/top'       });
   if (radioToday === false)
-    todos.push({ label: '🎵 RADIOを聴く +5EP',             href: '/top#radio'  });
+    todos.push({ label: '🎵 RADIOを聴く +5EP',         href: '/top#radio' });
 
   const allDone =
-    todos.length === 0 &&
-    missions !== undefined &&
-    radioToday !== undefined;
+    todos.length === 0 && missions !== undefined && radioToday !== undefined;
 
   return (
     <>
-      {/* ── Layer2: 吹き出し ─────────────────────────────────────────────── */}
-      {showBubble && !isOpen && (
-        <div className="fixed bottom-[88px] right-0 z-50 w-52 pr-5">
+      {/* ── Layer2: 吹き出し (trackEvent) ───────────────────────────────── */}
+      {showTrackBubble && (
+        <div className="fixed bottom-[88px] right-0 z-[9998] w-56 pr-5">
+          <div
+            onClick={() => { setIsOpen(true); dismissBubble(); }}
+            className="relative bg-[#0F172A] border border-white/10 rounded-2xl p-3 text-sm text-white shadow-lg cursor-pointer"
+            style={{ animation: 'bubble-in 0.2s ease-out' }}
+          >
+            <button
+              className="absolute top-1.5 right-2 text-white/40 hover:text-white text-xs leading-none"
+              onClick={(e) => { e.stopPropagation(); dismissBubble(); }}
+              aria-label="閉じる"
+            >×</button>
+            <p className="pr-5 text-xs leading-relaxed" style={{ color: 'rgba(234,240,255,0.9)' }}>
+              {currentMessage!.message}
+            </p>
+            <div className="flex flex-col gap-1.5 mt-2">
+              {currentMessage!.cta.map((btn, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); handleCTA(btn.action, btn.target); }}
+                  className="text-left text-xs px-2 py-1.5 rounded-lg w-full"
+                  style={{
+                    background: i === 0
+                      ? 'linear-gradient(90deg,#6366F1,#A78BFA)'
+                      : 'rgba(255,255,255,0.04)',
+                    color: i === 0 ? '#fff' : 'rgba(234,240,255,0.7)',
+                    border: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >{btn.label}</button>
+              ))}
+            </div>
+            <div className="absolute -bottom-2 right-5 w-0 h-0"
+              style={{ borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '8px solid #0F172A' }} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Layer2: 吹き出し (props-based serif) ────────────────────────── */}
+      {showSelfBubble && (
+        <div className="fixed bottom-[88px] right-0 z-[9998] w-52 pr-5">
           <div className="relative bg-zinc-800 rounded-2xl p-3 text-sm text-white shadow-lg">
-            {/* × ボタン */}
             <button
               className="absolute top-1.5 right-2 text-zinc-400 hover:text-white text-xs leading-none"
-              onClick={() => setShowBubble(false)}
+              onClick={() => setShowPropsBubble(false)}
               aria-label="閉じる"
-            >
-              ×
-            </button>
-            <p className="pr-5 leading-relaxed">{serif}</p>
-            {/* 右下の小三角 */}
-            <div
-              className="absolute -bottom-2 right-5 w-0 h-0"
-              style={{
-                borderLeft:  '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop:   '8px solid #3f3f46', // zinc-800
-              }}
-            />
+            >×</button>
+            <p className="pr-5 leading-relaxed text-xs">{serif}</p>
+            <div className="absolute -bottom-2 right-5 w-0 h-0"
+              style={{ borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '8px solid #3f3f46' }} />
           </div>
         </div>
       )}
 
       {/* ── Layer3: ミニパネル ───────────────────────────────────────────── */}
       {isOpen && (
-        <div className="fixed bottom-20 right-5 z-50 w-64 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-xl">
+        <div className="fixed bottom-20 right-5 z-[9998] w-64 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-xl">
           {/* ヘッダー */}
           <div className="flex items-center justify-between mb-3">
-            <span className="font-bold text-white text-sm">🐱 リファ猫</span>
+            <div className="flex items-center gap-2">
+              <Image src={catSrc} alt="LIFAI CAT" width={24} height={24} className="rounded-full" />
+              <span className="font-bold text-white text-sm">🐱 リファ猫</span>
+            </div>
             <button
               className="text-zinc-400 hover:text-white text-base leading-none"
               onClick={() => setIsOpen(false)}
               aria-label="閉じる"
-            >
-              ×
-            </button>
+            >×</button>
           </div>
+
+          {/* trackEvent メッセージ */}
+          {currentMessage && (
+            <>
+              <p className="text-xs mb-2" style={{ color: 'rgba(234,240,255,0.85)', lineHeight: 1.65 }}>
+                {currentMessage.message}
+              </p>
+              <div className="flex flex-col gap-1.5 mb-3">
+                {currentMessage.cta.map((btn, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleCTA(btn.action, btn.target)}
+                    className="text-left text-xs px-3 py-2 rounded-lg w-full"
+                    style={{
+                      background: i === 0
+                        ? 'linear-gradient(90deg,#6366F1,#A78BFA)'
+                        : 'rgba(255,255,255,0.04)',
+                      color: i === 0 ? '#fff' : 'rgba(234,240,255,0.7)',
+                      border: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >{btn.label}</button>
+                ))}
+              </div>
+              <div className="border-t border-zinc-700 mb-3" />
+            </>
+          )}
 
           {/* 今日のおすすめ */}
           <p className="text-xs text-zinc-500 mb-2">今日のおすすめ</p>
@@ -135,9 +466,7 @@ export default function LifaiCat(props: LifaiCatProps) {
                     href={t.href}
                     className="block text-xs text-amber-400 hover:text-amber-300 transition-colors"
                     onClick={() => setIsOpen(false)}
-                  >
-                    {t.label}
-                  </Link>
+                  >{t.label}</Link>
                 </li>
               ))}
             </ul>
@@ -145,74 +474,58 @@ export default function LifaiCat(props: LifaiCatProps) {
             <p className="text-xs text-zinc-400 mb-3">今日はなにから進める？</p>
           )}
 
-          {/* セパレータ */}
           <div className="border-t border-zinc-700 my-3" />
 
-          {/* BP / EP 残高 */}
           {(bp !== undefined || ep !== undefined) && (
             <p className="text-xs text-zinc-300 mb-3">
               {bp !== undefined && <span>💰 BP: {bp}</span>}
-              {bp !== undefined && ep !== undefined && <span className="mx-2">　</span>}
+              {bp !== undefined && ep !== undefined && <span>　</span>}
               {ep !== undefined && <span>⚡ EP: {ep}</span>}
             </p>
           )}
 
-          {/* 閉じるボタン */}
           <button
             className="w-full text-xs text-zinc-400 hover:text-white border border-zinc-700 rounded-lg py-1.5 transition-colors"
             onClick={() => setIsOpen(false)}
-          >
-            閉じる
-          </button>
+          >閉じる</button>
         </div>
       )}
 
       {/* ── Layer1: 常駐アイコン ─────────────────────────────────────────── */}
-      <div className="fixed bottom-5 right-5 z-50">
+      <div className="fixed bottom-5 right-5 z-[9999]">
         <button
           onClick={() => {
             setIsOpen(o => !o);
-            setShowBubble(false);
+            dismissBubble();
+            setShowPropsBubble(false);
           }}
           aria-label="リファ猫を開く"
-          className="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-pink-500 shadow-lg"
-          style={{
-            animation: 'lifaiCatFloat 2.5s ease-in-out infinite',
-          }}
+          className="relative w-14 h-14 rounded-full overflow-hidden shadow-lg"
+          style={{ animation: 'lifaiCatFloat 2.5s ease-in-out infinite' }}
         >
-          {/* 未達バッジ */}
           {badge && (
-            <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-white" />
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-black z-10" />
           )}
-          {/* 猫アイコン（画像なければ絵文字） */}
-          <CatIcon />
+          <Image
+            src={catSrc}
+            alt="LIFAI CAT"
+            width={56}
+            height={56}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
         </button>
       </div>
 
-      {/* ふわふわアニメ用 keyframes */}
       <style>{`
         @keyframes lifaiCatFloat {
           0%, 100% { transform: translateY(0px); }
           50%       { transform: translateY(-6px); }
         }
+        @keyframes bubble-in {
+          from { opacity: 0; transform: scale(0.9) translateY(6px); }
+          to   { opacity: 1; transform: scale(1)   translateY(0); }
+        }
       `}</style>
     </>
-  );
-}
-
-// ─── CatIcon: /cat-icon.png があればそれを、なければ絵文字 ────────────────────
-function CatIcon() {
-  const [hasImg, setHasImg] = useState(true);
-  if (!hasImg) return <span className="text-2xl select-none">🐱</span>;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/cat-icon.png"
-      alt="cat"
-      width={36}
-      height={36}
-      className="rounded-full object-cover"
-      onError={() => setHasImg(false)}
-    />
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth } from "../lib/auth";
-import { useAIBot } from "@/components/AIBot";
+import { useLifaiCat } from "@/components/LifaiCat";
 
 type MarketItem = {
   item_id: string;
@@ -333,7 +333,7 @@ const inputStyle: React.CSSProperties = {
 
 export default function MarketPage() {
   const router = useRouter();
-  const { trackEvent } = useAIBot();
+  const { trackEvent } = useLifaiCat();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [allItems, setAllItems] = useState<MarketItem[]>([]);
   const [page, setPage] = useState(1);

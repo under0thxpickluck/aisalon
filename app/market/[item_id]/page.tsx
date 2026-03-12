@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAuth, getAuthSecret } from "../../lib/auth";
-import { useAIBot } from "@/components/AIBot";
+import { useLifaiCat } from "@/components/LifaiCat";
 
 type MarketItem = {
   item_id: string;
@@ -166,7 +166,7 @@ export default function ItemDetailPage() {
   const [myId, setMyId] = useState("");
   const [myCode, setMyCode] = useState("");
 
-  const { trackEvent } = useAIBot();
+  const { trackEvent } = useLifaiCat();
   const [activeOrder, setActiveOrder] = useState<LocalOrder | null>(null);
   const [buying, setBuying] = useState(false);
   const [buyError, setBuyError] = useState("");
