@@ -49,7 +49,7 @@ function AppIconCard({ t }: { t: Tile }) {
   const card = (
     <div
       className={[
-        "relative rounded-[24px] border p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition",
+        "relative rounded-[24px] border p-3 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition",
         isSoon
           ? "border-slate-200 bg-slate-100 opacity-70 cursor-not-allowed"
           : "border-slate-200 bg-white hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] active:translate-y-0",
@@ -64,22 +64,22 @@ function AppIconCard({ t }: { t: Tile }) {
       <div className="flex items-center gap-4">
         <div
           className={[
-            "relative grid h-14 w-14 place-items-center rounded-[18px] text-white shadow-[0_10px_20px_rgba(2,6,23,.12)]",
+            "relative grid h-12 w-12 place-items-center rounded-[16px] text-white shadow-[0_10px_20px_rgba(2,6,23,.12)]",
             isSoon
               ? "bg-gradient-to-br from-slate-500 to-slate-400"
               : ["bg-gradient-to-br", tintClass(t.tint)].join(" "),
           ].join(" ")}
         >
-          <div className="text-[22px] leading-none">{t.icon}</div>
+          <div className="text-[18px] leading-none">{t.icon}</div>
         </div>
 
         <div className="min-w-0">
-          <div className="text-sm font-extrabold text-slate-700">{t.title}</div>
-          <div className="mt-1 line-clamp-2 text-xs text-slate-500">{t.desc}</div>
+          <div className="text-xs font-extrabold text-slate-700">{t.title}</div>
+          <div className="mt-0.5 line-clamp-2 text-[11px] text-slate-500">{t.desc}</div>
         </div>
       </div>
 
-      <div className="mt-3 text-right text-xs font-semibold text-slate-500">
+      <div className="mt-2 text-right text-xs font-semibold text-slate-500">
         {isSoon ? "公開予定" : "開く →"}
       </div>
     </div>
@@ -187,7 +187,7 @@ function PresaleHeader({
 function TimeBox({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-      <p className="text-lg font-extrabold leading-none text-slate-900">{value}</p>
+      <p className="text-base font-extrabold leading-none text-slate-900">{value}</p>
       <p className="mt-1 text-[10px] font-bold text-slate-500">{label}</p>
     </div>
   );
@@ -380,7 +380,7 @@ function ReferralCard({ auth }: { auth: AuthState }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {loading ? (
             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
               読み込み中…
@@ -734,8 +734,8 @@ export default function AppHomePage() {
         }}
       />
 
-      <div className="mx-auto max-w-[920px] px-4 py-10">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
+      <div className="mx-auto max-w-[920px] px-4 py-6">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
@@ -746,7 +746,7 @@ export default function AppHomePage() {
               <h1 className="mt-4 text-xl font-extrabold tracking-tight text-slate-900">
                 LIFAIへようこそ
               </h1>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-xs text-slate-600">
                 使いたい機能を「アプリアイコン」から開けます。
               </p>
             </div>

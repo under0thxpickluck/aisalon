@@ -278,9 +278,9 @@ export default function RadioCard({ loginId, onEpEarned }: Props) {
             return (
               <div
                 key={song.song_id}
-                className="rounded-xl bg-zinc-800 p-3"
+                className="rounded-xl bg-zinc-800 p-2.5"
               >
-                <p className="text-sm font-bold text-zinc-100">{song.title}</p>
+                <p className="text-xs font-bold text-zinc-100">{song.title}</p>
                 <p className="mb-2 text-xs text-zinc-400">{song.artist}</p>
                 <div className="flex flex-wrap gap-2">
                   {svcEntries.map(([svcKey, svcUrl]) => (

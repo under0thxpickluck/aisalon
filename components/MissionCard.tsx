@@ -129,7 +129,7 @@ export default function MissionCard({ loginId, onBpEarned }: Props) {
               disabled={done || isLoading}
               onClick={() => handleComplete(key)}
               className={[
-                "flex items-center justify-between rounded-xl px-4 py-3 text-left transition",
+                "flex items-center justify-between rounded-xl px-3 py-2 text-left transition",
                 done
                   ? "bg-zinc-800 opacity-50 cursor-not-allowed"
                   : "bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 cursor-pointer",
@@ -149,7 +149,7 @@ export default function MissionCard({ loginId, onBpEarned }: Props) {
         {/* 全完了ボーナス */}
         <div
           className={[
-            "flex items-center justify-between rounded-xl px-4 py-3",
+            "flex items-center justify-between rounded-xl px-3 py-2",
             allThreeDone ? "bg-zinc-800" : "bg-zinc-800 opacity-40",
           ].join(" ")}
         >
