@@ -608,7 +608,7 @@ export default function AppHomePage() {
       {
         title: "毎日占い",
         desc: "今日の運勢をサクッと確認",
-        href: "https://dango-fortune-ee8a.vercel.app",
+        href: "/fortune",
         icon: "🔮",
         tint: "amber",
         comingSoon: false,
