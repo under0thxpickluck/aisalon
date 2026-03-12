@@ -237,7 +237,7 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
   }, [fetchBalance, refreshTrigger]);
 
   return (
-    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+    <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-700">
       <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-extrabold text-white">
         WALLET
       </span>
@@ -736,8 +736,8 @@ export default function AppHomePage() {
 
       <div className="mx-auto max-w-[920px] px-4 py-6">
         <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_18px_rgba(16,185,129,.35)]" />
                 LIFAI APP HOME
@@ -746,19 +746,19 @@ export default function AppHomePage() {
               <h1 className="mt-4 text-xl font-extrabold tracking-tight text-slate-900">
                 LIFAIへようこそ
               </h1>
-              <p className="mt-2 text-xs text-slate-600">
+              <p className="mt-2 hidden text-xs text-slate-600 sm:block">
                 使いたい機能を「アプリアイコン」から開けます。
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5">
               <BalanceBadge auth={auth} refreshTrigger={balanceTrigger} />
 
               <button
                 onClick={logout}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
-                ログアウト
+                退出
               </button>
             </div>
           </div>
