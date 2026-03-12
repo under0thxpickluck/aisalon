@@ -512,10 +512,15 @@ export default function FortunePage() {
     setShowAdModal(false);
     setView('fortune');
 
-    // BP grant
-    const loginId =
-      localStorage.getItem('lifai_login_id') ||
-      localStorage.getItem(LS_INSTALL);
+    // BP grant — loginId は addval_auth_v1 の id フィールドから取得
+    let loginId: string | null = null;
+    try {
+      const raw = localStorage.getItem('addval_auth_v1');
+      if (raw) {
+        const auth = JSON.parse(raw);
+        if (auth?.id) loginId = String(auth.id);
+      }
+    } catch { /* ignore */ }
 
     if (loginId) {
       try {
