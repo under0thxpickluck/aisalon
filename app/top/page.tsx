@@ -13,100 +13,6 @@ import StakingModal from "@/components/StakingModal";
 import RadioCard from "@/components/RadioCard";
 import LifaiCat from "@/components/LifaiCat";
 
-type Tile = {
-  title: string;
-  desc: string;
-  href: string;
-  badge?: string;
-  icon: React.ReactNode;
-  tint?: "indigo" | "cyan" | "violet" | "emerald" | "amber" | "rose";
-  comingSoon?: boolean;
-  onClick?: () => void;
-};
-
-function tintClass(tint: Tile["tint"]) {
-  switch (tint) {
-    case "indigo":
-      return "from-indigo-600 to-indigo-400";
-    case "cyan":
-      return "from-cyan-600 to-cyan-400";
-    case "violet":
-      return "from-violet-600 to-violet-400";
-    case "emerald":
-      return "from-emerald-600 to-emerald-400";
-    case "amber":
-      return "from-amber-600 to-amber-400";
-    case "rose":
-      return "from-rose-600 to-rose-400";
-    default:
-      return "from-slate-700 to-slate-500";
-  }
-}
-
-function AppIconCard({ t }: { t: Tile }) {
-  const isSoon = t.comingSoon ?? false; // ← デフォルト全部準備中
-
-  const card = (
-    <div
-      className={[
-        "relative rounded-[24px] border p-3 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition",
-        isSoon
-          ? "border-slate-200 bg-slate-100 opacity-70 cursor-not-allowed"
-          : "border-slate-200 bg-white hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] active:translate-y-0",
-      ].join(" ")}
-    >
-      {isSoon && (
-        <div className="absolute right-3 top-3 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-white">
-          準備中
-        </div>
-      )}
-
-      <div className="flex items-center gap-4">
-        <div
-          className={[
-            "relative grid h-12 w-12 place-items-center rounded-[16px] text-white shadow-[0_10px_20px_rgba(2,6,23,.12)]",
-            isSoon
-              ? "bg-gradient-to-br from-slate-500 to-slate-400"
-              : ["bg-gradient-to-br", tintClass(t.tint)].join(" "),
-          ].join(" ")}
-        >
-          <div className="text-[18px] leading-none">{t.icon}</div>
-        </div>
-
-        <div className="min-w-0">
-          <div className="text-xs font-extrabold text-slate-700">{t.title}</div>
-          <div className="mt-0.5 line-clamp-2 text-[11px] text-slate-500">{t.desc}</div>
-        </div>
-      </div>
-
-      <div className="mt-2 text-right text-xs font-semibold text-slate-500">
-        {isSoon ? "公開予定" : "開く →"}
-      </div>
-    </div>
-  );
-
-  if (isSoon) return card;
-
-  if (t.onClick) {
-    return (
-      <div onClick={t.onClick} style={{ cursor: "pointer" }}>
-        {card}
-      </div>
-    );
-  }
-
-  const isExternal = /^https?:\/\//.test(t.href);
-
-  // ✅ 外部URLはaタグ、内部はNext Link
-  return isExternal ? (
-    <a href={t.href} target="_blank" rel="noopener noreferrer">
-      {card}
-    </a>
-  ) : (
-    <Link href={t.href}>{card}</Link>
-  );
-}
-
 /** ✅ カウントダウン + 調達バー（returnの外に置く） */
 function pad2(n: number) {
   return String(Math.max(0, n)).padStart(2, "0");
@@ -447,6 +353,17 @@ function ReferralCard({ auth }: { auth: AuthState }) {
   );
 }
 
+type AppDef = {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  href: string;
+  desc: string;
+  comingSoon?: boolean;
+  onOpen?: () => void;
+};
+
 export default function AppHomePage() {
   const router = useRouter();
   const [auth, setAuthState] = useState<AuthState | null>(null);
@@ -469,6 +386,9 @@ export default function AppHomePage() {
 
   // 残高更新トリガー
   const [balanceTrigger, setBalanceTrigger] = useState(0);
+
+  // 選択中アプリ（ポップアップ）
+  const [selectedApp, setSelectedApp] = useState<AppDef | null>(null);
 
   useEffect(() => {
     const a = getAuth();
@@ -555,106 +475,16 @@ export default function AppHomePage() {
     })();
   }, [auth, trackEvent]);
 
-  const tiles = useMemo<Tile[]>(
+  const apps: AppDef[] = useMemo(
     () => [
-      {
-        title: "音楽生成 NEW",
-        desc: "歌詞・構成・音楽を3ステップで生成（10BP）",
-        href: "/music2",
-        icon: "🎼",
-        tint: "violet",
-        badge: "NEW",
-        comingSoon: true,
-      },
-      {
-        title: "音楽生成",
-        desc: "テーマを入力してBGM/ループ案を生成",
-        href: "/music",
-        icon: "🎵",
-        tint: "indigo",
-        comingSoon: false,
-      },
-      {
-        title: "マーケット",
-        desc: "メンバー同士でコンテンツを売買できます",
-        href: "/market",
-        icon: "🛒",
-        tint: "emerald",
-        comingSoon: false,
-      },
-      {
-        title: "note記事生成",
-        desc: "構成→本文→見出し→導入文まで一括",
-        href: "/note",
-        icon: "📝",
-        tint: "violet",
-        comingSoon: true,
-      },
-      {
-        title: "ワークフロー生成",
-        desc: "n8n/自動化の設計テンプレを作る",
-        href: "/workflow",
-        icon: "🧩",
-        tint: "cyan",
-        comingSoon: true,
-      },
-      {
-        title: "アプリ作成",
-        desc: "要件→画面→実装方針をサクッと",
-        href: "/app-builder",
-        icon: "📱",
-        tint: "emerald",
-        comingSoon: true,
-      },
-      {
-        title: "毎日占い",
-        desc: "今日の運勢をサクッと確認",
-        href: "/fortune",
-        icon: "🔮",
-        tint: "amber",
-        comingSoon: false,
-      },
-      {
-        title: "コラム",
-        desc: "管理者のNEWSやコラムが更新されます",
-        href: "/column",
-        icon: "📚",
-        tint: "indigo",
-        badge: "NEW",
-      },
-      {
-        title: "権利購入（申請）",
-        desc: "権利購入〜申請フローへ",
-        href: "/purchase",
-        icon: "🧾",
-        tint: "rose",
-      },
-      {
-        title: "メンバーシップ",
-        desc: "サブスク・クレジット管理",
-        href: "/membership",
-        icon: "💎",
-        tint: "indigo",
-        comingSoon: false,
-      },
-      {
-        title: "BPガチャ",
-        desc: "100BPで抽選・最大5000BP",
-        href: "#",
-        icon: "🎰",
-        tint: "amber",
-        comingSoon: false,
-        onClick: () => setShowGacha(true),
-      },
-      {
-        title: "BPステーキング",
-        desc: "BPを預けて利息を得る",
-        href: "#",
-        icon: "🔒",
-        tint: "cyan",
-        comingSoon: false,
-        onClick: () => setShowStaking(true),
-      },
+      { id: "fortune",  label: "団子占い",     icon: "🔮", color: "from-violet-500 to-purple-600",  href: "/fortune",    desc: "毎日の運勢 +10BP" },
+      { id: "music",    label: "音楽生成",     icon: "🎵", color: "from-sky-400 to-blue-500",       href: "/music",      desc: "テーマでBGM生成 40BP" },
+      { id: "radio",    label: "RADIO",        icon: "📻", color: "from-emerald-400 to-green-500",  href: "#radio",      desc: "作業BGMでEP獲得" },
+      { id: "market",   label: "マーケット",   icon: "🛒", color: "from-orange-400 to-amber-500",   href: "/market",     desc: "メンバー間売買" },
+      { id: "gacha",    label: "ガチャ",       icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
+      { id: "staking",  label: "ステーキング", icon: "💎", color: "from-cyan-400 to-teal-500",      href: "#staking",    desc: "BPを預けて増やす",      onOpen: () => { setSelectedApp(null); setShowStaking(true); } },
+      { id: "mission",  label: "ミッション",   icon: "📋", color: "from-yellow-400 to-orange-400", href: "#mission",    desc: "毎日の課題でBP" },
+      { id: "member",   label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600", href: "/membership", desc: "プランをアップグレード" },
     ],
     []
   );
@@ -682,6 +512,12 @@ export default function AppHomePage() {
   // ✅ 認証判定が終わるまで一瞬も中身を描画しない（チラ見え防止）
   if (auth === null) return null;
 
+  const loginId =
+    (auth as any)?.loginId ??
+    (auth as any)?.login_id ??
+    (auth as any)?.id ??
+    "";
+
   return (
     <>
     {bpGrantModal && (
@@ -699,12 +535,7 @@ export default function AppHomePage() {
     )}
     {showGacha && (
       <GachaModal
-        loginId={
-          (auth as any)?.loginId ??
-          (auth as any)?.login_id ??
-          (auth as any)?.id ??
-          ""
-        }
+        loginId={loginId}
         onClose={() => setShowGacha(false)}
         onBpEarned={(_amount) => {
           setBalanceTrigger((n) => n + 1);
@@ -713,16 +544,58 @@ export default function AppHomePage() {
     )}
     {showStaking && (
       <StakingModal
-        loginId={
-          (auth as any)?.loginId ??
-          (auth as any)?.login_id ??
-          (auth as any)?.id ??
-          ""
-        }
+        loginId={loginId}
         onClose={() => setShowStaking(false)}
         onBpChanged={() => setBalanceTrigger((n) => n + 1)}
       />
     )}
+
+    {/* アプリ詳細ポップアップ */}
+    {selectedApp && (
+      <>
+        {/* オーバーレイ */}
+        <div
+          className="fixed inset-0 z-40 bg-black/60"
+          onClick={() => setSelectedApp(null)}
+        />
+        {/* スライドアップシート */}
+        <div className="fixed inset-x-0 bottom-0 z-50 max-w-sm mx-auto rounded-t-3xl bg-zinc-900 p-6 shadow-2xl">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className={`w-20 h-20 rounded-3xl bg-gradient-to-br ${selectedApp.color} flex items-center justify-center text-4xl shadow-lg`}>
+              {selectedApp.icon}
+            </div>
+            <div>
+              <p className="text-lg font-extrabold text-white">{selectedApp.label}</p>
+              <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
+            </div>
+            {selectedApp.onOpen ? (
+              <button
+                onClick={selectedApp.onOpen}
+                className="mt-2 w-full rounded-2xl bg-amber-400 px-6 py-3 text-sm font-extrabold text-zinc-900 hover:bg-amber-300 active:scale-95 transition"
+              >
+                開く →
+              </button>
+            ) : selectedApp.href.startsWith("#") ? (
+              <button
+                onClick={() => setSelectedApp(null)}
+                className="mt-2 w-full rounded-2xl bg-amber-400 px-6 py-3 text-sm font-extrabold text-zinc-900 hover:bg-amber-300 active:scale-95 transition"
+              >
+                開く →
+              </button>
+            ) : (
+              <Link
+                href={selectedApp.href}
+                className="mt-2 block w-full rounded-2xl bg-amber-400 px-6 py-3 text-sm font-extrabold text-zinc-900 text-center hover:bg-amber-300 active:scale-95 transition"
+                onClick={() => setSelectedApp(null)}
+              >
+                開く →
+              </Link>
+            )}
+          </div>
+        </div>
+      </>
+    )}
+
     <main className="min-h-screen text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
       <div
@@ -774,33 +647,40 @@ export default function AppHomePage() {
           {/* ✅ 追加：紹介コード表示（/api/me 経由で取得） */}
           <ReferralCard auth={auth} />
 
+          {/* ✅ アプリグリッド（LINEミニアプリ風 4列） */}
+          <div className="mt-6">
+            <p className="mb-3 text-xs font-extrabold text-slate-700">アプリ</p>
+            <div className="grid grid-cols-4 gap-3 px-2">
+              {apps.map((app) => (
+                <button
+                  key={app.id}
+                  onClick={() => setSelectedApp(app)}
+                  className="flex flex-col items-center gap-1 focus:outline-none"
+                >
+                  <div
+                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${app.color} flex items-center justify-center text-2xl shadow-md active:scale-95 transition`}
+                  >
+                    {app.icon}
+                  </div>
+                  <span className="text-[11px] text-zinc-600 text-center leading-tight">
+                    {app.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <MissionCard
-            loginId={
-              (auth as any)?.loginId ??
-              (auth as any)?.login_id ??
-              (auth as any)?.id ??
-              ""
-            }
+            loginId={loginId}
             onBpEarned={(_amount) => {
               setBalanceTrigger((n) => n + 1);
             }}
           />
 
           <RadioCard
-            loginId={
-              (auth as any)?.loginId ??
-              (auth as any)?.login_id ??
-              (auth as any)?.id ??
-              ""
-            }
+            loginId={loginId}
             onEpEarned={() => setBalanceTrigger((n) => n + 1)}
           />
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {tiles.map((t) => (
-              <AppIconCard key={t.href} t={t} />
-            ))}
-          </div>
 
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             問い合わせはTOPページにございます。
@@ -811,12 +691,7 @@ export default function AppHomePage() {
       </div>
     </main>
     <LifaiCat
-      loginId={
-        (auth as any)?.loginId ??
-        (auth as any)?.login_id ??
-        (auth as any)?.id ??
-        ""
-      }
+      loginId={loginId}
       currentPage="top"
     />
     </>
