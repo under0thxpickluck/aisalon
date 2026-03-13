@@ -273,10 +273,44 @@ function hasPropsBadge(props: LifaiCatProps): boolean {
   return false;
 }
 
+// ─── Chat keyword reply ───────────────────────────────────────────────────────
+function getCatReply(input: string): string {
+  if (/BP|ポイント/.test(input))           return '占いやミッションで毎日BPが増やせるよ';
+  if (/占い/.test(input))                  return '団子占いは毎日10BP獲得できるよ。今日もう見た？';
+  if (/音楽|music/i.test(input))           return '音楽生成は40BPで使えるよ。テーマを入れるだけ！';
+  if (/ミッション/.test(input))            return '毎日のミッションをこなすと最大50BP/日もらえるよ';
+  if (/RADIO|ラジオ/i.test(input))         return 'RADIOでは作業しながらEPが獲得できるよ';
+  if (/副業|稼ぐ/.test(input))             return 'まずはミッションと占いから始めよう。毎日続けるのが大事！';
+  if (/ガチャ/.test(input))                return '100BPで回せるよ。排出率はパネルで確認してね';
+  if (/何|わからない|迷/.test(input))      return '今日はなにから進める？まずは占いとミッションがおすすめだよ';
+  return 'うーん、それはぼくには難しいな。でもBPやミッションのことなら答えられるよ！';
+}
+
+type ChatEntry = { from: 'user' | 'cat'; text: string };
+
 // ─── LifaiCat Widget ──────────────────────────────────────────────────────────
 export default function LifaiCat(props: LifaiCatProps) {
   const { bp, ep, missions, radioToday } = props;
   const router = useRouter();
+
+  // チャットモード
+  const [isChat, setIsChat] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatEntry[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isWaiting, setIsWaiting] = useState(false);
+
+  const handleChatSend = () => {
+    const text = chatInput.trim();
+    if (!text || isWaiting) return;
+    setChatInput('');
+    setChatHistory(prev => [...prev, { from: 'user', text }]);
+    setIsWaiting(true);
+    setTimeout(() => {
+      const reply = getCatReply(text);
+      setChatHistory(prev => [...prev, { from: 'cat', text: reply }]);
+      setIsWaiting(false);
+    }, 500);
+  };
 
   const {
     currentMessage,
@@ -454,40 +488,96 @@ export default function LifaiCat(props: LifaiCatProps) {
             </>
           )}
 
-          {/* 今日のおすすめ */}
-          <p className="text-xs text-zinc-500 mb-2">今日のおすすめ</p>
-          {allDone ? (
-            <p className="text-xs text-emerald-400 mb-3">今日のミッション完了！🎉</p>
-          ) : todos.length > 0 ? (
-            <ul className="flex flex-col gap-2 mb-3">
-              {todos.slice(0, 3).map(t => (
-                <li key={t.label}>
-                  <Link
-                    href={t.href}
-                    className="block text-xs text-amber-400 hover:text-amber-300 transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >{t.label}</Link>
-                </li>
-              ))}
-            </ul>
+          {isChat ? (
+            /* ── チャット画面 ─────────────────────────────────── */
+            <>
+              <button
+                className="text-xs text-zinc-400 hover:text-white mb-3 flex items-center gap-1"
+                onClick={() => setIsChat(false)}
+              >← 戻る</button>
+
+              {/* 履歴（最大5件） */}
+              <div className="flex flex-col gap-2 mb-3 max-h-48 overflow-y-auto">
+                {chatHistory.slice(-5).map((entry, i) => (
+                  <div
+                    key={i}
+                    className={`text-xs px-3 py-2 rounded-xl leading-relaxed max-w-[90%] ${
+                      entry.from === 'user'
+                        ? 'self-end bg-indigo-600 text-white ml-auto'
+                        : 'self-start bg-zinc-700 text-zinc-100'
+                    }`}
+                  >
+                    {entry.text}
+                  </div>
+                ))}
+                {isWaiting && (
+                  <div className="text-xs px-3 py-2 rounded-xl bg-zinc-700 text-zinc-400 max-w-[90%]">
+                    …
+                  </div>
+                )}
+              </div>
+
+              {/* 入力欄 */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleChatSend(); }}
+                  placeholder="何か聞いてみて…"
+                  className="flex-1 text-xs bg-zinc-800 border border-zinc-600 rounded-lg px-2 py-1.5 text-white placeholder-zinc-500 outline-none focus:border-indigo-500"
+                />
+                <button
+                  onClick={handleChatSend}
+                  disabled={isWaiting}
+                  className="text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg px-3 py-1.5 transition-colors"
+                >送信</button>
+              </div>
+            </>
           ) : (
-            <p className="text-xs text-zinc-400 mb-3">今日はなにから進める？</p>
+            /* ── 通常画面 ─────────────────────────────────────── */
+            <>
+              {/* 今日のおすすめ */}
+              <p className="text-xs text-zinc-500 mb-2">今日のおすすめ</p>
+              {allDone ? (
+                <p className="text-xs text-emerald-400 mb-3">今日のミッション完了！🎉</p>
+              ) : todos.length > 0 ? (
+                <ul className="flex flex-col gap-2 mb-3">
+                  {todos.slice(0, 3).map(t => (
+                    <li key={t.label}>
+                      <Link
+                        href={t.href}
+                        className="block text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                        onClick={() => setIsOpen(false)}
+                      >{t.label}</Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-zinc-400 mb-3">今日はなにから進める？</p>
+              )}
+
+              <div className="border-t border-zinc-700 my-3" />
+
+              {(bp !== undefined || ep !== undefined) && (
+                <p className="text-xs text-zinc-300 mb-3">
+                  {bp !== undefined && <span>💰 BP: {bp}</span>}
+                  {bp !== undefined && ep !== undefined && <span>　</span>}
+                  {ep !== undefined && <span>⚡ EP: {ep}</span>}
+                </p>
+              )}
+
+              <button
+                className="w-full text-sm bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl py-2 mb-2 transition-colors"
+                onClick={() => setIsChat(true)}
+              >💬 相談する</button>
+
+              <button
+                className="w-full text-xs text-zinc-400 hover:text-white border border-zinc-700 rounded-lg py-1.5 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >閉じる</button>
+            </>
           )}
-
-          <div className="border-t border-zinc-700 my-3" />
-
-          {(bp !== undefined || ep !== undefined) && (
-            <p className="text-xs text-zinc-300 mb-3">
-              {bp !== undefined && <span>💰 BP: {bp}</span>}
-              {bp !== undefined && ep !== undefined && <span>　</span>}
-              {ep !== undefined && <span>⚡ EP: {ep}</span>}
-            </p>
-          )}
-
-          <button
-            className="w-full text-xs text-zinc-400 hover:text-white border border-zinc-700 rounded-lg py-1.5 transition-colors"
-            onClick={() => setIsOpen(false)}
-          >閉じる</button>
         </div>
       )}
 
