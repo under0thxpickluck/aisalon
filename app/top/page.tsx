@@ -360,6 +360,7 @@ type AppDef = {
   color: string;
   href: string;
   desc: string;
+  badge?: string;
   comingSoon?: boolean;
   onOpen?: () => void;
 };
@@ -483,8 +484,11 @@ export default function AppHomePage() {
       { id: "market",   label: "マーケット",   icon: "🛒", color: "from-orange-400 to-amber-500",   href: "/market",     desc: "メンバー間売買" },
       { id: "gacha",    label: "ガチャ",       icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
       { id: "staking",  label: "ステーキング", icon: "💎", color: "from-cyan-400 to-teal-500",      href: "#staking",    desc: "BPを預けて増やす",      onOpen: () => { setSelectedApp(null); setShowStaking(true); } },
-      { id: "mission",  label: "ミッション",   icon: "📋", color: "from-yellow-400 to-orange-400", href: "#mission",    desc: "毎日の課題でBP" },
-      { id: "member",   label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600", href: "/membership", desc: "プランをアップグレード" },
+      { id: "mission",   label: "ミッション",    icon: "📋", color: "from-yellow-400 to-orange-400", href: "#mission",    desc: "毎日の課題でBP" },
+      { id: "member",    label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600",  href: "/membership", desc: "プランをアップグレード" },
+      { id: "music2",    label: "音楽生成NEW",   icon: "🎼", color: "from-gray-400 to-slate-500",   href: "/music2",     desc: "歌詞・構成・音楽を3ステップで生成（10BP）", badge: "準備中" },
+      { id: "note",      label: "ノート生成",    icon: "📝", color: "from-violet-400 to-purple-500", href: "/note",      desc: "構成→本文→見出し→導入文まで一括",         badge: "準備中" },
+      { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
     ],
     []
   );
@@ -568,7 +572,14 @@ export default function AppHomePage() {
               <p className="text-lg font-extrabold text-white">{selectedApp.label}</p>
               <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
             </div>
-            {selectedApp.onOpen ? (
+            {selectedApp.badge ? (
+              <button
+                disabled
+                className="mt-2 w-full rounded-2xl bg-slate-700 px-6 py-3 text-sm font-extrabold text-slate-400 cursor-not-allowed"
+              >
+                準備中
+              </button>
+            ) : selectedApp.onOpen ? (
               <button
                 onClick={selectedApp.onOpen}
                 className="mt-2 w-full rounded-2xl bg-amber-400 px-6 py-3 text-sm font-extrabold text-zinc-900 hover:bg-amber-300 active:scale-95 transition"
@@ -657,10 +668,17 @@ export default function AppHomePage() {
                   onClick={() => setSelectedApp(app)}
                   className="flex flex-col items-center gap-1 focus:outline-none"
                 >
-                  <div
-                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${app.color} flex items-center justify-center text-2xl shadow-md active:scale-95 transition`}
-                  >
-                    {app.icon}
+                  <div className="relative">
+                    <div
+                      className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${app.color} flex items-center justify-center text-2xl shadow-md active:scale-95 transition`}
+                    >
+                      {app.icon}
+                    </div>
+                    {app.badge && (
+                      <span className="absolute -top-1 -right-1 rounded-full bg-slate-700 px-1.5 py-0.5 text-[8px] font-bold text-white leading-none">
+                        {app.badge}
+                      </span>
+                    )}
                   </div>
                   <span className="text-[11px] text-zinc-600 text-center leading-tight">
                     {app.label}
