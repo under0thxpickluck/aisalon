@@ -556,7 +556,7 @@ export default function MusicProPage() {
           </div>
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight" style={{ color: C.textPrimary }}>
-            音楽生成 — PRO
+            BGM生成 — PRO
           </h1>
           <p className="mt-2 text-sm" style={{ color: C.textMuted }}>
             ジャンル・BPM・ボーカル・楽器を選択して高品質な音楽を生成します。

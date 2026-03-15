@@ -267,7 +267,7 @@ export default function MusicStandardPage() {
           </div>
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
-            音楽生成 — STANDARD
+            BGM生成 — STANDARD
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             日本語でテーマやムードを入力してください。自動で英語に変換して生成します。

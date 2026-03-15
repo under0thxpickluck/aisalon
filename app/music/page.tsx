@@ -89,12 +89,12 @@ export default function MusicPage() {
             </Link>
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
               <span className="text-base">🎵</span>
-              音楽生成
+              BGM生成
             </div>
           </div>
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
-            音楽生成
+            BGM生成
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             モードを選んでBGM・ループ音源を生成します。

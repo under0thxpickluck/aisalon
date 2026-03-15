@@ -4,6 +4,23 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// ── 1日1回制限：サーバーサイドin-memoryキャッシュ ────────────────────────────
+// key: `${loginId}:${missionType}:${YYYY-MM-DD(JST)}`
+const missionCompletedCache = new Map<string, true>();
+
+function todayJST(): string {
+  return new Date().toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+function missionCacheKey(loginId: string, missionType: string): string {
+  return `${loginId}:${missionType}:${todayJST()}`;
+}
+
 function getGasEnv() {
   const gasUrl      = process.env.GAS_WEBAPP_URL;
   const gasKey      = process.env.GAS_API_KEY;
@@ -68,6 +85,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "mission_type_required" }, { status: 400 });
   }
 
+  // 1日1回制限チェック
+  const cacheKey = missionCacheKey(loginId, missionType);
+  if (missionCompletedCache.has(cacheKey)) {
+    return NextResponse.json({ ok: false, error: "already_completed_today" }, { status: 400 });
+  }
+
   const { gasUrl, gasKey, gasAdminKey } = getGasEnv();
   if (!gasUrl || !gasKey || !gasAdminKey) {
     return NextResponse.json({ ok: false, error: "env_missing" }, { status: 500 });
@@ -88,6 +111,12 @@ export async function POST(req: Request) {
     });
 
     const data = await res.json().catch(() => ({ ok: false, error: "invalid_response" }));
+
+    // GASが成功した場合のみキャッシュに記録
+    if (data.ok) {
+      missionCompletedCache.set(cacheKey, true);
+    }
+
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ ok: false, error: "failed" }, { status: 502 });

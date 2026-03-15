@@ -85,6 +85,18 @@ export default function MissionCard({ loginId, onBpEarned }: Props) {
           return updated;
         });
         onBpEarned(result.bp_earned ?? 0);
+      } else if (result.error === "already_completed_today") {
+        // サーバー側で1日1回制限に引っかかった場合もdone表示にする
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            missions: {
+              ...prev.missions,
+              [missionType]: { ...prev.missions[missionType as keyof typeof prev.missions], done: true },
+            },
+          };
+        });
       }
     } catch {
       // サイレント失敗
