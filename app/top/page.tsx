@@ -479,7 +479,7 @@ export default function AppHomePage() {
   const apps: AppDef[] = useMemo(
     () => [
       { id: "fortune",  label: "団子占い",     icon: "🔮", color: "from-violet-500 to-purple-600",  href: "/fortune",    desc: "毎日の運勢 +10BP" },
-      { id: "music",    label: "音楽生成",     icon: "🎵", color: "from-sky-400 to-blue-500",       href: "/music",      desc: "テーマでBGM生成 40BP" },
+      { id: "music",    label: "BGM生成",      icon: "🎵", color: "from-sky-400 to-blue-500",       href: "/music",      desc: "テーマでBGM生成 40BP" },
       { id: "radio",    label: "RADIO",        icon: "📻", color: "from-emerald-400 to-green-500",  href: "#radio",      desc: "作業BGMでEP獲得" },
       { id: "market",   label: "マーケット",   icon: "🛒", color: "from-orange-400 to-amber-500",   href: "/market",     desc: "メンバー間売買" },
       { id: "gacha",    label: "ガチャ",       icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },

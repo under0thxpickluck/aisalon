@@ -76,9 +76,9 @@ const CAT_RULES: Rule[] = [
     page_id: 'top_home',
     delay_ms: 5000,
     cat: 'normal',
-    message: '使いたい機能をアイコンから選んでね。音楽生成やマーケットが人気だよ！',
+    message: '使いたい機能をアイコンから選んでね。BGM生成やマーケットが人気だよ！',
     cta: [
-      { label: '音楽生成を試す', action: 'navigate', target: '/music' },
+      { label: 'BGM生成を試す', action: 'navigate', target: '/music' },
       { label: 'マーケットを見る', action: 'navigate', target: '/market' },
     ],
   },
@@ -277,7 +277,7 @@ function hasPropsBadge(props: LifaiCatProps): boolean {
 function getCatReply(input: string): string {
   if (/BP|ポイント/.test(input))           return '占いやミッションで毎日BPが増やせるよ';
   if (/占い/.test(input))                  return '団子占いは毎日10BP獲得できるよ。今日もう見た？';
-  if (/音楽|music/i.test(input))           return '音楽生成は40BPで使えるよ。テーマを入れるだけ！';
+  if (/音楽|music/i.test(input))           return 'BGM生成は40BPで使えるよ。テーマを入れるだけ！';
   if (/ミッション/.test(input))            return '毎日のミッションをこなすと最大50BP/日もらえるよ';
   if (/RADIO|ラジオ/i.test(input))         return 'RADIOでは作業しながらEPが獲得できるよ';
   if (/副業|稼ぐ/.test(input))             return 'まずはミッションと占いから始めよう。毎日続けるのが大事！';

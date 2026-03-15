@@ -4,23 +4,6 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ── 1日1回制限：サーバーサイドin-memoryキャッシュ ────────────────────────────
-// key: `${loginId}:${missionType}:${YYYY-MM-DD(JST)}`
-const missionCompletedCache = new Map<string, true>();
-
-function todayJST(): string {
-  return new Date().toLocaleDateString("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
-function missionCacheKey(loginId: string, missionType: string): string {
-  return `${loginId}:${missionType}:${todayJST()}`;
-}
-
 function getGasEnv() {
   const gasUrl      = process.env.GAS_WEBAPP_URL;
   const gasKey      = process.env.GAS_API_KEY;
@@ -85,19 +68,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "mission_type_required" }, { status: 400 });
   }
 
-  // 1日1回制限チェック
-  const cacheKey = missionCacheKey(loginId, missionType);
-  if (missionCompletedCache.has(cacheKey)) {
-    return NextResponse.json({ ok: false, error: "already_completed_today" }, { status: 400 });
-  }
-
   const { gasUrl, gasKey, gasAdminKey } = getGasEnv();
   if (!gasUrl || !gasKey || !gasAdminKey) {
     return NextResponse.json({ ok: false, error: "env_missing" }, { status: 500 });
   }
 
+  const url = buildGasUrl(gasUrl, gasKey);
+
+  // 1日1回制限チェック：GASから現在のミッション状態を取得して確認
+  // （in-memoryは Vercel サーバーレスで再起動時にリセットされるため不適切）
   try {
-    const url = buildGasUrl(gasUrl, gasKey);
+    const checkRes = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({
+        action:   "get_missions",
+        adminKey: gasAdminKey,
+        loginId,
+      }),
+    });
+    const checkData = await checkRes.json().catch(() => ({ ok: false }));
+
+    if (checkData.ok && checkData.missions?.[missionType]?.done === true) {
+      return NextResponse.json({ ok: false, error: "already_completed_today" }, { status: 400 });
+    }
+  } catch {
+    // 確認失敗はスキップして続行（GASが落ちていても complete_mission 自体を止めない）
+  }
+
+  try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -111,12 +111,6 @@ export async function POST(req: Request) {
     });
 
     const data = await res.json().catch(() => ({ ok: false, error: "invalid_response" }));
-
-    // GASが成功した場合のみキャッシュに記録
-    if (data.ok) {
-      missionCompletedCache.set(cacheKey, true);
-    }
-
     return NextResponse.json(data);
   } catch {
     return NextResponse.json({ ok: false, error: "failed" }, { status: 502 });
