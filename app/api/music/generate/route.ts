@@ -256,6 +256,7 @@ export async function POST(req: Request) {
   console.log("[music/generate] REPLICATE_API_TOKEN present:", !!token, token ? `prefix=${token.slice(0, 6)}…` : "MISSING");
 
   if (!token) {
+    console.error("[MUSIC-GENERATE] failed: REPLICATE_API_TOKEN is missing");
     return NextResponse.json(
       { ok: false, error: "REPLICATE_API_TOKEN is missing" },
       { status: 500 }
@@ -266,6 +267,7 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
+    console.error("[MUSIC-GENERATE] failed: invalid_json - request body is not valid JSON");
     return NextResponse.json(
       { ok: false, error: "invalid_json" },
       { status: 400 }
@@ -275,6 +277,7 @@ export async function POST(req: Request) {
   const { prompt, mode, bpm = 120, waveform = "sine", vocal = "none" } = body;
 
   if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    console.error("[MUSIC-GENERATE] failed: prompt_required - received:", JSON.stringify(prompt));
     return NextResponse.json(
       { ok: false, error: "prompt_required" },
       { status: 400 }
@@ -282,6 +285,7 @@ export async function POST(req: Request) {
   }
 
   if (mode !== "standard" && mode !== "pro") {
+    console.error("[MUSIC-GENERATE] failed: mode_must_be_standard_or_pro - received:", JSON.stringify(mode));
     return NextResponse.json(
       { ok: false, error: "mode_must_be_standard_or_pro" },
       { status: 400 }
