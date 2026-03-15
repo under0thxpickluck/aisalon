@@ -327,9 +327,12 @@ export async function POST(req: Request) {
   const bridgePrompt = `${finalPrompt}, ${CONSISTENCY}, bridge section, variation, leading to finale, same vocalist`;
 
   try {
-    const verseId  = await createMinimaxPrediction(token, versePrompt,  sections.verse);
-    const chorusId = await createMinimaxPrediction(token, chorusPrompt, sections.chorus);
-    const bridgeId = await createMinimaxPrediction(token, bridgePrompt, sections.bridge);
+    // 3セクションを並列作成（順番に await すると最大9秒かかりタイムアウトするため）
+    const [verseId, chorusId, bridgeId] = await Promise.all([
+      createMinimaxPrediction(token, versePrompt,  sections.verse),
+      createMinimaxPrediction(token, chorusPrompt, sections.chorus),
+      createMinimaxPrediction(token, bridgePrompt, sections.bridge),
+    ]);
 
     // 6. ジョブをキャッシュに保存（status route が参照）
     cacheJob(jobId, { verseId, chorusId, bridgeId, stage: "verse", lyrics: "" });
