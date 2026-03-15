@@ -486,7 +486,7 @@ export default function AppHomePage() {
       { id: "staking",  label: "ステーキング", icon: "💎", color: "from-cyan-400 to-teal-500",      href: "#staking",    desc: "BPを預けて増やす",      onOpen: () => { setSelectedApp(null); setShowStaking(true); } },
       { id: "mission",   label: "ミッション",    icon: "📋", color: "from-yellow-400 to-orange-400", href: "#mission",    desc: "毎日の課題でBP" },
       { id: "member",    label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600",  href: "/membership", desc: "プランをアップグレード" },
-      { id: "music2",    label: "音楽生成NEW",   icon: "🎼", color: "from-gray-400 to-slate-500",   href: "/music2",     desc: "歌詞・構成・音楽を3ステップで生成（10BP）", badge: "準備中" },
+      { id: "music2",    label: "音楽生成NEW",   icon: "🎼", color: "from-gray-400 to-slate-500",   href: "/music2",     desc: "歌詞・構成・音楽を3ステップで生成", badge: "準備中" },
       { id: "note",      label: "ノート生成",    icon: "📝", color: "from-violet-400 to-purple-500", href: "/note",      desc: "構成→本文→見出し→導入文まで一括",         badge: "準備中" },
       { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
     ],
@@ -570,7 +570,15 @@ export default function AppHomePage() {
             </div>
             <div>
               <p className="text-lg font-extrabold text-white">{selectedApp.label}</p>
-              <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
+              {selectedApp.id === 'music2' ? (
+                <ul className="mt-1 text-sm text-zinc-400 text-left space-y-1">
+                  <li>① 歌詞を作成</li>
+                  <li>② メロディを作成</li>
+                  <li>③ 音楽生成 ※ボーカルは現在未実装です</li>
+                </ul>
+              ) : (
+                <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
+              )}
             </div>
             {selectedApp.badge ? (
               <button
