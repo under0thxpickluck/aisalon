@@ -166,7 +166,7 @@ async function createMinimaxPrediction(
   prompt: string,
   lyrics: string
 ): Promise<string> {
-  const input: Record<string, string> = { prompt };
+  const input: Record<string, string | boolean> = { prompt, instrumental: true };
   if (lyrics) input.lyrics = `##\n${lyrics.trim()}\n##`;
 
   // デバッグ: 送信内容をターミナルに出力
