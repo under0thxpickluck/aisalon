@@ -292,20 +292,18 @@ export async function POST(req: Request) {
     );
   }
 
-  // 1. 歌詞生成（バックグラウンド実行: タイムアウト対策のため await しない）
-  //    _lyrics は Replicate に送らないため、歌詞はキャッシュ表示用のみ
+  // 1. 歌詞生成（非致命的: 失敗しても音楽生成は続行）
+  let lyrics = "";
   const openaiKey = process.env.OPENAI_API_KEY;
-  const jobId = `music_${Date.now()}`;
   if (openaiKey) {
-    generateLyrics(prompt, openaiKey)
-      .then((lyrics) => {
-        if (lyrics) cacheLyrics(jobId, lyrics);
-        // ジョブが既にキャッシュされていれば lyrics を後から更新
-        const existing = (globalThis as any).__musicJobCache?.get?.(jobId);
-        if (existing) existing.lyrics = lyrics;
-      })
-      .catch(() => {});
+    try {
+      lyrics = await generateLyrics(prompt, openaiKey);
+    } catch {
+      lyrics = "";
+    }
   }
+
+  const jobId = `music_${Date.now()}`;
 
   // 2. ベースプロンプト構築
   let finalPrompt =
@@ -339,10 +337,11 @@ export async function POST(req: Request) {
     ]);
 
     // 6. ジョブをキャッシュに保存（status route が参照）
-    cacheJob(jobId, { verseId, chorusId, bridgeId, stage: "verse", lyrics: "" });
+    cacheJob(jobId, { verseId, chorusId, bridgeId, stage: "verse", lyrics });
+    if (lyrics) cacheLyrics(jobId, lyrics);
 
     return NextResponse.json(
-      { ok: true, predictionId: jobId },
+      { ok: true, predictionId: jobId, lyrics },
       { status: 200 }
     );
   } catch (e: any) {
