@@ -164,29 +164,32 @@ async function generateLyrics(
 async function createMinimaxPrediction(
   token: string,
   prompt: string,
-  lyrics: string
+  _lyrics: string
 ): Promise<string> {
-  const input: Record<string, string | boolean> = { prompt, instrumental: true };
-  if (lyrics) input.lyrics = `##\n${lyrics.trim()}\n##`;
-
   // デバッグ: 送信内容をターミナルに出力
-  console.log("[minimax] createMinimaxPrediction input:", {
+  console.log("[musicgen] createPrediction input:", {
     promptLength: prompt.length,
     promptPreview: prompt.slice(0, 120),
-    hasLyrics: !!lyrics,
-    lyricsLength: lyrics?.length ?? 0,
   });
 
   const res = await fetch(
-    "https://api.replicate.com/v1/models/minimax/music-01/predictions",
+    "https://api.replicate.com/v1/predictions",
     {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
-        "Prefer": "wait=5",
       },
-      body: JSON.stringify({ input }),
+      body: JSON.stringify({
+        version: "671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb",
+        input: {
+          prompt,
+          model_version: "stereo-large",
+          duration: 30,
+          output_format: "mp3",
+          normalization_strategy: "peak",
+        },
+      }),
     }
   );
 
