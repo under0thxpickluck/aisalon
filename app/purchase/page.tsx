@@ -6,7 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import { loadDraft, saveDraft, type Plan } from "@/components/storage";
 
 // ✅ プレセール表示を一括ON/OFF
-const ENABLE_PRESALE = true;
+const ENABLE_PRESALE = false;
+
+// ✅ 購入停止フラグ（trueにするとページ全体が購入不可になる）
+const PURCHASE_DISABLED = true;
 
 // ✅ 通常プレリリース割引率（表示だけ）
 const PRESALE_OFF_PCT = 15;
@@ -34,7 +37,7 @@ type PlanDef = {
 const PLANS: PlanDef[] = [
   {
     id: "30" as Plan,
-    priceLabel: "34 USDT",
+    priceLabel: "40 USDT",
     originalPriceLabel: "40 USDT",
     title: "Starter",
     desc: "まず体験して全体像を掴む",
@@ -42,7 +45,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "50" as Plan,
-    priceLabel: "57 USDT",
+    priceLabel: "67 USDT",
     originalPriceLabel: "67 USDT",
     title: "Builder",
     desc: "実践テンプレで手を動かして伸ばす",
@@ -50,7 +53,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "100" as Plan,
-    priceLabel: "114 USDT",
+    priceLabel: "134 USDT",
     originalPriceLabel: "134 USDT",
     title: "Automation",
     desc: "仕組み化の自動化ワークフローを使う",
@@ -59,7 +62,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "500" as Plan,
-    priceLabel: "567 USDT",
+    priceLabel: "667 USDT",
     originalPriceLabel: "667 USDT",
     title: "Core",
     desc: "中核メンバー枠：運用と案件を前に進める",
@@ -68,7 +71,7 @@ const PLANS: PlanDef[] = [
   },
   {
     id: "1000" as Plan,
-    priceLabel: "1,134 USDT",
+    priceLabel: "1,334 USDT",
     originalPriceLabel: "1,334 USDT",
     title: "Infra",
     desc: "影響層：インフラ整備と共同PJを牽引する",
@@ -273,10 +276,27 @@ export default function PurchasePage() {
       ? `/apply?applyId=${encodeURIComponent(draft.applyId)}&plan=${encodeURIComponent(selectedPlan.id)}`
       : "/apply";
 
-  const canGoNext = !!selectedPlan && !!draft?.applyId && paidChecked;
+  const canGoNext = !PURCHASE_DISABLED && !!selectedPlan && !!draft?.applyId && paidChecked;
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
+      {PURCHASE_DISABLED && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+          <div className="mx-4 rounded-[28px] border border-slate-200 bg-white px-8 py-8 text-center shadow-[0_30px_90px_rgba(2,6,23,.20)] max-w-sm w-full">
+            <div className="text-base font-extrabold text-slate-900">現在このページからの購入は停止中です</div>
+            <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+              準備が整い次第、再開いたします。<br />
+              しばらくお待ちください。
+            </p>
+            <Link
+              href="/"
+              className="mt-6 inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+            >
+              トップへ戻る
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_500px_at_15%_-10%,rgba(99,102,241,.18),transparent_60%),radial-gradient(800px_520px_at_110%_5%,rgba(56,189,248,.18),transparent_55%),linear-gradient(180deg,#ffffff,#f7f8fc_45%,#ffffff)]" />
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]"
@@ -289,7 +309,7 @@ export default function PurchasePage() {
 
       <div className="mx-auto max-w-[980px] px-4 py-10">
         {/* ✅ 画像：public/hero.png */}
-        <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="hidden mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="relative">
             <Image
               src="/hero.png"
@@ -388,14 +408,15 @@ export default function PurchasePage() {
                 <div className="mt-4 grid gap-3">
                   <button
                     type="button"
-                    disabled={!selectedPlan || payBusy}
+                    disabled={PURCHASE_DISABLED || !selectedPlan || payBusy}
                     className={[
                       "w-full rounded-2xl border px-4 py-4 text-left transition",
-                      selectedPlan && !payBusy
+                      !PURCHASE_DISABLED && selectedPlan && !payBusy
                         ? "border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
                         : "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed",
                     ].join(" ")}
                     onClick={async () => {
+                      if (PURCHASE_DISABLED) return;
                       if (!selectedPlan) return;
                       if (payBusy) return;
 
@@ -461,7 +482,7 @@ export default function PurchasePage() {
                     href="https://promote.mexc.com/r/m54hsj74"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:opacity-95 transition"
+                    className="hidden block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:opacity-95 transition"
                   >
                     <Image
                       src="/mexc.png"
@@ -473,7 +494,7 @@ export default function PurchasePage() {
                     />
                   </a>
 
-                  <div className="px-1 text-[11px] text-slate-500">
+                  <div className="hidden px-1 text-[11px] text-slate-500">
                     ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
                   </div>
 
