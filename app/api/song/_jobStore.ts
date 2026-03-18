@@ -23,6 +23,10 @@ export type SongJob = {
     theme: string;
     genre: string;
     mood: string;
+    language?: string;
+    durationTargetSec?: number;
+    structurePreset?: string;
+    moodTags?: string[];
   };
   lyricsData: {
     title: string;
@@ -39,7 +43,7 @@ export type SongJob = {
   } | null;
   audioUrl: string | null;
   downloadUrl: string | null;
-  stage?: "intro" | "verse" | "chorus" | "outro" | "merging";
+  stage?: "intro" | "verse" | "chorus" | "outro" | "merging" | "generating";
   rightsLog: {
     lyricsApproved: boolean;
     structureApproved: boolean;

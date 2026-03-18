@@ -75,6 +75,8 @@ export default function Music2Page() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [audioStage, setAudioStage] = useState<string | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
+  const [pwInput, setPwInput] = useState("");
 
   // ── 認証チェック ─────────────────────────────────────────────────────────
 
@@ -510,6 +512,24 @@ export default function Music2Page() {
       prev.includes(mood) ? prev.filter((m) => m !== mood) : [...prev, mood]
     );
   }
+
+  if (!unlocked) return (
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-white">
+      <p className="text-sm text-gray-400">管理者パスワードを入力してください</p>
+      <input
+        type="password"
+        value={pwInput}
+        onChange={e => setPwInput(e.target.value)}
+        className="border rounded px-3 py-2 text-sm"
+      />
+      <button
+        onClick={() => { if (pwInput === "nagoya01@") setUnlocked(true); }}
+        className="bg-blue-600 text-white px-4 py-2 rounded text-sm"
+      >
+        入力
+      </button>
+    </div>
+  );
 
   const canStart = theme.trim().length > 0 && genre !== "" && selectedMoods.length > 0 && !loading;
 
