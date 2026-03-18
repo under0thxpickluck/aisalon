@@ -524,14 +524,14 @@ export default function FortunePage() {
 
     if (loginId) {
       try {
-        const res  = await fetch('/api/fortune-bp', {
+        const res  = await fetch('/api/missions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ loginId }),
+          body: JSON.stringify({ loginId, mission_type: 'fortune' }),
         });
         const data = await res.json();
         if (data.ok) {
-          setToast('+10BP獲得！');
+          setToast(`+${data.bp_earned}BP獲得！`);
           setTimeout(() => setToast(null), 3000);
         }
         // already_claimed → silently ignore

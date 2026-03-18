@@ -1572,10 +1572,10 @@ function handle_(key, body) {
     const nowJst   = new Date(Date.now() + 9 * 60 * 60 * 1000);
     const todayStr = nowJst.toISOString().slice(0, 10);
 
-    const mLoginDate   = str_(hitRow[idx["mission_login_date"]]);
-    const mFortuneDate = str_(hitRow[idx["mission_fortune_date"]]);
-    const mMusicDate   = str_(hitRow[idx["mission_music_date"]]);
-    const mBonusDate   = str_(hitRow[idx["mission_bonus_date"]]);
+    const mLoginDate   = dateStr_(hitRow[idx["mission_login_date"]]);
+    const mFortuneDate = dateStr_(hitRow[idx["mission_fortune_date"]]);
+    const mMusicDate   = dateStr_(hitRow[idx["mission_music_date"]]);
+    const mBonusDate   = dateStr_(hitRow[idx["mission_bonus_date"]]);
     const bpBalance    = Number(hitRow[idx["bp_balance"]] || 0);
 
     return json_({
@@ -1654,7 +1654,7 @@ function handle_(key, body) {
     const todayStr = nowJst.toISOString().slice(0, 10);
 
     const missionColKey = MISSION_COL_MAP[missionType];
-    const existingDate  = str_(hitRow[idx[missionColKey]]);
+    const existingDate  = dateStr_(hitRow[idx[missionColKey]]);
 
     if (existingDate === todayStr) {
       return json_({ ok: false, reason: "already_done" });
@@ -1676,10 +1676,10 @@ function handle_(key, body) {
     });
 
     // 全ミッション完了チェック → ボーナス付与
-    const loginDone   = missionType === "login"   ? todayStr : str_(hitRow[idx["mission_login_date"]]);
-    const fortuneDone = missionType === "fortune" ? todayStr : str_(hitRow[idx["mission_fortune_date"]]);
-    const musicDone   = missionType === "music"   ? todayStr : str_(hitRow[idx["mission_music_date"]]);
-    const bonusDate   = str_(hitRow[idx["mission_bonus_date"]]);
+    const loginDone   = missionType === "login"   ? todayStr : dateStr_(hitRow[idx["mission_login_date"]]);
+    const fortuneDone = missionType === "fortune" ? todayStr : dateStr_(hitRow[idx["mission_fortune_date"]]);
+    const musicDone   = missionType === "music"   ? todayStr : dateStr_(hitRow[idx["mission_music_date"]]);
+    const bonusDate   = dateStr_(hitRow[idx["mission_bonus_date"]]);
 
     let allCompleteBonusGiven = false;
     let finalBp = newBp;
@@ -3481,6 +3481,14 @@ function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
     ContentService.MimeType.JSON
   );
+}
+
+function dateStr_(v) {
+  if (!v) return "";
+  const d = v instanceof Date ? v : new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().slice(0, 10);
 }
 
 function str_(v) {
