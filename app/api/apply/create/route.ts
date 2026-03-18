@@ -22,12 +22,9 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "apply",
+        action: "apply_create",
         plan,
         applyId,
-        email: "temp@pending.com",
-        name: "pending",
-        nameKana: "pending"
       }),
       cache: "no-store",
     });

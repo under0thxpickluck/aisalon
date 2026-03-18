@@ -132,6 +132,12 @@ export default function ApplyPage() {
 
   const [draft, setDraft] = useState<Draft>(emptyDraft);
 
+  // applyId復帰フォーム用state
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryInput, setRecoveryInput] = useState("");
+  const [recoveryChecking, setRecoveryChecking] = useState(false);
+  const [recoveryError, setRecoveryError] = useState("");
+
   // ✅ 重要：localStorage の読み込みは「マウント後」に行う（Hydration対策）
   useEffect(() => {
     const initial = loadDraft();
@@ -172,6 +178,11 @@ export default function ApplyPage() {
 
     // ✅ URLから来た applyId/plan を確実に次画面へ渡すため保存
     saveDraft(merged);
+
+    // applyId がどこにもない場合は復帰フォームを表示
+    if (!merged.applyId) {
+      setShowRecovery(true);
+    }
   }, [emptyDraft]);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
@@ -203,6 +214,34 @@ export default function ApplyPage() {
     !errors.city &&
     !errors.job;
 
+  // applyId復帰フォームの確認処理
+  async function handleRecoveryCheck() {
+    const id = recoveryInput.trim();
+    if (!id) {
+      setRecoveryError("注文IDを入力してください");
+      return;
+    }
+    setRecoveryChecking(true);
+    setRecoveryError("");
+    try {
+      const res = await fetch(`/api/apply/status?applyId=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (!data.ok || data.status === "not_found") {
+        setRecoveryError("その注文IDは見つかりませんでした。お確かめのうえ再入力してください。");
+        return;
+      }
+      // 見つかった → applyId を draft に保存してフォームへ進む
+      const next = { ...draft, applyId: id };
+      setDraft(next);
+      saveDraft(next);
+      setShowRecovery(false);
+    } catch {
+      setRecoveryError("確認中にエラーが発生しました。しばらくしてから再試行してください。");
+    } finally {
+      setRecoveryChecking(false);
+    }
+  }
+
   return (
     <main className="min-h-screen text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.22),transparent_60%),radial-gradient(900px_600px_at_115%_0%,rgba(34,211,238,.18),transparent_55%),linear-gradient(180deg,#F4F6FB,#FFFFFF_45%,#F4F6FB)]" />
@@ -216,6 +255,36 @@ export default function ApplyPage() {
       />
 
       <div className="mx-auto max-w-[920px] px-4 py-10">
+        {showRecovery && (
+          <div className="mb-6 rounded-[22px] border border-amber-300 bg-amber-50 p-6 shadow-sm">
+            <div className="text-sm font-extrabold text-amber-900">支払い後にページを閉じてしまった方へ</div>
+            <p className="mt-2 text-xs text-amber-800 leading-relaxed">
+              支払い時に発行された注文IDを入力すると、申請フォームに進めます。<br />
+              注文IDは「lifai_」で始まる番号です（例：lifai_1234567890）。
+            </p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+              <input
+                type="text"
+                value={recoveryInput}
+                onChange={(e) => setRecoveryInput(e.target.value)}
+                placeholder="例：lifai_1234567890"
+                className="flex-1 rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <button
+                type="button"
+                onClick={handleRecoveryCheck}
+                disabled={recoveryChecking}
+                className="rounded-2xl bg-amber-600 px-6 py-3 text-sm font-extrabold text-white hover:bg-amber-700 disabled:opacity-60"
+              >
+                {recoveryChecking ? "確認中…" : "確認する"}
+              </button>
+            </div>
+            {recoveryError && (
+              <div className="mt-3 text-xs font-semibold text-rose-700">{recoveryError}</div>
+            )}
+          </div>
+        )}
+
         <div className="mb-6 flex items-center justify-between gap-3">
           <Link
             href="/purchase"

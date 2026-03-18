@@ -380,7 +380,7 @@ function handle_(key, body) {
       } else {
         // email 必須（applyが未入力だとここで落とす）
         const email = str_(sheet.getRange(targetRowIndex, idx["email"] + 1).getValue());
-        if (!email) {
+        if (!email || email === "temp@pending.com" || email.endsWith("@pending.com")) {
           sheet.getRange(targetRowIndex, idx["status"] + 1).setValue("pending_error");
           sheet.getRange(targetRowIndex, idx["auto_approve_reason"] + 1).setValue("no_email");
           autoApproved = false;
