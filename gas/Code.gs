@@ -4749,7 +4749,10 @@ function __rescueAllPendingMail() {
 // ============================================================
 
 function getMusicJobSheet_() {
-  return getOrCreateSheet_("song_jobs");
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("song_jobs");
+  if (!sheet) sheet = ss.insertSheet("song_jobs");
+  return sheet;
 }
 
 function ensureMusicJobCols_(sheet) {
