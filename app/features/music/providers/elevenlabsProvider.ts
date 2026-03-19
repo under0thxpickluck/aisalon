@@ -91,16 +91,17 @@ export class ElevenLabsProvider implements MusicProvider {
       vocalMode: input.vocalMode,
     })
 
-    const res = await fetch("https://api.elevenlabs.io/v1/sound-generation", {
+    const res = await fetch("https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128", {
       method: "POST",
       headers: {
         "xi-api-key":   this.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text:              prompt,
-        duration_seconds:  Math.min(durationSec, 180),
-        prompt_influence:  0.5,
+        prompt:           prompt,
+        music_length_ms:  Math.min(durationSec * 1000, 600_000),
+        model_id:         "music_v1",
+        force_instrumental: input.vocalMode === "instrumental",
       }),
     })
 
