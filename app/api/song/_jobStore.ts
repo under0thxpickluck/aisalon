@@ -7,11 +7,16 @@ const GAS_API_KEY = process.env.GAS_API_KEY!;
 
 async function callGas(action: string, params: Record<string, unknown>) {
   const url = `${GAS_URL}${GAS_URL.includes("?") ? "&" : "?"}key=${encodeURIComponent(GAS_API_KEY)}`;
+  const bodyStr = JSON.stringify({ action, key: GAS_API_KEY, ...params });
   const res = await fetch(url, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ action, key: GAS_API_KEY, ...params }),
-    cache:   "no-store",
+    method:   "POST",
+    headers:  {
+      "Content-Type":   "application/json",
+      "Content-Length": String(Buffer.byteLength(bodyStr)),
+    },
+    body:     bodyStr,
+    cache:    "no-store",
+    redirect: "follow",
   });
   return res.json();
 }
