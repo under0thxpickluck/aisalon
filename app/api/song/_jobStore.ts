@@ -28,7 +28,7 @@ export type SongJob = {
   status:         JobStatus;
   stage?:         string;
   lyricsData?:    { title?: string; lyrics?: string } | null;
-  structureData?: { bpm?: number; key?: string; sections?: string[]; hook?: string } | null;
+  structureData?: { bpm?: number; key?: string; sections?: string[]; hook?: string; title?: string } | null;
   prompt:         {
     theme?: string; genre?: string; mood?: string;
     language?: string; durationTargetSec?: number;
