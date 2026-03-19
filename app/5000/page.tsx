@@ -690,7 +690,7 @@ export default function DaoMemberPage() {
             ))}
           </div>
 
-          {/* ロードマップ */}
+          {/* ロードマップ（縦タイムライン） */}
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -700,41 +700,120 @@ export default function DaoMemberPage() {
             className="rounded-2xl border border-white/8 p-5"
             style={{ background: "rgba(255,255,255,0.03)" }}
           >
-            <div className="text-xs tracking-widest text-white/30 font-semibold uppercase mb-4">
+            <div className="text-xs tracking-widest text-white/30 font-semibold uppercase mb-5">
               Roadmap
             </div>
-            <div className="flex flex-wrap gap-3">
-              {[
-                { label: "音楽生成", done: true },
-                { label: "AI自動化", done: true },
-                { label: "Bot", next: true },
-                { label: "Marketplace", next: true },
-                { label: "API", soon: true },
-              ].map(({ label, done, next, soon }) => (
-                <span
-                  key={label}
-                  className="rounded-full px-3 py-1 text-xs font-semibold"
-                  style={{
-                    background: done
-                      ? "rgba(108,99,255,0.2)"
-                      : next
-                      ? "rgba(0,212,255,0.1)"
-                      : "rgba(255,255,255,0.05)",
-                    color: done
-                      ? "#a5b4fc"
-                      : next
-                      ? "#00D4FF"
-                      : "rgba(255,255,255,0.3)",
-                    border: done
-                      ? "1px solid rgba(108,99,255,0.4)"
-                      : next
-                      ? "1px solid rgba(0,212,255,0.3)"
-                      : "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  {done ? "✅" : next ? "🔄" : "🔜"} {label}
-                </span>
-              ))}
+
+            <div className="relative">
+              {/* 縦線（紫グラデーション） */}
+              <div
+                className="absolute left-[7px] top-0 bottom-0 w-[2px]"
+                style={{
+                  background: "linear-gradient(to bottom, #6C63FF, #00D4FF)",
+                }}
+              />
+
+              <div className="flex flex-col gap-1">
+                {[
+                  { label: "音楽生成",   status: "done" },
+                  { label: "AI自動化",   status: "done" },
+                  { label: "マーケット", status: "dev"  },
+                  { label: "Bot",        status: "dev"  },
+                  { label: "ステーキング", status: "dev" },
+                  { label: "ワークフロー", status: "dev" },
+                  { label: "ノート生成", status: "dev"  },
+                  { label: "Marketplace", status: "soon" },
+                ].map(({ label, status }, i) => {
+                  const isDone = status === "done";
+                  const isDev  = status === "dev";
+
+                  return (
+                    <motion.div
+                      key={label}
+                      initial={{ opacity: 0, x: -8 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{
+                        delay: i * 0.07,
+                        duration: 0.4,
+                        ease: [0.25, 0.1, 0.25, 1],
+                      }}
+                      whileHover={{
+                        backgroundColor: "rgba(108,99,255,0.07)",
+                        transition: { duration: 0.15 },
+                      }}
+                      className="flex items-center gap-4 pl-5 pr-3 py-2.5 rounded-lg cursor-default"
+                    >
+                      {/* ドット */}
+                      <div className="relative flex-shrink-0 -ml-[18px]">
+                        {/* 外側リング */}
+                        <div
+                          className="h-4 w-4 rounded-full"
+                          style={{
+                            background: isDone
+                              ? "rgba(34,197,94,0.15)"
+                              : isDev
+                              ? "rgba(108,99,255,0.15)"
+                              : "rgba(255,255,255,0.05)",
+                          }}
+                        />
+                        {/* 内側ドット */}
+                        <div
+                          className={[
+                            "absolute inset-[4px] rounded-full",
+                            isDone || isDev ? "animate-pulse" : "",
+                          ].join(" ")}
+                          style={{
+                            background: isDone
+                              ? "#22c55e"
+                              : isDev
+                              ? "#6C63FF"
+                              : "rgba(255,255,255,0.25)",
+                          }}
+                        />
+                      </div>
+
+                      {/* ラベル */}
+                      <span
+                        className="text-sm font-medium flex-1"
+                        style={{
+                          color: isDone
+                            ? "rgba(255,255,255,0.95)"
+                            : isDev
+                            ? "rgba(255,255,255,0.55)"
+                            : "rgba(255,255,255,0.3)",
+                        }}
+                      >
+                        {label}
+                      </span>
+
+                      {/* ステータスバッジ */}
+                      <span
+                        className="text-[10px] font-semibold rounded-full px-2 py-0.5 flex-shrink-0"
+                        style={{
+                          background: isDone
+                            ? "rgba(34,197,94,0.15)"
+                            : isDev
+                            ? "rgba(108,99,255,0.18)"
+                            : "rgba(255,255,255,0.05)",
+                          color: isDone
+                            ? "#4ade80"
+                            : isDev
+                            ? "#a5b4fc"
+                            : "rgba(255,255,255,0.3)",
+                          border: isDone
+                            ? "1px solid rgba(34,197,94,0.3)"
+                            : isDev
+                            ? "1px solid rgba(108,99,255,0.35)"
+                            : "1px solid rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        {isDone ? "✅ 稼働中" : isDev ? "🔄 開発中" : "🔜 近日公開"}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
         </section>
