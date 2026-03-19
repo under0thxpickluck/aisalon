@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { loadDraft, saveDraft } from "@/components/storage";
 
 /* ===== 定数 ===== */
@@ -12,12 +12,12 @@ const AMOUNT_5000 = 5000;
 type PlanId = "1000" | "2000" | "5000";
 
 /* ===== fade variants ===== */
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 32 },
   visible: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, delay: i * 0.12, ease: "easeOut" },
+    transition: { duration: 0.6, delay: i * 0.12, ease: [0.25, 0.1, 0.25, 1] },
   }),
 };
 
