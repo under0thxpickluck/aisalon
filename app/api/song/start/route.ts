@@ -74,14 +74,14 @@ async function generateLyricsBackground(
     const title = titleMatch ? titleMatch[1].trim() : `${theme}の歌`;
     const lyrics = content.replace(/TITLE:\s*.+\n?/, "").trim();
 
-    updateJob(jobId, {
+    await updateJob(jobId, {
       status: "lyrics_ready",
-      lyricsData: { title, lyrics, editedByUser: false, version: 1 },
+      lyricsData: { title, lyrics },
     });
   } catch (e: any) {
     console.error("[song/start] lyrics generation error:", e);
     console.error("[song/start] error details:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
-    updateJob(jobId, { status: "failed", error: String(e?.message ?? e) });
+    await updateJob(jobId, { status: "failed", error: String(e?.message ?? e) });
   } finally {
     clearTimeout(t);
   }
@@ -156,13 +156,12 @@ export async function POST(req: Request) {
   }
 
   const jobId = generateJobId();
-  createJob({
+  await createJob(
     jobId,
-    userId: String(id),
-    theme: String(theme),
-    genre: String(genre),
-    mood: String(mood),
-  });
+    String(id),
+    { theme: String(theme), genre: String(genre), mood: String(mood) },
+    BP_COSTS.music_full
+  );
 
   const openaiKey = process.env.OPENAI_API_KEY;
   console.log("[song/start] OPENAI_API_KEY present:", !!openaiKey);
@@ -171,12 +170,12 @@ export async function POST(req: Request) {
     generateLyricsBackground(jobId, String(theme), String(genre), String(mood), openaiKey).catch(
       (e) => {
         console.error("[song/start] unhandled background error:", e);
-        updateJob(jobId, { status: "failed", error: String(e) });
+        updateJob(jobId, { status: "failed", error: String(e) }).catch(console.error);
       }
     );
   } else {
     console.error("[song/start] OPENAI_API_KEY is missing, marking job failed");
-    updateJob(jobId, { status: "failed", error: "openai_key_missing" });
+    await updateJob(jobId, { status: "failed", error: "openai_key_missing" });
   }
 
   return NextResponse.json({ ok: true, jobId, status: "lyrics_generating", bpLocked: BP_COSTS.music_full });

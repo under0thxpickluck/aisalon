@@ -1,119 +1,72 @@
 // app/api/song/_jobStore.ts
-// メモリキャッシュ、4時間TTL
-import { BP_COSTS } from "@/app/lib/bp-config";
+// GAS song_jobs シートによるジョブ永続化版
+// Vercelサーバーレスのインスタンス切れによるjob_not_foundを解消
 
-export type SongStatus =
-  | "queued"
-  | "lyrics_generating"
-  | "lyrics_ready"
-  | "structure_generating"
-  | "structure_ready"
-  | "audio_generating"
-  | "completed"
-  | "failed"
-  | "cancelled";
+const GAS_URL     = process.env.GAS_WEBAPP_URL!;
+const GAS_API_KEY = process.env.GAS_API_KEY!;
+
+async function callGas(action: string, params: Record<string, unknown>) {
+  const res = await fetch(GAS_URL, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ action, api_key: GAS_API_KEY, ...params }),
+    cache:   "no-store",
+  });
+  return res.json();
+}
+
+// ========== 型定義（既存と互換） ==========
+
+export type JobStatus =
+  | "queued" | "lyrics_generating" | "lyrics_ready"
+  | "structure_generating" | "structure_ready"
+  | "audio_generating" | "completed" | "failed" | "cancelled";
 
 export type SongJob = {
-  jobId: string;
-  userId: string;
-  status: SongStatus;
-  bpLocked: number;
-  bpFinal: number | null;
-  prompt: {
-    theme: string;
-    genre: string;
-    mood: string;
-    language?: string;
-    durationTargetSec?: number;
-    structurePreset?: string;
-    moodTags?: string[];
+  jobId:          string;
+  userId?:        string;
+  status:         JobStatus;
+  stage?:         string;
+  lyricsData?:    { title?: string; lyrics?: string } | null;
+  structureData?: { bpm?: number; key?: string; sections?: string[]; hook?: string } | null;
+  prompt:         {
+    theme?: string; genre?: string; mood?: string;
+    language?: string; durationTargetSec?: number;
+    structurePreset?: string; moodTags?: string[];
   };
-  lyricsData: {
-    title: string;
-    lyrics: string;
-    editedByUser: boolean;
-    version: number;
-  } | null;
-  structureData: {
-    bpm: number;
-    key: string;
-    sections: string[];
-    hookSummary: string;
-    title: string;
-  } | null;
-  audioUrl: string | null;
-  downloadUrl: string | null;
-  stage?: "intro" | "verse" | "chorus" | "outro" | "merging" | "generating";
-  rightsLog: {
-    lyricsApproved: boolean;
-    structureApproved: boolean;
-    humanEditedLyrics: boolean;
-  };
-  error: string | null;
-  createdAt: number;
-  updatedAt: number;
+  audioUrl?:      string;
+  downloadUrl?:   string;
+  error?:         string;
+  bpLocked?:      number;
+  bpFinal?:       number;
+  rightsLog?:     { lyricsApproved?: boolean; structureApproved?: boolean; humanEdited?: boolean };
 };
 
-// シングルトンパターン：Next.jsのホットリロード時もjobMapを維持するためglobalを使用
-// モジュールローカルのMapだと各APIルートで別インスタンスになり共有できない
-const globalStore = global as typeof global & {
-  __jobMap__: Map<string, SongJob>;
-};
-if (!globalStore.__jobMap__) {
-  globalStore.__jobMap__ = new Map();
-}
-const store = globalStore.__jobMap__;
+// ========== CRUD ==========
 
-const TTL_MS = 4 * 60 * 60 * 1000; // 4時間
-
-export function createJob(params: {
-  jobId: string;
-  userId: string;
-  theme: string;
-  genre: string;
-  mood: string;
-}): SongJob {
-  const now = Date.now();
-  const job: SongJob = {
-    jobId: params.jobId,
-    userId: params.userId,
-    status: "lyrics_generating",
-    bpLocked: BP_COSTS.music_full,
-    bpFinal: null,
-    prompt: { theme: params.theme, genre: params.genre, mood: params.mood },
-    lyricsData: null,
-    structureData: null,
-    audioUrl: null,
-    downloadUrl: null,
-    rightsLog: {
-      lyricsApproved: false,
-      structureApproved: false,
-      humanEditedLyrics: false,
-    },
-    error: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  store.set(params.jobId, job);
-  console.log(`[jobStore] created: ${params.jobId}, storeSize: ${store.size}`);
-  setTimeout(() => store.delete(params.jobId), TTL_MS);
-  return job;
+export async function createJob(
+  jobId: string,
+  userId: string,
+  prompt: SongJob["prompt"],
+  bpLocked: number
+): Promise<void> {
+  await callGas("create_music_job", { jobId, userId, prompt, bpLocked });
 }
 
-export function getJob(jobId: string): SongJob | null {
-  const job = store.get(jobId) ?? null;
-  console.log(`[jobStore] get: ${jobId}, found: ${job !== null}, storeSize: ${store.size}`);
-  return job;
+export async function getJob(jobId: string): Promise<SongJob | null> {
+  const res = await callGas("get_music_job", { jobId });
+  if (!res.ok) return null;
+  return res as SongJob;
 }
 
-export function updateJob(jobId: string, update: Partial<SongJob>): SongJob | null {
-  const existing = store.get(jobId);
-  if (!existing) return null;
-  const updated: SongJob = { ...existing, ...update, updatedAt: Date.now() };
-  store.set(jobId, updated);
-  return updated;
+export async function updateJob(
+  jobId: string,
+  fields: Partial<Omit<SongJob, "jobId">>
+): Promise<void> {
+  await callGas("update_music_job", { jobId, fields });
 }
 
-export function listUserJobs(userId: string): SongJob[] {
-  return Array.from(store.values()).filter((j) => j.userId === userId);
+// listUserJobs は今は未使用だがシグネチャ維持
+export async function listUserJobs(_userId: string): Promise<SongJob[]> {
+  return [];
 }

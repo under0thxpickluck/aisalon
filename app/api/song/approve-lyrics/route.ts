@@ -54,20 +54,19 @@ async function generateStructureBackground(
       parsed = {};
     }
 
-    updateJob(jobId, {
+    await updateJob(jobId, {
       status: "structure_ready",
       structureData: {
-        bpm: Number(parsed.bpm ?? 120),
-        key: String(parsed.key ?? "C major"),
+        bpm:      Number(parsed.bpm ?? 120),
+        key:      String(parsed.key ?? "C major"),
         sections: Array.isArray(parsed.sections)
           ? parsed.sections.map(String)
           : ["Intro", "Verse", "Chorus", "Outro"],
-        hookSummary: String(parsed.hookSummary ?? ""),
-        title: String(parsed.title ?? fallbackTitle),
+        hook: String(parsed.hookSummary ?? ""),
       },
     });
   } catch (e: any) {
-    updateJob(jobId, { status: "failed", error: String(e?.message ?? e) });
+    await updateJob(jobId, { status: "failed", error: String(e?.message ?? e) });
   } finally {
     clearTimeout(t);
   }
@@ -87,7 +86,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "jobId_required" }, { status: 400 });
   }
 
-  const job = getJob(String(jobId));
+  const job = await getJob(String(jobId));
   if (!job) {
     return NextResponse.json({ ok: false, error: "job_not_found" }, { status: 404 });
   }
@@ -103,18 +102,16 @@ export async function POST(req: Request) {
   const finalLyrics = typeof editedLyrics === "string" ? editedLyrics : originalLyrics;
   const editedByUser = finalLyrics !== originalLyrics;
 
-  updateJob(String(jobId), {
+  await updateJob(String(jobId), {
     status: "structure_generating",
     lyricsData: {
-      title: job.lyricsData?.title ?? "",
+      title:  job.lyricsData?.title ?? "",
       lyrics: finalLyrics,
-      editedByUser,
-      version: (job.lyricsData?.version ?? 1) + (editedByUser ? 1 : 0),
     },
     rightsLog: {
       ...job.rightsLog,
       lyricsApproved: true,
-      humanEditedLyrics: editedByUser,
+      humanEdited: editedByUser,
     },
   });
 
@@ -123,14 +120,14 @@ export async function POST(req: Request) {
     generateStructureBackground(
       String(jobId),
       finalLyrics,
-      job.prompt.theme,
-      job.prompt.genre,
-      job.prompt.mood,
-      job.lyricsData?.title ?? job.prompt.theme,
+      job.prompt.theme ?? "",
+      job.prompt.genre ?? "",
+      job.prompt.mood ?? "",
+      job.lyricsData?.title ?? job.prompt.theme ?? "",
       openaiKey
-    ).catch((e) => updateJob(String(jobId), { status: "failed", error: String(e) }));
+    ).catch((e) => updateJob(String(jobId), { status: "failed", error: String(e) }).catch(console.error));
   } else {
-    updateJob(String(jobId), { status: "failed", error: "openai_key_missing" });
+    await updateJob(String(jobId), { status: "failed", error: "openai_key_missing" });
   }
 
   return NextResponse.json({ ok: true, status: "structure_generating" });

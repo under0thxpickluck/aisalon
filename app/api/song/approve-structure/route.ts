@@ -17,7 +17,7 @@ async function generateAudioBackground(job: SongJob, apiKey: string): Promise<vo
   const { jobId, structureData, prompt, lyricsData } = job;
 
   try {
-    updateJob(jobId, { stage: "generating" });
+    await updateJob(jobId, { stage: "generating" });
 
     const input: MusicGenerateInput = {
       prompt:            prompt.theme ?? prompt.genre ?? "",
@@ -48,7 +48,7 @@ async function generateAudioBackground(job: SongJob, apiKey: string): Promise<vo
       }
     }
 
-    updateJob(jobId, {
+    await updateJob(jobId, {
       status:      "completed",
       audioUrl:    finalUrl,
       downloadUrl: finalUrl,
@@ -59,7 +59,7 @@ async function generateAudioBackground(job: SongJob, apiKey: string): Promise<vo
   } catch (err: any) {
     const errorMsg = String(err?.message ?? err);
     console.error(`[Job ${jobId}] Failed:`, errorMsg);
-    updateJob(jobId, { status: "failed", error: errorMsg });
+    await updateJob(jobId, { status: "failed", error: errorMsg });
   }
 }
 
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   if (!jobId)            return NextResponse.json({ ok: false, error: "jobId_required" },        { status: 400 });
   if (approved !== true) return NextResponse.json({ ok: false, error: "approved_must_be_true" }, { status: 400 });
 
-  const job = getJob(String(jobId));
+  const job = await getJob(String(jobId));
   if (!job) return NextResponse.json({ ok: false, error: "job_not_found" }, { status: 404 });
   if (job.status !== "structure_ready") {
     return NextResponse.json({ ok: false, error: "invalid_status", status: job.status }, { status: 400 });
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     console.error("[ElevenLabs] ELEVENLABS_API_KEY is not set");
-    updateJob(String(jobId), { status: "failed", error: "elevenlabs_api_key_missing" });
+    await updateJob(String(jobId), { status: "failed", error: "elevenlabs_api_key_missing" });
     return NextResponse.json({
       ok:      false,
       error:   "elevenlabs_api_key_missing",
@@ -92,12 +92,15 @@ export async function POST(req: Request) {
     }, { status: 500 });
   }
 
-  updateJob(String(jobId), {
+  await updateJob(String(jobId), {
     status:    "audio_generating",
     rightsLog: { ...job.rightsLog, structureApproved: true },
   });
 
-  const updatedJob = getJob(String(jobId))!;
+  const updatedJob = await getJob(String(jobId));
+  if (!updatedJob) {
+    return NextResponse.json({ ok: false, error: "job_not_found_after_update" }, { status: 404 });
+  }
   generateAudioBackground(updatedJob, apiKey); // fire-and-forget
 
   return NextResponse.json({ ok: true, status: "audio_generating" });
