@@ -1,7 +1,6 @@
 {
   "functions": {
-    "app/api/music/**": {
-      "maxDuration": 300
-    }
+    "app/api/music/**": { "maxDuration": 300 },
+    "app/api/song/approve-structure/**": { "maxDuration": 300 }
   }
 }
