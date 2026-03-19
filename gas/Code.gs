@@ -4617,6 +4617,9 @@ function doPost(e) {
     if (action === 'grant_bp_for_sell') return json_(handle_grant_bp_for_sell_(body)); // ✅ 追記
     if (action === 'get_pending_bp')    return json_(handle_get_pending_bp_(body));
     if (action === 'claim_pending_bp')  return json_(handle_claim_pending_bp_(body));
+    if (action === 'create_music_job') return createMusicJob_(body);
+    if (action === 'get_music_job')    return getMusicJob_(body);
+    if (action === 'update_music_job') return updateMusicJob_(body);
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -4739,3 +4742,119 @@ function __rescueAllPendingMail() {
   Logger.log('[rescue] 完了 sent=' + sent + ' failed=' + failed + ' skipped=' + skipped);
 }
 // doGet から seller_id をbodyに含めて渡しているため、GAS側でフィルター対応後に自動で有効になる
+
+// ============================================================
+// MUSIC JOB STORE（song_jobs シートによるジョブ永続化）
+// 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
+// ============================================================
+
+function getMusicJobSheet_() {
+  return getOrCreateSheet_("song_jobs");
+}
+
+function ensureMusicJobCols_(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  sheet.appendRow([
+    "job_id", "user_id", "status", "stage",
+    "lyrics_data", "structure_data", "prompt",
+    "audio_url", "download_url", "error",
+    "bp_locked", "bp_final",
+    "created_at", "updated_at"
+  ]);
+}
+
+// action: create_music_job
+// params: jobId, userId, prompt, bpLocked
+function createMusicJob_(params) {
+  var sheet = getMusicJobSheet_();
+  ensureMusicJobCols_(sheet);
+  var now = new Date().toISOString();
+  sheet.appendRow([
+    params.jobId,
+    params.userId || "",
+    "lyrics_generating",
+    "",
+    "",
+    "",
+    JSON.stringify(params.prompt || {}),
+    "",
+    "",
+    "",
+    params.bpLocked || 0,
+    0,
+    now,
+    now
+  ]);
+  return json_({ ok: true, jobId: params.jobId });
+}
+
+// action: get_music_job
+// params: jobId
+function getMusicJob_(params) {
+  var sheet = getMusicJobSheet_();
+  ensureMusicJobCols_(sheet);
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["job_id"]]) === String(params.jobId)) {
+      var row = data[i];
+      return json_({
+        ok:            true,
+        jobId:         row[idx["job_id"]],
+        userId:        row[idx["user_id"]],
+        status:        row[idx["status"]],
+        stage:         row[idx["stage"]],
+        lyricsData:    row[idx["lyrics_data"]]    ? JSON.parse(row[idx["lyrics_data"]])    : null,
+        structureData: row[idx["structure_data"]] ? JSON.parse(row[idx["structure_data"]]) : null,
+        prompt:        row[idx["prompt"]]         ? JSON.parse(row[idx["prompt"]])         : {},
+        audioUrl:      row[idx["audio_url"]],
+        downloadUrl:   row[idx["download_url"]],
+        error:         row[idx["error"]],
+        bpLocked:      row[idx["bp_locked"]],
+        bpFinal:       row[idx["bp_final"]],
+        createdAt:     row[idx["created_at"]],
+        updatedAt:     row[idx["updated_at"]],
+      });
+    }
+  }
+  return json_({ ok: false, error: "job_not_found" });
+}
+
+// action: update_music_job
+// params: jobId, fields（更新したいキーのみ）
+function updateMusicJob_(params) {
+  var sheet = getMusicJobSheet_();
+  ensureMusicJobCols_(sheet);
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["job_id"]]) === String(params.jobId)) {
+      var rowNum = i + 1;
+      var fields = params.fields || {};
+      var colMap = {
+        status:        "status",
+        stage:         "stage",
+        lyricsData:    "lyrics_data",
+        structureData: "structure_data",
+        audioUrl:      "audio_url",
+        downloadUrl:   "download_url",
+        error:         "error",
+        bpFinal:       "bp_final",
+      };
+      Object.keys(fields).forEach(function(key) {
+        if (colMap[key] !== undefined && idx[colMap[key]] !== undefined) {
+          var val = fields[key];
+          if (typeof val === "object" && val !== null) val = JSON.stringify(val);
+          sheet.getRange(rowNum, idx[colMap[key]] + 1).setValue(val);
+        }
+      });
+      sheet.getRange(rowNum, idx["updated_at"] + 1).setValue(new Date().toISOString());
+      return json_({ ok: true });
+    }
+  }
+  return json_({ ok: false, error: "job_not_found" });
+}
