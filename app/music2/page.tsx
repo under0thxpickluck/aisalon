@@ -873,7 +873,7 @@ export default function Music2Page() {
                   {audioStage === "chorus"  && "サビ生成中... (3/4)"}
                   {audioStage === "outro"   && "アウトロ生成中... (4/4)"}
                   {audioStage === "merging" && "仕上げ中..."}
-                  {!audioStage && "ElevenLabsで生成中です。"}
+                  {!audioStage && "りふぁねこが一生懸命作曲中です🎵"}
                   <br />
                   完成すると自動的に次のステップに進みます。
                 </p>
