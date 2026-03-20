@@ -938,30 +938,25 @@ export default function Music2Page() {
                   </Link>
                 </div>
 
-                {/* 歌詞表示・ダウンロード */}
-                {resultLyrics && (
-                  <div className="mt-4">
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 max-h-60 overflow-y-auto">
-                      <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
-                        {resultLyrics}
-                      </pre>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const blob = new Blob([resultLyrics ?? ""], { type: "text/plain;charset=utf-8" });
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `lifai-lyrics-${Date.now()}.txt`;
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                      }}
-                      className="mt-2 w-full py-2 rounded-xl border border-gray-300 text-gray-700 text-sm hover:bg-gray-50 transition"
-                    >
-                      📄 歌詞をダウンロード
-                    </button>
+                {/* 歌詞表示（サービス開始時に開放） */}
+                <div className="relative mt-4">
+                  {/* ぼかし表示 */}
+                  <div className="blur-sm select-none pointer-events-none bg-white/5 border border-white/10 rounded-xl p-4 h-32 overflow-hidden">
+                    <p className="text-sm text-gray-400">
+                      [Verse A]<br/>
+                      歌詞は近日公開予定です<br/>
+                      もうしばらくお待ちください<br/>
+                      [Chorus]<br/>
+                      サービス開始時に解放されます
+                    </p>
                   </div>
-                )}
+                  {/* ロックオーバーレイ */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 rounded-xl">
+                    <span className="text-2xl mb-1">🔒</span>
+                    <p className="text-sm font-bold text-gray-700">歌詞機能は近日公開予定</p>
+                    <p className="text-xs text-gray-500">サービス正式開始時に解放されます</p>
+                  </div>
+                </div>
               </div>
             </>
           )}
