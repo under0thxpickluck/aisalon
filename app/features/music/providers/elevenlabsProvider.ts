@@ -100,7 +100,7 @@ export class ElevenLabsProvider implements MusicProvider {
       },
       body: JSON.stringify({
         prompt:             prompt,
-        music_length_ms:    30000,
+        music_length_ms:    60000,
         model_id:           "music_v1",
         force_instrumental: input.vocalMode === "instrumental",
       }),
