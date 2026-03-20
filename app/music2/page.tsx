@@ -942,7 +942,7 @@ export default function Music2Page() {
                 {resultLyrics && (
                   <div className="mt-4">
                     <div className="bg-white/5 border border-white/10 rounded-xl p-4 max-h-60 overflow-y-auto">
-                      <pre className="text-sm text-white/80 whitespace-pre-wrap font-sans leading-relaxed">
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
                         {resultLyrics}
                       </pre>
                     </div>
@@ -956,7 +956,7 @@ export default function Music2Page() {
                         a.click();
                         window.URL.revokeObjectURL(url);
                       }}
-                      className="mt-2 w-full py-2 rounded-xl border border-white/20 text-white/60 text-sm hover:bg-white/5 transition"
+                      className="mt-2 w-full py-2 rounded-xl border border-gray-300 text-gray-700 text-sm hover:bg-gray-50 transition"
                     >
                       📄 歌詞をダウンロード
                     </button>
