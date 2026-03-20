@@ -32,7 +32,7 @@ type StructureData = {
 function downloadAudio(url: string, title: string) {
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${title || "lifai_song"}_${Date.now()}.wav`;
+  a.download = `${title || "lifai_song"}_${Date.now()}.mp3`;
   a.target = "_blank";
   a.click();
 }
@@ -904,7 +904,7 @@ export default function Music2Page() {
                       onClick={() => downloadAudio(downloadUrl, resultTitle)}
                       className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
                     >
-                      WAVをダウンロード
+                      MP3をダウンロード
                     </button>
                   )}
                   <button
@@ -913,6 +913,22 @@ export default function Music2Page() {
                   >
                     もう1曲作る
                   </button>
+                </div>
+
+                {/* リリース・売却申請ボタン */}
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Link
+                    href="/music-release-guide"
+                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-50"
+                  >
+                    🎵 リリースガイドを見る
+                  </Link>
+                  <Link
+                    href="/apply-sell"
+                    className="flex-1 rounded-2xl border border-violet-200 bg-white px-4 py-2.5 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
+                  >
+                    💰 売却申請
+                  </Link>
                 </div>
 
                 {/* 歌詞表示（ロック） */}
