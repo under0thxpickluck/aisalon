@@ -488,6 +488,7 @@ export default function AppHomePage() {
       { id: "music2",    label: "音楽生成NEW",   icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",     desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
       { id: "note",      label: "ノート生成",    icon: "📝", color: "from-violet-400 to-purple-500", href: "/note",      desc: "構成→本文→見出し→導入文まで一括",         badge: "準備中" },
       { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
+      { id: "minigames", label: "LIFAI Arcade", icon: "🎮", color: "from-pink-500 to-purple-600",   href: "/mini-games", desc: "ミニゲームで報酬をゲット",                 badge: "New" },
     ],
     []
   );
