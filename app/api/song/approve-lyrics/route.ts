@@ -4,6 +4,7 @@ import { getJob, updateJob } from "../_jobStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 async function generateStructureBackground(
   jobId: string,
@@ -117,7 +118,7 @@ export async function POST(req: Request) {
 
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
-    generateStructureBackground(
+    await generateStructureBackground(
       String(jobId),
       finalLyrics,
       job.prompt.theme ?? "",
@@ -125,10 +126,11 @@ export async function POST(req: Request) {
       job.prompt.mood ?? "",
       job.lyricsData?.title ?? job.prompt.theme ?? "",
       openaiKey
-    ).catch((e) => updateJob(String(jobId), { status: "failed", error: String(e) }).catch(console.error));
+    ); // 完了まで待つ
   } else {
     await updateJob(String(jobId), { status: "failed", error: "openai_key_missing" });
   }
 
-  return NextResponse.json({ ok: true, status: "structure_generating" });
+  const completedJob = await getJob(String(jobId));
+  return NextResponse.json({ ok: true, status: completedJob?.status ?? "structure_ready" });
 }
