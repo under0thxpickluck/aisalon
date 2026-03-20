@@ -242,9 +242,9 @@ export default function DaoMemberPage() {
               LIFAI Limited Access
             </div>
             <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4 leading-tight">
-              今は一部の参加者だけが
+              AIを使えるかどうかで、
               <br className="hidden sm:block" />
-              使っている
+              未来は分かれる。
             </h1>
             <p className="text-xl text-white/45 mb-10">$1,000 / $2,000 / $5,000</p>
           </motion.div>
