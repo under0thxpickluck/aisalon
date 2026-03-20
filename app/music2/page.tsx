@@ -554,11 +554,18 @@ export default function Music2Page() {
         <span>{label}</span>
         <span>{Math.round(progress)}%</span>
       </div>
-      <div className="mt-2 h-2 w-full overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+      <div className="relative mt-2 h-2 w-full rounded-full border border-slate-200 bg-slate-100">
         <div
           className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
           style={{ width: `${progress}%` }}
         />
+        {/* 猫がバーの先端を走る */}
+        <span
+          className="absolute -top-3 text-base transition-all duration-500"
+          style={{ left: `calc(${progress}% - 10px)` }}
+        >
+          🐱
+        </span>
       </div>
     </div>
   );
@@ -866,7 +873,7 @@ export default function Music2Page() {
                   {audioStage === "chorus"  && "サビ生成中... (3/4)"}
                   {audioStage === "outro"   && "アウトロ生成中... (4/4)"}
                   {audioStage === "merging" && "仕上げ中..."}
-                  {!audioStage && "Replicateのmeta/musicgenモデルで生成中です。"}
+                  {!audioStage && "ElevenLabsで生成中です。"}
                   <br />
                   完成すると自動的に次のステップに進みます。
                 </p>
