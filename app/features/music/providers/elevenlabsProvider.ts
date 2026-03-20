@@ -36,11 +36,12 @@ export function buildElevenLabsPrompt(input: MusicGenerateInput): string {
   if (input.mood)   parts.push(input.mood)
   if (input.prompt) parts.push(input.prompt)
 
-  const lang = input.language === "ja" ? "Japanese lyrics" : input.language === "en" ? "English lyrics" : ""
-  if (lang) parts.push(lang)
-
   if (input.vocalMode === "vocal") {
-    parts.push("vocal song, human-like singing, warm and natural voice")
+    // 日本語: 言語名を直接書かず、アジア系ボーカルスタイルで指定
+    const vocalStyle = input.language === "ja"
+      ? "vocal song, Asian female vocal, warm and natural voice, melodic singing style"
+      : "vocal song, human-like singing, warm and natural voice"
+    parts.push(vocalStyle)
   } else {
     parts.push("instrumental, no vocals")
   }
@@ -71,15 +72,7 @@ export function buildElevenLabsPrompt(input: MusicGenerateInput): string {
     parts.push(input.moodTags.join(", "))
   }
 
-  // 日本語テキストを含まないようにする（ElevenLabs規約対応）
-  // languageはlyrics指定のみに使い、promptには含めない
-  const filteredParts = parts.filter(p =>
-    !p.includes("Japanese lyrics") &&
-    !p.includes("日本語") &&
-    !/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(p)
-  )
-
-  return filteredParts.filter(Boolean).join(", ")
+  return parts.filter(Boolean).join(", ")
 }
 
 export class ElevenLabsProvider implements MusicProvider {
