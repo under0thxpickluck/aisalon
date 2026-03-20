@@ -65,18 +65,18 @@ export default function MiniGamesPage() {
         </div>
 
         {/* タップゲーム */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 opacity-50">
+        <Link href="/mini-games/tap" className="bg-white/5 border border-purple-500/30 rounded-2xl p-6 hover:bg-white/10 transition block">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <span className="text-3xl">👆</span>
+              <span className="text-3xl">⛏️</span>
               <div>
                 <h2 className="font-bold">Tap Mining</h2>
-                <p className="text-white/40 text-xs">連打でポイント獲得</p>
+                <p className="text-white/40 text-xs">毎日500タップでBP獲得</p>
               </div>
             </div>
-            <span className="bg-white/10 text-white/40 text-xs px-3 py-1 rounded-full">Coming Soon</span>
+            <span className="bg-purple-500/20 text-purple-400 text-xs px-3 py-1 rounded-full">PLAY</span>
           </div>
-        </div>
+        </Link>
       </div>
 
       <Link href="/top" className="block text-center text-white/30 text-sm mt-10">
