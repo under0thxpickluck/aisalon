@@ -19,7 +19,7 @@ export type MusicGenerateInput = {
 
 export type MusicGenerateResult = {
   provider: string
-  audioUrl: string
+  audioBuffer: ArrayBuffer
   durationSec?: number
   rawResponse?: unknown
 }
@@ -61,6 +61,7 @@ export function buildElevenLabsPrompt(input: MusicGenerateInput): string {
       ballad:     "structure: intro, verse, chorus, verse, chorus, outro",
       upbeat:     "structure: intro, verse, chorus, verse, chorus, bridge, outro",
       cinematic:  "structure: intro, build, climax, resolution, outro",
+      hook_only:  "structure: hook (chorus only)",
     }
     const structStr = structureMap[input.structurePreset]
     if (structStr) parts.push(structStr)
@@ -98,9 +99,9 @@ export class ElevenLabsProvider implements MusicProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        prompt:           prompt,
-        music_length_ms:  Math.min(durationSec * 1000, 600_000),
-        model_id:         "music_v1",
+        prompt:             prompt,
+        music_length_ms:    30000,
+        model_id:           "music_v1",
         force_instrumental: input.vocalMode === "instrumental",
       }),
     })
@@ -118,12 +119,9 @@ export class ElevenLabsProvider implements MusicProvider {
 
     console.log(`[ElevenLabs] Generation succeeded`, { audioBytes: audioBuffer.byteLength })
 
-    const base64  = Buffer.from(audioBuffer).toString("base64")
-    const audioUrl = `data:audio/mpeg;base64,${base64}`
-
     return {
       provider:    "elevenlabs",
-      audioUrl,
+      audioBuffer,
       rawResponse: { bytes: audioBuffer.byteLength },
     }
   }

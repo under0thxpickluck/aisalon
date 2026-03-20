@@ -828,6 +828,10 @@ export default function Music2Page() {
                 <button onClick={handleApproveStructure} className={btnPrimary}>
                   これで曲を作る →
                 </button>
+                {/* Beta版注記 */}
+                <p className="text-xs text-orange-400 text-center mt-2">
+                  ⚠️ Beta版のため、現在は30秒・1セクション（サビのみ）の生成となります
+                </p>
                 <div className="flex gap-2">
                   <button onClick={handleRedoStructure} className={`flex-1 ${btnSecondary}`}>
                     歌詞に戻る

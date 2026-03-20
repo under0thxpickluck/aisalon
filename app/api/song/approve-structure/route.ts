@@ -28,25 +28,22 @@ async function generateAudioBackground(job: SongJob, apiKey: string): Promise<vo
       lyrics:            lyricsData?.lyrics,
       lyricsMode:        lyricsData?.lyrics ? "manual" : "auto",
       language:          prompt.language ?? "ja",
-      durationTargetSec: prompt.durationTargetSec ?? 165,
+      durationTargetSec: 30,
       vocalMode:         "vocal",
-      structurePreset:   prompt.structurePreset ?? "ballad",
+      structurePreset:   "hook_only",
       moodTags:          prompt.moodTags ?? [],
     };
 
     const provider = new ElevenLabsProvider(apiKey);
     const result   = await provider.generateMusic(input);
 
-    let finalUrl = result.audioUrl;
-    if (result.audioUrl.startsWith("data:")) {
-      const base64Data  = result.audioUrl.split(",")[1];
-      const audioBuffer = Buffer.from(base64Data, "base64").buffer;
-      const r2Url       = await uploadToR2(audioBuffer, jobId, job.userId ?? "unknown");
-      if (r2Url) {
-        finalUrl = r2Url;
-        console.log(`[Job ${jobId}] Uploaded to R2: ${r2Url}`);
-      }
+    // R2に必ず保存する（base64/data URLは使わない）
+    const r2Url = await uploadToR2(result.audioBuffer, jobId, job.userId ?? "unknown");
+    if (!r2Url) {
+      throw new Error("r2_upload_failed: R2へのアップロードに失敗しました");
     }
+    const finalUrl = r2Url;
+    console.log(`[Job ${jobId}] Uploaded to R2: ${r2Url}`);
 
     await updateJob(jobId, {
       status:      "completed",
