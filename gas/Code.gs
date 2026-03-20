@@ -4620,6 +4620,9 @@ function doPost(e) {
     if (action === 'create_music_job') return createMusicJob_(body);
     if (action === 'get_music_job')    return getMusicJob_(body);
     if (action === 'update_music_job') return updateMusicJob_(body);
+    if (action === 'tap_play')    return tapPlay_(body);
+    if (action === 'tap_status')  return tapStatus_(body);
+    if (action === 'tap_ranking') return tapRanking_(body);
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -4860,4 +4863,254 @@ function updateMusicJob_(params) {
     }
   }
   return json_({ ok: false, error: "job_not_found" });
+}
+
+// ============================================================
+// TAP MINING GAME（tap_game / tap_logs シートによる管理）
+// 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
+// ============================================================
+
+function getTapGameSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("tap_game");
+  if (!sheet) sheet = ss.insertSheet("tap_game");
+  return sheet;
+}
+
+function getTapLogsSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("tap_logs");
+  if (!sheet) sheet = ss.insertSheet("tap_logs");
+  return sheet;
+}
+
+function ensureTapGameCols_(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  sheet.appendRow([
+    "user_id", "total_taps", "today_taps", "today_bp_earned",
+    "today_ep_earned", "max_combo", "today_max_combo",
+    "daily_reset_at", "last_tap_at", "suspicious_flag"
+  ]);
+}
+
+function ensureTapLogsCols_(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  sheet.appendRow([
+    "log_id", "user_id", "tapped_at", "reward_bp", "reward_ep",
+    "combo_count", "fever_active", "reward_type"
+  ]);
+}
+
+function getTapGameRow_(sheet, userId) {
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === String(userId)) {
+      return { row: data[i], rowNum: i + 1, idx: idx };
+    }
+  }
+  return null;
+}
+
+function resetTapIfNeeded_(sheet, rowNum, idx, row) {
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var todayStr = nowJst.toISOString().slice(0, 10);
+  var lastReset = String(row[idx["daily_reset_at"]] || "").slice(0, 10);
+  if (lastReset !== todayStr) {
+    sheet.getRange(rowNum, idx["today_taps"] + 1).setValue(0);
+    sheet.getRange(rowNum, idx["today_bp_earned"] + 1).setValue(0);
+    sheet.getRange(rowNum, idx["today_ep_earned"] + 1).setValue(0);
+    sheet.getRange(rowNum, idx["today_max_combo"] + 1).setValue(0);
+    sheet.getRange(rowNum, idx["daily_reset_at"] + 1).setValue(todayStr);
+    return true;
+  }
+  return false;
+}
+
+// action: tap_play
+// params: userId, comboCount
+function tapPlay_(params) {
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var sheet = getTapGameSheet_();
+  ensureTapGameCols_(sheet);
+
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var nowStr = nowJst.toISOString();
+  var todayStr = nowStr.slice(0, 10);
+
+  var MAX_TAPS_PER_DAY = 500;
+  var BP_PER_TAP = 0.1;
+  var EP_RATE_1 = 0.0005;  // 0.05% → 0.1EP
+  var EP_RATE_2 = 0.0002;  // 0.02% → 0.2EP
+  var EP_RATE_3 = 0.0001;  // 0.01% → 0.5EP
+  var MAX_EP_PER_DAY = 0.5;
+
+  var found = getTapGameRow_(sheet, userId);
+  var rowNum, idx, row;
+
+  if (!found) {
+    // 新規ユーザー
+    sheet.appendRow([
+      userId, 0, 0, 0, 0, 0, 0, todayStr, nowStr, false
+    ]);
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+    rowNum = sheet.getLastRow();
+    row = data[rowNum - 1];
+  } else {
+    rowNum = found.rowNum;
+    idx = found.idx;
+    row = found.row;
+    resetTapIfNeeded_(sheet, rowNum, idx, row);
+    // リセット後に再取得
+    row = sheet.getRange(rowNum, 1, 1, row.length).getValues()[0];
+  }
+
+  var todayTaps = Number(row[idx["today_taps"]] || 0);
+  var todayBp   = Number(row[idx["today_bp_earned"]] || 0);
+  var todayEp   = Number(row[idx["today_ep_earned"]] || 0);
+  var totalTaps = Number(row[idx["total_taps"]] || 0);
+  var comboCount = Number(params.comboCount || 0);
+
+  // 上限チェック
+  if (todayTaps >= MAX_TAPS_PER_DAY) {
+    return json_({ ok: false, error: "daily_limit_reached", taps_remaining: 0 });
+  }
+
+  // コンボ倍率
+  var comboMultiplier = 1.0;
+  if (comboCount >= 100) comboMultiplier = 1.5;
+  else if (comboCount >= 50) comboMultiplier = 1.2;
+  else if (comboCount >= 20) comboMultiplier = 1.1;
+
+  // BP計算
+  var rewardBp = Math.round(BP_PER_TAP * comboMultiplier * 10) / 10;
+
+  // EP抽選（1日上限チェック込み）
+  var rewardEp = 0;
+  var rareHit = false;
+  var rewardType = "normal";
+  if (todayEp < MAX_EP_PER_DAY) {
+    var rand = Math.random();
+    if (rand < EP_RATE_3) { rewardEp = 0.5; rareHit = true; rewardType = "epic"; }
+    else if (rand < EP_RATE_3 + EP_RATE_2) { rewardEp = 0.2; rareHit = true; rewardType = "rare"; }
+    else if (rand < EP_RATE_3 + EP_RATE_2 + EP_RATE_1) { rewardEp = 0.1; rareHit = true; rewardType = "uncommon"; }
+    // EP上限チェック
+    if (todayEp + rewardEp > MAX_EP_PER_DAY) {
+      rewardEp = Math.round((MAX_EP_PER_DAY - todayEp) * 10) / 10;
+      if (rewardEp <= 0) { rewardEp = 0; rareHit = false; rewardType = "normal"; }
+    }
+  }
+
+  // デイリーボーナスチェック
+  var bonusBp = 0;
+  var newTodayTaps = todayTaps + 1;
+  if (todayTaps === 0) bonusBp = 5;       // 初タップ
+  else if (newTodayTaps === 50) bonusBp = 3;
+  else if (newTodayTaps === 100) bonusBp = 5;
+  else if (newTodayTaps === 300) bonusBp = 10;
+  rewardBp = Math.round((rewardBp + bonusBp) * 10) / 10;
+
+  // シート更新
+  var newTotalTaps = totalTaps + 1;
+  var newTodayBp   = Math.round((todayBp + rewardBp) * 10) / 10;
+  var newTodayEp   = Math.round((todayEp + rewardEp) * 10) / 10;
+  var maxCombo     = Math.max(Number(row[idx["max_combo"]] || 0), comboCount);
+  var todayMaxCombo = Math.max(Number(row[idx["today_max_combo"]] || 0), comboCount);
+
+  sheet.getRange(rowNum, idx["total_taps"] + 1).setValue(newTotalTaps);
+  sheet.getRange(rowNum, idx["today_taps"] + 1).setValue(newTodayTaps);
+  sheet.getRange(rowNum, idx["today_bp_earned"] + 1).setValue(newTodayBp);
+  sheet.getRange(rowNum, idx["today_ep_earned"] + 1).setValue(newTodayEp);
+  sheet.getRange(rowNum, idx["max_combo"] + 1).setValue(maxCombo);
+  sheet.getRange(rowNum, idx["today_max_combo"] + 1).setValue(todayMaxCombo);
+  sheet.getRange(rowNum, idx["last_tap_at"] + 1).setValue(nowStr);
+
+  // ログ記録
+  var logsSheet = getTapLogsSheet_();
+  ensureTapLogsCols_(logsSheet);
+  logsSheet.appendRow([
+    Utilities.getUuid(), userId, nowStr, rewardBp, rewardEp,
+    comboCount, false, rewardType
+  ]);
+
+  return json_({
+    ok: true,
+    reward_bp: rewardBp,
+    reward_ep: rewardEp,
+    rare_hit: rareHit,
+    reward_type: rewardType,
+    combo: comboCount,
+    today_bp_total: newTodayBp,
+    today_ep_total: newTodayEp,
+    taps_remaining: MAX_TAPS_PER_DAY - newTodayTaps,
+    bonus_bp: bonusBp
+  });
+}
+
+// action: tap_status
+// params: userId
+function tapStatus_(params) {
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var sheet = getTapGameSheet_();
+  ensureTapGameCols_(sheet);
+
+  var found = getTapGameRow_(sheet, userId);
+  if (!found) {
+    return json_({
+      ok: true,
+      today_taps: 0, today_bp: 0, today_ep: 0,
+      taps_remaining: 500, max_combo: 0, total_taps: 0
+    });
+  }
+
+  var rowNum = found.rowNum;
+  var idx    = found.idx;
+  var row    = found.row;
+  resetTapIfNeeded_(sheet, rowNum, idx, row);
+  row = sheet.getRange(rowNum, 1, 1, row.length).getValues()[0];
+
+  return json_({
+    ok: true,
+    today_taps:      Number(row[idx["today_taps"]] || 0),
+    today_bp:        Number(row[idx["today_bp_earned"]] || 0),
+    today_ep:        Number(row[idx["today_ep_earned"]] || 0),
+    taps_remaining:  500 - Number(row[idx["today_taps"]] || 0),
+    max_combo:       Number(row[idx["max_combo"]] || 0),
+    today_max_combo: Number(row[idx["today_max_combo"]] || 0),
+    total_taps:      Number(row[idx["total_taps"]] || 0),
+  });
+}
+
+// action: tap_ranking
+function tapRanking_(params) {
+  var sheet = getTapGameSheet_();
+  ensureTapGameCols_(sheet);
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return json_({ ok: true, ranking: [] });
+
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var rows = data.slice(1).map(function(row) {
+    return {
+      user_id:    String(row[idx["user_id"]]),
+      today_taps: Number(row[idx["today_taps"]] || 0),
+      today_bp:   Number(row[idx["today_bp_earned"]] || 0),
+    };
+  });
+
+  rows.sort(function(a, b) { return b.today_taps - a.today_taps; });
+  var top10 = rows.slice(0, 10);
+
+  return json_({ ok: true, ranking: top10 });
 }
