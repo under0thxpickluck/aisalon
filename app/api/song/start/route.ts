@@ -1,6 +1,6 @@
 // app/api/song/start/route.ts
 import { NextResponse } from "next/server";
-import { createJob, updateJob } from "../_jobStore";
+import { createJob, updateJob, getJob } from "../_jobStore";
 import { BP_COSTS } from "@/app/lib/bp-config";
 
 export const runtime = "nodejs";
@@ -51,7 +51,7 @@ async function generateLyricsBackground(
           {
             role: "system",
             content:
-              "あなたはプロの作詞家です。ユーザーの音楽テーマ・ジャンル・雰囲気に合った日本語の歌詞とタイトルを作成します。Aメロ・Bメロ・サビ・Aメロ・サビの構成で生成してください。合計最大40行、1行20文字以内の日本語歌詞にしてください。必ず以下のフォーマットで出力してください：\n\nTITLE: （タイトル）\n\n[Chorus]\n（サビ歌詞を4〜8行、1行20文字以内）\n\nタイトルと歌詞のみ出力し、説明やト書きは不要です。",
+              "あなたはプロの作詞家です。ユーザーの音楽テーマ・ジャンル・雰囲気に合った日本語の歌詞とタイトルを作成します。Aメロ・Bメロ・サビ・Aメロ・サビの構成で生成してください。合計最大40行、1行20文字以内の日本語歌詞にしてください。必ず以下のフォーマットで出力してください：\n\nTITLE: （タイトル）\n\n[Verse A]\n（Aメロ歌詞を4〜8行、1行20文字以内）\n\n[Verse B]\n（Bメロ歌詞を4〜8行、1行20文字以内）\n\n[Chorus]\n（サビ歌詞を4〜8行、1行20文字以内）\n\n[Verse A]\n（Aメロ歌詞を4〜8行、1行20文字以内）\n\n[Chorus]\n（サビ歌詞を4〜8行、1行20文字以内）\n\nタイトルと歌詞のみ出力し、説明やト書きは不要です。",
           },
           {
             role: "user",
@@ -167,17 +167,12 @@ export async function POST(req: Request) {
   const openaiKey = process.env.OPENAI_API_KEY;
   console.log("[song/start] OPENAI_API_KEY present:", !!openaiKey);
   if (openaiKey) {
-    // Fire-and-forget: バックグラウンドで歌詞生成
-    generateLyricsBackground(jobId, String(theme), String(genre), String(mood), openaiKey).catch(
-      (e) => {
-        console.error("[song/start] unhandled background error:", e);
-        updateJob(jobId, { status: "failed", error: String(e) }).catch(console.error);
-      }
-    );
+    await generateLyricsBackground(jobId, String(theme), String(genre), String(mood), openaiKey); // 完了まで待つ
   } else {
     console.error("[song/start] OPENAI_API_KEY is missing, marking job failed");
     await updateJob(jobId, { status: "failed", error: "openai_key_missing" });
   }
 
-  return NextResponse.json({ ok: true, jobId, status: "lyrics_generating", bpLocked: BP_COSTS.music_full });
+  const completedJob = await getJob(jobId);
+  return NextResponse.json({ ok: true, jobId, status: completedJob?.status ?? "lyrics_ready", bpLocked: BP_COSTS.music_full });
 }
