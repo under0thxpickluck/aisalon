@@ -938,28 +938,28 @@ export default function Music2Page() {
                   </Link>
                 </div>
 
-                {/* 歌詞表示（ロック） */}
+                {/* 歌詞表示・ダウンロード */}
                 {resultLyrics && (
-                  <div className="relative mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                    {/* ぼかした歌詞（背景として表示） */}
-                    <div
-                      className="px-4 pb-4 pt-3"
-                      style={{ filter: "blur(4px)", userSelect: "none", pointerEvents: "none" }}
-                    >
-                      <p className="whitespace-pre-line text-xs leading-relaxed text-slate-700">
+                  <div className="mt-4">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 max-h-60 overflow-y-auto">
+                      <pre className="text-sm text-white/80 whitespace-pre-wrap font-sans leading-relaxed">
                         {resultLyrics}
-                      </p>
+                      </pre>
                     </div>
-                    {/* ロックオーバーレイ */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/80 px-4 py-5">
-                      <span className="text-3xl">🔒</span>
-                      <p className="mt-2 text-sm font-bold" style={{ color: "#888888" }}>
-                        歌詞機能は近日公開予定
-                      </p>
-                      <p className="mt-1 text-xs" style={{ color: "#888888" }}>
-                        LIFAIの目標達成時に解放されます
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => {
+                        const blob = new Blob([resultLyrics ?? ""], { type: "text/plain;charset=utf-8" });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `lifai-lyrics-${Date.now()}.txt`;
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                      }}
+                      className="mt-2 w-full py-2 rounded-xl border border-white/20 text-white/60 text-sm hover:bg-white/5 transition"
+                    >
+                      📄 歌詞をダウンロード
+                    </button>
                   </div>
                 )}
               </div>
