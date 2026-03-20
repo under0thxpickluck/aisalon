@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ ok: false, error: "userId_required" }, { status: 400 });
 
   const bodyStr = JSON.stringify({ action: "tap_play", key: GAS_API_KEY, userId, comboCount: comboCount ?? 0 });
-  const url = `${GAS_URL}?key=${encodeURIComponent(GAS_API_KEY)}`;
+  const url = `${GAS_URL}${GAS_URL.includes("?") ? "&" : "?"}key=${encodeURIComponent(GAS_API_KEY)}`;
 
   try {
     const res = await fetch(url, {

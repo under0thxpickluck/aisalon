@@ -8,7 +8,7 @@ const GAS_API_KEY = process.env.GAS_API_KEY!;
 
 export async function GET() {
   const bodyStr = JSON.stringify({ action: "tap_ranking", key: GAS_API_KEY });
-  const url = `${GAS_URL}?key=${encodeURIComponent(GAS_API_KEY)}`;
+  const url = `${GAS_URL}${GAS_URL.includes("?") ? "&" : "?"}key=${encodeURIComponent(GAS_API_KEY)}`;
 
   try {
     const res = await fetch(url, {

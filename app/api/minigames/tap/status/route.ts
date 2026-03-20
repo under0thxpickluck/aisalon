@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   if (!userId) return NextResponse.json({ ok: false, error: "userId_required" }, { status: 400 });
 
   const bodyStr = JSON.stringify({ action: "tap_status", key: GAS_API_KEY, userId });
-  const url = `${GAS_URL}?key=${encodeURIComponent(GAS_API_KEY)}`;
+  const url = `${GAS_URL}${GAS_URL.includes("?") ? "&" : "?"}key=${encodeURIComponent(GAS_API_KEY)}`;
 
   try {
     const res = await fetch(url, {
