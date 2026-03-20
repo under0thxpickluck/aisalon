@@ -96,9 +96,9 @@ export async function POST(req: Request) {
 
   const updatedJob = await getJob(String(jobId));
   if (!updatedJob) {
-    return NextResponse.json({ ok: false, error: "job_not_found_after_update" }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "job_not_found" }, { status: 404 });
   }
-  generateAudioBackground(updatedJob, apiKey); // fire-and-forget
-
-  return NextResponse.json({ ok: true, status: "audio_generating" });
+  await generateAudioBackground(updatedJob, apiKey); // 完了まで待つ
+  const finalJob = await getJob(String(jobId));
+  return NextResponse.json({ ok: true, status: finalJob?.status ?? "completed" });
 }
