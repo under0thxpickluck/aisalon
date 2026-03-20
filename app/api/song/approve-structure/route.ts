@@ -28,7 +28,7 @@ async function generateAudioBackground(job: SongJob, apiKey: string): Promise<vo
       lyrics:            lyricsData?.lyrics,
       lyricsMode:        lyricsData?.lyrics ? "manual" : "auto",
       language:          prompt.language ?? "ja",
-      durationTargetSec: 60,
+      durationTargetSec: 150,
       vocalMode:         "vocal",
       structurePreset:   "hook_only",
       moodTags:          prompt.moodTags ?? [],
