@@ -71,7 +71,15 @@ export function buildElevenLabsPrompt(input: MusicGenerateInput): string {
     parts.push(input.moodTags.join(", "))
   }
 
-  return parts.filter(Boolean).join(", ")
+  // 日本語テキストを含まないようにする（ElevenLabs規約対応）
+  // languageはlyrics指定のみに使い、promptには含めない
+  const filteredParts = parts.filter(p =>
+    !p.includes("Japanese lyrics") &&
+    !p.includes("日本語") &&
+    !/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(p)
+  )
+
+  return filteredParts.filter(Boolean).join(", ")
 }
 
 export class ElevenLabsProvider implements MusicProvider {
@@ -100,6 +108,7 @@ export class ElevenLabsProvider implements MusicProvider {
       },
       body: JSON.stringify({
         prompt:             prompt,
+        lyrics:             input.lyrics ?? undefined,
         music_length_ms:    150000,
         model_id:           "music_v1",
         force_instrumental: input.vocalMode === "instrumental",
