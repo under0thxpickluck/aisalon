@@ -19,7 +19,16 @@
       "Bash(cat /c/Users/unitu/dango_fortune/assets/config/questions.json | python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d[:2] if isinstance\\(d,list\\) else d.get\\('questions',d\\)[:2], ensure_ascii=False, indent=2\\)\\)\")",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(cp /tmp/test_japanese2.mp3 \"C:/Users/unitu/Desktop/test_japanese2.mp3\")",
+      "Bash(cp /tmp/test_japanese2.mp3 \"/mnt/c/Users/unitu/Desktop/test_japanese2.mp3\")",
+      "Bash(cmd.exe /c \"copy C:\\\\tmp\\\\test_japanese2.mp3 C:\\\\Users\\\\unitu\\\\Desktop\\\\test_japanese2.mp3\")",
+      "Bash(powershell.exe -Command \"Copy-Item ''/tmp/test_japanese2.mp3'' ''C:\\\\Users\\\\unitu\\\\Desktop\\\\test_japanese2.mp3''\")",
+      "Bash(powershell.exe -Command \"Copy-Item 'C:\\\\tmp\\\\test_japanese2.mp3' 'C:\\\\Users\\\\unitu\\\\Desktop\\\\test_japanese2.mp3' -ErrorAction SilentlyContinue; if \\(Test-Path 'C:\\\\Users\\\\unitu\\\\Desktop\\\\test_japanese2.mp3'\\) { 'OK' } else { 'FAIL' }\")",
+      "Bash(set -a)",
+      "Bash(source .env.local)",
+      "Bash(set +a)"
     ]
   }
 }

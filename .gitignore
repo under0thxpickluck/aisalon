@@ -3,3 +3,5 @@ node_modules/
 .env.local
 out/
 dist/
+test_japanese2.mp3
+aisalon
