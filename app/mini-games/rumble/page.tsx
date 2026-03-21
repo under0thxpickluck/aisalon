@@ -55,6 +55,14 @@ export default function RumblePage() {
   const [shards, setShards]       = useState(0);
   const [enhanceResult, setEnhanceResult] = useState<{result:string; after_level:number; shard_spent:number} | null>(null);
   const [rankContext, setRankContext] = useState<any>(null);
+  const [showHelp, setShowHelp]         = useState(false);
+  const [showEquipHelp, setShowEquipHelp] = useState(false);
+  const [showRankHelp, setShowRankHelp]   = useState(false);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("rumble_help_seen");
+    if (!seen) setShowHelp(true);
+  }, []);
 
   useEffect(() => {
     try {
@@ -192,11 +200,111 @@ export default function RumblePage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-md mx-auto">
+      {/* Rumbleルール説明モーダル */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-lg font-black mb-4 text-center">⚔️ Rumble Leagueとは？</h2>
+            <div className="text-sm text-white/70 space-y-3">
+              <div>
+                <p className="font-bold text-white mb-1">■ 基本ルール</p>
+                <p>・1日1回、100BPで参加</p>
+                <p>・月〜金の5日間でランキングを競います</p>
+                <p>・金曜日に最終順位が確定します</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ 勝敗の仕組み</p>
+                <p>・スコアで順位が決まります</p>
+                <p>・スコアはレベル・装備・運で決まります</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ 報酬</p>
+                <p>・順位に応じてEPがもらえます</p>
+                <p>・上位ほど報酬がアップ</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p>・毎日参加するほど有利</p>
+                <p>・装備を強化すると順位が上がりやすくなります</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.setItem("rumble_help_seen", "1");
+                setShowHelp(false);
+              }}
+              className="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-bold text-sm"
+            >
+              OK、はじめる！
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 装備説明モーダル */}
+      {showEquipHelp && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-lg font-black mb-4 text-center">🛡️ 装備について</h2>
+            <div className="text-sm text-white/70 space-y-3">
+              <div>
+                <p className="font-bold text-white mb-1">■ 装備の特徴</p>
+                <p>・4部位（頭・胴・手・足）に装着できます</p>
+                <p>・同じ装備でも性能はランダムです</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ 強化</p>
+                <p>・装備は強化してさらに強くできます</p>
+                <p>・強化には素材（upgrade_shard）が必要です</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ 分解</p>
+                <p>・不要な装備は素材に変換できます</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p>・良い数値の装備を厳選するのが重要です</p>
+              </div>
+            </div>
+            <button onClick={() => setShowEquipHelp(false)}
+              className="w-full mt-5 py-3 rounded-xl bg-white/10 font-bold text-sm">
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ランキング説明モーダル */}
+      {showRankHelp && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-lg font-black mb-4 text-center">🏆 ランキングの見方</h2>
+            <div className="text-sm text-white/70 space-y-3">
+              <div>
+                <p className="font-bold text-white mb-1">■ ランキングの見方</p>
+                <p>・現在順位：あなたの位置</p>
+                <p>・RP：ランキングポイント</p>
+                <p>・報酬帯：現在もらえる報酬</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p>・上の順位に近づくほど報酬アップ</p>
+                <p>・参加しないと順位が下がることがあります</p>
+              </div>
+            </div>
+            <button onClick={() => setShowRankHelp(false)}
+              className="w-full mt-5 py-3 rounded-xl bg-white/10 font-bold text-sm">
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
         <h1 className="font-bold text-lg">⚔️ Rumble League</h1>
-        <div className="w-16" />
+        <button onClick={() => setShowHelp(true)} className="text-white/40 text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">?</button>
       </div>
 
       {/* タブ */}
@@ -311,7 +419,10 @@ export default function RumblePage() {
             </div>
           )}
 
-          <p className="text-xs text-white/40 text-center mb-2">週間累計RPランキング</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-white/40">週間累計RPランキング</p>
+            <button onClick={() => setShowRankHelp(true)} className="text-white/30 text-xs">？ 見方</button>
+          </div>
           {ranking.length === 0 ? (
             <p className="text-center text-white/30 text-sm py-8">まだ参加者がいません</p>
           ) : ranking.map((r, i) => (
@@ -345,7 +456,10 @@ export default function RumblePage() {
 
           {msg && <div className="bg-blue-500/10 text-blue-400 rounded-xl p-3 text-sm text-center">{msg}</div>}
 
-          <p className="text-xs text-white/40 text-center">装備してスコアを強化しよう</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-white/40">装備してスコアを強化しよう</p>
+            <button onClick={() => setShowEquipHelp(true)} className="text-white/30 text-xs">？ 装備とは</button>
+          </div>
           {["head","body","hand","leg"].map(slot => {
             const slotItems = equipment.filter(e => e.slot === slot);
             return (

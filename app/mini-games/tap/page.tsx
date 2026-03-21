@@ -36,6 +36,12 @@ export default function TapMiningPage() {
   const [fever, setFever] = useState(false);
   const [feverTimer, setFeverTimer] = useState(0);
   const [tickerEvents, setTickerEvents] = useState<{masked_name:string; reward:number; type:string}[]>([]);
+  const [showHelp, setShowHelp] = useState(false);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("tap_help_seen");
+    if (!seen) setShowHelp(true);
+  }, []);
   const comboTimerRef = useRef<NodeJS.Timeout | null>(null);
   const feverIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const floatIdRef = useRef(0);
@@ -169,6 +175,43 @@ export default function TapMiningPage() {
 
   return (
     <div className={`min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-md mx-auto relative overflow-hidden ${rareEffect ? "animate-pulse" : ""}`}>
+      {/* ルール説明モーダル */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-lg font-black mb-4 text-center">⛏️ Tap Miningとは？</h2>
+            <div className="text-sm text-white/70 space-y-3">
+              <div>
+                <p className="font-bold text-white mb-1">■ 基本ルール</p>
+                <p>・1タップ = 1BP消費</p>
+                <p>・1日最大500回まで</p>
+                <p>・毎日リセット</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ 報酬</p>
+                <p>・BPまたはEPがランダムで獲得できます</p>
+                <p>・最低でも0.1BPは必ずもらえます</p>
+                <p>・ごく稀に大量EPが当たることもあります</p>
+              </div>
+              <div>
+                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p>・EPはアプリ内ポイントです（換金不可）</p>
+                <p>・運が良いと大当たりも…？</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.setItem("tap_help_seen", "1");
+                setShowHelp(false);
+              }}
+              className="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-bold text-sm"
+            >
+              OK、はじめる！
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* レア演出オーバーレイ */}
       {rareEffect && (
         <div className="fixed inset-0 bg-yellow-400/20 z-50 pointer-events-none flex items-center justify-center">
@@ -193,7 +236,7 @@ export default function TapMiningPage() {
       <div className="flex items-center justify-between mb-6">
         <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
         <h1 className="font-bold text-lg">⛏️ Tap Mining</h1>
-        <div className="w-16" />
+        <button onClick={() => setShowHelp(true)} className="text-white/40 text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">?</button>
       </div>
 
       {/* ステータスバー */}
