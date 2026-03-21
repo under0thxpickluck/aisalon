@@ -340,22 +340,19 @@ function MonetagLoader({ zone }: { zone: string }) {
     script.id = 'monetag-loader';
     document.body.appendChild(script);
 
-    return () => {
-      // Monetag関連スクリプトを全て削除
-      const selectors = [
-        'script[id="monetag-loader"]',
-        'script[src*="quge5"]',
-        'script[src*="tzegilo"]',
-        'script[src*="auqot"]',
-        'script[src*="jmosl"]',
-        'script[src*="094kk"]',
-        'script[src*="stattag"]',
-      ];
-      selectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => el.remove());
-      });
-      // Monetagグローバル変数もクリア
+    // クリーンアップ：即時も遅延も両方実行
+    const cleanup = () => {
+      ['script[id="monetag-loader"]', 'script[src*="quge5"]', 'script[src*="tzegilo"]',
+       'script[src*="auqot"]', 'script[src*="jmosl"]', 'script[src*="094kk"]', 'script[src*="stattag"]']
+        .forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()));
       try { delete (window as any).__mntg; } catch {}
+    };
+
+    return () => {
+      cleanup();
+      // Monetagが非同期で追加するスクリプトも削除するため少し遅延して再実行
+      setTimeout(cleanup, 500);
+      setTimeout(cleanup, 1500);
     };
   }, []);
 
