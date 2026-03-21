@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { ToastHost } from "@/components/Toast";
 import { LifaiCatProvider } from "@/components/LifaiCat";
 
@@ -59,6 +60,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ToastHost />
           {children}
         </LifaiCatProvider>
+        <Script
+          src="https://quge5.com/88/tag.min.js"
+          data-zone="221931"
+          strategy="afterInteractive"
+          data-cfasync="false"
+        />
       </body>
     </html>
   );

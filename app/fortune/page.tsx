@@ -556,8 +556,13 @@ export default function FortunePage() {
 
       {/* ── Loading ─────────────────────────────────────────────────────── */}
       {view === 'loading' && (
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center justify-center min-h-screen gap-6">
           <p className="text-white/60 text-sm">読み込み中…</p>
+          {/* Monetag広告枠 */}
+          <div className="w-full max-w-sm mx-auto rounded-xl overflow-hidden bg-white/5 min-h-[100px] flex items-center justify-center">
+            <div id="monetag-ad-zone" className="w-full" />
+          </div>
+          <p className="text-white/20 text-xs">広告</p>
         </div>
       )}
 
@@ -586,7 +591,15 @@ export default function FortunePage() {
                 </div>
 
                 <button
-                  onClick={() => openFortune(stored)}
+                  onClick={() => {
+                    // Monetag Popunder発火
+                    try {
+                      if (typeof window !== 'undefined' && (window as any).__mntg) {
+                        (window as any).__mntg.push({ type: 'popunder', zone: 221931 });
+                      }
+                    } catch {}
+                    openFortune(stored);
+                  }}
                   className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors"
                 >
                   今日の占いへ 🔮
