@@ -5720,6 +5720,18 @@ function setUserShards_(sheet, rowNum, idx, value) {
   sheet.getRange(rowNum, idx["upgrade_shard"] + 1).setValue(value);
 }
 
+function ensureEquipmentNewCols_(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var required = ["enhance_level","enhance_bonus","luck","stability","quality","locked"];
+  required.forEach(function(col) {
+    if (headers.indexOf(col) === -1) {
+      var newCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, newCol).setValue(col);
+      headers.push(col);
+    }
+  });
+}
+
 function getEquipmentItem_(userId, itemId) {
   var sheet = getEquipmentSheet_();
   ensureEquipmentCols_(sheet);
@@ -5741,6 +5753,9 @@ function rumbleDismantle_(params) {
   var userId = String(params.userId || "");
   var itemId = String(params.itemId || "");
   if (!userId || !itemId) return json_({ ok: false, error: "params_required" });
+
+  // equipmentシートの新カラムを保証
+  ensureEquipmentNewCols_(getEquipmentSheet_());
 
   var found = getEquipmentItem_(userId, itemId);
   if (!found) return json_({ ok: false, error: "item_not_found" });
@@ -5792,6 +5807,9 @@ function rumbleEnhance_(params) {
     { cost: 95,  rate: 0.40, main: 2, sub: 0.05  },
     { cost: 130, rate: 0.25, main: 3, sub: 0.10  },
   ];
+
+  // equipmentシートの新カラムを保証
+  ensureEquipmentNewCols_(getEquipmentSheet_());
 
   var found = getEquipmentItem_(userId, itemId);
   if (!found) return json_({ ok: false, error: "item_not_found" });
