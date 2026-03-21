@@ -591,15 +591,7 @@ export default function FortunePage() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    // Monetag Popunder発火
-                    try {
-                      if (typeof window !== 'undefined' && (window as any).__mntg) {
-                        (window as any).__mntg.push({ type: 'popunder', zone: 221931 });
-                      }
-                    } catch {}
-                    openFortune(stored);
-                  }}
+                  onClick={() => openFortune(stored)}
                   className="w-full bg-pink-600 hover:bg-pink-500 text-white font-bold py-3 rounded-xl transition-colors"
                 >
                   今日の占いへ 🔮

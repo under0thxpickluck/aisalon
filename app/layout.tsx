@@ -66,6 +66,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           strategy="afterInteractive"
           data-cfasync="false"
         />
+        {/* 占いページではPopunderを無効化 */}
+        <Script id="monetag-page-control" strategy="afterInteractive">{`
+          (function() {
+            var _origPush = Array.prototype.push;
+            function blockOnFortune(type) {
+              return window.location.pathname.includes('/fortune') && type === 'popunder';
+            }
+            window.__mntgSafe = function(obj) {
+              if (blockOnFortune(obj.type)) return;
+              if (window.__mntg) window.__mntg.push(obj);
+            };
+          })();
+        `}</Script>
       </body>
     </html>
   );
