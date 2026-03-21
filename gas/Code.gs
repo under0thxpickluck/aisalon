@@ -4631,6 +4631,10 @@ function doPost(e) {
     if (action === 'rumble_equipment') return rumbleEquipment_(body);
     if (action === 'rumble_equip')     return rumbleEquip_(body);
     if (action === 'rumble_reward_distribute') return rumbleRewardDistribute_(body);
+    if (action === 'rumble_dismantle')         return rumbleDismantle_(body);
+    if (action === 'rumble_enhance')           return rumbleEnhance_(body);
+    if (action === 'rumble_my_rank_context')   return rumbleMyRankContext_(body);
+    if (action === 'rumble_shard_status')      return rumbleShardStatus_(body);
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -5237,7 +5241,7 @@ function ensureRumbleWeekCols_(sheet) {
 
 function ensureEquipmentCols_(sheet) {
   if (sheet.getLastRow() > 0) return;
-  sheet.appendRow(["id","user_id","slot","rarity","name","bonus","equipped","created_at"]);
+  sheet.appendRow(["id","user_id","slot","rarity","name","base_bonus","bonus","quality","enhance_level","enhance_bonus","luck","stability","equipped","locked","created_at"]);
 }
 
 function getWeekId_() {
@@ -5513,10 +5517,43 @@ function rumbleGacha_(params) {
   var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
   var eqId   = Utilities.getUuid();
 
-  // equipment保存
+  // サブステ生成
+  var SUB_RANGE = {
+    common:    { min: 0.1, max: 0.5 },
+    rare:      { min: 0.3, max: 1.0 },
+    epic:      { min: 0.8, max: 2.0 },
+    legendary: { min: 1.5, max: 3.5 },
+    mythic:    { min: 3.0, max: 6.0 },
+  };
+  var SUB_COUNT = {
+    common:    Math.random() < 0.3 ? 1 : 0,
+    rare:      1,
+    epic:      2,
+    legendary: Math.random() < 0.2 ? 3 : 2,
+    mythic:    3,
+  };
+  var subRange  = SUB_RANGE[rarity];
+  var subCount  = SUB_COUNT[rarity];
+  var luckVal   = 0;
+  var stabilityVal = 0;
+  var subTypes  = ["luck","stability"];
+  for (var s = 0; s < subCount; s++) {
+    var subType = subTypes[s % 2];
+    var subVal  = Math.round((subRange.min + Math.random() * (subRange.max - subRange.min)) * 100) / 100;
+    if (subType === "luck")      luckVal      = Math.round((luckVal + subVal) * 100) / 100;
+    else                          stabilityVal = Math.round((stabilityVal + subVal) * 100) / 100;
+  }
+
+  // equipment保存（新カラム対応）
   var eqSheet = getEquipmentSheet_();
   ensureEquipmentCols_(eqSheet);
-  eqSheet.appendRow([eqId, userId, slot, rarity, name, bonus, "false", nowJst]);
+  eqSheet.appendRow([
+    eqId, userId, slot, rarity, name,
+    bonus, bonus, quality,   // base_bonus / bonus（強化前は同値）/ quality
+    0, 0,                    // enhance_level / enhance_bonus
+    luckVal, stabilityVal,   // luck / stability
+    "false", "false", nowJst
+  ]);
 
   return json_({
     ok:     true,
@@ -5642,4 +5679,245 @@ function rumbleRewardDistribute_(params) {
   });
 
   return json_({ ok: true, distributed: distributed, week_id: weekId });
+}
+
+// ============================================================
+// EQUIPMENT ENHANCE & DISMANTLE
+// ============================================================
+
+function getUserShards_(userId) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var data  = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["login_id"]]) === userId) {
+      return {
+        rowNum: i + 1,
+        shards: Number(data[i][idx["upgrade_shard"]] || 0),
+        idx: idx,
+        sheet: sheet
+      };
+    }
+  }
+  return null;
+}
+
+function setUserShards_(sheet, rowNum, idx, value) {
+  if (idx["upgrade_shard"] !== undefined) {
+    sheet.getRange(rowNum, idx["upgrade_shard"] + 1).setValue(value);
+  }
+}
+
+function getEquipmentItem_(userId, itemId) {
+  var sheet = getEquipmentSheet_();
+  ensureEquipmentCols_(sheet);
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["id"]]) === itemId &&
+        String(data[i][idx["user_id"]]) === userId) {
+      return { row: data[i], rowNum: i + 1, idx: idx, sheet: sheet };
+    }
+  }
+  return null;
+}
+
+// action: rumble_dismantle（装備分解）
+function rumbleDismantle_(params) {
+  var userId = String(params.userId || "");
+  var itemId = String(params.itemId || "");
+  if (!userId || !itemId) return json_({ ok: false, error: "params_required" });
+
+  var found = getEquipmentItem_(userId, itemId);
+  if (!found) return json_({ ok: false, error: "item_not_found" });
+
+  var row = found.row;
+  var idx = found.idx;
+
+  // ロック中は分解不可
+  if (String(row[idx["locked"]]) === "true") return json_({ ok: false, error: "item_locked" });
+
+  // shard計算
+  var SHARD_BASE = { common: 1, rare: 3, epic: 10, legendary: 40, mythic: 300 };
+  var rarity       = String(row[idx["rarity"]]);
+  var enhanceLevel = Number(row[idx["enhance_level"]] || 0);
+  var quality      = Number(row[idx["quality"]] || 100);
+  var baseShard    = SHARD_BASE[rarity] || 1;
+  var bonusShard   = enhanceLevel; // +1ごとに+1
+  if (quality >= 115) bonusShard += 8;
+  else if (quality >= 110) bonusShard += 3;
+  var totalShard   = baseShard + bonusShard;
+
+  // appliesシートのupgrade_shardを更新
+  var userData = getUserShards_(userId);
+  if (!userData) return json_({ ok: false, error: "user_not_found" });
+  var newShards = userData.shards + totalShard;
+  setUserShards_(userData.sheet, userData.rowNum, userData.idx, newShards);
+
+  // 装備削除（行削除）
+  found.sheet.deleteRow(found.rowNum);
+
+  return json_({ ok: true, gained_shard: totalShard, remaining_shard: newShards });
+}
+
+// action: rumble_enhance（装備強化）
+function rumbleEnhance_(params) {
+  var userId = String(params.userId || "");
+  var itemId = String(params.itemId || "");
+  if (!userId || !itemId) return json_({ ok: false, error: "params_required" });
+
+  var ENHANCE_TABLE = [
+    { cost: 5,   rate: 1.00, main: 1, sub: 0     },
+    { cost: 8,   rate: 1.00, main: 1, sub: 0     },
+    { cost: 12,  rate: 1.00, main: 1, sub: 0.02  },
+    { cost: 18,  rate: 0.95, main: 1, sub: 0     },
+    { cost: 25,  rate: 0.90, main: 2, sub: 0.03  },
+    { cost: 35,  rate: 0.80, main: 1, sub: 0     },
+    { cost: 50,  rate: 0.70, main: 2, sub: 0.05  },
+    { cost: 70,  rate: 0.55, main: 1, sub: 0     },
+    { cost: 95,  rate: 0.40, main: 2, sub: 0.05  },
+    { cost: 130, rate: 0.25, main: 3, sub: 0.10  },
+  ];
+
+  var found = getEquipmentItem_(userId, itemId);
+  if (!found) return json_({ ok: false, error: "item_not_found" });
+
+  var row          = found.row;
+  var idx          = found.idx;
+  var enhanceLevel = Number(row[idx["enhance_level"]] || 0);
+
+  if (enhanceLevel >= 10) return json_({ ok: false, error: "max_enhance_reached" });
+
+  var tableEntry = ENHANCE_TABLE[enhanceLevel];
+  var cost       = tableEntry.cost;
+
+  // shard残高確認
+  var userData = getUserShards_(userId);
+  if (!userData) return json_({ ok: false, error: "user_not_found" });
+  if (userData.shards < cost) return json_({ ok: false, error: "insufficient_shard", shards: userData.shards });
+
+  // shard消費
+  var newShards = userData.shards - cost;
+  setUserShards_(userData.sheet, userData.rowNum, userData.idx, newShards);
+
+  // 成功判定
+  var success = Math.random() < tableEntry.rate;
+  if (!success) {
+    return json_({
+      ok: true, result: "fail",
+      before_level: enhanceLevel, after_level: enhanceLevel,
+      shard_spent: cost, remaining_shard: newShards
+    });
+  }
+
+  // 強化適用
+  var newLevel       = enhanceLevel + 1;
+  var currentBonus   = Number(row[idx["bonus"]] || 0);
+  var newBonus       = Math.round((currentBonus + tableEntry.main) * 100) / 100;
+  var newLuck        = Number(row[idx["luck"]] || 0);
+  var newStability   = Number(row[idx["stability"]] || 0);
+  if (tableEntry.sub > 0) {
+    newLuck      = Math.round(newLuck * (1 + tableEntry.sub) * 100) / 100;
+    newStability = Math.round(newStability * (1 + tableEntry.sub) * 100) / 100;
+  }
+
+  found.sheet.getRange(found.rowNum, idx["enhance_level"] + 1).setValue(newLevel);
+  found.sheet.getRange(found.rowNum, idx["bonus"] + 1).setValue(newBonus);
+  found.sheet.getRange(found.rowNum, idx["luck"] + 1).setValue(newLuck);
+  found.sheet.getRange(found.rowNum, idx["stability"] + 1).setValue(newStability);
+
+  return json_({
+    ok: true, result: "success",
+    before_level: enhanceLevel, after_level: newLevel,
+    shard_spent: cost, remaining_shard: newShards,
+    updated: { bonus: newBonus, luck: newLuck, stability: newStability }
+  });
+}
+
+// action: rumble_my_rank_context（自分順位コンテキスト）
+function rumbleMyRankContext_(params) {
+  var userId = String(params.userId || "");
+  var weekId = params.weekId || getWeekId_();
+
+  var REWARD_TIERS = [
+    { label: "1位",       ep: 1500, rank_min: 1,  rank_max: 1   },
+    { label: "2位",       ep: 1000, rank_min: 2,  rank_max: 2   },
+    { label: "3位",       ep: 700,  rank_min: 3,  rank_max: 3   },
+    { label: "4〜10位",   ep: 400,  rank_min: 4,  rank_max: 10  },
+    { label: "11〜50位",  ep: 80,   rank_min: 11, rank_max: 50  },
+    { label: "51〜100位", ep: 10,   rank_min: 51, rank_max: 100 },
+  ];
+
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var weekData = weekSheet.getDataRange().getValues();
+  var wHeaders = weekData[0];
+  var wIdx     = {};
+  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+
+  var rows = weekData.slice(1)
+    .filter(function(row) { return String(row[wIdx["week_id"]]) === weekId; })
+    .map(function(row) {
+      return { user_id: String(row[wIdx["user_id"]]), total_rp: Number(row[wIdx["total_rp"]] || 0) };
+    });
+  rows.sort(function(a, b) { return b.total_rp - a.total_rp; });
+
+  var myRank = -1;
+  var myRp   = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].user_id === userId) { myRank = i + 1; myRp = rows[i].total_rp; break; }
+  }
+  if (myRank === -1) return json_({ ok: true, not_entered: true, week_id: weekId });
+
+  // 現在tier
+  var currentTier = null;
+  for (var t = 0; t < REWARD_TIERS.length; t++) {
+    if (myRank >= REWARD_TIERS[t].rank_min && myRank <= REWARD_TIERS[t].rank_max) {
+      currentTier = REWARD_TIERS[t]; break;
+    }
+  }
+
+  // 上位tier
+  var tierIdx    = REWARD_TIERS.indexOf(currentTier);
+  var nextBetter = null;
+  if (tierIdx > 0) {
+    var betterTier = REWARD_TIERS[tierIdx - 1];
+    var targetRank = betterTier.rank_max;
+    var targetRp   = targetRank <= rows.length ? rows[targetRank - 1].total_rp : 0;
+    nextBetter = { label: betterTier.label, ep: betterTier.ep, target_rank: targetRank, target_rp: targetRp, rp_needed: Math.max(0, targetRp - myRp + 1) };
+  }
+
+  // 下位tier
+  var nextWorse = null;
+  if (tierIdx < REWARD_TIERS.length - 1) {
+    var worseTier  = REWARD_TIERS[tierIdx + 1];
+    var worseRank  = worseTier.rank_min;
+    var worseRp    = worseRank <= rows.length ? rows[worseRank - 1].total_rp : 0;
+    nextWorse = { label: worseTier.label, ep: worseTier.ep, target_rank: worseRank, rp_buffer: Math.max(0, myRp - worseRp) };
+  }
+
+  // 自分周辺3人
+  var surrounding = rows.slice(Math.max(0, myRank - 4), myRank + 3)
+    .map(function(r, i) { return { rank: Math.max(1, myRank - 3) + i, user_id: r.user_id, total_rp: r.total_rp, is_me: r.user_id === userId }; });
+
+  return json_({
+    ok: true, week_id: weekId,
+    my_rank: myRank, my_rp: myRp,
+    current_tier: currentTier,
+    next_better_tier: nextBetter,
+    next_worse_tier: nextWorse,
+    surrounding: surrounding,
+  });
+}
+
+// action: rumble_shard_status（shard残高確認）
+function rumbleShardStatus_(params) {
+  var userId   = String(params.userId || "");
+  var userData = getUserShards_(userId);
+  if (!userData) return json_({ ok: false, error: "user_not_found" });
+  return json_({ ok: true, shards: userData.shards });
 }
