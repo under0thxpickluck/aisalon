@@ -15,6 +15,7 @@ type RankingEntry = { user_id: string; total_rp: number };
 type Equipment = {
   id: string; slot: string; rarity: string;
   name: string; bonus: number; equipped: boolean;
+  enhance_level?: number; luck?: number; stability?: number;
 };
 
 type GachaResult = {
@@ -51,6 +52,9 @@ export default function RumblePage() {
   const [gachaResult, setGachaResult] = useState<GachaResult | null>(null);
   const [msg, setMsg]             = useState("");
   const [countdown, setCountdown] = useState("");
+  const [shards, setShards]       = useState(0);
+  const [enhanceResult, setEnhanceResult] = useState<{result:string; after_level:number; shard_spent:number} | null>(null);
+  const [rankContext, setRankContext] = useState<any>(null);
 
   useEffect(() => {
     try {
@@ -84,7 +88,6 @@ export default function RumblePage() {
       const target = new Date(nowJst);
       target.setHours(19, 0, 0, 0);
       if (nowJst.getHours() >= 19) target.setDate(target.getDate() + 1);
-      // 土日はスキップ
       while (target.getDay() === 0 || target.getDay() === 6) target.setDate(target.getDate() + 1);
       const diff = target.getTime() - nowJst.getTime();
       const h    = Math.floor(diff / 3600000);
@@ -96,6 +99,18 @@ export default function RumblePage() {
     const interval = setInterval(calcCountdown, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/minigames/rumble/shard-status?userId=${encodeURIComponent(userId)}`)
+      .then(r => r.json()).then(d => { if (d.ok) setShards(d.shards); }).catch(() => {});
+  }, [userId]);
+
+  useEffect(() => {
+    if (tab !== "ランキング" || !userId) return;
+    fetch(`/api/minigames/rumble/my-rank-context?userId=${encodeURIComponent(userId)}`)
+      .then(r => r.json()).then(d => { if (d.ok) setRankContext(d); }).catch(() => {});
+  }, [tab, userId]);
 
   const handleEntry = async () => {
     if (!userId || busy) return;
@@ -144,6 +159,37 @@ export default function RumblePage() {
     } catch {} finally { setBusy(false); }
   };
 
+  const handleDismantle = async (itemId: string) => {
+    if (!userId || busy) return;
+    if (!confirm("本当に分解しますか？")) return;
+    setBusy(true);
+    try {
+      const res  = await fetch("/api/minigames/rumble/dismantle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, itemId }) });
+      const data = await res.json();
+      if (data.ok) {
+        setShards(data.remaining_shard);
+        setEquipment(prev => prev.filter(e => e.id !== itemId));
+        setMsg(`🔨 分解完了！ +${data.gained_shard} shard`);
+      } else { setMsg(data.error === "item_locked" ? "ロック中は分解できません" : "エラーが発生しました"); }
+    } catch { setMsg("通信エラー"); } finally { setBusy(false); }
+  };
+
+  const handleEnhance = async (itemId: string) => {
+    if (!userId || busy) return;
+    setBusy(true); setEnhanceResult(null);
+    try {
+      const res  = await fetch("/api/minigames/rumble/enhance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, itemId }) });
+      const data = await res.json();
+      if (data.ok) {
+        setShards(data.remaining_shard);
+        setEnhanceResult({ result: data.result, after_level: data.after_level, shard_spent: data.shard_spent });
+        if (data.result === "success") {
+          setEquipment(prev => prev.map(e => e.id === itemId ? { ...e, bonus: data.updated.bonus, luck: data.updated.luck, stability: data.updated.stability, enhance_level: data.after_level } : e));
+        }
+      } else { setMsg(data.error === "insufficient_shard" ? `Shard不足（残高: ${data.shards}）` : "エラー"); }
+    } catch { setMsg("通信エラー"); } finally { setBusy(false); }
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-md mx-auto">
       {/* ヘッダー */}
@@ -179,13 +225,13 @@ export default function RumblePage() {
           </div>
 
           {/* カウントダウン */}
-          <div className="bg-white/5 rounded-xl p-3 text-center mb-4">
+          <div className="bg-white/5 rounded-xl p-3 text-center">
             <p className="text-xs text-white/40">次のバトルまで</p>
             <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
           </div>
 
           {/* 報酬帯 */}
-          <div className="bg-white/5 rounded-xl p-4 mb-4">
+          <div className="bg-white/5 rounded-xl p-4">
             <p className="text-xs font-bold text-white/60 mb-2">🏆 週次報酬</p>
             {[
               { label: "🥇 1位",    ep: 1500 },
@@ -228,7 +274,7 @@ export default function RumblePage() {
 
           {/* ルール説明 */}
           <div className="bg-white/5 rounded-xl p-4 text-xs text-white/40 space-y-1">
-            <p>• スコア = 100 + 装備ボーナス + 乱数（0〜50）</p>
+            <p>• スコア = 100 + レベルボーナス + 装備ボーナス + 乱数（0〜50）</p>
             <p>• 月〜金の累計RPで週次ランキング決定</p>
             <p>• 金曜終了後にランキングリセット</p>
           </div>
@@ -237,8 +283,35 @@ export default function RumblePage() {
 
       {/* ランキングタブ */}
       {tab === "ランキング" && (
-        <div className="space-y-2">
-          <p className="text-xs text-white/40 text-center mb-4">週間累計RPランキング</p>
+        <div className="space-y-3">
+          {/* 自分の順位カード */}
+          {rankContext && !rankContext.not_entered && (
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-black text-2xl text-purple-400">{rankContext.my_rank}位</span>
+                <span className="text-white font-bold">{rankContext.my_rp} RP</span>
+              </div>
+              <p className="text-xs text-white/60 mb-3">現在の報酬帯: <span className="text-yellow-400">{rankContext.current_tier?.label} ({rankContext.current_tier?.ep?.toLocaleString()}EP)</span></p>
+              {rankContext.next_better_tier && (
+                <p className="text-xs text-green-400">▲ {rankContext.next_better_tier.label}まであと {rankContext.next_better_tier.rp_needed} RP</p>
+              )}
+              {rankContext.next_worse_tier && (
+                <p className="text-xs text-red-400/70">▼ {rankContext.next_worse_tier.label}まで余裕 {rankContext.next_worse_tier.rp_buffer} RP</p>
+              )}
+              {rankContext.surrounding && (
+                <div className="mt-3 space-y-1">
+                  {rankContext.surrounding.map((r: any) => (
+                    <div key={r.rank} className={`flex justify-between text-xs py-1 px-2 rounded ${r.is_me ? "bg-purple-500/20 text-white font-bold" : "text-white/40"}`}>
+                      <span>{r.rank}位 {r.is_me ? "👤 " : ""}{r.user_id}</span>
+                      <span>{r.total_rp} RP</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-white/40 text-center mb-2">週間累計RPランキング</p>
           {ranking.length === 0 ? (
             <p className="text-center text-white/30 text-sm py-8">まだ参加者がいません</p>
           ) : ranking.map((r, i) => (
@@ -258,28 +331,59 @@ export default function RumblePage() {
       {/* 装備タブ */}
       {tab === "装備" && (
         <div className="space-y-3">
-          <p className="text-xs text-white/40 text-center mb-2">装備してスコアを強化しよう</p>
+          {/* シャード残高 */}
+          <div className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
+            <span className="text-sm text-white/60">🔧 upgrade_shard</span>
+            <span className="font-bold text-orange-400">{shards}</span>
+          </div>
+
+          {enhanceResult && (
+            <div className={`rounded-xl p-3 text-sm text-center ${enhanceResult.result === "success" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+              {enhanceResult.result === "success" ? `✨ 強化成功！ +${enhanceResult.after_level}` : `💨 強化失敗... (${enhanceResult.shard_spent} shard消費)`}
+            </div>
+          )}
+
+          {msg && <div className="bg-blue-500/10 text-blue-400 rounded-xl p-3 text-sm text-center">{msg}</div>}
+
+          <p className="text-xs text-white/40 text-center">装備してスコアを強化しよう</p>
           {["head","body","hand","leg"].map(slot => {
             const slotItems = equipment.filter(e => e.slot === slot);
-            const equipped  = slotItems.find(e => e.equipped);
             return (
               <div key={slot} className="bg-white/5 rounded-xl p-4">
                 <p className="text-xs text-white/40 mb-2">
                   {slot === "head" ? "🪖 頭" : slot === "body" ? "🛡️ 胴" : slot === "hand" ? "🧤 手" : "👢 足"}
-                  {equipped && <span className={`ml-2 ${RARITY_COLOR[equipped.rarity]}`}>{equipped.name} (+{equipped.bonus})</span>}
-                  {!equipped && <span className="ml-2 text-white/20">未装備</span>}
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {slotItems.map(item => (
-                    <div key={item.id} className={`flex items-center justify-between p-2 rounded-lg border ${RARITY_BG[item.rarity]} bg-white/3`}>
-                      <span className={`text-xs ${RARITY_COLOR[item.rarity]}`}>{item.name} (+{item.bonus})</span>
-                      <button onClick={() => handleEquip(item.id)} disabled={item.equipped || busy}
-                        className={`text-xs px-2 py-1 rounded ${item.equipped ? "bg-green-500/20 text-green-400" : "bg-purple-600 text-white"}`}>
-                        {item.equipped ? "装備中" : "装備"}
-                      </button>
+                    <div key={item.id} className={`p-3 rounded-lg border ${RARITY_BG[item.rarity]} bg-white/3`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs font-bold ${RARITY_COLOR[item.rarity]}`}>
+                          {item.name}{(item.enhance_level ?? 0) > 0 ? ` [+${item.enhance_level}]` : ""} (+{item.bonus})
+                        </span>
+                      </div>
+                      {((item.luck ?? 0) > 0 || (item.stability ?? 0) > 0) && (
+                        <div className="flex gap-3 text-xs text-white/40 mb-2">
+                          {(item.luck ?? 0) > 0 && <span>🍀 Luck {item.luck}%</span>}
+                          {(item.stability ?? 0) > 0 && <span>🛡 Stab {item.stability}%</span>}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEquip(item.id)} disabled={item.equipped || busy}
+                          className={`flex-1 text-xs py-1 rounded ${item.equipped ? "bg-green-500/20 text-green-400" : "bg-purple-600 text-white"}`}>
+                          {item.equipped ? "装備中" : "装備"}
+                        </button>
+                        <button onClick={() => handleEnhance(item.id)} disabled={busy}
+                          className="text-xs px-2 py-1 rounded bg-orange-600/80 text-white">
+                          強化
+                        </button>
+                        <button onClick={() => handleDismantle(item.id)} disabled={item.equipped || busy}
+                          className="text-xs px-2 py-1 rounded bg-white/10 text-white/50">
+                          分解
+                        </button>
+                      </div>
                     </div>
                   ))}
-                  {slotItems.length === 0 && <p className="text-xs text-white/20">なし</p>}
+                  {slotItems.length === 0 && <p className="text-xs text-white/20">なし（ガチャで入手）</p>}
                 </div>
               </div>
             );
