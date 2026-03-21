@@ -5692,11 +5692,15 @@ function getUserShards_(userId) {
   var idx     = {};
   headers.forEach(function(h, i) { idx[h] = i; });
 
-  // upgrade_shard列がなければ追加
+  // upgrade_shard列がなければ追加してデータを再取得
   if (idx["upgrade_shard"] === undefined) {
     var newCol = headers.length + 1;
     sheet.getRange(1, newCol).setValue("upgrade_shard");
-    idx["upgrade_shard"] = headers.length;
+    // 再取得
+    data    = sheet.getDataRange().getValues();
+    headers = data[0];
+    idx     = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
   }
 
   for (var i = 1; i < data.length; i++) {
