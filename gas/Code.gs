@@ -4630,6 +4630,7 @@ function doPost(e) {
     if (action === 'rumble_gacha')     return rumbleGacha_(body);
     if (action === 'rumble_equipment') return rumbleEquipment_(body);
     if (action === 'rumble_equip')     return rumbleEquip_(body);
+    if (action === 'rumble_reward_distribute') return rumbleRewardDistribute_(body);
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -5319,9 +5320,11 @@ function rumbleEntry_(params) {
   appliesSheet.getRange(userRowNum, aIdx["bp_balance"] + 1).setValue(newBp);
 
   // スコア計算
+  var userLevel    = Number(userRow[aIdx["level"]] || 1);
+  var levelBonus   = userLevel * 2;
   var equipBonus   = getUserEquipmentBonus_(userId);
   var randomFactor = Math.floor(Math.random() * 51); // 0〜50
-  var score        = 100 + equipBonus + randomFactor;
+  var score        = 100 + levelBonus + equipBonus + randomFactor;
   var rp           = score;
 
   // rumble_entryに記録
@@ -5451,7 +5454,13 @@ function rumbleGacha_(params) {
     { rarity: "legendary", prob: 0.009995},
     { rarity: "mythic",    prob: 0.000005},
   ];
-  var BONUS_MAP = { common: 5, rare: 10, epic: 20, legendary: 35, mythic: 50 };
+  var BONUS_MAP = {
+    common:    { min: 3,  max: 8  },
+    rare:      { min: 8,  max: 15 },
+    epic:      { min: 15, max: 28 },
+    legendary: { min: 28, max: 42 },
+    mythic:    { min: 42, max: 55 },
+  };
   var SLOTS     = ["head", "body", "hand", "leg"];
   var NAMES     = {
     common:    ["Iron Helm","Cloth Armor","Leather Gloves","Worn Boots"],
@@ -5497,7 +5506,10 @@ function rumbleGacha_(params) {
   var slot  = SLOTS[Math.floor(Math.random() * SLOTS.length)];
   var names = NAMES[rarity];
   var name  = names[Math.floor(Math.random() * names.length)];
-  var bonus = BONUS_MAP[rarity];
+  var bonusRange = BONUS_MAP[rarity];
+  var baseBonus  = bonusRange.min + Math.random() * (bonusRange.max - bonusRange.min);
+  var quality    = 0.8 + Math.random() * 0.4; // 80%〜120%
+  var bonus      = Math.round(baseBonus * quality * 10) / 10;
   var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
   var eqId   = Utilities.getUuid();
 
@@ -5575,4 +5587,59 @@ function rumbleEquip_(params) {
   // 対象を装備
   sheet.getRange(targetRow, idx["equipped"] + 1).setValue("true");
   return json_({ ok: true });
+}
+
+// action: rumble_reward_distribute（週次報酬配布）
+function rumbleRewardDistribute_(params) {
+  var WEEKLY_REWARDS = [
+    { rank_min: 1,  rank_max: 1,   ep: 1500 },
+    { rank_min: 2,  rank_max: 2,   ep: 1000 },
+    { rank_min: 3,  rank_max: 3,   ep: 700  },
+    { rank_min: 4,  rank_max: 10,  ep: 400  },
+    { rank_min: 11, rank_max: 50,  ep: 80   },
+    { rank_min: 51, rank_max: 100, ep: 10   },
+  ];
+
+  var weekId    = params.weekId || getWeekId_();
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var weekData = weekSheet.getDataRange().getValues();
+  var wHeaders = weekData[0];
+  var wIdx     = {};
+  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+
+  var rows = weekData.slice(1)
+    .filter(function(row) { return String(row[wIdx["week_id"]]) === weekId; })
+    .map(function(row) { return { user_id: String(row[wIdx["user_id"]]), total_rp: Number(row[wIdx["total_rp"]] || 0) }; });
+  rows.sort(function(a, b) { return b.total_rp - a.total_rp; });
+
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+
+  var distributed = 0;
+  rows.forEach(function(entry, i) {
+    var rank = i + 1;
+    var ep   = 0;
+    for (var j = 0; j < WEEKLY_REWARDS.length; j++) {
+      if (rank >= WEEKLY_REWARDS[j].rank_min && rank <= WEEKLY_REWARDS[j].rank_max) {
+        ep = WEEKLY_REWARDS[j].ep;
+        break;
+      }
+    }
+    if (ep <= 0) return;
+
+    for (var k = 1; k < appliesData.length; k++) {
+      if (String(appliesData[k][aIdx["login_id"]]) === entry.user_id) {
+        var currentEp = Number(appliesData[k][aIdx["ep_balance"]] || 0);
+        appliesSheet.getRange(k + 1, aIdx["ep_balance"] + 1).setValue(currentEp + ep);
+        distributed++;
+        break;
+      }
+    }
+  });
+
+  return json_({ ok: true, distributed: distributed, week_id: weekId });
 }
