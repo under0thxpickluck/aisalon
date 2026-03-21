@@ -14,15 +14,14 @@ type TapStatus = {
 
 type TapResult = {
   ok: boolean;
-  reward_bp?: number;
-  reward_ep?: number;
-  rare_hit?: boolean;
   reward_type?: string;
-  combo?: number;
-  today_bp_total?: number;
-  today_ep_total?: number;
+  reward_amount?: number;
+  is_rare?: boolean;
+  bp?: number;
+  ep?: number;
+  today_bp?: number;
+  today_ep?: number;
   taps_remaining?: number;
-  bonus_bp?: number;
   error?: string;
 };
 
@@ -36,6 +35,7 @@ export default function TapMiningPage() {
   const [rareEffect, setRareEffect] = useState(false);
   const [fever, setFever] = useState(false);
   const [feverTimer, setFeverTimer] = useState(0);
+  const [tickerEvents, setTickerEvents] = useState<{masked_name:string; reward:number; type:string}[]>([]);
   const comboTimerRef = useRef<NodeJS.Timeout | null>(null);
   const feverIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const floatIdRef = useRef(0);
@@ -59,6 +59,19 @@ export default function TapMiningPage() {
       .then(d => { if (d.ok) setStatus(d); })
       .catch(() => {});
   }, [userId]);
+
+  // Ticker取得（30秒ごと）
+  useEffect(() => {
+    const fetchTicker = () => {
+      fetch("/api/minigames/tap/ticker")
+        .then(r => r.json())
+        .then(d => { if (d.ok && d.events) setTickerEvents(d.events); })
+        .catch(() => {});
+    };
+    fetchTicker();
+    const interval = setInterval(fetchTicker, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // コンボリセットタイマー
   const resetComboTimer = () => {
@@ -109,33 +122,45 @@ export default function TapMiningPage() {
       const data: TapResult = await res.json();
 
       if (data.ok) {
-        // フロート表示
-        const x = 40 + Math.random() * 20;
+        const x  = 40 + Math.random() * 20;
         const id = floatIdRef.current++;
-        let text = `+${data.reward_bp}BP`;
-        let color = "text-purple-400";
-        if (data.rare_hit) {
-          text = `✨ +${data.reward_ep}EP RARE!`;
+        let text  = data.reward_type === "BP" ? `+${data.reward_amount}BP` : `+${data.reward_amount}EP`;
+        let color = data.reward_type === "BP" ? "text-purple-400" : "text-yellow-400";
+
+        if (data.is_rare && data.reward_amount != null && data.reward_amount >= 10000) {
+          text  = `💥 +${data.reward_amount}EP 大当たり!!!`;
+          color = "text-red-400";
+          setRareEffect(true);
+          setTimeout(() => setRareEffect(false), 3000);
+        } else if (data.is_rare && data.reward_amount != null && data.reward_amount >= 500) {
+          text  = `🌟 +${data.reward_amount}EP EPIC!!!`;
+          color = "text-orange-400";
+          setRareEffect(true);
+          setTimeout(() => setRareEffect(false), 2000);
+        } else if (data.is_rare) {
+          text  = `✨ +${data.reward_amount}EP RARE!`;
           color = "text-yellow-400";
           setRareEffect(true);
           setTimeout(() => setRareEffect(false), 1500);
         }
-        if (data.bonus_bp && data.bonus_bp > 0) {
-          text = `🎉 +${data.reward_bp}BP BONUS!`;
-          color = "text-green-400";
-        }
-        setFloats(prev => [...prev, { id, text, color, x }]);
-        setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1000);
 
-        // ステータス更新
+        setFloats(prev => [...prev, { id, text, color, x }]);
+        setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1200);
+
         setStatus(prev => prev ? {
           ...prev,
-          today_taps:     prev.today_taps + 1,
-          today_bp:       data.today_bp_total ?? prev.today_bp,
-          today_ep:       data.today_ep_total ?? prev.today_ep,
-          taps_remaining: data.taps_remaining ?? prev.taps_remaining - 1,
+          today_taps:      prev.today_taps + 1,
+          today_bp:        data.today_bp ?? prev.today_bp,
+          today_ep:        data.today_ep ?? prev.today_ep,
+          taps_remaining:  data.taps_remaining ?? prev.taps_remaining - 1,
           today_max_combo: Math.max(prev.today_max_combo, newCombo),
         } : prev);
+      } else if (data.error === "insufficient_bp") {
+        const id = floatIdRef.current++;
+        setFloats(prev => [...prev, { id, text: "💸 BP不足!", color: "text-red-400", x: 45 }]);
+        setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1500);
+      } else if (data.error === "daily_limit_reached") {
+        setStatus(prev => prev ? { ...prev, taps_remaining: 0 } : prev);
       }
     } catch {}
   };
@@ -148,6 +173,19 @@ export default function TapMiningPage() {
       {rareEffect && (
         <div className="fixed inset-0 bg-yellow-400/20 z-50 pointer-events-none flex items-center justify-center">
           <div className="text-4xl font-black text-yellow-400 animate-bounce">✨ RARE! EP獲得！</div>
+        </div>
+      )}
+
+      {/* Ticker */}
+      {tickerEvents.length > 0 && (
+        <div className="fixed top-0 left-0 right-0 bg-black/80 text-yellow-400 text-xs py-1 px-4 z-40 overflow-hidden">
+          <div className="animate-marquee whitespace-nowrap">
+            {tickerEvents.map((e, i) => (
+              <span key={i} className="mr-8">
+                🎉 {e.masked_name} が {e.reward}EP を獲得！
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
