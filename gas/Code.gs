@@ -5686,18 +5686,26 @@ function rumbleRewardDistribute_(params) {
 // ============================================================
 
 function getUserShards_(userId) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
-  var data  = sheet.getDataRange().getValues();
+  var sheet   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var data    = sheet.getDataRange().getValues();
   var headers = data[0];
-  var idx = {};
+  var idx     = {};
   headers.forEach(function(h, i) { idx[h] = i; });
+
+  // upgrade_shard列がなければ追加
+  if (idx["upgrade_shard"] === undefined) {
+    var newCol = headers.length + 1;
+    sheet.getRange(1, newCol).setValue("upgrade_shard");
+    idx["upgrade_shard"] = headers.length;
+  }
+
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][idx["login_id"]]) === userId) {
       return {
         rowNum: i + 1,
         shards: Number(data[i][idx["upgrade_shard"]] || 0),
-        idx: idx,
-        sheet: sheet
+        idx:    idx,
+        sheet:  sheet
       };
     }
   }
@@ -5705,9 +5713,7 @@ function getUserShards_(userId) {
 }
 
 function setUserShards_(sheet, rowNum, idx, value) {
-  if (idx["upgrade_shard"] !== undefined) {
-    sheet.getRange(rowNum, idx["upgrade_shard"] + 1).setValue(value);
-  }
+  sheet.getRange(rowNum, idx["upgrade_shard"] + 1).setValue(value);
 }
 
 function getEquipmentItem_(userId, itemId) {
