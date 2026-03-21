@@ -4918,7 +4918,14 @@ function getTapGameRow_(sheet, userId) {
 function resetTapIfNeeded_(sheet, rowNum, idx, row) {
   var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
   var todayStr = nowJst.toISOString().slice(0, 10);
-  var lastReset = String(row[idx["daily_reset_at"]] || "").slice(0, 10);
+  var rawReset = row[idx["daily_reset_at"]];
+  var lastReset = "";
+  if (rawReset instanceof Date) {
+    var jstReset = new Date(rawReset.getTime() + 9 * 60 * 60 * 1000);
+    lastReset = jstReset.toISOString().slice(0, 10);
+  } else {
+    lastReset = String(rawReset || "").slice(0, 10);
+  }
   if (lastReset !== todayStr) {
     sheet.getRange(rowNum, idx["today_taps"] + 1).setValue(0);
     sheet.getRange(rowNum, idx["today_bp_earned"] + 1).setValue(0);
