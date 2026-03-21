@@ -4624,6 +4624,12 @@ function doPost(e) {
     if (action === 'tap_status')  return tapStatus_(body);
     if (action === 'tap_ranking') return tapRanking_(body);
     if (action === 'tap_ticker') return tapTicker_(body);
+    if (action === 'rumble_entry')     return rumbleEntry_(body);
+    if (action === 'rumble_ranking')   return rumbleRanking_(body);
+    if (action === 'rumble_status')    return rumbleStatus_(body);
+    if (action === 'rumble_gacha')     return rumbleGacha_(body);
+    if (action === 'rumble_equipment') return rumbleEquipment_(body);
+    if (action === 'rumble_equip')     return rumbleEquip_(body);
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -5190,4 +5196,383 @@ function tapTicker_(params) {
   });
   rows.sort(function(a, b) { return b.created_at > a.created_at ? 1 : -1; });
   return json_({ ok: true, events: rows.slice(0, 20) });
+}
+
+// ============================================================
+// RUMBLE LEAGUE（rumble_entry / rumble_week / equipment シート）
+// 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
+// ============================================================
+
+function getRumbleEntrySheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("rumble_entry");
+  if (!sheet) sheet = ss.insertSheet("rumble_entry");
+  return sheet;
+}
+
+function getRumbleWeekSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("rumble_week");
+  if (!sheet) sheet = ss.insertSheet("rumble_week");
+  return sheet;
+}
+
+function getEquipmentSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("equipment");
+  if (!sheet) sheet = ss.insertSheet("equipment");
+  return sheet;
+}
+
+function ensureRumbleEntryCols_(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  sheet.appendRow(["id","user_id","date","score","rp","created_at"]);
+}
+
+function ensureRumbleWeekCols_(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  sheet.appendRow(["user_id","week_id","total_rp","updated_at"]);
+}
+
+function ensureEquipmentCols_(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  sheet.appendRow(["id","user_id","slot","rarity","name","bonus","equipped","created_at"]);
+}
+
+function getWeekId_() {
+  var now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var year = now.getFullYear();
+  var startOfYear = new Date(year, 0, 1);
+  var weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  return year + "-W" + String(weekNum).padStart(2, "0");
+}
+
+function getTodayJst_() {
+  var now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return now.toISOString().slice(0, 10);
+}
+
+function getUserEquipmentBonus_(userId) {
+  var sheet = getEquipmentSheet_();
+  ensureEquipmentCols_(sheet);
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return 0;
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  var total = 0;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === userId &&
+        String(data[i][idx["equipped"]]) === "true") {
+      total += Number(data[i][idx["bonus"]] || 0);
+    }
+  }
+  return Math.min(total, 50); // 上限50
+}
+
+// action: rumble_entry
+function rumbleEntry_(params) {
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var today   = getTodayJst_();
+  var weekId  = getWeekId_();
+  var nowJst  = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+
+  // 本日参加済みチェック
+  var entrySheet = getRumbleEntrySheet_();
+  ensureRumbleEntryCols_(entrySheet);
+  var entryData = entrySheet.getDataRange().getValues();
+  var eHeaders  = entryData[0];
+  var eIdx      = {};
+  eHeaders.forEach(function(h, i) { eIdx[h] = i; });
+  for (var i = 1; i < entryData.length; i++) {
+    if (String(entryData[i][eIdx["user_id"]]) === userId &&
+        String(entryData[i][eIdx["date"]]) === today) {
+      return json_({ ok: false, error: "already_entered_today" });
+    }
+  }
+
+  // BP残高確認（100BP消費）
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+
+  var userRow    = null;
+  var userRowNum = -1;
+  for (var j = 1; j < appliesData.length; j++) {
+    if (String(appliesData[j][aIdx["login_id"]]) === userId) {
+      userRow    = appliesData[j];
+      userRowNum = j + 1;
+      break;
+    }
+  }
+  if (!userRow) return json_({ ok: false, error: "user_not_found" });
+
+  var currentBp = Number(userRow[aIdx["bp_balance"]] || 0);
+  if (currentBp < 100) return json_({ ok: false, error: "insufficient_bp", bp: currentBp });
+
+  // BP -100消費
+  var newBp = Math.round((currentBp - 100) * 100) / 100;
+  appliesSheet.getRange(userRowNum, aIdx["bp_balance"] + 1).setValue(newBp);
+
+  // スコア計算
+  var equipBonus   = getUserEquipmentBonus_(userId);
+  var randomFactor = Math.floor(Math.random() * 51); // 0〜50
+  var score        = 100 + equipBonus + randomFactor;
+  var rp           = score;
+
+  // rumble_entryに記録
+  entrySheet.appendRow([
+    Utilities.getUuid(), userId, today, score, rp, nowJst
+  ]);
+
+  // rumble_week更新
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var weekData    = weekSheet.getDataRange().getValues();
+  var wHeaders    = weekData[0];
+  var wIdx        = {};
+  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+  var weekRowNum  = -1;
+  var currentRp   = 0;
+  for (var k = 1; k < weekData.length; k++) {
+    if (String(weekData[k][wIdx["user_id"]]) === userId &&
+        String(weekData[k][wIdx["week_id"]]) === weekId) {
+      weekRowNum = k + 1;
+      currentRp  = Number(weekData[k][wIdx["total_rp"]] || 0);
+      break;
+    }
+  }
+  if (weekRowNum === -1) {
+    weekSheet.appendRow([userId, weekId, rp, nowJst]);
+  } else {
+    weekSheet.getRange(weekRowNum, wIdx["total_rp"] + 1).setValue(currentRp + rp);
+    weekSheet.getRange(weekRowNum, wIdx["updated_at"] + 1).setValue(nowJst);
+  }
+
+  return json_({
+    ok:    true,
+    score: score,
+    rp:    rp,
+    bp:    newBp,
+    week_id: weekId,
+  });
+}
+
+// action: rumble_ranking
+function rumbleRanking_(params) {
+  var weekId    = params.weekId || getWeekId_();
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var data = weekSheet.getDataRange().getValues();
+  if (data.length <= 1) return json_({ ok: true, ranking: [], week_id: weekId });
+
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var rows = data.slice(1)
+    .filter(function(row) { return String(row[idx["week_id"]]) === weekId; })
+    .map(function(row) {
+      return {
+        user_id:  String(row[idx["user_id"]]),
+        total_rp: Number(row[idx["total_rp"]] || 0),
+      };
+    });
+
+  rows.sort(function(a, b) { return b.total_rp - a.total_rp; });
+  return json_({ ok: true, ranking: rows.slice(0, 100), week_id: weekId });
+}
+
+// action: rumble_status
+function rumbleStatus_(params) {
+  var userId = String(params.userId || "");
+  var today  = getTodayJst_();
+  var weekId = getWeekId_();
+
+  // 本日参加済みか
+  var entrySheet = getRumbleEntrySheet_();
+  ensureRumbleEntryCols_(entrySheet);
+  var entryData = entrySheet.getDataRange().getValues();
+  var eHeaders  = entryData[0];
+  var eIdx      = {};
+  eHeaders.forEach(function(h, i) { eIdx[h] = i; });
+  var todayEntry = null;
+  for (var i = 1; i < entryData.length; i++) {
+    if (String(entryData[i][eIdx["user_id"]]) === userId &&
+        String(entryData[i][eIdx["date"]]) === today) {
+      todayEntry = {
+        score: Number(entryData[i][eIdx["score"]]),
+        rp:    Number(entryData[i][eIdx["rp"]]),
+      };
+      break;
+    }
+  }
+
+  // 週間累計RP
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var weekData = weekSheet.getDataRange().getValues();
+  var wHeaders = weekData[0];
+  var wIdx     = {};
+  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+  var weekRp = 0;
+  for (var j = 1; j < weekData.length; j++) {
+    if (String(weekData[j][wIdx["user_id"]]) === userId &&
+        String(weekData[j][wIdx["week_id"]]) === weekId) {
+      weekRp = Number(weekData[j][wIdx["total_rp"]] || 0);
+      break;
+    }
+  }
+
+  return json_({
+    ok:          true,
+    entered_today: todayEntry !== null,
+    today_score: todayEntry ? todayEntry.score : null,
+    today_rp:    todayEntry ? todayEntry.rp    : null,
+    week_rp:     weekRp,
+    week_id:     weekId,
+  });
+}
+
+// action: rumble_gacha
+function rumbleGacha_(params) {
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var GACHA_COST = 100;
+  var RARITY_TABLE = [
+    { rarity: "common",    prob: 0.80    },
+    { rarity: "rare",      prob: 0.15    },
+    { rarity: "epic",      prob: 0.04    },
+    { rarity: "legendary", prob: 0.009995},
+    { rarity: "mythic",    prob: 0.000005},
+  ];
+  var BONUS_MAP = { common: 5, rare: 10, epic: 20, legendary: 35, mythic: 50 };
+  var SLOTS     = ["head", "body", "hand", "leg"];
+  var NAMES     = {
+    common:    ["Iron Helm","Cloth Armor","Leather Gloves","Worn Boots"],
+    rare:      ["Steel Helm","Chain Armor","Iron Gauntlets","Swift Boots"],
+    epic:      ["Dragon Helm","Mithril Armor","Shadow Gloves","Storm Boots"],
+    legendary: ["Crown of Kings","Aegis Armor","Thunder Gauntlets","Void Boots"],
+    mythic:    ["Cosmic Crown","Infinity Armor","Galaxy Gloves","Eternity Boots"],
+  };
+
+  // BP残高確認
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+  var userRow    = null;
+  var userRowNum = -1;
+  for (var i = 1; i < appliesData.length; i++) {
+    if (String(appliesData[i][aIdx["login_id"]]) === userId) {
+      userRow    = appliesData[i];
+      userRowNum = i + 1;
+      break;
+    }
+  }
+  if (!userRow) return json_({ ok: false, error: "user_not_found" });
+
+  var currentBp = Number(userRow[aIdx["bp_balance"]] || 0);
+  if (currentBp < GACHA_COST) return json_({ ok: false, error: "insufficient_bp", bp: currentBp });
+
+  // BP消費
+  var newBp = Math.round((currentBp - GACHA_COST) * 100) / 100;
+  appliesSheet.getRange(userRowNum, aIdx["bp_balance"] + 1).setValue(newBp);
+
+  // 抽選
+  var rand       = Math.random();
+  var cumulative = 0;
+  var rarity     = "common";
+  for (var j = 0; j < RARITY_TABLE.length; j++) {
+    cumulative += RARITY_TABLE[j].prob;
+    if (rand < cumulative) { rarity = RARITY_TABLE[j].rarity; break; }
+  }
+
+  var slot  = SLOTS[Math.floor(Math.random() * SLOTS.length)];
+  var names = NAMES[rarity];
+  var name  = names[Math.floor(Math.random() * names.length)];
+  var bonus = BONUS_MAP[rarity];
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  var eqId   = Utilities.getUuid();
+
+  // equipment保存
+  var eqSheet = getEquipmentSheet_();
+  ensureEquipmentCols_(eqSheet);
+  eqSheet.appendRow([eqId, userId, slot, rarity, name, bonus, "false", nowJst]);
+
+  return json_({
+    ok:     true,
+    item:   { id: eqId, slot: slot, rarity: rarity, name: name, bonus: bonus },
+    bp:     newBp,
+  });
+}
+
+// action: rumble_equipment
+function rumbleEquipment_(params) {
+  var userId = String(params.userId || "");
+  var sheet  = getEquipmentSheet_();
+  ensureEquipmentCols_(sheet);
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var items = [];
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === userId) {
+      items.push({
+        id:       String(data[i][idx["id"]]),
+        slot:     String(data[i][idx["slot"]]),
+        rarity:   String(data[i][idx["rarity"]]),
+        name:     String(data[i][idx["name"]]),
+        bonus:    Number(data[i][idx["bonus"]] || 0),
+        equipped: String(data[i][idx["equipped"]]) === "true",
+      });
+    }
+  }
+  return json_({ ok: true, items: items });
+}
+
+// action: rumble_equip
+function rumbleEquip_(params) {
+  var userId = String(params.userId || "");
+  var itemId = String(params.itemId || "");
+  if (!userId || !itemId) return json_({ ok: false, error: "params_required" });
+
+  var sheet = getEquipmentSheet_();
+  ensureEquipmentCols_(sheet);
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  // 対象アイテムのスロットを取得
+  var targetSlot = null;
+  var targetRow  = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["id"]]) === itemId &&
+        String(data[i][idx["user_id"]]) === userId) {
+      targetSlot = String(data[i][idx["slot"]]);
+      targetRow  = i + 1;
+      break;
+    }
+  }
+  if (!targetSlot) return json_({ ok: false, error: "item_not_found" });
+
+  // 同スロットの装備を全て外す
+  for (var j = 1; j < data.length; j++) {
+    if (String(data[j][idx["user_id"]]) === userId &&
+        String(data[j][idx["slot"]])    === targetSlot) {
+      sheet.getRange(j + 1, idx["equipped"] + 1).setValue("false");
+    }
+  }
+  // 対象を装備
+  sheet.getRange(targetRow, idx["equipped"] + 1).setValue("true");
+  return json_({ ok: true });
 }
