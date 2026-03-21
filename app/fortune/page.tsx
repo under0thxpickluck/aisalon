@@ -329,44 +329,6 @@ function buildDiagnosisDetail(mainId: string, subId: string, mainJson: any, subJ
   return parts.join('\n');
 }
 
-// ─── Ad Modal ─────────────────────────────────────────────────────────────────
-function AdModal({ onClose }: { onClose: () => void }) {
-  const [count, setCount] = useState(5);
-
-  useEffect(() => {
-    if (count <= 0) return;
-    const timer = setTimeout(() => setCount(c => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [count]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
-      <div className="bg-zinc-800 rounded-2xl p-6 w-80 flex flex-col gap-4">
-        <p className="text-zinc-500 text-xs">広告</p>
-
-        {/* Ad content */}
-        <div className="bg-gradient-to-br from-purple-900 to-pink-900 p-8 rounded-xl text-center">
-          <p className="text-white font-bold text-lg mb-2">🎯 LIFAI プレミアム会員募集中</p>
-          <p className="text-white/80 text-sm mb-3">AIで副業収入を加速しよう</p>
-          <p className="text-white/60 text-xs">今なら特別価格でご参加できます</p>
-        </div>
-
-        {/* Countdown / close button */}
-        {count > 0 ? (
-          <p className="text-center text-zinc-500 text-sm">あと {count} 秒</p>
-        ) : (
-          <button
-            onClick={onClose}
-            className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 rounded-xl transition-colors"
-          >
-            占いを見る ✨
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── UI Components ────────────────────────────────────────────────────────────
 function SectionCard({ title, body }: { title: string; body: string }) {
   return (
@@ -412,8 +374,7 @@ export default function FortunePage() {
   const [displayDiag, setDisplayDiag] = useState<StoredDiagnosis | null>(null);
   const [fortune,     setFortune]     = useState<TodayFortune | null>(null);
 
-  // Ad modal & BP toast
-  const [showAdModal, setShowAdModal] = useState(false);
+  // BP toast
   const [adDiag,      setAdDiag]      = useState<StoredDiagnosis | null>(null);
   const [toast,       setToast]       = useState<string | null>(null);
 
@@ -484,8 +445,8 @@ export default function FortunePage() {
     setView('result');
   }
 
-  // openFortune: compute fortune data, then show ad modal
-  function openFortune(s: StoredDiagnosis) {
+  // openFortune: compute fortune data, show fortune view, grant BP
+  async function openFortune(s: StoredDiagnosis) {
     const todayYmd = toYmd(new Date());
     let cached: TodayFortune | null = null;
     try {
@@ -504,12 +465,6 @@ export default function FortunePage() {
 
     setFortune(f);
     setAdDiag(s);
-    setShowAdModal(true);
-  }
-
-  // closeAdModal: dismiss ad, show fortune, grant BP
-  async function closeAdModal() {
-    setShowAdModal(false);
     setView('fortune');
 
     // BP grant — loginId は addval_auth_v1 の id フィールドから取得
@@ -560,7 +515,13 @@ export default function FortunePage() {
           <p className="text-white/60 text-sm">読み込み中…</p>
           {/* Monetag広告枠 */}
           <div className="w-full max-w-sm mx-auto rounded-xl overflow-hidden bg-white/5 min-h-[100px] flex items-center justify-center">
-            <div id="monetag-ad-zone" className="w-full" />
+            {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+            <script
+              src="https://quge5.com/88/tag.min.js"
+              data-zone="221931"
+              async={true}
+              data-cfasync="false"
+            />
           </div>
           <p className="text-white/20 text-xs">広告</p>
         </div>
@@ -742,9 +703,6 @@ export default function FortunePage() {
           </div>
         </>
       )}
-
-      {/* ── Ad Modal Overlay ─────────────────────────────────────────────── */}
-      {showAdModal && <AdModal onClose={closeAdModal} />}
 
       {/* ── BP Toast ─────────────────────────────────────────────────────── */}
       {toast && (

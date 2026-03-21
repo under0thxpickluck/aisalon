@@ -1,7 +1,6 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { ToastHost } from "@/components/Toast";
 import { LifaiCatProvider } from "@/components/LifaiCat";
 
@@ -60,25 +59,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ToastHost />
           {children}
         </LifaiCatProvider>
-        <Script
-          src="https://quge5.com/88/tag.min.js"
-          data-zone="221931"
-          strategy="afterInteractive"
-          data-cfasync="false"
-        />
-        {/* 占いページではPopunderを無効化 */}
-        <Script id="monetag-page-control" strategy="afterInteractive">{`
-          (function() {
-            var _origPush = Array.prototype.push;
-            function blockOnFortune(type) {
-              return window.location.pathname.includes('/fortune') && type === 'popunder';
-            }
-            window.__mntgSafe = function(obj) {
-              if (blockOnFortune(obj.type)) return;
-              if (window.__mntg) window.__mntg.push(obj);
-            };
-          })();
-        `}</Script>
       </body>
     </html>
   );
