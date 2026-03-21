@@ -329,36 +329,6 @@ function buildDiagnosisDetail(mainId: string, subId: string, mainJson: any, subJ
   return parts.join('\n');
 }
 
-// ─── Monetag Loader ───────────────────────────────────────────────────────────
-function MonetagLoader({ zone }: { zone: string }) {
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://quge5.com/88/tag.min.js';
-    script.setAttribute('data-zone', zone);
-    script.async = true;
-    script.setAttribute('data-cfasync', 'false');
-    script.id = 'monetag-loader';
-    document.body.appendChild(script);
-
-    // クリーンアップ：即時も遅延も両方実行
-    const cleanup = () => {
-      ['script[id="monetag-loader"]', 'script[src*="quge5"]', 'script[src*="tzegilo"]',
-       'script[src*="auqot"]', 'script[src*="jmosl"]', 'script[src*="094kk"]', 'script[src*="stattag"]']
-        .forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()));
-      try { delete (window as any).__mntg; } catch {}
-    };
-
-    return () => {
-      cleanup();
-      // Monetagが非同期で追加するスクリプトも削除するため少し遅延して再実行
-      setTimeout(cleanup, 500);
-      setTimeout(cleanup, 1500);
-    };
-  }, []);
-
-  return <div id="monetag-ad-zone" className="w-full max-w-sm min-h-[100px]" />;
-}
-
 // ─── UI Components ────────────────────────────────────────────────────────────
 function SectionCard({ title, body }: { title: string; body: string }) {
   return (
@@ -541,11 +511,8 @@ export default function FortunePage() {
 
       {/* ── Loading ─────────────────────────────────────────────────────── */}
       {view === 'loading' && (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-          <p className="text-white/60 text-sm">読み込み中…</p>
-          {/* loading中のみ動的にMonetagを注入・離脱時に削除 */}
-          <MonetagLoader zone="221931" />
-          <p className="text-white/20 text-xs">広告</p>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <p className="text-white/60">読み込み中…</p>
         </div>
       )}
 
