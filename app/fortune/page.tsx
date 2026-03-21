@@ -511,19 +511,8 @@ export default function FortunePage() {
 
       {/* ── Loading ─────────────────────────────────────────────────────── */}
       {view === 'loading' && (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-6">
+        <div className="flex items-center justify-center min-h-screen">
           <p className="text-white/60 text-sm">読み込み中…</p>
-          {/* Monetag広告枠 */}
-          <div className="w-full max-w-sm mx-auto rounded-xl overflow-hidden bg-white/5 min-h-[100px] flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-            <script
-              src="https://quge5.com/88/tag.min.js"
-              data-zone="221931"
-              async={true}
-              data-cfasync="false"
-            />
-          </div>
-          <p className="text-white/20 text-xs">広告</p>
         </div>
       )}
 
