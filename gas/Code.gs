@@ -4955,14 +4955,14 @@ function tapPlay_(params) {
 
   // 報酬確率テーブル
   var REWARD_TABLE = [
-    { type: "BP", amount: 0.1,   prob: 0.40  },
-    { type: "BP", amount: 0.2,   prob: 0.25  },
-    { type: "BP", amount: 0.5,   prob: 0.15  },
-    { type: "EP", amount: 1,     prob: 0.10  },
-    { type: "EP", amount: 5,     prob: 0.05  },
-    { type: "EP", amount: 50,    prob: 0.03  },
-    { type: "EP", amount: 500,   prob: 0.015 },
-    { type: "EP", amount: 10000, prob: 0.005 }
+    { type: "BP", amount: 0.1,   prob: 0.45     },
+    { type: "BP", amount: 0.2,   prob: 0.25     },
+    { type: "BP", amount: 0.5,   prob: 0.08     },
+    { type: "EP", amount: 1,     prob: 0.15     },
+    { type: "EP", amount: 3,     prob: 0.05     },
+    { type: "EP", amount: 10,    prob: 0.015    },
+    { type: "EP", amount: 100,   prob: 0.0009   },
+    { type: "EP", amount: 10000, prob: 0.000001 }
   ];
 
   // ユーザー行取得
