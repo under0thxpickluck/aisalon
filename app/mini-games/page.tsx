@@ -51,18 +51,18 @@ export default function MiniGamesPage() {
       {/* ゲーム一覧 */}
       <div className="grid grid-cols-1 gap-4">
         {/* ランブル */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 opacity-50">
+        <Link href="/mini-games/rumble" className="bg-white/5 border border-purple-500/30 rounded-2xl p-6 hover:bg-white/10 transition block">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <span className="text-3xl">⚔️</span>
               <div>
                 <h2 className="font-bold">Rumble Arena</h2>
-                <p className="text-white/40 text-xs">キャラ育成・自動対戦</p>
+                <p className="text-white/40 text-xs">週次ランキングで報酬獲得</p>
               </div>
             </div>
-            <span className="bg-white/10 text-white/40 text-xs px-3 py-1 rounded-full">Coming Soon</span>
+            <span className="bg-purple-500/20 text-purple-400 text-xs px-3 py-1 rounded-full">PLAY</span>
           </div>
-        </div>
+        </Link>
 
         {/* タップゲーム */}
         <Link href="/mini-games/tap" className="bg-white/5 border border-purple-500/30 rounded-2xl p-6 hover:bg-white/10 transition block">
