@@ -341,12 +341,21 @@ function MonetagLoader({ zone }: { zone: string }) {
     document.body.appendChild(script);
 
     return () => {
-      // loading終了時にスクリプトを削除
-      const el = document.getElementById('monetag-loader');
-      if (el) el.remove();
-      // Monetagが追加したスクリプトも削除
-      document.querySelectorAll('script[src*="tzegilo"], script[src*="auqot"], script[src*="jmosl"], script[src*="094kk"]')
-        .forEach(s => s.remove());
+      // Monetag関連スクリプトを全て削除
+      const selectors = [
+        'script[id="monetag-loader"]',
+        'script[src*="quge5"]',
+        'script[src*="tzegilo"]',
+        'script[src*="auqot"]',
+        'script[src*="jmosl"]',
+        'script[src*="094kk"]',
+        'script[src*="stattag"]',
+      ];
+      selectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => el.remove());
+      });
+      // Monetagグローバル変数もクリア
+      try { delete (window as any).__mntg; } catch {}
     };
   }, []);
 
