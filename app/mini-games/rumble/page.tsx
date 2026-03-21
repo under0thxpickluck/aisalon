@@ -50,6 +50,7 @@ export default function RumblePage() {
   const [busy, setBusy]           = useState(false);
   const [gachaResult, setGachaResult] = useState<GachaResult | null>(null);
   const [msg, setMsg]             = useState("");
+  const [countdown, setCountdown] = useState("");
 
   useEffect(() => {
     try {
@@ -75,6 +76,26 @@ export default function RumblePage() {
     fetch(`/api/minigames/rumble/equipment?userId=${encodeURIComponent(userId)}`)
       .then(r => r.json()).then(d => { if (d.ok) setEquipment(d.items); }).catch(() => {});
   }, [tab, userId]);
+
+  useEffect(() => {
+    const calcCountdown = () => {
+      const now    = new Date();
+      const nowJst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const target = new Date(nowJst);
+      target.setHours(19, 0, 0, 0);
+      if (nowJst.getHours() >= 19) target.setDate(target.getDate() + 1);
+      // 土日はスキップ
+      while (target.getDay() === 0 || target.getDay() === 6) target.setDate(target.getDate() + 1);
+      const diff = target.getTime() - nowJst.getTime();
+      const h    = Math.floor(diff / 3600000);
+      const m    = Math.floor((diff % 3600000) / 60000);
+      const s    = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`);
+    };
+    calcCountdown();
+    const interval = setInterval(calcCountdown, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleEntry = async () => {
     if (!userId || busy) return;
@@ -155,6 +176,30 @@ export default function RumblePage() {
               <p className="text-xs text-white/40 mb-1">今日のスコア</p>
               <p className="text-2xl font-black text-white">{status?.today_score ?? "-"}</p>
             </div>
+          </div>
+
+          {/* カウントダウン */}
+          <div className="bg-white/5 rounded-xl p-3 text-center mb-4">
+            <p className="text-xs text-white/40">次のバトルまで</p>
+            <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
+          </div>
+
+          {/* 報酬帯 */}
+          <div className="bg-white/5 rounded-xl p-4 mb-4">
+            <p className="text-xs font-bold text-white/60 mb-2">🏆 週次報酬</p>
+            {[
+              { label: "🥇 1位",    ep: 1500 },
+              { label: "🥈 2位",    ep: 1000 },
+              { label: "🥉 3位",    ep: 700  },
+              { label: "4〜10位",   ep: 400  },
+              { label: "11〜50位",  ep: 80   },
+              { label: "51〜100位", ep: 10   },
+            ].map(r => (
+              <div key={r.label} className="flex justify-between text-xs py-1">
+                <span className="text-white/60">{r.label}</span>
+                <span className="text-yellow-400">{r.ep.toLocaleString()} EP</span>
+              </div>
+            ))}
           </div>
 
           {/* 参加ボタン */}
