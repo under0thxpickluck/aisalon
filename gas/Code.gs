@@ -4635,6 +4635,10 @@ function doPost(e) {
     if (action === 'rumble_enhance')           return rumbleEnhance_(body);
     if (action === 'rumble_my_rank_context')   return rumbleMyRankContext_(body);
     if (action === 'rumble_shard_status')      return rumbleShardStatus_(body);
+    if (action === 'music_boost_status')     return musicBoostStatus_(body);
+    if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
+    if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
+    if (action === 'music_boost_admin_list') return musicBoostAdminList_(body);
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -5948,4 +5952,223 @@ function rumbleShardStatus_(params) {
   var userData = getUserShards_(userId);
   if (!userData) return json_({ ok: false, error: "user_not_found" });
   return json_({ ok: true, shards: userData.shards });
+}
+
+// ============================================================
+// MUSIC BOOST SYSTEM
+// 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
+// ============================================================
+
+var MUSIC_BOOST_PLANS = [
+  { id: "starter",  percent: 2,  price: 9,    slots: 10  },
+  { id: "light",    percent: 5,  price: 29,   slots: 25  },
+  { id: "basic",    percent: 10, price: 59,   slots: 50  },
+  { id: "growth",   percent: 15, price: 99,   slots: 75  },
+  { id: "pro",      percent: 20, price: 149,  slots: 100 },
+  { id: "advanced", percent: 25, price: 199,  slots: 125 },
+  { id: "premium",  percent: 30, price: 299,  slots: 150 },
+  { id: "elite",    percent: 35, price: 499,  slots: 175 },
+  { id: "master",   percent: 40, price: 699,  slots: 200 },
+  { id: "legend",   percent: 45, price: 1000, slots: 225 },
+];
+var MUSIC_BOOST_TOTAL_SLOTS = 10000;
+
+function getMusicBoostSheet_() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("music_boost");
+  if (!sheet) {
+    sheet = ss.insertSheet("music_boost");
+    sheet.appendRow([
+      "id","user_id","plan_id","percent","price_usd",
+      "slots_used","status","started_at","expires_at",
+      "canceled_at","updated_at"
+    ]);
+  }
+  return sheet;
+}
+
+function getMusicBoostUsedSlots_() {
+  var sheet = getMusicBoostSheet_();
+  var data  = sheet.getDataRange().getValues();
+  if (data.length <= 1) return 0;
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  var total = 0;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["status"]]) === "active") {
+      total += Number(data[i][idx["slots_used"]] || 0);
+    }
+  }
+  return total;
+}
+
+// action: music_boost_status（ユーザーの現在ブースト状況）
+function musicBoostStatus_(params) {
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var sheet   = getMusicBoostSheet_();
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var userBoost  = null;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === userId &&
+        String(data[i][idx["status"]])  === "active") {
+      userBoost = {
+        id:         String(data[i][idx["id"]]),
+        plan_id:    String(data[i][idx["plan_id"]]),
+        percent:    Number(data[i][idx["percent"]]),
+        price_usd:  Number(data[i][idx["price_usd"]]),
+        slots_used: Number(data[i][idx["slots_used"]]),
+        status:     String(data[i][idx["status"]]),
+        started_at: String(data[i][idx["started_at"]]),
+        expires_at: String(data[i][idx["expires_at"]]),
+      };
+      break;
+    }
+  }
+
+  var usedSlots = getMusicBoostUsedSlots_();
+  return json_({
+    ok:              true,
+    current_boost:   userBoost,
+    total_slots:     MUSIC_BOOST_TOTAL_SLOTS,
+    used_slots:      usedSlots,
+    available_slots: MUSIC_BOOST_TOTAL_SLOTS - usedSlots,
+    plans:           MUSIC_BOOST_PLANS,
+  });
+}
+
+// action: music_boost_subscribe（新規契約・プラン変更）
+function musicBoostSubscribe_(params) {
+  var userId = String(params.userId || "");
+  var planId = String(params.planId || "");
+  if (!userId || !planId) return json_({ ok: false, error: "params_required" });
+
+  // プラン検索
+  var plan = null;
+  for (var p = 0; p < MUSIC_BOOST_PLANS.length; p++) {
+    if (MUSIC_BOOST_PLANS[p].id === planId) { plan = MUSIC_BOOST_PLANS[p]; break; }
+  }
+  if (!plan) return json_({ ok: false, error: "invalid_plan" });
+
+  var sheet   = getMusicBoostSheet_();
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  // 現在のアクティブブーストを確認
+  var currentRow    = -1;
+  var currentSlots  = 0;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === userId &&
+        String(data[i][idx["status"]])  === "active") {
+      currentRow   = i + 1;
+      currentSlots = Number(data[i][idx["slots_used"]] || 0);
+      break;
+    }
+  }
+
+  // 枠チェック（既存分を差し引いた差分で確認）
+  var usedSlots    = getMusicBoostUsedSlots_();
+  var deltaSlots   = plan.slots - currentSlots;
+  var availSlots   = MUSIC_BOOST_TOTAL_SLOTS - usedSlots;
+  if (deltaSlots > availSlots) {
+    return json_({ ok: false, error: "no_slots_available", available: availSlots, needed: deltaSlots });
+  }
+
+  var nowJst    = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  var expiresAt = new Date(Date.now() + 9 * 60 * 60 * 1000 + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  // 既存アクティブをcanceledに
+  if (currentRow > 0) {
+    sheet.getRange(currentRow, idx["status"]      + 1).setValue("canceled");
+    sheet.getRange(currentRow, idx["canceled_at"] + 1).setValue(nowJst);
+    sheet.getRange(currentRow, idx["updated_at"]  + 1).setValue(nowJst);
+  }
+
+  // 新規行追加
+  var newId = Utilities.getUuid();
+  sheet.appendRow([
+    newId, userId, planId, plan.percent, plan.price,
+    plan.slots, "active", nowJst, expiresAt, "", nowJst
+  ]);
+
+  return json_({
+    ok:         true,
+    boost_id:   newId,
+    plan_id:    planId,
+    percent:    plan.percent,
+    price_usd:  plan.price,
+    slots_used: plan.slots,
+    started_at: nowJst,
+    expires_at: expiresAt,
+  });
+}
+
+// action: music_boost_cancel（解約）
+function musicBoostCancel_(params) {
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var sheet   = getMusicBoostSheet_();
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  var found  = false;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === userId &&
+        String(data[i][idx["status"]])  === "active") {
+      sheet.getRange(i + 1, idx["status"]      + 1).setValue("canceled");
+      sheet.getRange(i + 1, idx["canceled_at"] + 1).setValue(nowJst);
+      sheet.getRange(i + 1, idx["updated_at"]  + 1).setValue(nowJst);
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) return json_({ ok: false, error: "no_active_boost" });
+  return json_({ ok: true, canceled_at: nowJst });
+}
+
+// action: music_boost_admin_list（管理用：全ブースト一覧）
+function musicBoostAdminList_(params) {
+  var sheet   = getMusicBoostSheet_();
+  var data    = sheet.getDataRange().getValues();
+  if (data.length <= 1) return json_({ ok: true, boosts: [], used_slots: 0 });
+
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var boosts = data.slice(1).map(function(row) {
+    return {
+      id:         String(row[idx["id"]]),
+      user_id:    String(row[idx["user_id"]]),
+      plan_id:    String(row[idx["plan_id"]]),
+      percent:    Number(row[idx["percent"]]),
+      price_usd:  Number(row[idx["price_usd"]]),
+      slots_used: Number(row[idx["slots_used"]]),
+      status:     String(row[idx["status"]]),
+      started_at: String(row[idx["started_at"]]),
+      expires_at: String(row[idx["expires_at"]]),
+    };
+  });
+
+  var usedSlots = getMusicBoostUsedSlots_();
+  return json_({
+    ok:              true,
+    boosts:          boosts,
+    used_slots:      usedSlots,
+    total_slots:     MUSIC_BOOST_TOTAL_SLOTS,
+    available_slots: MUSIC_BOOST_TOTAL_SLOTS - usedSlots,
+  });
 }
