@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+const ADMIN_PASSWORD = "nagoya01@";
+
 // plan列（"30"/"50"/"100"/"500"/"1000"）→ 表示ランク名
 const PLAN_RANK_MAP: Record<string, string> = {
   "30":   "Starter",
@@ -43,6 +45,14 @@ export default function MembershipPage() {
   const [loading, setLoading]   = useState(true);
   const [busy, setBusy]         = useState(false);
   const [msg, setMsg]           = useState("");
+  const [authed, setAuthed]     = useState(false);
+  const [pwInput, setPwInput]   = useState("");
+  const [pwError, setPwError]   = useState(false);
+
+  useEffect(() => {
+    const ok = sessionStorage.getItem("membership_authed");
+    if (ok === "1") setAuthed(true);
+  }, []);
 
   useEffect(() => {
     try {
@@ -83,6 +93,37 @@ export default function MembershipPage() {
   };
 
   const totalBp = (status?.base_bp ?? 0) + (status?.extra_bp ?? 0);
+
+  if (!authed) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 w-full max-w-sm">
+        <h2 className="text-lg font-bold text-center mb-6">🔒 メンバーシップ</h2>
+        <input
+          type="password"
+          value={pwInput}
+          onChange={e => { setPwInput(e.target.value); setPwError(false); }}
+          onKeyDown={e => {
+            if (e.key === "Enter") {
+              if (pwInput === ADMIN_PASSWORD) { sessionStorage.setItem("membership_authed", "1"); setAuthed(true); }
+              else setPwError(true);
+            }
+          }}
+          placeholder="パスワードを入力"
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm mb-3 outline-none"
+        />
+        {pwError && <p className="text-red-400 text-xs mb-3 text-center">パスワードが違います</p>}
+        <button
+          onClick={() => {
+            if (pwInput === ADMIN_PASSWORD) { sessionStorage.setItem("membership_authed", "1"); setAuthed(true); }
+            else setPwError(true);
+          }}
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-bold text-sm"
+        >
+          入室する
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-lg mx-auto">
@@ -134,10 +175,6 @@ export default function MembershipPage() {
                 className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-center text-sm font-bold">
                 BPを購入
               </a>
-              <Link href="/top"
-                className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-center text-sm text-white/60">
-                ランク変更
-              </Link>
             </div>
           </>
         )}
