@@ -1312,7 +1312,7 @@ function handle_(key, body) {
     let header = values[0];
 
     // ✅ 必要列保証（壊さない）
-    ensureCols_(sheet, header, ["login_id", "email", "bp_balance", "ep_balance"]);
+    ensureCols_(sheet, header, ["login_id", "email", "bp_balance", "ep_balance", "plan"]);
 
     values = sheet.getDataRange().getValues();
     header = values[0];
@@ -1339,16 +1339,18 @@ function handle_(key, body) {
       return json_({ ok: false, error: "not_found" });
     }
 
-    const bpRaw = hit.r[idx["bp_balance"]];
-    const epRaw = hit.r[idx["ep_balance"]];
+    const bpRaw   = hit.r[idx["bp_balance"]];
+    const epRaw   = hit.r[idx["ep_balance"]];
+    const planRaw = hit.r[idx["plan"]];
 
     const bp = Number(bpRaw || 0);
     const ep = Number(epRaw || 0);
 
     return json_({
-      ok: true,
-      bp: Number.isFinite(bp) ? bp : 0,
-      ep: Number.isFinite(ep) ? ep : 0,
+      ok:   true,
+      bp:   Number.isFinite(bp) ? bp : 0,
+      ep:   Number.isFinite(ep) ? ep : 0,
+      plan: str_(planRaw),
     });
   }
 

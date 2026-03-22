@@ -2,6 +2,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+// plan列（"30"/"50"/"100"/"500"/"1000"）→ 表示ランク名
+const PLAN_RANK_MAP: Record<string, string> = {
+  "30":   "Starter",
+  "50":   "Builder",
+  "100":  "Automation",
+  "500":  "Core",
+  "1000": "Infra",
+};
+
+// plan列 → BP上限（入会ランク別）
+const PLAN_BP_CAP: Record<string, number> = {
+  "30":   300,
+  "50":   600,
+  "100":  1500,
+  "500":  8000,
+  "1000": 20000,
+};
+
 const BP_PACKS = [
   { id: "s",   label: "S",   price: 7.5,  bp: 500,   tag: null,      color: "border-white/10" },
   { id: "m",   label: "M",   price: 15,   bp: 1200,  tag: null,      color: "border-white/10" },
@@ -35,17 +53,24 @@ export default function MembershipPage() {
 
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/me?userId=${encodeURIComponent(userId)}`)
+    fetch("/api/wallet/balance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: userId }),
+    })
       .then(r => r.json())
       .then(d => {
         if (d.ok) {
+          const plan  = String(d.plan ?? "");
+          const rank  = PLAN_RANK_MAP[plan] ?? plan ?? "Starter";
+          const bpCap = PLAN_BP_CAP[plan]   ?? 300;
           setStatus({
-            rank:         d.rank ?? "Starter",
-            base_bp:      Number(d.bp_balance ?? 0),
-            extra_bp:     Number(d.extra_bp ?? 0),
-            total_bp:     Number(d.bp_balance ?? 0) + Number(d.extra_bp ?? 0),
-            next_renewal: d.next_renewal ?? "—",
-            bp_cap:       Number(d.bp_cap ?? 300),
+            rank,
+            base_bp:      Number(d.bp ?? 0),
+            extra_bp:     0,
+            total_bp:     Number(d.bp ?? 0),
+            next_renewal: "—",
+            bp_cap:       bpCap,
           });
         }
       })
