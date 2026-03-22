@@ -1,282 +1,236 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getAuth, type AuthState } from "../lib/auth";
+import Link from "next/link";
 
-// =========================================================
-// 定数
-// =========================================================
+const BP_PACKS = [
+  { id: "s",   label: "S",   price: 7.5,  bp: 500,   tag: null,      color: "border-white/10" },
+  { id: "m",   label: "M",   price: 15,   bp: 1200,  tag: null,      color: "border-white/10" },
+  { id: "l",   label: "L",   price: 30,   bp: 2600,  tag: null,      color: "border-white/10" },
+  { id: "xl",  label: "XL",  price: 75,   bp: 7000,  tag: "おすすめ",  color: "border-purple-500" },
+  { id: "xxl", label: "XXL", price: 150,  bp: 16000, tag: "最大効率", color: "border-yellow-500" },
+];
 
-type SubscriptionPlan = {
-  id: string;
-  label: string;
-  price: number;
+type MemberStatus = {
+  rank: string;
+  base_bp: number;
+  extra_bp: number;
+  total_bp: number;
+  next_renewal: string;
   bp_cap: number;
-  desc: string;
-  popular?: boolean;
 };
 
-const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
-  { id: "free",     label: "Free",     price: 0,   bp_cap: 0,     desc: "まずは基本利用から" },
-  { id: "plus",     label: "Plus",     price: 9,   bp_cap: 1000,  desc: "毎月BPを補充しながら継続利用" },
-  { id: "pro",      label: "Pro",      price: 29,  bp_cap: 3000,  desc: "BP補充＋案件優先・収益機会も強化", popular: true },
-  { id: "priority", label: "Priority", price: 99,  bp_cap: 10000, desc: "案件獲得・優先利用を重視する実践向け" },
-  { id: "partner",  label: "Partner",  price: 299, bp_cap: 30000, desc: "提携・高頻度利用を前提とした上位プラン" },
-];
-
-const CREDIT_ITEMS = [
-  { title: "BP追加パック",     desc: "BPを必要な時に追加" },
-  { title: "優先チケット",     desc: "審査・案件を優先列で処理" },
-  { title: "音楽案件ブースト", desc: "提携BGM案件への露出を強化" },
-  { title: "生成クレジット",   desc: "AI生成の追加利用枠" },
-];
-
-// =========================================================
-// BalanceBadge
-// ※ top/page.tsx で export されていないため、同等の実装をローカルに定義
-// =========================================================
-
-function BalanceBadge({ auth }: { auth: AuthState }) {
-  const [bp, setBp] = useState<number>(0);
-  const [ep, setEp] = useState<number>(0);
-  const [err, setErr] = useState<string>("");
-
-  useEffect(() => {
-    const id =
-      (auth as Record<string, unknown>)?.id as string ||
-      (auth as Record<string, unknown>)?.loginId as string ||
-      "";
-    if (!id) { setErr("no_login_id"); return; }
-
-    (async () => {
-      try {
-        const r = await fetch("/api/wallet/balance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({ id }),
-        });
-        const data = await r.json().catch(() => ({ ok: false, error: "not_json" })) as Record<string, unknown>;
-        if (!data.ok) { setErr((data.error as string) || "failed"); return; }
-        setBp(Number(data.bp || 0));
-        setEp(Number(data.ep || 0));
-      } catch (e) {
-        setErr(String(e));
-      }
-    })();
-  }, [auth]);
-
-  return (
-    <div className="flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300">
-      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-extrabold text-black">
-        WALLET
-      </span>
-      <span>BP</span>
-      <span className="font-extrabold text-white">{bp}</span>
-      <span className="opacity-40">/</span>
-      <span>EP</span>
-      <span className="font-extrabold text-white">{ep}</span>
-      {err ? <span className="ml-2 text-[10px] opacity-50">({err})</span> : null}
-    </div>
-  );
-}
-
-// =========================================================
-// セクション1: 現在のプラン状態
-// =========================================================
-
-function CurrentPlanCard({ auth }: { auth: AuthState }) {
-  const planLabel = auth.plan || "―";
-
-  return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-        <div>
-          <p className="text-xs text-zinc-500">入会ランク</p>
-          <p className="mt-1 text-sm font-extrabold text-white">{planLabel}</p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-500">月額プラン</p>
-          <p className="mt-1 text-sm font-extrabold text-white">Free（未契約）</p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-500">次回更新日</p>
-          <p className="mt-1 text-sm font-extrabold text-white">―</p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-500">ステータス</p>
-          <span className="mt-1 inline-block rounded-full bg-zinc-700 px-3 py-1 text-xs font-bold text-zinc-300">
-            現在のプラン
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =========================================================
-// セクション2: 月額メンバーシップ
-// =========================================================
-
-function SubscriptionSection() {
-  return (
-    <section>
-      <h2 className="text-base font-extrabold text-white">② 月額メンバーシップ</h2>
-      <p className="mt-1 text-xs text-zinc-500">Stripe決済で近日対応予定</p>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {SUBSCRIPTION_PLANS.map((plan) => (
-          <div
-            key={plan.id}
-            className={[
-              "relative rounded-2xl border p-5 transition",
-              plan.popular
-                ? "border-amber-600 bg-zinc-900"
-                : "border-zinc-800 bg-zinc-900",
-            ].join(" ")}
-          >
-            {plan.popular && (
-              <span className="absolute right-3 top-3 rounded-full bg-amber-500 px-2.5 py-0.5 text-[11px] font-bold text-black">
-                人気
-              </span>
-            )}
-
-            <div className="text-sm font-extrabold text-white">{plan.label}</div>
-
-            <div className="mt-1 text-xl font-extrabold text-white">
-              {plan.price === 0 ? "無料" : `$${plan.price}/月`}
-            </div>
-
-            <div className="mt-1 text-xs text-zinc-400">
-              {plan.bp_cap === 0
-                ? "補充なし"
-                : `毎月 ${plan.bp_cap.toLocaleString()} BP 補充`}
-            </div>
-
-            <p className="mt-3 text-xs text-zinc-500">{plan.desc}</p>
-
-            <button
-              type="button"
-              disabled
-              className="mt-4 w-full cursor-not-allowed rounded-xl border border-zinc-700 bg-zinc-800 py-2 text-xs font-bold text-zinc-500"
-            >
-              🔒 準備中
-            </button>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// =========================================================
-// セクション3: 追加クレジット
-// =========================================================
-
-function AdditionalCreditsSection() {
-  return (
-    <section>
-      <h2 className="text-base font-extrabold text-white">③ 追加クレジット購入</h2>
-      <p className="mt-1 text-xs text-zinc-500">必要な分だけ追加できます・近日対応予定</p>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {CREDIT_ITEMS.map((item) => (
-          <div key={item.title} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-            <div className="text-sm font-extrabold text-white">{item.title}</div>
-            <p className="mt-1 text-xs text-zinc-500">{item.desc}</p>
-            <button
-              type="button"
-              disabled
-              className="mt-4 w-full cursor-not-allowed rounded-xl border border-zinc-700 bg-zinc-800 py-2 text-xs font-bold text-zinc-500"
-            >
-              🔒 準備中
-            </button>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// =========================================================
-// メインページ
-// =========================================================
-
 export default function MembershipPage() {
-  const router = useRouter();
-  const [auth, setAuthState] = useState<AuthState | null>(null);
+  const [userId, setUserId]     = useState("");
+  const [status, setStatus]     = useState<MemberStatus | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [busy, setBusy]         = useState(false);
+  const [msg, setMsg]           = useState("");
 
   useEffect(() => {
-    const a = getAuth();
-    if (!a) {
-      router.replace("/login");
-      return;
-    }
-    if (a.status !== "approved") {
-      router.replace("/login");
-      return;
-    }
-    setAuthState(a);
-  }, [router]);
+    try {
+      const raw = localStorage.getItem("addval_auth_v1");
+      if (raw) { const auth = JSON.parse(raw); setUserId(String(auth?.id ?? "")); }
+    } catch {}
+  }, []);
 
-  // ✅ 認証判定が終わるまで描画しない（top/page.tsx と同じパターン）
-  if (auth === null) return null;
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/me?userId=${encodeURIComponent(userId)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          setStatus({
+            rank:         d.rank ?? "Starter",
+            base_bp:      Number(d.bp_balance ?? 0),
+            extra_bp:     Number(d.extra_bp ?? 0),
+            total_bp:     Number(d.bp_balance ?? 0) + Number(d.extra_bp ?? 0),
+            next_renewal: d.next_renewal ?? "—",
+            bp_cap:       Number(d.bp_cap ?? 300),
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  const handlePurchase = async (pack: typeof BP_PACKS[0]) => {
+    setMsg(`🔒 現在BPパック購入は準備中です（${pack.label}パック / $${pack.price}`);
+  };
+
+  const totalBp = (status?.base_bp ?? 0) + (status?.extra_bp ?? 0);
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-[920px] px-4 py-10">
-        <div className="rounded-[28px] border border-zinc-800 bg-zinc-950 p-6 shadow-[0_26px_70px_rgba(0,0,0,.4)]">
+    <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-lg mx-auto">
 
-          {/* ヘッダー */}
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <button
-                type="button"
-                onClick={() => router.push("/top")}
-                className="text-xs text-zinc-400 transition hover:text-white"
-              >
-                ← ダッシュボードに戻る
-              </button>
+      {/* ヘッダー */}
+      <div className="flex items-center justify-between mb-6">
+        <Link href="/top" className="text-white/40 text-sm">← Back</Link>
+        <div className="text-center">
+          <h1 className="font-bold text-lg">メンバーシップ & BP</h1>
+          <p className="text-xs text-white/40">クレジットの確認・回復・追加購入</p>
+        </div>
+        <div className="w-16" />
+      </div>
 
-              <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-400">
-                <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                MEMBERSHIP
+      {/* 現在の状態カード */}
+      <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/20 rounded-2xl p-5 mb-6">
+        {loading ? (
+          <p className="text-white/40 text-sm text-center py-4">読み込み中…</p>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs text-white/40 mb-1">現在のランク</p>
+                <p className="font-black text-xl text-purple-400">{status?.rank ?? "Starter"}</p>
               </div>
-
-              <h1 className="mt-3 text-xl font-extrabold tracking-tight text-white">
-                メンバーシップ
-              </h1>
-              <p className="mt-2 text-sm text-zinc-400">
-                サブスクリプションとクレジットを管理します。
-              </p>
+              <div className="text-right">
+                <p className="text-xs text-white/40 mb-1">次回更新日</p>
+                <p className="text-sm text-white/70">{status?.next_renewal ?? "—"}</p>
+              </div>
             </div>
 
-            <BalanceBadge auth={auth} />
-          </div>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="bg-white/5 rounded-xl p-3 text-center">
+                <p className="text-xs text-white/40 mb-1">通常BP</p>
+                <p className="font-black text-lg text-white">{(status?.base_bp ?? 0).toLocaleString()}</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-3 text-center">
+                <p className="text-xs text-white/40 mb-1">追加BP</p>
+                <p className="font-black text-lg text-blue-400">{(status?.extra_bp ?? 0).toLocaleString()}</p>
+              </div>
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
+                <p className="text-xs text-white/40 mb-1">合計BP</p>
+                <p className="font-black text-lg text-purple-300">{totalBp.toLocaleString()}</p>
+              </div>
+            </div>
 
-          {/* セクション1: 現在のプラン */}
-          <div className="mt-6">
-            <CurrentPlanCard auth={auth} />
-          </div>
+            <div className="flex gap-3">
+              <a href="#purchase"
+                className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-center text-sm font-bold">
+                BPを購入
+              </a>
+              <Link href="/top"
+                className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-center text-sm text-white/60">
+                ランク変更
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
 
-          {/* セクション2: 月額メンバーシップ */}
-          <div className="mt-8">
-            <SubscriptionSection />
+      {/* BPの仕組み */}
+      <div className="bg-white/5 rounded-xl p-5 mb-6">
+        <h2 className="font-bold mb-3">💡 BPの仕組み</h2>
+        <p className="text-sm text-white/60 leading-relaxed mb-3">
+          毎月、現在のランクに応じた通常クレジットが回復します。回復量は最大値の50%です。
+        </p>
+        <p className="text-sm text-white/60 leading-relaxed mb-3">
+          回復後の通常クレジットは上限を超えません。追加購入や報酬で得たBPは、この回復の影響を受けません。
+        </p>
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="bg-white/5 rounded-lg p-3 text-center">
+            <p className="text-xs text-white/40">通常クレジット</p>
+            <p className="text-sm font-bold text-green-400 mt-1">毎月回復</p>
           </div>
-
-          {/* セクション3: 追加クレジット */}
-          <div className="mt-8">
-            <AdditionalCreditsSection />
-          </div>
-
-          <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-xs text-zinc-600">
-            決済機能は現在準備中です。近日中に対応予定です。
+          <div className="bg-white/5 rounded-lg p-3 text-center">
+            <p className="text-xs text-white/40">追加クレジット</p>
+            <p className="text-sm font-bold text-blue-400 mt-1">失効なし</p>
           </div>
         </div>
-
-        <div className="mt-6 text-center text-xs text-zinc-700">© LIFAI</div>
       </div>
-    </main>
+
+      {/* 回復の例 */}
+      <div className="bg-white/5 rounded-xl p-5 mb-6">
+        <h2 className="font-bold mb-3">📊 回復の例（上限300の場合）</h2>
+        <div className="space-y-2">
+          {[
+            { current: 150, cap: 300, recovery: 150, result: 300, note: "満タン回復" },
+            { current: 250, cap: 300, recovery: 50,  result: 300, note: "上限まで回復" },
+            { current: 500, cap: 300, recovery: 0,   result: 500, note: "回復なし（上限超え）" },
+          ].map((c, i) => (
+            <div key={i} className="flex items-center justify-between text-sm bg-white/3 rounded-lg p-3">
+              <span className="text-white/40">現在 {c.current}</span>
+              <span className="text-green-400">+{c.recovery}</span>
+              <span className="text-white font-bold">→ {c.result}</span>
+              <span className="text-white/30 text-xs">{c.note}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ランクについて */}
+      <div className="bg-white/5 rounded-xl p-4 mb-6">
+        <h2 className="font-bold mb-2">🏆 ランクについて</h2>
+        <p className="text-sm text-white/60">
+          ランクに応じて、毎月回復する通常クレジット量が変わります。
+        </p>
+      </div>
+
+      {/* BP追加購入 */}
+      <div id="purchase" className="mb-6">
+        <h2 className="font-bold text-lg mb-1">💎 BPを追加購入</h2>
+        <p className="text-xs text-white/40 mb-1">高品質なAI処理・インフラ維持のため、BP価格を調整しています</p>
+        <p className="text-sm text-white/60 mb-4">追加購入したBPは失効せず、回復の影響も受けません。</p>
+
+        <div className="space-y-3">
+          {BP_PACKS.map(pack => (
+            <div key={pack.id}
+              className={`border ${pack.color} rounded-xl p-4 bg-white/5 relative`}>
+              {pack.tag && (
+                <span className={`absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-bold ${
+                  pack.tag === "おすすめ" ? "bg-purple-500/30 text-purple-300" : "bg-yellow-500/30 text-yellow-300"
+                }`}>
+                  {pack.tag}
+                </span>
+              )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-black text-2xl text-white">{pack.bp.toLocaleString()} <span className="text-sm text-white/40">BP</span></p>
+                  <p className="text-sm text-white/60 mt-0.5">{pack.label}パック</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-lg">${pack.price}</p>
+                  <button
+                    onClick={() => handlePurchase(pack)}
+                    disabled={busy}
+                    className="mt-2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-bold hover:scale-105 transition">
+                    購入する
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {msg && (
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white/70 mb-4 text-center">
+          {msg}
+        </div>
+      )}
+
+      {/* 注意事項 */}
+      <div className="bg-white/5 rounded-xl p-4 mb-6">
+        <h2 className="font-bold text-sm mb-2">📋 ご利用案内</h2>
+        <ul className="text-xs text-white/40 space-y-1">
+          <li>• 通常クレジットは毎月50%分回復します</li>
+          <li>• 上限以上の通常クレジットは回復されません</li>
+          <li>• 追加購入BPは回復・失効の影響を受けません</li>
+          <li>• 購入済みBPの返金はできません</li>
+        </ul>
+      </div>
+
+      {/* 最終CTA */}
+      <div className="flex flex-col sm:flex-row gap-3 mt-4">
+        <a href="#purchase"
+          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-center font-bold">
+          BPを購入
+        </a>
+        <Link href="/top"
+          className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-center font-bold text-white/60">
+          利用を開始
+        </Link>
+      </div>
+    </div>
   );
 }
