@@ -6198,7 +6198,8 @@ function musicBoostAdminList_(params) {
 // gachaDailySpin_（デイリー割引ガチャ：80BP・1日1回・JST日付管理）
 // =========================================================
 function gachaDailySpin_(body) {
-  if (str_(body.adminKey) !== ADMIN_SECRET) {
+  const secrets = getSecrets_();
+  if (str_(body.adminKey) !== secrets.ADMIN_SECRET) {
     return json_({ ok: false, error: "admin_unauthorized" });
   }
   const loginId = str_(body.loginId);
