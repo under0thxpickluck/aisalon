@@ -47,13 +47,53 @@ const RARITY_STYLE: Record<string, { color: string; label: string }> = {
 export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
   const [visible,  setVisible]  = useState(false);
   const [spinning, setSpinning] = useState(false);
-  const [result,   setResult]   = useState<GachaResult | null>(null);
-  const [errMsg,   setErrMsg]   = useState<string>("");
+  const [result,    setResult]   = useState<GachaResult | null>(null);
+  const [errMsg,    setErrMsg]   = useState<string>("");
+  const [dailyUsed, setDailyUsed] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 30);
     return () => clearTimeout(t);
   }, []);
+
+  const handleDaily = async () => {
+    if (spinning || dailyUsed || !loginId) return;
+    setSpinning(true);
+    setErrMsg("");
+    try {
+      const res = await fetch("/api/gacha/daily", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId }),
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: "invalid_response" }));
+      if (!data.ok) {
+        if (data.error === "daily_already_used") {
+          setDailyUsed(true);
+          setErrMsg("本日のデイリーガチャは使用済みです");
+        } else {
+          const reason = data.reason || data.error || "failed";
+          setErrMsg(reason === "insufficient_bp" ? "BPが不足しています（80BP必要）" : `エラー: ${reason}`);
+        }
+        return;
+      }
+      setDailyUsed(true);
+      setResult({
+        prize_bp:    data.prize_bp,
+        net:         data.net,
+        bp_balance:  data.bp_balance,
+        fragments:   data.fragments,
+        gacha_count: data.gacha_count,
+        rarity:      data.rarity,
+        to_pity:     data.to_pity,
+      });
+      onBpEarned(data.prize_bp);
+    } catch {
+      setErrMsg("通信エラーが発生しました");
+    } finally {
+      setSpinning(false);
+    }
+  };
 
   const handleClose = () => {
     setVisible(false);
@@ -322,6 +362,28 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
                 {spinning ? "抽選中…" : "10連\n1000BP"}
               </button>
             </div>
+
+            <button
+              onClick={handleDaily}
+              disabled={spinning || dailyUsed}
+              style={{
+                width:        "100%",
+                marginBottom: "8px",
+                padding:      "12px",
+                borderRadius: "12px",
+                border:       "none",
+                background:   dailyUsed
+                  ? "rgba(255,255,255,0.05)"
+                  : "linear-gradient(135deg,#059669,#10b981)",
+                color:        dailyUsed ? "#52525b" : "#fff",
+                fontWeight:   700,
+                fontSize:     "14px",
+                cursor:       (spinning || dailyUsed) ? "not-allowed" : "pointer",
+                opacity:      spinning ? 0.6 : 1,
+              }}
+            >
+              {dailyUsed ? "✅ 本日のデイリー使用済み" : "🎁 デイリー 80BP（1日1回）"}
+            </button>
 
             <button
               onClick={handleClose}
