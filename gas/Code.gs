@@ -1826,7 +1826,7 @@ function handle_(key, body) {
     }
 
     const PRIZES  = [80,  100, 150, 250,  500, 1000, 5000,  20000];
-    const WEIGHTS = [30,  25,  20,  12,   8,   4,    0.9,   0.1  ];
+    const WEIGHTS = [38,  28,  18,  9,    5,   1.5,  0.4,   0.1  ];
     const RARITY  = ["common","common","uncommon","rare","epic","legendary","mythic","god"];
 
     function spinOnce(streakIn, countIn, forceGood) {
