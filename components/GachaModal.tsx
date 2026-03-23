@@ -4,9 +4,13 @@
 import { useEffect, useState } from "react";
 
 type GachaResult = {
-  prize_bp:   number;
-  net:        number;
-  bp_balance: number;
+  prize_bp:    number;
+  net:         number;
+  bp_balance:  number;
+  results?:    { prize_bp: number; rarity: string }[];
+  fragments?:  number;
+  gacha_count?: number;
+  rarity?:     string;
 };
 
 type Props = {
@@ -16,13 +20,25 @@ type Props = {
 };
 
 const GACHA_TABLE = [
-  { bp: 50,   pct: "40%" },
-  { bp: 100,  pct: "30%" },
-  { bp: 200,  pct: "15%" },
-  { bp: 500,  pct: "10%" },
-  { bp: 1000, pct: "4%"  },
-  { bp: 5000, pct: "1%"  },
+  { bp: 80,    pct: "30%",  rarity: "common"    },
+  { bp: 100,   pct: "25%",  rarity: "common"    },
+  { bp: 150,   pct: "20%",  rarity: "uncommon"  },
+  { bp: 250,   pct: "12%",  rarity: "rare"      },
+  { bp: 500,   pct: "8%",   rarity: "epic"      },
+  { bp: 1000,  pct: "4%",   rarity: "legendary" },
+  { bp: 5000,  pct: "0.9%", rarity: "mythic"    },
+  { bp: 20000, pct: "0.1%", rarity: "god"       },
 ] as const;
+
+const RARITY_STYLE: Record<string, { color: string; label: string }> = {
+  common:    { color: "#a1a1aa", label: "COMMON"    },
+  uncommon:  { color: "#4ade80", label: "UNCOMMON"  },
+  rare:      { color: "#60a5fa", label: "RARE"      },
+  epic:      { color: "#c084fc", label: "EPIC"      },
+  legendary: { color: "#fbbf24", label: "LEGENDARY" },
+  mythic:    { color: "#f472b6", label: "MYTHIC"    },
+  god:       { color: "#f87171", label: "GOD"       },
+};
 
 export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
   const [visible,  setVisible]  = useState(false);
@@ -40,7 +56,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
     setTimeout(onClose, 300);
   };
 
-  const handleSpin = async () => {
+  const handleSpin = async (is10 = false) => {
     if (spinning || !loginId) return;
     setSpinning(true);
     setErrMsg("");
@@ -48,7 +64,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
       const res = await fetch("/api/gacha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginId }),
+        body: JSON.stringify({ loginId, is10 }),
       });
       const data = await res.json().catch(() => ({ ok: false, error: "invalid_response" }));
 
@@ -56,16 +72,20 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
         const reason = data.reason || data.error || "failed";
         setErrMsg(
           reason === "insufficient_bp"
-            ? "BPが不足しています（100BP必要）"
+            ? `BPが不足しています（${is10 ? "1000" : "100"}BP必要）`
             : `エラー: ${reason}`
         );
         return;
       }
 
       setResult({
-        prize_bp:   data.prize_bp,
-        net:        data.net,
-        bp_balance: data.bp_balance,
+        prize_bp:    data.prize_bp,
+        net:         data.net,
+        bp_balance:  data.bp_balance,
+        results:     data.results,
+        fragments:   data.fragments,
+        gacha_count: data.gacha_count,
+        rarity:      data.rarity,
       });
       onBpEarned(data.prize_bp);
     } catch {
@@ -99,84 +119,106 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background:  "#18181b",
+          background:   "#18181b",
           borderRadius: "16px",
-          padding:     "24px",
-          maxWidth:    "360px",
-          width:       "90%",
-          boxShadow:   "0 32px 80px rgba(0,0,0,0.5)",
-          border:      "1px solid rgba(255,255,255,0.08)",
-          transform:   visible ? "scale(1) translateY(0)" : "scale(0.88) translateY(24px)",
-          transition:  "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
-          cursor:      "default",
+          padding:      "24px",
+          maxWidth:     "380px",
+          width:        "92%",
+          boxShadow:    "0 32px 80px rgba(0,0,0,0.5)",
+          border:       "1px solid rgba(255,255,255,0.08)",
+          transform:    visible ? "scale(1) translateY(0)" : "scale(0.88) translateY(24px)",
+          transition:   "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
+          cursor:       "default",
+          maxHeight:    "90vh",
+          overflowY:    "auto",
         }}
       >
         {/* ===== 結果画面 ===== */}
         {result ? (
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: "13px", fontWeight: 700, color: "#a1a1aa", marginBottom: "16px" }}>
-              🎰 BPガチャ 結果
-            </p>
+            {(() => {
+              const style = RARITY_STYLE[result.rarity ?? "common"] ?? RARITY_STYLE.common;
+              return (
+                <div style={{ marginBottom: "16px" }}>
+                  <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", color: style.color, marginBottom: "6px" }}>
+                    {style.label}
+                  </p>
+                  <p style={{
+                    fontSize:      "44px",
+                    fontWeight:    900,
+                    color:         style.color,
+                    letterSpacing: "-0.02em",
+                    margin:        "0 0 6px",
+                    animation:     result.prize_bp >= 5000 ? "pulse 1s infinite" : undefined,
+                  }}>
+                    +{result.prize_bp.toLocaleString()}BP
+                  </p>
+                  <p style={{ fontSize: "13px", fontWeight: 700, color: result.net >= 0 ? "#4ade80" : "#f87171" }}>
+                    差引: {result.net >= 0 ? "+" : ""}{result.net}BP
+                  </p>
+                </div>
+              );
+            })()}
 
-            <p
-              style={{
-                fontSize:     "40px",
-                fontWeight:   900,
-                color:        "#f59e0b",
-                letterSpacing: "-0.02em",
-                margin:       "0 0 8px",
-              }}
-            >
-              ✨ +{result.prize_bp}BP 獲得！
-            </p>
+            {/* 欠片 */}
+            {result.fragments !== undefined && (
+              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: "12px", padding: "10px 14px", marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "12px", color: "#71717a" }}>欠片</span>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "#fb923c" }}>🔮 {result.fragments}個</span>
+              </div>
+            )}
 
-            <p
-              style={{
-                fontSize:   "13px",
-                fontWeight: 700,
-                color:      result.net >= 0 ? "#4ade80" : "#f87171",
-                marginBottom: "24px",
-              }}
-            >
-              {result.net >= 0
-                ? `+${result.net}BPのプラス！`
-                : `${result.net}BPのマイナス`}
-            </p>
+            {/* 天井ゲージ */}
+            {result.gacha_count !== undefined && (
+              <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: "12px", padding: "10px 14px", marginBottom: "10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#71717a", marginBottom: "6px" }}>
+                  <span>天井ゲージ</span>
+                  <span>{result.gacha_count} / 100回</span>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: "999px", height: "6px", overflow: "hidden" }}>
+                  <div style={{
+                    background:   "linear-gradient(90deg,#eab308,#ef4444)",
+                    height:       "100%",
+                    borderRadius: "999px",
+                    width:        `${Math.min(100, result.gacha_count)}%`,
+                    transition:   "width 0.6s ease",
+                  }} />
+                </div>
+                {result.gacha_count >= 50 && (
+                  <p style={{ fontSize: "11px", color: "#fbbf24", marginTop: "5px" }}>⚡ 50回超え：高レア確率UP中！</p>
+                )}
+              </div>
+            )}
 
-            <p style={{ fontSize: "11px", color: "#71717a", marginBottom: "20px" }}>
-              現在の残高: {result.bp_balance}BP
+            {/* 10連個別結果 */}
+            {result.results && result.results.length > 1 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px", marginBottom: "12px" }}>
+                {result.results.map((r, i) => {
+                  const s = RARITY_STYLE[r.rarity] ?? RARITY_STYLE.common;
+                  return (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.05)", borderRadius: "8px", padding: "6px 4px", textAlign: "center" }}>
+                      <p style={{ fontSize: "11px", fontWeight: 700, color: s.color }}>{r.prize_bp.toLocaleString()}</p>
+                      <p style={{ fontSize: "9px", color: "#71717a" }}>{s.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p style={{ fontSize: "11px", color: "#52525b", marginBottom: "16px" }}>
+              現在の残高: {result.bp_balance.toLocaleString()}BP
             </p>
 
             <div style={{ display: "flex", gap: "8px" }}>
               <button
                 onClick={handleAgain}
-                style={{
-                  flex:         1,
-                  padding:      "12px",
-                  borderRadius: "12px",
-                  border:       "none",
-                  background:   "#f59e0b",
-                  color:        "#000",
-                  fontSize:     "14px",
-                  fontWeight:   700,
-                  cursor:       "pointer",
-                }}
+                style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "none", background: "#7c3aed", color: "#fff", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
               >
                 もう一度
               </button>
               <button
                 onClick={handleClose}
-                style={{
-                  flex:         1,
-                  padding:      "12px",
-                  borderRadius: "12px",
-                  border:       "1px solid rgba(255,255,255,0.12)",
-                  background:   "transparent",
-                  color:        "#a1a1aa",
-                  fontSize:     "14px",
-                  fontWeight:   700,
-                  cursor:       "pointer",
-                }}
+                style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#a1a1aa", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
               >
                 閉じる
               </button>
@@ -189,36 +231,25 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
               🎰 BPガチャ
             </p>
             <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>
-              100BPを消費して抽選します
+              10連最後は250BP以上保証・100回天井あり
             </p>
 
             {/* 排出率テーブル */}
-            <div
-              style={{
-                display:             "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap:                 "6px",
-                marginBottom:        "20px",
-              }}
-            >
-              {GACHA_TABLE.map(({ bp, pct }) => (
-                <div
-                  key={bp}
-                  style={{
-                    display:        "flex",
-                    justifyContent: "space-between",
-                    alignItems:     "center",
-                    background:     "#27272a",
-                    borderRadius:   "8px",
-                    padding:        "6px 10px",
-                  }}
-                >
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#f59e0b" }}>
-                    {bp.toLocaleString()}BP
-                  </span>
-                  <span style={{ fontSize: "11px", color: "#71717a" }}>{pct}</span>
-                </div>
-              ))}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "20px" }}>
+              {GACHA_TABLE.map(({ bp, pct, rarity }) => {
+                const style = RARITY_STYLE[rarity];
+                return (
+                  <div
+                    key={bp}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#27272a", borderRadius: "8px", padding: "6px 10px" }}
+                  >
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: style.color }}>
+                      {bp.toLocaleString()}BP
+                    </span>
+                    <span style={{ fontSize: "10px", color: "#52525b" }}>{pct}</span>
+                  </div>
+                );
+              })}
             </div>
 
             {errMsg && (
@@ -227,44 +258,62 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
               </p>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
               <button
-                onClick={handleSpin}
+                onClick={() => handleSpin(false)}
                 disabled={spinning}
                 style={{
-                  width:        "100%",
+                  flex:         1,
                   padding:      "13px",
                   borderRadius: "12px",
                   border:       "none",
-                  background:   spinning ? "#78350f" : "#f59e0b",
-                  color:        "#000",
-                  fontSize:     "14px",
+                  background:   spinning ? "#4c1d95" : "linear-gradient(135deg,#7c3aed,#6366f1)",
+                  color:        "#fff",
+                  fontSize:     "13px",
                   fontWeight:   700,
                   cursor:       spinning ? "not-allowed" : "pointer",
-                  opacity:      spinning ? 0.7 : 1,
+                  opacity:      spinning ? 0.6 : 1,
                 }}
               >
-                {spinning ? "抽選中…" : "🎰 スピン（100BP）"}
+                {spinning ? "抽選中…" : "1回引く\n100BP"}
               </button>
-
               <button
-                onClick={handleClose}
+                onClick={() => handleSpin(true)}
                 disabled={spinning}
                 style={{
-                  width:        "100%",
-                  padding:      "11px",
+                  flex:         1,
+                  padding:      "13px",
                   borderRadius: "12px",
-                  border:       "1px solid rgba(255,255,255,0.12)",
-                  background:   "transparent",
-                  color:        "#a1a1aa",
+                  border:       "none",
+                  background:   spinning ? "#78350f" : "linear-gradient(135deg,#d97706,#dc2626)",
+                  color:        "#fff",
                   fontSize:     "13px",
-                  fontWeight:   600,
+                  fontWeight:   700,
                   cursor:       spinning ? "not-allowed" : "pointer",
+                  opacity:      spinning ? 0.6 : 1,
                 }}
               >
-                閉じる
+                {spinning ? "抽選中…" : "10連\n1000BP"}
               </button>
             </div>
+
+            <button
+              onClick={handleClose}
+              disabled={spinning}
+              style={{
+                width:        "100%",
+                padding:      "11px",
+                borderRadius: "12px",
+                border:       "1px solid rgba(255,255,255,0.12)",
+                background:   "transparent",
+                color:        "#a1a1aa",
+                fontSize:     "13px",
+                fontWeight:   600,
+                cursor:       spinning ? "not-allowed" : "pointer",
+              }}
+            >
+              閉じる
+            </button>
           </>
         )}
       </div>

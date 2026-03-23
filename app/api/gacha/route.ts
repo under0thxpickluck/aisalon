@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   if (!loginId) {
     return NextResponse.json({ ok: false, error: "loginId_required" }, { status: 400 });
   }
+  const is10 = !!body?.is10;
 
   const gasUrl      = process.env.GAS_WEBAPP_URL;
   const gasKey      = process.env.GAS_API_KEY;
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
         action:   "gacha_spin",
         adminKey: gasAdminKey,
         loginId,
+        is10,
       }),
     });
 
