@@ -1889,6 +1889,8 @@ function handle_(key, body) {
     });
   }
 
+  if (action === "gacha_daily") return gachaDailySpin_(body);
+
   // =========================================================
   // get_radio_songs（ラジオ楽曲一覧取得：active=trueのみ返す）
   // - adminKey 認証必須（GAS_ADMIN_KEY）
@@ -6190,5 +6192,102 @@ function musicBoostAdminList_(params) {
     used_slots:      usedSlots,
     total_slots:     MUSIC_BOOST_TOTAL_SLOTS,
     available_slots: MUSIC_BOOST_TOTAL_SLOTS - usedSlots,
+  });
+}
+// =========================================================
+// gachaDailySpin_（デイリー割引ガチャ：80BP・1日1回・JST日付管理）
+// =========================================================
+function gachaDailySpin_(body) {
+  if (str_(body.adminKey) !== ADMIN_SECRET) {
+    return json_({ ok: false, error: "admin_unauthorized" });
+  }
+  const loginId = str_(body.loginId);
+  if (!loginId) return json_({ ok: false, error: "loginId_required" });
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  let values = sheet.getDataRange().getValues();
+  let header = values[0];
+  ensureCols_(sheet, header, ["login_id","email","bp_balance","gacha_count","gacha_streak","gacha_fragments","daily_gacha_used"]);
+  values = sheet.getDataRange().getValues();
+  header = values[0];
+  const idx  = indexMap_(header);
+  const rows = values.slice(1);
+
+  let hitRowIndex = 0;
+  let hitEmail    = "";
+  for (let i = 0; i < rows.length; i++) {
+    if (str_(rows[i][idx["login_id"]]) === loginId) {
+      hitRowIndex = i + 2;
+      hitEmail    = str_(rows[i][idx["email"]]);
+      break;
+    }
+  }
+  if (!hitRowIndex) return json_({ ok: false, error: "not_found" });
+
+  const nowJst   = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const todayStr = nowJst.toISOString().slice(0, 10);
+  const lastUsed = str_(sheet.getRange(hitRowIndex, idx["daily_gacha_used"] + 1).getValue()).slice(0, 10);
+
+  if (lastUsed === todayStr) {
+    return json_({ ok: false, error: "daily_already_used", next_reset: todayStr + "T15:00:00Z" });
+  }
+
+  const DAILY_COST = 80;
+  const currentBp  = Number(sheet.getRange(hitRowIndex, idx["bp_balance"]     + 1).getValue() || 0);
+  const gachaCount = Number(sheet.getRange(hitRowIndex, idx["gacha_count"]    + 1).getValue() || 0);
+  const gachaStreak= Number(sheet.getRange(hitRowIndex, idx["gacha_streak"]   + 1).getValue() || 0);
+  const fragments  = Number(sheet.getRange(hitRowIndex, idx["gacha_fragments"]+ 1).getValue() || 0);
+
+  if (currentBp < DAILY_COST) {
+    return json_({ ok: false, reason: "insufficient_bp", bp_balance: currentBp });
+  }
+
+  const PRIZES  = [5, 10, 20, 40, 80, 150, 300, 600, 1000, 5000, 20000];
+  const WEIGHTS = [28, 24, 18, 12, 8, 5, 3, 0.80, 1.00, 0.18, 0.02];
+  const RARITY  = ["common","common","common","common","uncommon","uncommon","rare","epic","legendary","mythic","god"];
+
+  let useW = WEIGHTS.slice();
+  if (gachaStreak >= 10) useW = [0,0,0,0,0,40,35,18,6,1,0];
+  if (gachaCount >= 100) useW = [0,0,0,0,0,0,0,0,70,25,5];
+
+  const total = useW.reduce((a,b) => a+b, 0);
+  let r = Math.random() * total, c = 0, prize = PRIZES[0], rar = RARITY[0];
+  for (let k = 0; k < PRIZES.length; k++) {
+    c += useW[k];
+    if (r < c) { prize = PRIZES[k]; rar = RARITY[k]; break; }
+  }
+
+  const newBp     = currentBp - DAILY_COST + prize;
+  const newCount  = gachaCount + 1;
+  const newStreak = prize < 150 ? gachaStreak + 1 : 0;
+  const newFrag   = fragments + 1;
+
+  sheet.getRange(hitRowIndex, idx["bp_balance"]      + 1).setValue(newBp);
+  sheet.getRange(hitRowIndex, idx["gacha_count"]     + 1).setValue(newCount);
+  sheet.getRange(hitRowIndex, idx["gacha_streak"]    + 1).setValue(newStreak);
+  sheet.getRange(hitRowIndex, idx["gacha_fragments"] + 1).setValue(newFrag);
+  sheet.getRange(hitRowIndex, idx["daily_gacha_used"]+ 1).setValue(todayStr);
+
+  appendWalletLedger_({ kind: "gacha_cost",  login_id: loginId, email: hitEmail, amount: -DAILY_COST, memo: "デイリーガチャ消費" });
+  appendWalletLedger_({ kind: "gacha_prize", login_id: loginId, email: hitEmail, amount: prize,       memo: "デイリーガチャ当選（" + prize + "BP）" });
+
+  if (prize >= 1000) {
+    const ss2 = SpreadsheetApp.getActiveSpreadsheet();
+    let tickerSheet = ss2.getSheetByName("gacha_ticker");
+    if (!tickerSheet) { tickerSheet = ss2.insertSheet("gacha_ticker"); tickerSheet.appendRow(["id","masked_id","prize_bp","created_at"]); }
+    const masked = loginId.length > 2 ? loginId.slice(0,2)+"***" : loginId+"***";
+    tickerSheet.appendRow([Utilities.getUuid(), masked, prize, new Date().toISOString()]);
+  }
+
+  return json_({
+    ok:          true,
+    cost:        DAILY_COST,
+    prize_bp:    prize,
+    bp_balance:  newBp,
+    net:         prize - DAILY_COST,
+    rarity:      rar,
+    fragments:   newFrag,
+    gacha_count: newCount,
+    to_pity:     Math.max(0, 100 - newCount),
   });
 }
