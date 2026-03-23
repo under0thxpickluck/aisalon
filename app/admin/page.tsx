@@ -275,6 +275,47 @@ export default function AdminPage() {
     }
   };
 
+  // ── Rumble: 強制バトル参加 ────────────────────────────────
+  const handleForceEntry = async () => {
+    if (!forceEntryUserId.trim() || forceEntryBusy) return;
+    setForceEntryBusy(true); setForceEntryMsg(null);
+    try {
+      const res  = await fetch("/api/minigames/rumble/force-entry", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: forceEntryUserId.trim() }),
+      });
+      const json = await res.json();
+      if (json?.ok) setForceEntryMsg(`完了：スコア ${json.score} / RP ${json.rp} (${json.week_id})`);
+      else setForceEntryMsg(`エラー：${json?.error ?? "unknown"}`);
+    } catch (e: any) {
+      setForceEntryMsg(`エラー：${e?.message}`);
+    } finally {
+      setForceEntryBusy(false);
+    }
+  };
+
+  // ── Rumble: 週次報酬配布 ──────────────────────────────────
+  const handleRewardDistribute = async () => {
+    if (rewardBusy) return;
+    if (!confirm("週次報酬を配布しますか？（配布済みユーザーへの二重付与防止機能はありません）")) return;
+    setRewardBusy(true); setRewardMsg(null);
+    try {
+      const body: Record<string, string> = {};
+      if (rewardWeekId.trim()) body.weekId = rewardWeekId.trim();
+      const res  = await fetch("/api/admin/rumble-reward", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (json?.ok) setRewardMsg(`配布完了：${json.distributed}人に付与 (${json.week_id})`);
+      else setRewardMsg(`エラー：${json?.error ?? "unknown"}`);
+    } catch (e: any) {
+      setRewardMsg(`エラー：${e?.message}`);
+    } finally {
+      setRewardBusy(false);
+    }
+  };
+
   // ── BP付与 ────────────────────────────────────────────────
   const handleGrantBp = async (req: SellRequest) => {
     const bp = Number(bpInputs[req.request_id] ?? "");
@@ -295,6 +336,14 @@ export default function AdminPage() {
       setGrantingId(null);
     }
   };
+
+  // --- Rumble管理 ---
+  const [forceEntryUserId, setForceEntryUserId] = useState("");
+  const [forceEntryBusy,   setForceEntryBusy]   = useState(false);
+  const [forceEntryMsg,    setForceEntryMsg]     = useState<string | null>(null);
+  const [rewardWeekId,     setRewardWeekId]      = useState("");
+  const [rewardBusy,       setRewardBusy]        = useState(false);
+  const [rewardMsg,        setRewardMsg]         = useState<string | null>(null);
 
   // ── ページネーション ──────────────────────────────────────
   const totalPages = Math.ceil(membersTotal / PAGE_SIZE);
@@ -618,6 +667,76 @@ export default function AdminPage() {
               </div>
             </>
           )}
+        </section>
+
+        {/* ═══ セクション6: Rumble管理 ══════════════════════════ */}
+        <section className="mt-6 rounded-2xl bg-zinc-900 p-5">
+          <p className="mb-4 text-lg font-semibold text-zinc-200">⚔️ Rumble League 管理</p>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* 強制バトル参加 */}
+            <div className="rounded-xl border border-zinc-800 p-4">
+              <p className="mb-3 text-sm font-bold text-zinc-300">🔧 強制バトル参加（BP消費なし）</p>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  placeholder="ログインID"
+                  value={forceEntryUserId}
+                  onChange={e => setForceEntryUserId(e.target.value)}
+                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none"
+                />
+                <button
+                  onClick={handleForceEntry}
+                  disabled={forceEntryBusy || !forceEntryUserId.trim()}
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm font-bold transition",
+                    forceEntryBusy || !forceEntryUserId.trim()
+                      ? "cursor-not-allowed bg-zinc-700 text-zinc-500"
+                      : "bg-purple-600 text-white hover:bg-purple-700"
+                  )}
+                >
+                  {forceEntryBusy ? "処理中…" : "実行"}
+                </button>
+              </div>
+              {forceEntryMsg && (
+                <p className={clsx("text-xs", forceEntryMsg.startsWith("エラー") ? "text-red-400" : "text-emerald-400")}>
+                  {forceEntryMsg}
+                </p>
+              )}
+            </div>
+
+            {/* 週次報酬配布 */}
+            <div className="rounded-xl border border-zinc-800 p-4">
+              <p className="mb-3 text-sm font-bold text-zinc-300">🏆 週次報酬配布</p>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  placeholder="weekId（空欄=今週）"
+                  value={rewardWeekId}
+                  onChange={e => setRewardWeekId(e.target.value)}
+                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                />
+                <button
+                  onClick={handleRewardDistribute}
+                  disabled={rewardBusy}
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm font-bold transition",
+                    rewardBusy
+                      ? "cursor-not-allowed bg-zinc-700 text-zinc-500"
+                      : "bg-amber-500 text-black hover:bg-amber-600"
+                  )}
+                >
+                  {rewardBusy ? "配布中…" : "配布実行"}
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500 mb-2">※ 二重付与チェックなし。金曜終了後に1回のみ実行してください</p>
+              {rewardMsg && (
+                <p className={clsx("text-xs", rewardMsg.startsWith("エラー") ? "text-red-400" : "text-emerald-400")}>
+                  {rewardMsg}
+                </p>
+              )}
+            </div>
+          </div>
         </section>
 
         <footer className="mt-8 text-center text-xs text-zinc-600">© LIFAI</footer>

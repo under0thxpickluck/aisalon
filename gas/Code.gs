@@ -4659,6 +4659,7 @@ function doPost(e) {
     if (action === 'rumble_my_rank_context')   return rumbleMyRankContext_(body);
     if (action === 'rumble_shard_status')      return rumbleShardStatus_(body);
     if (action === 'rumble_set_display_name')  return rumbleSetDisplayName_(body);
+    if (action === 'rumble_force_entry')       return rumbleForceEntry_(body);
     if (action === 'music_boost_status')     return musicBoostStatus_(body);
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
     if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
@@ -5997,6 +5998,76 @@ function rumbleMyRankContext_(params) {
     next_worse_tier: nextWorse,
     surrounding: surrounding,
   });
+}
+
+// action: rumble_force_entry（管理者用：BP消費・参加済みチェックなしで強制バトル参加）
+function rumbleForceEntry_(params) {
+  var secrets = getSecrets_();
+  if (String(params.adminKey || "") !== secrets.ADMIN_SECRET) {
+    return json_({ ok: false, error: "admin_unauthorized" });
+  }
+
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var today  = getTodayJst_();
+  var weekId = getWeekId_();
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+
+  // ユーザー確認
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+
+  var userRow = null;
+  for (var j = 1; j < appliesData.length; j++) {
+    if (String(appliesData[j][aIdx["login_id"]]) === userId) {
+      userRow = appliesData[j];
+      break;
+    }
+  }
+  if (!userRow) return json_({ ok: false, error: "user_not_found" });
+
+  // スコア計算（BP消費なし）
+  var userLevel    = Number(userRow[aIdx["level"]] || 1);
+  var levelBonus   = userLevel * 2;
+  var equipBonus   = getUserEquipmentBonus_(userId);
+  var randomFactor = Math.floor(Math.random() * 51);
+  var score        = 100 + levelBonus + equipBonus + randomFactor;
+  var rp           = score;
+
+  // rumble_entryに記録
+  var entrySheet = getRumbleEntrySheet_();
+  ensureRumbleEntryCols_(entrySheet);
+  entrySheet.appendRow([Utilities.getUuid(), userId, today, score, rp, nowJst]);
+
+  // rumble_week更新
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var weekData   = weekSheet.getDataRange().getValues();
+  var wHeaders   = weekData[0];
+  var wIdx       = {};
+  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+  var weekRowNum = -1;
+  var currentRp  = 0;
+  for (var k = 1; k < weekData.length; k++) {
+    if (String(weekData[k][wIdx["user_id"]]) === userId &&
+        String(weekData[k][wIdx["week_id"]]) === weekId) {
+      weekRowNum = k + 1;
+      currentRp  = Number(weekData[k][wIdx["total_rp"]] || 0);
+      break;
+    }
+  }
+  if (weekRowNum === -1) {
+    weekSheet.appendRow([userId, weekId, rp, nowJst]);
+  } else {
+    weekSheet.getRange(weekRowNum, wIdx["total_rp"] + 1).setValue(currentRp + rp);
+    weekSheet.getRange(weekRowNum, wIdx["updated_at"] + 1).setValue(nowJst);
+  }
+
+  return json_({ ok: true, score: score, rp: rp, week_id: weekId, note: "force_entry_no_bp_deduction" });
 }
 
 // action: rumble_set_display_name
