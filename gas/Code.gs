@@ -1825,9 +1825,9 @@ function handle_(key, body) {
       return json_({ ok: false, reason: "insufficient_bp", bp_balance: currentBp });
     }
 
-    const PRIZES  = [80,  100, 150, 250,  500, 1000, 5000,  20000];
-    const WEIGHTS = [38,  28,  18,  9,    5,   1.5,  0.4,   0.1  ];
-    const RARITY  = ["common","common","uncommon","rare","epic","legendary","mythic","god"];
+    const PRIZES  = [5,   10,  20,  40,   80,  150,  300,   600,   1000,  5000,  20000];
+    const WEIGHTS = [28,  24,  18,  12,   8,   5,    3,     0.80,  1.00,  0.18,  0.02 ];
+    const RARITY  = ["common","common","common","common","uncommon","uncommon","rare","epic","legendary","mythic","god"];
 
     function spinOnce(streakIn, countIn, forceGood) {
       if (countIn >= 100) {
@@ -1837,7 +1837,7 @@ function handle_(key, body) {
         return {prize_bp:p, rarity: p>=20000?"god":p>=5000?"mythic":"legendary"};
       }
       let useW = WEIGHTS.slice();
-      if (streakIn >= 10 || forceGood) useW = [0,0,0,40,35,18,6,1];
+      if (streakIn >= 10) useW = [0,0,0,0,0,40,35,18,6,1,0]; else if (forceGood) useW = [0,0,0,0,0,50,30,15,4,1,0];
       if (countIn >= 50) { useW[5]+=3; useW[6]+=2; useW[7]+=1; }
       const total = useW.reduce((a,b)=>a+b,0);
       let r3 = Math.random()*total, c3 = 0, prize = PRIZES[0], rar = RARITY[0];
@@ -1848,7 +1848,7 @@ function handle_(key, body) {
     const results = [];
     let totalPrize = 0, newStreak = gachaStreak, newCount = gachaCount, newFrag = fragments;
     for (let s=0;s<SPIN_COUNT;s++){
-      const forceGood = is10 && s===SPIN_COUNT-1;
+      const forceGood = is10 && s===SPIN_COUNT-1; // 150BP以上保証
       const r = spinOnce(newStreak, newCount, forceGood);
       totalPrize += r.prize_bp;
       newFrag    += 1;
@@ -1885,6 +1885,7 @@ function handle_(key, body) {
       fragments:   newFrag,
       gacha_count: newCount,
       rarity:      results[results.length-1].rarity,
+      to_pity:     Math.max(0, 100 - newCount),
     });
   }
 

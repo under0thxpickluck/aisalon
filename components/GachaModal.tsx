@@ -11,6 +11,7 @@ type GachaResult = {
   fragments?:  number;
   gacha_count?: number;
   rarity?:     string;
+  to_pity?:    number;
 };
 
 type Props = {
@@ -20,14 +21,17 @@ type Props = {
 };
 
 const GACHA_TABLE = [
-  { bp: 80,    pct: "30%",  rarity: "common"    },
-  { bp: 100,   pct: "25%",  rarity: "common"    },
-  { bp: 150,   pct: "20%",  rarity: "uncommon"  },
-  { bp: 250,   pct: "12%",  rarity: "rare"      },
-  { bp: 500,   pct: "8%",   rarity: "epic"      },
-  { bp: 1000,  pct: "4%",   rarity: "legendary" },
-  { bp: 5000,  pct: "0.9%", rarity: "mythic"    },
-  { bp: 20000, pct: "0.1%", rarity: "god"       },
+  { bp: 5,     pct: "28%",   rarity: "common"    },
+  { bp: 10,    pct: "24%",   rarity: "common"    },
+  { bp: 20,    pct: "18%",   rarity: "common"    },
+  { bp: 40,    pct: "12%",   rarity: "common"    },
+  { bp: 80,    pct: "8%",    rarity: "uncommon"  },
+  { bp: 150,   pct: "5%",    rarity: "uncommon"  },
+  { bp: 300,   pct: "3%",    rarity: "rare"      },
+  { bp: 600,   pct: "0.8%",  rarity: "epic"      },
+  { bp: 1000,  pct: "1%",    rarity: "legendary" },
+  { bp: 5000,  pct: "0.18%", rarity: "mythic"    },
+  { bp: 20000, pct: "0.02%", rarity: "god"       },
 ] as const;
 
 const RARITY_STYLE: Record<string, { color: string; label: string }> = {
@@ -187,6 +191,9 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
                 {result.gacha_count >= 50 && (
                   <p style={{ fontSize: "11px", color: "#fbbf24", marginTop: "5px" }}>⚡ 50回超え：高レア確率UP中！</p>
                 )}
+                {result.to_pity !== undefined && (
+                  <p style={{ fontSize: "11px", color: "#71717a", marginTop: "4px" }}>天井まであと{result.to_pity}回</p>
+                )}
               </div>
             )}
 
@@ -250,7 +257,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
               🎰 BPガチャ
             </p>
             <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>
-              10連最後は250BP以上保証・100回天井あり
+              10連150BP以上保証・100回天井あり
             </p>
 
             {/* 排出率テーブル */}
