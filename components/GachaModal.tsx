@@ -56,6 +56,19 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
     return () => clearTimeout(t);
   }, []);
 
+  // マウント時にデイリー使用状況を確認
+  useEffect(() => {
+    if (!loginId) return;
+    fetch("/api/gacha/daily/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ loginId }),
+    })
+      .then(r => r.json())
+      .then(d => { if (d.ok && d.used) setDailyUsed(true); })
+      .catch(() => {});
+  }, [loginId]);
+
   const handleDaily = async () => {
     if (spinning || dailyUsed || !loginId) return;
     setSpinning(true);
