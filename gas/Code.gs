@@ -1889,7 +1889,8 @@ function handle_(key, body) {
     });
   }
 
-  if (action === "gacha_daily") return gachaDailySpin_(body);
+  if (action === "gacha_daily")        return gachaDailySpin_(body);
+  if (action === "gacha_daily_status") return gachaDailyStatus_(body);
 
   // =========================================================
   // get_radio_songs（ラジオ楽曲一覧取得：active=trueのみ返す）
@@ -6291,4 +6292,32 @@ function gachaDailySpin_(body) {
     gacha_count: newCount,
     to_pity:     Math.max(0, 100 - newCount),
   });
+}
+
+// =========================================================
+// gachaDailyStatus_（デイリーガチャ使用状況確認：認証不要）
+// =========================================================
+function gachaDailyStatus_(body) {
+  const loginId = str_(body.loginId);
+  if (!loginId) return json_({ ok: false, error: "loginId_required" });
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  let values = sheet.getDataRange().getValues();
+  let header = values[0];
+  ensureCols_(sheet, header, ["login_id", "daily_gacha_used"]);
+  values = sheet.getDataRange().getValues();
+  header = values[0];
+  const idx  = indexMap_(header);
+  const rows = values.slice(1);
+
+  const nowJst   = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const todayStr = nowJst.toISOString().slice(0, 10);
+
+  for (let i = 0; i < rows.length; i++) {
+    if (str_(rows[i][idx["login_id"]]) === loginId) {
+      const lastUsed = str_(rows[i][idx["daily_gacha_used"]]).slice(0, 10);
+      return json_({ ok: true, used: lastUsed === todayStr });
+    }
+  }
+  return json_({ ok: true, used: false });
 }
