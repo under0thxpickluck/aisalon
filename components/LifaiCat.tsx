@@ -299,17 +299,26 @@ export default function LifaiCat(props: LifaiCatProps) {
   const [chatInput, setChatInput] = useState('');
   const [isWaiting, setIsWaiting] = useState(false);
 
-  const handleChatSend = () => {
+  const handleChatSend = async () => {
     const text = chatInput.trim();
     if (!text || isWaiting) return;
     setChatInput('');
     setChatHistory(prev => [...prev, { from: 'user', text }]);
     setIsWaiting(true);
-    setTimeout(() => {
-      const reply = getCatReply(text);
+    try {
+      const res = await fetch('/api/cat-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history: chatHistory.slice(-5) }),
+      });
+      const data = await res.json();
+      const reply = data.ok ? data.reply : 'ごめんね、うまく答えられなかったよ🙀';
       setChatHistory(prev => [...prev, { from: 'cat', text: reply }]);
+    } catch {
+      setChatHistory(prev => [...prev, { from: 'cat', text: 'ごめんね、通信エラーが起きたよ🙀' }]);
+    } finally {
       setIsWaiting(false);
-    }, 500);
+    }
   };
 
   const {

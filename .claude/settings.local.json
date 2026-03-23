@@ -31,7 +31,8 @@
       "Bash(set +a)",
       "Bash(curl -s -X POST \"$GAS_WEBAPP_URL?key=$GAS_API_KEY\" -H \"Content-Type: application/json\" -d \"{\"\"action\"\":\"\"tap_status\"\",\"\"key\"\":\"\"$GAS_API_KEY\"\",\"\"userId\"\":\"\"admin\"\"}\")",
       "Bash(python -m json.tool)",
-      "Bash(curl -sv -X POST \"$GAS_WEBAPP_URL?key=$GAS_API_KEY\" -H \"Content-Type: application/json\" -d \"{\"\"action\"\":\"\"tap_status\"\",\"\"key\"\":\"\"$GAS_API_KEY\"\",\"\"userId\"\":\"\"admin\"\"}\")"
+      "Bash(curl -sv -X POST \"$GAS_WEBAPP_URL?key=$GAS_API_KEY\" -H \"Content-Type: application/json\" -d \"{\"\"action\"\":\"\"tap_status\"\",\"\"key\"\":\"\"$GAS_API_KEY\"\",\"\"userId\"\":\"\"admin\"\"}\")",
+      "Bash(git reset:*)"
     ]
   }
 }
