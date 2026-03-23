@@ -1783,26 +1783,21 @@ function handle_(key, body) {
   }
 
   // =========================================================
-  // gacha_spin（BPガチャ：100BP消費 → 重み付き抽選でBP付与）
-  // - adminKey 認証必須（GAS_ADMIN_KEY）
-  // - bp_balance < 100 なら insufficient_bp を返す
-  // - wallet_ledger に gacha_cost / gacha_prize の2件記録
+  // gacha_spin（BPガチャ：100BP or 1000BP消費 → 新仕様抒選）
+  // - is10: true なら１０連（1000BP・11回・最終250BP以上保証）
+  // - 欠片・連敗救済・天井・Ticker対応
   // =========================================================
   if (action === "gacha_spin") {
     if (str_(body.adminKey) !== ADMIN_SECRET) {
       return json_({ ok: false, error: "admin_unauthorized" });
     }
-
     const loginId = str_(body.loginId);
+    const is10    = body.is10 === true;
     if (!loginId) return json_({ ok: false, error: "loginId_required" });
-    const is10 = !!body.is10;
 
     let values = sheet.getDataRange().getValues();
     let header = values[0];
-    ensureCols_(sheet, header, [
-      "login_id", "email", "bp_balance",
-      "gacha_count", "gacha_streak", "gacha_fragments"
-    ]);
+    ensureCols_(sheet, header, ["login_id","email","bp_balance","gacha_count","gacha_streak","gacha_fragments"]);
     values = sheet.getDataRange().getValues();
     header = values[0];
     const idx  = indexMap_(header);
@@ -1830,95 +1825,53 @@ function handle_(key, body) {
       return json_({ ok: false, reason: "insufficient_bp", bp_balance: currentBp });
     }
 
-    // 抽選テーブル（仕様書確定版）
-    var PRIZES  = [80,   100,  150,       250,    500,    1000,        5000,    20000];
-    var WEIGHTS = [30,   25,   20,        12,     8,      4,           0.9,     0.1  ];
-    var RARITY  = ["common","common","uncommon","rare","epic","legendary","mythic","god"];
+    const PRIZES  = [80,  100, 150, 250,  500, 1000, 5000,  20000];
+    const WEIGHTS = [30,  25,  20,  12,   8,   4,    0.9,   0.1  ];
+    const RARITY  = ["common","common","uncommon","rare","epic","legendary","mythic","god"];
 
     function spinOnce(streakIn, countIn, forceGood) {
-      var prize = PRIZES[0];
-      var rar   = RARITY[0];
-
-      // 天井: 100回でlegendary以上確定
       if (countIn >= 100) {
-        var godPrizes  = [1000, 5000, 20000];
-        var godWeights = [70, 25, 5];
-        var r2 = Math.random() * 100;
-        var c2 = 0;
-        for (var g = 0; g < godPrizes.length; g++) {
-          c2 += godWeights[g];
-          if (r2 < c2) { prize = godPrizes[g]; break; }
-        }
-        rar = prize >= 20000 ? "god" : prize >= 5000 ? "mythic" : "legendary";
-        return { prize_bp: prize, rarity: rar };
+        const godP = [1000,5000,20000], godW = [70,25,5];
+        let r2 = Math.random()*100, c2 = 0, p = 1000;
+        for (let g=0;g<godP.length;g++){c2+=godW[g];if(r2<c2){p=godP[g];break;}}
+        return {prize_bp:p, rarity: p>=20000?"god":p>=5000?"mythic":"legendary"};
       }
-
-      // 連敗救済: 10回連続250未満 → 250以上確定
-      var useWeights = WEIGHTS.slice();
-      if (streakIn >= 10 || forceGood) {
-        useWeights = [0, 0, 0, 40, 35, 18, 6, 1];
-      }
-      // 50回以上で1000BP以上確率アップ
-      if (countIn >= 50) {
-        useWeights[5] += 3;
-        useWeights[6] += 2;
-        useWeights[7] += 1;
-      }
-
-      var total = useWeights.reduce(function(a, b) { return a + b; }, 0);
-      var r3    = Math.random() * total;
-      var c3    = 0;
-      for (var k = 0; k < PRIZES.length; k++) {
-        c3 += useWeights[k];
-        if (r3 < c3) { prize = PRIZES[k]; rar = RARITY[k]; break; }
-      }
-      return { prize_bp: prize, rarity: rar };
+      let useW = WEIGHTS.slice();
+      if (streakIn >= 10 || forceGood) useW = [0,0,0,40,35,18,6,1];
+      if (countIn >= 50) { useW[5]+=3; useW[6]+=2; useW[7]+=1; }
+      const total = useW.reduce((a,b)=>a+b,0);
+      let r3 = Math.random()*total, c3 = 0, prize = PRIZES[0], rar = RARITY[0];
+      for (let k=0;k<PRIZES.length;k++){c3+=useW[k];if(r3<c3){prize=PRIZES[k];rar=RARITY[k];break;}}
+      return {prize_bp:prize, rarity:rar};
     }
 
-    // 抽選実行
-    var results    = [];
-    var totalPrize = 0;
-    var newStreak  = gachaStreak;
-    var newCount   = gachaCount;
-    var newFrag    = fragments;
-
-    for (var s = 0; s < SPIN_COUNT; s++) {
-      var forceGood = (is10 && s === SPIN_COUNT - 1); // 10連の最後は250以上保証
-      var r = spinOnce(newStreak, newCount, forceGood);
+    const results = [];
+    let totalPrize = 0, newStreak = gachaStreak, newCount = gachaCount, newFrag = fragments;
+    for (let s=0;s<SPIN_COUNT;s++){
+      const forceGood = is10 && s===SPIN_COUNT-1;
+      const r = spinOnce(newStreak, newCount, forceGood);
       totalPrize += r.prize_bp;
       newFrag    += 1;
       newCount   += 1;
-      if (r.prize_bp < 250) {
-        newStreak += 1;
-      } else {
-        newStreak = 0;
-      }
+      if (r.prize_bp < 250) newStreak += 1; else newStreak = 0;
       results.push(r);
     }
 
-    var afterCost = currentBp - GACHA_COST;
-    var newBp     = afterCost + totalPrize;
-
-    // シートに保存
+    const newBp = currentBp - GACHA_COST + totalPrize;
     sheet.getRange(hitRowIndex, idx["bp_balance"]     + 1).setValue(newBp);
     sheet.getRange(hitRowIndex, idx["gacha_count"]    + 1).setValue(newCount);
     sheet.getRange(hitRowIndex, idx["gacha_streak"]   + 1).setValue(newStreak);
     sheet.getRange(hitRowIndex, idx["gacha_fragments"]+ 1).setValue(newFrag);
 
-    // ledger記録
-    appendWalletLedger_({ kind: "gacha_cost",  login_id: loginId, email: hitEmail, amount: -GACHA_COST, memo: is10 ? "10連ガチャ消費" : "ガチャ消費" });
-    appendWalletLedger_({ kind: "gacha_prize", login_id: loginId, email: hitEmail, amount: totalPrize,  memo: "ガチャ当選（" + totalPrize + "BP）" });
+    appendWalletLedger_({kind:"gacha_cost",  login_id:loginId, email:hitEmail, amount:-GACHA_COST, memo: is10?"10連ガチャ消費":"ガチャ消費"});
+    appendWalletLedger_({kind:"gacha_prize", login_id:loginId, email:hitEmail, amount:totalPrize,  memo:"ガチャ当選（"+totalPrize+"BP）"});
 
-    // Ticker（1000BP以上）
-    var maxPrize = Math.max.apply(null, results.map(function(rr) { return rr.prize_bp; }));
+    const maxPrize = Math.max(...results.map(r=>r.prize_bp));
     if (maxPrize >= 1000) {
-      var ss2 = SpreadsheetApp.getActiveSpreadsheet();
-      var tickerSheet = ss2.getSheetByName("gacha_ticker");
-      if (!tickerSheet) {
-        tickerSheet = ss2.insertSheet("gacha_ticker");
-        tickerSheet.appendRow(["id", "masked_id", "prize_bp", "created_at"]);
-      }
-      var masked = loginId.length > 2 ? loginId.slice(0, 2) + "***" : loginId + "***";
+      const ss2 = SpreadsheetApp.getActiveSpreadsheet();
+      let tickerSheet = ss2.getSheetByName("gacha_ticker");
+      if (!tickerSheet) { tickerSheet = ss2.insertSheet("gacha_ticker"); tickerSheet.appendRow(["id","masked_id","prize_bp","created_at"]); }
+      const masked = loginId.length > 2 ? loginId.slice(0,2)+"***" : loginId+"***";
       tickerSheet.appendRow([Utilities.getUuid(), masked, maxPrize, new Date().toISOString()]);
     }
 
@@ -1931,7 +1884,7 @@ function handle_(key, body) {
       results:     results,
       fragments:   newFrag,
       gacha_count: newCount,
-      rarity:      results[results.length - 1].rarity,
+      rarity:      results[results.length-1].rarity,
     });
   }
 
