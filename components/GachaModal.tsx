@@ -192,16 +192,35 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
 
             {/* 10連個別結果 */}
             {result.results && result.results.length > 1 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px", marginBottom: "12px" }}>
-                {result.results.map((r, i) => {
-                  const s = RARITY_STYLE[r.rarity] ?? RARITY_STYLE.common;
-                  return (
-                    <div key={i} style={{ background: "rgba(255,255,255,0.05)", borderRadius: "8px", padding: "6px 4px", textAlign: "center" }}>
-                      <p style={{ fontSize: "11px", fontWeight: 700, color: s.color }}>{r.prize_bp.toLocaleString()}</p>
-                      <p style={{ fontSize: "9px", color: "#71717a" }}>{s.label}</p>
-                    </div>
-                  );
-                })}
+              <div style={{ marginBottom: "16px" }}>
+                <p style={{ fontSize: "11px", color: "#71717a", marginBottom: "8px", textAlign: "center" }}>
+                  ── 10連結果 ──
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "320px", overflowY: "auto" }}>
+                  {result.results.map((r, i) => {
+                    const s = RARITY_STYLE[r.rarity] ?? RARITY_STYLE.common;
+                    const isRare = r.prize_bp >= 250;
+                    return (
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        background: isRare ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+                        border: isRare ? `1px solid ${s.color}40` : "1px solid rgba(255,255,255,0.05)",
+                        borderRadius: "10px", padding: "10px 14px",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span style={{ fontSize: "11px", color: "#71717a", width: "20px" }}>{i + 1}</span>
+                          <span style={{ fontSize: "10px", fontWeight: 700, color: s.color,
+                            background: `${s.color}20`, padding: "2px 6px", borderRadius: "4px" }}>
+                            {s.label}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: "18px", fontWeight: 900, color: s.color }}>
+                          +{r.prize_bp.toLocaleString()}BP
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
