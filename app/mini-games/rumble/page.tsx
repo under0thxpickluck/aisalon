@@ -10,7 +10,7 @@ type RumbleStatus = {
   week_id:       string;
 };
 
-type RankingEntry = { user_id: string; total_rp: number };
+type RankingEntry = { user_id: string; total_rp: number; display_name: string };
 
 type Equipment = {
   id: string; slot: string; rarity: string;
@@ -58,6 +58,11 @@ export default function RumblePage() {
   const [showHelp, setShowHelp]         = useState(false);
   const [showEquipHelp, setShowEquipHelp] = useState(false);
   const [showRankHelp, setShowRankHelp]   = useState(false);
+  const [displayName, setDisplayName]     = useState("");
+  const [nameInput, setNameInput]         = useState("");
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [nameBusy, setNameBusy]           = useState(false);
+  const [nameMsg, setNameMsg]             = useState("");
 
   useEffect(() => {
     const seen = localStorage.getItem("rumble_help_seen");
@@ -70,6 +75,12 @@ export default function RumblePage() {
       if (raw) { const auth = JSON.parse(raw); setUserId(String(auth?.id ?? "")); }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    const saved = localStorage.getItem(`rumble_display_name_${userId}`);
+    if (saved) { setDisplayName(saved); setNameInput(saved); }
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -119,6 +130,27 @@ export default function RumblePage() {
     fetch(`/api/minigames/rumble/my-rank-context?userId=${encodeURIComponent(userId)}`)
       .then(r => r.json()).then(d => { if (d.ok) setRankContext(d); }).catch(() => {});
   }, [tab, userId]);
+
+  const handleSetName = async () => {
+    const trimmed = nameInput.trim();
+    if (!userId || nameBusy) return;
+    setNameBusy(true); setNameMsg("");
+    try {
+      const res  = await fetch("/api/minigames/rumble/set-name", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, display_name: trimmed }) });
+      const data = await res.json();
+      if (data.ok) {
+        setDisplayName(trimmed);
+        localStorage.setItem(`rumble_display_name_${userId}`, trimmed);
+        setNameMsg("保存しました！");
+        setTimeout(() => { setShowNameModal(false); setNameMsg(""); }, 1000);
+      } else {
+        if (data.error === "name_too_long") setNameMsg("16文字以内で入力してください");
+        else if (data.error === "invalid_chars") setNameMsg("使用できない文字が含まれています");
+        else setNameMsg("エラーが発生しました");
+      }
+    } catch { setNameMsg("通信エラー"); }
+    finally { setNameBusy(false); }
+  };
 
   const handleEntry = async () => {
     if (!userId || busy) return;
@@ -300,11 +332,45 @@ export default function RumblePage() {
         </div>
       )}
 
+      {/* 表示名設定モーダル */}
+      {showNameModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-lg font-black mb-4 text-center">✏️ 表示名を設定</h2>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              maxLength={16}
+              placeholder="16文字以内"
+              className="w-full bg-white/10 rounded-xl px-4 py-3 text-sm mb-3 outline-none border border-white/10 focus:border-purple-500"
+            />
+            <p className="text-xs text-white/30 mb-4">{'使用不可: < > " \' & \\ /'}</p>
+            {nameMsg && <p className={`text-xs text-center mb-3 ${nameMsg.includes("保存") ? "text-green-400" : "text-red-400"}`}>{nameMsg}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => { setShowNameModal(false); setNameMsg(""); }} className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-bold">キャンセル</button>
+              <button onClick={handleSetName} disabled={nameBusy || !nameInput.trim()} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-bold disabled:opacity-40">
+                {nameBusy ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
         <h1 className="font-bold text-lg">⚔️ Rumble League</h1>
         <button onClick={() => setShowHelp(true)} className="text-white/40 text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">?</button>
+      </div>
+
+      {/* 表示名バッジ */}
+      <div className="flex justify-center mb-4">
+        <button onClick={() => setShowNameModal(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-xs text-white/60 hover:bg-white/10 transition">
+          <span>👤</span>
+          <span>{displayName || "表示名を設定"}</span>
+          <span className="text-white/30">✏️</span>
+        </button>
       </div>
 
       {/* タブ */}
@@ -410,7 +476,7 @@ export default function RumblePage() {
                 <div className="mt-3 space-y-1">
                   {rankContext.surrounding.map((r: any) => (
                     <div key={r.rank} className={`flex justify-between text-xs py-1 px-2 rounded ${r.is_me ? "bg-purple-500/20 text-white font-bold" : "text-white/40"}`}>
-                      <span>{r.rank}位 {r.is_me ? "👤 " : ""}{r.user_id}</span>
+                      <span>{r.rank}位 {r.is_me ? "👤 " : ""}{r.display_name || r.user_id}</span>
                       <span>{r.total_rp} RP</span>
                     </div>
                   ))}
@@ -431,7 +497,7 @@ export default function RumblePage() {
                 <span className={`text-lg font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-300" : i === 2 ? "text-orange-400" : "text-white/40"}`}>
                   {i + 1}
                 </span>
-                <span className="text-sm">{r.user_id === userId ? "👤 " + r.user_id : r.user_id}</span>
+                <span className="text-sm">{r.user_id === userId ? "👤 " + (r.display_name || r.user_id) : (r.display_name || r.user_id)}</span>
               </div>
               <span className="font-bold text-purple-400">{r.total_rp} RP</span>
             </div>

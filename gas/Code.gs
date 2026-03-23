@@ -4658,6 +4658,7 @@ function doPost(e) {
     if (action === 'rumble_enhance')           return rumbleEnhance_(body);
     if (action === 'rumble_my_rank_context')   return rumbleMyRankContext_(body);
     if (action === 'rumble_shard_status')      return rumbleShardStatus_(body);
+    if (action === 'rumble_set_display_name')  return rumbleSetDisplayName_(body);
     if (action === 'music_boost_status')     return musicBoostStatus_(body);
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
     if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
@@ -5408,12 +5409,27 @@ function rumbleRanking_(params) {
   var idx     = {};
   headers.forEach(function(h, i) { idx[h] = i; });
 
+  // applies から display_name マップを構築
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  ensureCols_(appliesSheet, aHeaders, ["rumble_display_name"]);
+  var aIdx = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+  var displayNameMap = {};
+  for (var i = 1; i < appliesData.length; i++) {
+    var uid = String(appliesData[i][aIdx["login_id"]] || "");
+    if (uid) displayNameMap[uid] = String(appliesData[i][aIdx["rumble_display_name"]] || "");
+  }
+
   var rows = data.slice(1)
     .filter(function(row) { return String(row[idx["week_id"]]) === weekId; })
     .map(function(row) {
+      var uid = String(row[idx["user_id"]]);
       return {
-        user_id:  String(row[idx["user_id"]]),
-        total_rp: Number(row[idx["total_rp"]] || 0),
+        user_id:      uid,
+        total_rp:     Number(row[idx["total_rp"]] || 0),
+        display_name: displayNameMap[uid] || "",
       };
     });
 
@@ -5914,10 +5930,24 @@ function rumbleMyRankContext_(params) {
   var wIdx     = {};
   wHeaders.forEach(function(h, i) { wIdx[h] = i; });
 
+  // applies から display_name マップを構築
+  var appliesSheet2 = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData2  = appliesSheet2.getDataRange().getValues();
+  var aHeaders2     = appliesData2[0];
+  ensureCols_(appliesSheet2, aHeaders2, ["rumble_display_name"]);
+  var aIdx2 = {};
+  aHeaders2.forEach(function(h, i) { aIdx2[h] = i; });
+  var displayNameMap2 = {};
+  for (var di = 1; di < appliesData2.length; di++) {
+    var duid = String(appliesData2[di][aIdx2["login_id"]] || "");
+    if (duid) displayNameMap2[duid] = String(appliesData2[di][aIdx2["rumble_display_name"]] || "");
+  }
+
   var rows = weekData.slice(1)
     .filter(function(row) { return String(row[wIdx["week_id"]]) === weekId; })
     .map(function(row) {
-      return { user_id: String(row[wIdx["user_id"]]), total_rp: Number(row[wIdx["total_rp"]] || 0) };
+      var uid = String(row[wIdx["user_id"]]);
+      return { user_id: uid, total_rp: Number(row[wIdx["total_rp"]] || 0), display_name: displayNameMap2[uid] || "" };
     });
   rows.sort(function(a, b) { return b.total_rp - a.total_rp; });
 
@@ -5957,7 +5987,7 @@ function rumbleMyRankContext_(params) {
 
   // 自分周辺3人
   var surrounding = rows.slice(Math.max(0, myRank - 4), myRank + 3)
-    .map(function(r, i) { return { rank: Math.max(1, myRank - 3) + i, user_id: r.user_id, total_rp: r.total_rp, is_me: r.user_id === userId }; });
+    .map(function(r, i) { return { rank: Math.max(1, myRank - 3) + i, user_id: r.user_id, display_name: r.display_name, total_rp: r.total_rp, is_me: r.user_id === userId }; });
 
   return json_({
     ok: true, week_id: weekId,
@@ -5967,6 +5997,34 @@ function rumbleMyRankContext_(params) {
     next_worse_tier: nextWorse,
     surrounding: surrounding,
   });
+}
+
+// action: rumble_set_display_name
+function rumbleSetDisplayName_(params) {
+  var userId = String(params.userId || "");
+  var name   = String(params.display_name || "").trim();
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+  if (name.length > 16) return json_({ ok: false, error: "name_too_long" });
+  if (/[<>"'&\\/]/.test(name)) return json_({ ok: false, error: "invalid_chars" });
+
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  ensureCols_(appliesSheet, aHeaders, ["rumble_display_name"]);
+  var aIdx = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+
+  var userRowNum = -1;
+  for (var i = 1; i < appliesData.length; i++) {
+    if (String(appliesData[i][aIdx["login_id"]]) === userId) {
+      userRowNum = i + 1;
+      break;
+    }
+  }
+  if (userRowNum === -1) return json_({ ok: false, error: "user_not_found" });
+
+  appliesSheet.getRange(userRowNum, aIdx["rumble_display_name"] + 1).setValue(name);
+  return json_({ ok: true, display_name: name });
 }
 
 // action: rumble_shard_status（shard残高確認）
