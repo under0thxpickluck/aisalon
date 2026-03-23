@@ -4659,6 +4659,7 @@ function doPost(e) {
     if (action === 'rumble_my_rank_context')   return rumbleMyRankContext_(body);
     if (action === 'rumble_shard_status')      return rumbleShardStatus_(body);
     if (action === 'rumble_set_display_name')  return rumbleSetDisplayName_(body);
+    if (action === 'rumble_spectator')         return rumbleSpectator_(body);
     if (action === 'rumble_force_entry')       return rumbleForceEntry_(body);
     if (action === 'music_boost_status')     return musicBoostStatus_(body);
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
@@ -5997,6 +5998,228 @@ function rumbleMyRankContext_(params) {
     next_better_tier: nextBetter,
     next_worse_tier: nextWorse,
     surrounding: surrounding,
+  });
+}
+
+// ============================================================
+// action: rumble_spectator（観戦モード用データ生成）
+// ============================================================
+function rumbleSpectator_(params) {
+  var userId  = String(params.userId || "");
+  var dateStr = String(params.date || getTodayJst_());
+  var weekId  = getWeekId_();
+
+  // 1. 本日の rumble_entry を取得
+  var entrySheet = getRumbleEntrySheet_();
+  ensureRumbleEntryCols_(entrySheet);
+  var entryData = entrySheet.getDataRange().getValues();
+  var eHeaders  = entryData[0];
+  var eIdx      = {};
+  eHeaders.forEach(function(h, i) { eIdx[h] = i; });
+
+  var todayEntries = [];
+  for (var i = 1; i < entryData.length; i++) {
+    if (String(entryData[i][eIdx["date"]]) === dateStr) {
+      todayEntries.push({
+        user_id: String(entryData[i][eIdx["user_id"]]),
+        score:   Number(entryData[i][eIdx["score"]] || 0),
+        rp:      Number(entryData[i][eIdx["rp"]] || 0),
+      });
+    }
+  }
+
+  if (todayEntries.length === 0) {
+    return json_({ ok: true, status: "no_data", players: [], events: [], self: null, ranking: [] });
+  }
+
+  // 2. applies から display_name を取得
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var appliesIdx   = {};
+  appliesData[0].forEach(function(h, i) { appliesIdx[h] = i; });
+  var displayNameMap = {};
+  for (var ai = 1; ai < appliesData.length; ai++) {
+    var aId   = String(appliesData[ai][appliesIdx["login_id"]] || "");
+    var aName = ("rumble_display_name" in appliesIdx)
+      ? String(appliesData[ai][appliesIdx["rumble_display_name"]] || "")
+      : "";
+    if (aId) displayNameMap[aId] = aName || aId;
+  }
+
+  // 3. プレイヤーリスト生成（score順ソート）
+  todayEntries.sort(function(a, b) { return b.score - a.score; });
+  var players = todayEntries.map(function(e, i) {
+    return {
+      id:           e.user_id,
+      display_name: displayNameMap[e.user_id] || e.user_id,
+      score:        e.score,
+      rp:           e.rp,
+      rank:         i + 1,
+      is_self:      e.user_id === userId,
+    };
+  });
+
+  var total = players.length;
+
+  // 4. 脱落波生成
+  // TOP3を残して4波で脱落させる
+  var waves = [];
+  var remaining = total;
+  var target3 = Math.max(3, Math.floor(total * 0.03));
+  var eliminate1 = Math.floor((remaining - target3) * 0.45);
+  remaining -= eliminate1;
+  var eliminate2 = Math.floor((remaining - target3) * 0.45);
+  remaining -= eliminate2;
+  var eliminate3 = Math.floor((remaining - target3) * 0.55);
+  remaining -= eliminate3;
+  var eliminate4 = remaining - 3;
+  if (eliminate4 < 0) eliminate4 = 0;
+
+  waves = [eliminate1, eliminate2, eliminate3, eliminate4].filter(function(n) { return n > 0; });
+
+  // 5. イベント生成
+  var events = [];
+  var eliminated = 0;
+
+  // フェーズ0: イントロ
+  events.push({ type: "intro", text: "ランブルが はじまる！", delay: 0 });
+  events.push({ type: "log",   text: "きょうの せんしは " + total + "にん！", delay: 800 });
+
+  // フェーズ1〜4: 脱落波
+  var phaseNames = ["序盤戦", "中盤戦", "終盤戦", "決戦"];
+  var waveDelay  = 2000;
+
+  waves.forEach(function(waveCount, waveIdx) {
+    if (waveCount <= 0) return;
+
+    var phaseTexts = [
+      "せんじょうは だいこんらん！\nよわった ものたちが のみこまれていく！",
+      "たたかいは さらに はげしさを ます！",
+      "のこるは つわもの ばかり！",
+      "さいごの けっせんが はじまる！",
+    ];
+
+    events.push({ type: "log", text: phaseTexts[waveIdx] || "たたかいが つづく！", delay: waveDelay });
+    waveDelay += 1500;
+
+    // この波で脱落するプレイヤーを後ろ（弱い側）から取得
+    var eliminateStart = total - eliminated - waveCount;
+    var eliminateIds   = players
+      .slice(eliminateStart, eliminateStart + waveCount)
+      .map(function(p) { return p.id; });
+
+    eliminated += waveCount;
+    var nowRemaining = total - eliminated;
+
+    events.push({
+      type:    "batch_eliminate",
+      ids:     eliminateIds,
+      text:    waveCount + "にん が だつらく！\nのこり " + nowRemaining + "にん！",
+      phase:   phaseNames[waveIdx] || "終盤",
+      delay:   waveDelay,
+    });
+    waveDelay += 2000;
+
+    // 注目戦を2〜3回挿入
+    var battleCount = waveIdx >= 2 ? 3 : 2;
+    var survivingPlayers = players.filter(function(p) {
+      return eliminateIds.indexOf(p.id) === -1 &&
+             players.indexOf(p) < (total - eliminated);
+    });
+
+    // 自分 or TOP10 を優先して抽出
+    var featured = survivingPlayers.filter(function(p) {
+      return p.is_self || p.rank <= 10;
+    });
+    var others = survivingPlayers.filter(function(p) {
+      return !p.is_self && p.rank > 10;
+    });
+
+    for (var b = 0; b < battleCount && survivingPlayers.length >= 2; b++) {
+      var playerA = featured.length > 0
+        ? featured[Math.floor(Math.random() * featured.length)]
+        : others[Math.floor(Math.random() * others.length)];
+      var playerB = others.length > 0
+        ? others[Math.floor(Math.random() * others.length)]
+        : survivingPlayers[Math.floor(Math.random() * survivingPlayers.length)];
+
+      if (!playerA || !playerB || playerA.id === playerB.id) continue;
+
+      var damage  = Math.floor(playerA.score / 10) + Math.floor(Math.random() * 11);
+      var isCrit  = Math.random() < 0.1;
+      var atkText = isCrit
+        ? playerA.display_name + " の かいしんの いちげき！\n" + playerB.display_name + " に " + (damage * 2) + " の ダメージ！！"
+        : playerA.display_name + " の こうげき！\n" + playerB.display_name + " に " + damage + " の ダメージ！";
+
+      events.push({
+        type:    "battle",
+        a:       playerA.id,
+        b:       playerB.id,
+        text:    atkText,
+        is_crit: isCrit,
+        delay:   waveDelay,
+      });
+      waveDelay += 1500;
+    }
+  });
+
+  // フェーズ5: TOP3決戦
+  events.push({ type: "log",    text: "のこり 3にん！\nさいごの つよさが とわれる！", delay: waveDelay });
+  waveDelay += 2000;
+
+  var top3 = players.slice(0, 3);
+  if (top3.length >= 2) {
+    events.push({
+      type:  "battle",
+      a:     top3[1].id,
+      b:     top3[0].id,
+      text:  top3[1].display_name + " が おそいかかる！\n" + top3[0].display_name + " は うけとめた！",
+      delay: waveDelay,
+    });
+    waveDelay += 2000;
+  }
+
+  // フェーズ6: 結果
+  events.push({ type: "ranking", delay: waveDelay });
+  events.push({
+    type: "result",
+    text: "🏆 " + (top3[0] ? top3[0].display_name : "???") + " の かちだ！",
+    delay: waveDelay + 1500,
+  });
+
+  // 6. 今週のランキングTOP5
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var weekData = weekSheet.getDataRange().getValues();
+  var wHeaders = weekData[0];
+  var wIdx     = {};
+  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+  var weekRows = weekData.slice(1)
+    .filter(function(row) { return String(row[wIdx["week_id"]]) === weekId; })
+    .map(function(row) {
+      var uid = String(row[wIdx["user_id"]]);
+      return { user_id: uid, display_name: displayNameMap[uid] || uid, total_rp: Number(row[wIdx["total_rp"]] || 0) };
+    });
+  weekRows.sort(function(a, b) { return b.total_rp - a.total_rp; });
+
+  // 自分の情報
+  var selfPlayer = null;
+  for (var si = 0; si < players.length; si++) {
+    if (players[si].is_self) { selfPlayer = players[si]; break; }
+  }
+  var selfWeekRp = 0;
+  var selfWeekRank = -1;
+  weekRows.forEach(function(r, i) { if (r.user_id === userId) { selfWeekRp = r.total_rp; selfWeekRank = i + 1; } });
+
+  return json_({
+    ok:       true,
+    status:   "ready",
+    date:     dateStr,
+    players:  players,
+    events:   events,
+    self:     selfPlayer ? { id: selfPlayer.id, display_name: selfPlayer.display_name, score: selfPlayer.score, rp: selfPlayer.rp, rank: selfPlayer.rank, is_self: true, week_rp: selfWeekRp, week_rank: selfWeekRank } : null,
+    ranking:  weekRows.slice(0, 5),
+    total:    total,
   });
 }
 

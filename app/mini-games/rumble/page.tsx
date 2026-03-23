@@ -23,6 +23,38 @@ type GachaResult = {
   bp: number;
 };
 
+// 観戦モード用型定義
+type SpectatorPlayer = {
+  id: string;
+  display_name: string;
+  score: number;
+  rp: number;
+  rank: number;
+  is_self: boolean;
+  status?: "alive" | "eliminated";
+};
+
+type SpectatorEvent = {
+  type: "intro" | "batch_eliminate" | "battle" | "log" | "ranking" | "result";
+  text?: string;
+  ids?: string[];
+  a?: string;
+  b?: string;
+  is_crit?: boolean;
+  phase?: string;
+  delay: number;
+};
+
+type SpectatorData = {
+  ok: boolean;
+  status: "ready" | "no_data";
+  players: SpectatorPlayer[];
+  events: SpectatorEvent[];
+  self: (SpectatorPlayer & { week_rp: number; week_rank: number }) | null;
+  ranking: { user_id: string; display_name: string; total_rp: number }[];
+  total: number;
+};
+
 const RARITY_COLOR: Record<string, string> = {
   common:    "text-gray-400",
   rare:      "text-blue-400",
@@ -39,7 +71,7 @@ const RARITY_BG: Record<string, string> = {
   mythic:    "border-red-500",
 };
 
-const TAB_LIST = ["バトル", "ランキング", "装備", "ガチャ"] as const;
+const TAB_LIST = ["バトル", "観戦", "ランキング", "装備", "ガチャ"] as const;
 type Tab = typeof TAB_LIST[number];
 
 export default function RumblePage() {
@@ -63,6 +95,14 @@ export default function RumblePage() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameBusy, setNameBusy]           = useState(false);
   const [nameMsg, setNameMsg]             = useState("");
+  // 観戦モード
+  const [spectatorData,    setSpectatorData]    = useState<SpectatorData | null>(null);
+  const [spectatorLoading, setSpectatorLoading] = useState(false);
+  const [spectatorPlayers, setSpectatorPlayers] = useState<SpectatorPlayer[]>([]);
+  const [battleLogs,       setBattleLogs]       = useState<{ text: string; color: string; id: number }[]>([]);
+  const [spectatorPhase,   setSpectatorPhase]   = useState<"waiting" | "live" | "result">("waiting");
+  const [isPlaying,        setIsPlaying]        = useState(false);
+  const [logCounter,       setLogCounter]       = useState(0);
 
   useEffect(() => {
     const seen = localStorage.getItem("rumble_help_seen");
@@ -131,6 +171,25 @@ export default function RumblePage() {
       .then(r => r.json()).then(d => { if (d.ok) setRankContext(d); }).catch(() => {});
   }, [tab, userId]);
 
+  // 観戦タブに切り替えたときにデータ取得
+  useEffect(() => {
+    if (tab !== "観戦" || !userId || spectatorData) return;
+    setSpectatorLoading(true);
+    fetch(`/api/minigames/rumble/spectator?userId=${encodeURIComponent(userId)}`)
+      .then(r => r.json())
+      .then((d: SpectatorData) => {
+        if (d.ok) {
+          setSpectatorData(d);
+          if (d.status === "ready") {
+            setSpectatorPlayers(d.players.map(p => ({ ...p, status: "alive" as const })));
+            setSpectatorPhase("waiting");
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSpectatorLoading(false));
+  }, [tab, userId, spectatorData]);
+
   const handleSetName = async () => {
     const trimmed = nameInput.trim();
     if (!userId || nameBusy) return;
@@ -150,6 +209,49 @@ export default function RumblePage() {
       }
     } catch { setNameMsg("通信エラー"); }
     finally { setNameBusy(false); }
+  };
+
+  const handleSpectatorPlay = async () => {
+    if (!spectatorData || isPlaying || spectatorData.status === "no_data") return;
+    setIsPlaying(true);
+    setSpectatorPhase("live");
+    setBattleLogs([]);
+    setSpectatorPlayers(spectatorData.players.map(p => ({ ...p, status: "alive" as const })));
+
+    let counter = 0;
+    const addLog = (text: string, color = "text-white") => {
+      counter++;
+      const id = counter;
+      setBattleLogs(prev => {
+        const next = [...prev, { text, color, id }];
+        return next.slice(-8);
+      });
+      setLogCounter(id);
+    };
+
+    for (const event of spectatorData.events) {
+      await new Promise(r => setTimeout(r, Math.min(event.delay > 0 ? event.delay : 800, 2000)));
+
+      if (event.type === "intro" || event.type === "log") {
+        addLog(event.text ?? "", "text-white/80");
+      } else if (event.type === "batch_eliminate") {
+        const ids = event.ids ?? [];
+        setSpectatorPlayers(prev =>
+          prev.map(p => ids.includes(p.id) ? { ...p, status: "eliminated" as const } : p)
+        );
+        addLog(event.text ?? "", "text-red-400/80");
+      } else if (event.type === "battle") {
+        const color = event.is_crit ? "text-yellow-400" : "text-purple-300";
+        addLog(event.text ?? "", color);
+      } else if (event.type === "ranking") {
+        addLog("━━━━━━━━━━━━━━━━", "text-white/20");
+        addLog("🏆 今日の順位が確定！", "text-yellow-400");
+      } else if (event.type === "result") {
+        addLog(event.text ?? "バトル終了！", "text-yellow-300");
+        setSpectatorPhase("result");
+      }
+    }
+    setIsPlaying(false);
   };
 
   const handleEntry = async () => {
@@ -377,8 +479,21 @@ export default function RumblePage() {
       <div className="flex gap-1 mb-6 bg-white/5 rounded-xl p-1">
         {TAB_LIST.map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${tab === t ? "bg-purple-600 text-white" : "text-white/40"}`}>
-            {t}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition relative ${tab === t ? "bg-purple-600 text-white" : "text-white/40"}`}>
+            {t === "観戦" && spectatorPhase === "live" ? (
+              <span className="flex items-center justify-center gap-1">
+                観戦
+                <span className="inline-flex items-center gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" />
+                  <span className="text-[9px] text-pink-400 font-black">LIVE</span>
+                </span>
+              </span>
+            ) : t === "観戦" && spectatorPhase === "result" ? (
+              <span className="flex items-center justify-center gap-1">
+                観戦
+                <span className="text-[9px] text-yellow-400 font-black">RESULT</span>
+              </span>
+            ) : t}
           </button>
         ))}
       </div>
@@ -610,6 +725,174 @@ export default function RumblePage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 観戦タブ */}
+      {tab === "観戦" && (
+        <div className="space-y-4">
+
+          {spectatorLoading && (
+            <div className="text-center text-white/40 text-sm py-12">読み込み中...</div>
+          )}
+
+          {!spectatorLoading && spectatorData?.status === "no_data" && (
+            <div className="bg-white/5 rounded-2xl p-8 text-center space-y-3">
+              <p className="text-4xl">⚔️</p>
+              <p className="font-bold text-white/60">本日のバトルデータがありません</p>
+              <p className="text-xs text-white/30">バトル参加後 または 19:00以降に確認できます</p>
+              <div className="bg-white/5 rounded-xl p-3 mt-4">
+                <p className="text-xs text-white/40 mb-1">次のランブルまで</p>
+                <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
+              </div>
+            </div>
+          )}
+
+          {!spectatorLoading && spectatorData?.status === "ready" && (
+            <>
+              {/* 観戦ステータスカード */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {spectatorPhase === "live" ? (
+                      <span className="flex items-center gap-1 text-xs font-black text-pink-400">
+                        <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
+                        LIVE NOW
+                      </span>
+                    ) : spectatorPhase === "result" ? (
+                      <span className="text-xs font-black text-yellow-400">⚔️ RESULT</span>
+                    ) : (
+                      <span className="text-xs text-white/40">観戦準備完了</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-white/40">参加者 {spectatorData.total}人</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-xs text-white/40">生存中</p>
+                    <p className="text-xl font-black text-purple-400">
+                      {spectatorPlayers.filter(p => p.status !== "eliminated").length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-white/40">脱落</p>
+                    <p className="text-xl font-black text-red-400/70">
+                      {spectatorPlayers.filter(p => p.status === "eliminated").length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-white/40">あなた</p>
+                    <p className={`text-sm font-black ${
+                      spectatorData.self
+                        ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
+                          ? "text-red-400"
+                          : "text-green-400"
+                        : "text-white/30"
+                    }`}>
+                      {spectatorData.self
+                        ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
+                          ? "脱落"
+                          : "生存中"
+                        : "未参加"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* バトルログカード */}
+              <div className="bg-black/60 border border-purple-500/30 rounded-2xl p-4">
+                <p className="text-xs font-bold text-purple-400/60 mb-3 tracking-widest">BATTLE LOG</p>
+                <div className="min-h-[200px] space-y-2 font-mono">
+                  {battleLogs.length === 0 && !isPlaying && (
+                    <p className="text-white/20 text-sm text-center pt-8">
+                      ▶ 観戦を開始してください
+                    </p>
+                  )}
+                  {battleLogs.map(log => (
+                    <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>
+                      {log.text}
+                    </p>
+                  ))}
+                  {isPlaying && (
+                    <p className="text-white/30 text-xs animate-pulse">▌</p>
+                  )}
+                </div>
+              </div>
+
+              {/* 再生ボタン */}
+              {!isPlaying && spectatorPhase !== "result" && (
+                <button
+                  onClick={handleSpectatorPlay}
+                  className="w-full py-4 rounded-xl font-black text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition"
+                >
+                  ⚔️ 観戦スタート
+                </button>
+              )}
+              {!isPlaying && spectatorPhase === "result" && (
+                <button
+                  onClick={() => {
+                    setSpectatorPhase("waiting");
+                    setBattleLogs([]);
+                    setSpectatorPlayers(spectatorData.players.map(p => ({ ...p, status: "alive" as const })));
+                  }}
+                  className="w-full py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition"
+                >
+                  🔄 もう一度見る
+                </button>
+              )}
+
+              {/* 生存者一覧カード */}
+              <div className="bg-white/5 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-white/60">生存者</p>
+                  <p className="text-xs text-white/30">
+                    {spectatorPlayers.filter(p => p.status !== "eliminated").length} / {spectatorData.total}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {spectatorPlayers.map(p => (
+                    <span
+                      key={p.id}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all duration-500 ${
+                        p.is_self
+                          ? p.status === "eliminated"
+                            ? "bg-red-900/40 text-red-400/60 line-through border border-red-500/20"
+                            : "bg-gradient-to-r from-purple-600/40 to-blue-600/40 text-white border border-purple-500/50"
+                          : p.status === "eliminated"
+                            ? "bg-white/3 text-white/20 line-through"
+                            : p.rank <= 10
+                              ? "bg-yellow-500/10 text-yellow-400/80 border border-yellow-500/20"
+                              : "bg-white/10 text-white/60"
+                      }`}
+                    >
+                      {p.display_name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* 今週のランキング簡易 */}
+              {spectatorData.ranking.length > 0 && (
+                <div className="bg-white/5 rounded-2xl p-4">
+                  <p className="text-xs font-bold text-white/60 mb-3">📊 今週ランキング TOP5</p>
+                  <div className="space-y-1">
+                    {spectatorData.ranking.map((r, i) => (
+                      <div key={r.user_id} className={`flex justify-between text-xs py-1 px-2 rounded ${r.user_id === userId ? "bg-purple-500/20 text-white font-bold" : "text-white/50"}`}>
+                        <span>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i+1}位`} {r.display_name}</span>
+                        <span className="text-purple-400">{r.total_rp} RP</span>
+                      </div>
+                    ))}
+                    {spectatorData.self && (spectatorData.self.week_rank ?? 0) > 5 && (
+                      <div className="flex justify-between text-xs py-1 px-2 rounded bg-purple-500/20 text-white font-bold mt-2 border-t border-white/10 pt-2">
+                        <span>👤 {spectatorData.self.week_rank}位 {spectatorData.self.display_name}</span>
+                        <span className="text-purple-400">{spectatorData.self.week_rp} RP</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
