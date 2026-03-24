@@ -240,14 +240,10 @@ export default function TapMiningPage() {
       </div>
 
       {/* ステータスバー */}
-      <div className="grid grid-cols-3 gap-2 mb-6">
+      <div className="grid grid-cols-2 gap-2 mb-6">
         <div className="bg-white/5 rounded-xl p-3 text-center">
           <p className="text-xs text-white/40">今日のBP</p>
           <p className="font-bold text-purple-400">{status?.today_bp ?? 0}</p>
-        </div>
-        <div className="bg-white/5 rounded-xl p-3 text-center">
-          <p className="text-xs text-white/40">残りタップ</p>
-          <p className="font-bold text-white">{status?.taps_remaining ?? 500}</p>
         </div>
         <div className="bg-white/5 rounded-xl p-3 text-center">
           <p className="text-xs text-white/40">今日のEP</p>

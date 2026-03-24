@@ -5480,13 +5480,28 @@ function rumbleStatus_(params) {
     }
   }
 
+  // BP残高
+  var appSheet  = getAppSheet_();
+  var appData   = appSheet.getDataRange().getValues();
+  var aHeaders  = appData[0];
+  var aIdx      = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+  var bpBalance = 0;
+  for (var k = 1; k < appData.length; k++) {
+    if (String(appData[k][aIdx["login_id"]]) === userId) {
+      bpBalance = Number(appData[k][aIdx["bp_balance"]] || 0);
+      break;
+    }
+  }
+
   return json_({
-    ok:          true,
+    ok:           true,
     entered_today: todayEntry !== null,
-    today_score: todayEntry ? todayEntry.score : null,
-    today_rp:    todayEntry ? todayEntry.rp    : null,
-    week_rp:     weekRp,
-    week_id:     weekId,
+    today_score:  todayEntry ? todayEntry.score : null,
+    today_rp:     todayEntry ? todayEntry.rp    : null,
+    week_rp:      weekRp,
+    week_id:      weekId,
+    bp_balance:   bpBalance,
   });
 }
 

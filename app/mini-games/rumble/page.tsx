@@ -90,6 +90,7 @@ export default function RumblePage() {
   const [showHelp, setShowHelp]         = useState(false);
   const [showEquipHelp, setShowEquipHelp] = useState(false);
   const [showRankHelp, setShowRankHelp]   = useState(false);
+  const [bpBalance, setBpBalance]         = useState<number | null>(null);
   const [displayName, setDisplayName]     = useState("");
   const [nameInput, setNameInput]         = useState("");
   const [showNameModal, setShowNameModal] = useState(false);
@@ -125,7 +126,7 @@ export default function RumblePage() {
   useEffect(() => {
     if (!userId) return;
     fetch(`/api/minigames/rumble/status?userId=${encodeURIComponent(userId)}`)
-      .then(r => r.json()).then(d => { if (d.ok) setStatus(d); }).catch(() => {});
+      .then(r => r.json()).then(d => { if (d.ok) { setStatus(d); if (d.bp_balance !== undefined) setBpBalance(d.bp_balance); } }).catch(() => {});
   }, [userId]);
 
   useEffect(() => {
@@ -463,7 +464,12 @@ export default function RumblePage() {
       <div className="flex items-center justify-between mb-6">
         <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
         <h1 className="font-bold text-lg">⚔️ Rumble League</h1>
-        <button onClick={() => setShowHelp(true)} className="text-white/40 text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">?</button>
+        <div className="flex items-center gap-2">
+          {bpBalance !== null && (
+            <span className="text-xs font-bold text-yellow-400">{bpBalance.toLocaleString()}BP</span>
+          )}
+          <button onClick={() => setShowHelp(true)} className="text-white/40 text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">?</button>
+        </div>
       </div>
 
       {/* 表示名バッジ */}
@@ -548,9 +554,9 @@ export default function RumblePage() {
                 <p className="text-sm text-white/40 mt-1">スコア: {status.today_score} / RP: {status.today_rp}</p>
               </div>
             ) : (
-              <button onClick={handleEntry} disabled={busy}
-                className={`w-full py-4 rounded-xl font-black text-lg transition ${busy ? "bg-white/10 text-white/30" : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"}`}>
-                {busy ? "参加中..." : "⚔️ バトル参加！"}
+              <button onClick={handleEntry} disabled={busy || !status || status.entered_today}
+                className={`w-full py-4 rounded-xl font-black text-lg transition ${(busy || !status || status.entered_today) ? "bg-white/10 text-white/30 cursor-not-allowed" : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"}`}>
+                {busy ? "参加中..." : !status ? "確認中..." : "⚔️ バトル参加！"}
               </button>
             )}
           </div>
