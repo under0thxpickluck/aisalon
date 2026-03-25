@@ -87,88 +87,61 @@ export default function Page() {
             金額というより使える権利の範囲が広がるイメージです。まずはStarterからでもOK。必要に応じて上に上がればOKです。
           </p>
 
-          {/* ランク（横一列 + バブルで比較） */}
-          <div className="mt-6 overflow-x-auto">
-            <div className="flex min-w-max gap-4 pb-2">
-              <RankCard
-                name="Starter"
-                badge="$40 / 体験"
-                chips={[
-                  { label: "講座", value: "基礎AI副業（動画/記事）" },
-                  { label: "テンプレ", value: "月3個（コピペ型）" },
-                  { label: "コミュニティ", value: "閲覧のみ" },
-                  { label: "ポイ活", value: "ストリーミング 25回/日" },
-                  { label: "月交換上限", value: "2,000円" },
-                  { label: "紹介上限", value: "月2人まで" },
-                  { label: "EP通常", value: "4EP=1円" },
-                  { label: "MAX", value: "なし" },
-                ]}
-              />
-
-              <RankCard
-                name="Builder"
-                badge="$67 / 実践"
-                chips={[
-                  { label: "情報", value: "実践テンプレ / SNS台本" },
-                  { label: "実行", value: "ワークフロー簡易版" },
-                  { label: "コミュニティ", value: "書込OK（成果NG）" },
-                  { label: "月交換上限", value: "4,000円" },
-                  { label: "紹介上限", value: "月5人まで" },
-                  { label: "EP通常", value: "4EP=1円" },
-                  { label: "MAX", value: "3EP=1円" },
-                ]}
-              />
-
-              <RankCard
-                name="Automation"
-                badge="$134 / 仕組み"
-                chips={[
-                  { label: "テンプレ", value: "フル解放 / 広告 / 設計" },
-                  { label: "実行", value: "AI生成環境" },
-                  { label: "VPS", value: "限定抽選枠" },
-                  { label: "コミュニティ", value: "成果OK / 共有ルーム" },
-                  { label: "先行権", value: "先行発表 / β応募" },
-                  { label: "月交換上限", value: "8,000円" },
-                  { label: "紹介上限", value: "月10人まで" },
-                  { label: "EP通常", value: "4EP=1円" },
-                  { label: "MAX", value: "2.5EP=1円" },
-                ]}
-              />
-
-              <RankCard
-                name="Core"
-                badge="$667 / 中核"
-                chips={[
-                  { label: "情報", value: "非公開案件 / 統計共有" },
-                  { label: "VPS", value: "優先枠" },
-                  { label: "部屋", value: "専用作業部屋" },
-                  { label: "テンプレ", value: "無料チケット / 無償提供" },
-                  { label: "コミュニティ", value: "成果達成 / 戦略参加" },
-                  { label: "先行権", value: "優先 / 利用優先" },
-                  { label: "月交換上限", value: "15,000円" },
-                  { label: "紹介上限", value: "上限なし" },
-                  { label: "EP通常", value: "4EP=1円" },
-                  { label: "MAX", value: "2EP=1円" },
-                ]}
-              />
-
-              <RankCard
-                name="Infra"
-                badge="$1,340 / 影響"
-                chips={[
-                  { label: "情報", value: "企画段階 / 運営データ" },
-                  { label: "VPS", value: "専用枠（上限付）" },
-                  { label: "PJ", value: "共同PJ 優先" },
-                  { label: "テンプレ", value: "無制限DL（管理あり）" },
-                  { label: "コミュニティ", value: "限定グループ" },
-                  { label: "権限", value: "企画提案 / 投票（配当NG）" },
-                  { label: "月交換上限", value: "30,000円" },
-                  { label: "紹介上限", value: "上限なし" },
-                  { label: "EP通常", value: "4EP=1円" },
-                  { label: "MAX", value: "2EP=1円" },
-                ]}
-              />
-            </div>
+          {/* ランクカード */}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            <RankCard
+              name="Starter"
+              catchPhrase="まず触ってみるための入口"
+              items={[
+                "基礎から触れられる",
+                "まずは型で試せる",
+                "コミュニティを見て学べる",
+              ]}
+              ep="4EP = 1円相当"
+            />
+            <RankCard
+              name="Builder"
+              catchPhrase="実践を始めるための土台"
+              items={[
+                "実践テンプレが使える",
+                "SNS発信や導線づくりに進める",
+                "コミュニティで発言できる",
+              ]}
+              ep="3.5EP = 1円相当"
+              recommended
+            />
+            <RankCard
+              name="Automation"
+              catchPhrase="仕組み化に進むための加速枠"
+              items={[
+                "テンプレが大きく広がる",
+                "AI生成環境に進める",
+                "先行情報や応募枠が増える",
+              ]}
+              ep="3EP = 1円相当"
+            />
+            <RankCard
+              name="Core"
+              catchPhrase="成果を本気で狙う中核枠"
+              items={[
+                "非公開寄りの情報に触れられる",
+                "優先枠や専用環境に近づく",
+                "戦略参加レベルまで入れる",
+              ]}
+              ep="2.5EP = 1円相当"
+              premium
+            />
+            <RankCard
+              name="Infra"
+              catchPhrase="深く関わる上位メンバー枠"
+              items={[
+                "運営に近い情報へアクセス",
+                "共同PJや企画提案に関われる",
+                "最上位の実行・影響レイヤー",
+              ]}
+              ep="2EP = 1円相当"
+              premium
+            />
           </div>
         </div>
       </section>
@@ -786,34 +759,77 @@ export default function Page() {
 /* ✅ ADD: JSXの外に置く（ビルドエラー回避のため） */
 function RankCard({
   name,
-  badge,
-  chips,
+  catchPhrase,
+  items,
+  ep,
+  recommended = false,
+  premium = false,
 }: {
   name: string;
-  badge: string;
-  chips: { label: string; value: string }[];
+  catchPhrase: string;
+  items: string[];
+  ep: string;
+  recommended?: boolean;
+  premium?: boolean;
 }) {
   return (
-    <div className="w-[320px] shrink-0 rounded-2xl border bg-neutral-50 p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-neutral-900">{name}</p>
-        <span className="rounded-full bg-white px-2 py-1 text-xs text-neutral-600">
-          {badge}
-        </span>
+    <div
+      className={`relative flex flex-col rounded-2xl border p-5 ${
+        premium
+          ? "border-neutral-700 bg-gradient-to-br from-neutral-800 to-neutral-950 shadow-lg"
+          : "border-neutral-200 bg-neutral-50"
+      }`}
+    >
+      {recommended && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap">
+          <span className="rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-neutral-900 shadow">
+            おすすめ
+          </span>
+        </div>
+      )}
+
+      <div>
+        <p
+          className={`text-2xl font-black tracking-tight ${
+            premium ? "text-white" : "text-neutral-900"
+          }`}
+        >
+          {name}
+        </p>
+        <p
+          className={`mt-1 text-xs leading-5 ${
+            premium ? "text-neutral-400" : "text-neutral-500"
+          }`}
+        >
+          {catchPhrase}
+        </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {chips.map((c) => (
-          <span
-            key={`${c.label}-${c.value}`}
-            className="inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-xs text-neutral-700"
-            title={`${c.label}：${c.value}`}
-          >
-            <span className="font-bold text-neutral-900">{c.label}</span>
-            <span className="text-neutral-600">:</span>
-            <span className="text-neutral-700">{c.value}</span>
-          </span>
+      <ul className="mt-4 flex-1 space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2 text-xs">
+            <span
+              className={`mt-0.5 shrink-0 font-bold ${
+                premium ? "text-neutral-500" : "text-neutral-400"
+              }`}
+            >
+              ✓
+            </span>
+            <span className={premium ? "text-neutral-300" : "text-neutral-700"}>
+              {item}
+            </span>
+          </li>
         ))}
+      </ul>
+
+      <div
+        className={`mt-4 border-t pt-3 text-xs font-semibold ${
+          premium
+            ? "border-neutral-700 text-neutral-400"
+            : "border-neutral-200 text-neutral-500"
+        }`}
+      >
+        {ep}
       </div>
     </div>
   );
