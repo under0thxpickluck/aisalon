@@ -2,6 +2,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+/** JSTの今日の日付文字列 (YYYY-MM-DD) */
+function getTodayJst(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 type RumbleStatus = {
   entered_today: boolean;
   today_score:   number | null;
@@ -91,6 +96,7 @@ export default function RumblePage() {
   const [showEquipHelp, setShowEquipHelp] = useState(false);
   const [showRankHelp, setShowRankHelp]   = useState(false);
   const [bpBalance, setBpBalance]         = useState<number | null>(null);
+  const [localEnteredToday, setLocalEnteredToday] = useState(false);
   const [displayName, setDisplayName]     = useState("");
   const [nameInput, setNameInput]         = useState("");
   const [showNameModal, setShowNameModal] = useState(false);
@@ -121,6 +127,14 @@ export default function RumblePage() {
     if (!userId) return;
     const saved = localStorage.getItem(`rumble_display_name_${userId}`);
     if (saved) { setDisplayName(saved); setNameInput(saved); }
+  }, [userId]);
+
+  // ローカルストレージで当日参加済みを即座に反映（サーバー応答前でも二重参加を防ぐ）
+  useEffect(() => {
+    if (!userId) return;
+    if (localStorage.getItem(`rumble_entered_${userId}`) === getTodayJst()) {
+      setLocalEnteredToday(true);
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -262,6 +276,8 @@ export default function RumblePage() {
       const res  = await fetch("/api/minigames/rumble/entry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
       const data = await res.json();
       if (data.ok) {
+        localStorage.setItem(`rumble_entered_${userId}`, getTodayJst());
+        setLocalEnteredToday(true);
         setStatus(prev => prev ? { ...prev, entered_today: true, today_score: data.score, today_rp: data.rp, week_rp: prev.week_rp + data.rp } : prev);
         setMsg(`🎉 スコア: ${data.score} / RP: ${data.rp} 獲得！`);
       } else {
@@ -547,15 +563,15 @@ export default function RumblePage() {
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
             <p className="text-sm text-white/50 mb-2">参加費：100BP / 日</p>
             <p className="text-xs text-white/30 mb-4">月〜金 毎日19:00 JST</p>
-            {status?.entered_today ? (
+            {(localEnteredToday || status?.entered_today) ? (
               <div>
                 <div className="text-4xl mb-2">✅</div>
                 <p className="font-bold text-green-400">本日参加済み</p>
-                <p className="text-sm text-white/40 mt-1">スコア: {status.today_score} / RP: {status.today_rp}</p>
+                <p className="text-sm text-white/40 mt-1">スコア: {status?.today_score ?? "—"} / RP: {status?.today_rp ?? "—"}</p>
               </div>
             ) : (
-              <button onClick={handleEntry} disabled={busy || !status || status.entered_today}
-                className={`w-full py-4 rounded-xl font-black text-lg transition ${(busy || !status || status.entered_today) ? "bg-white/10 text-white/30 cursor-not-allowed" : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"}`}>
+              <button onClick={handleEntry} disabled={busy || !status}
+                className={`w-full py-4 rounded-xl font-black text-lg transition ${(busy || !status) ? "bg-white/10 text-white/30 cursor-not-allowed" : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"}`}>
                 {busy ? "参加中..." : !status ? "確認中..." : "⚔️ バトル参加！"}
               </button>
             )}
