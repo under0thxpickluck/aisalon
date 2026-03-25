@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { computeRaised } from "./lib/presale";
 
 /** ✅ カウントダウン + 調達バー（returnの外に置く） */
 function pad2(n: number) {
@@ -13,12 +14,10 @@ function formatMoney(n: number) {
 
 function PresaleHeader({
   endAtISO,
-  raised,
   goal,
   currencyLabel = "USDT",
 }: {
   endAtISO: string;
-  raised: number;
   goal: number;
   currencyLabel?: string;
 }) {
@@ -36,6 +35,8 @@ function PresaleHeader({
   if (now === null) {
     return null;
   }
+
+  const raised = computeRaised(now);
 
   const diff = Math.max(0, endMs - now);
   const totalSec = Math.floor(diff / 1000);
@@ -183,7 +184,6 @@ export default function HomePage() {
         {/* ✅ ここに追加：カウントダウン + 調達バー */}
         <PresaleHeader
           endAtISO="2026-05-01T23:59:59+09:00"
-          raised={4852}
           goal={10000}
           currencyLabel="USDT"
         />
