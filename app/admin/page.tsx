@@ -294,6 +294,23 @@ export default function AdminPage() {
     }
   };
 
+  // ── Rumble: 今の参加者で強制バトル開始 ───────────────────
+  const handleForceStart = async () => {
+    if (forceStartBusy) return;
+    if (!confirm("現在の参加者でバトルを強制開始します。よろしいですか？")) return;
+    setForceStartBusy(true); setForceStartMsg(null);
+    try {
+      const res  = await fetch("/api/admin/rumble-force-start", { method: "POST" });
+      const json = await res.json();
+      if (json?.ok) setForceStartMsg(`完了：${json.forced}人を強制参加 (${json.today})`);
+      else setForceStartMsg(`エラー：${json?.error ?? "unknown"}`);
+    } catch (e: any) {
+      setForceStartMsg(`エラー：${e?.message}`);
+    } finally {
+      setForceStartBusy(false);
+    }
+  };
+
   // ── Rumble: 週次報酬配布 ──────────────────────────────────
   const handleRewardDistribute = async () => {
     if (rewardBusy) return;
@@ -344,6 +361,8 @@ export default function AdminPage() {
   const [rewardWeekId,     setRewardWeekId]      = useState("");
   const [rewardBusy,       setRewardBusy]        = useState(false);
   const [rewardMsg,        setRewardMsg]         = useState<string | null>(null);
+  const [forceStartBusy,   setForceStartBusy]   = useState(false);
+  const [forceStartMsg,    setForceStartMsg]     = useState<string | null>(null);
 
   // ── ページネーション ──────────────────────────────────────
   const totalPages = Math.ceil(membersTotal / PAGE_SIZE);
@@ -672,6 +691,29 @@ export default function AdminPage() {
         {/* ═══ セクション6: Rumble管理 ══════════════════════════ */}
         <section className="mt-6 rounded-2xl bg-zinc-900 p-5">
           <p className="mb-4 text-lg font-semibold text-zinc-200">⚔️ Rumble League 管理</p>
+
+          {/* 強制バトル開始 */}
+          <div className="mb-4 rounded-xl border border-red-900 bg-red-950/40 p-4">
+            <p className="mb-3 text-sm font-bold text-red-300">⚡ 今の参加者で強制バトル開始</p>
+            <p className="mb-3 text-xs text-zinc-400">承認済みで未参加のユーザー全員を強制エントリーし、バトルを開始します。</p>
+            <button
+              onClick={handleForceStart}
+              disabled={forceStartBusy}
+              className={clsx(
+                "rounded-lg px-4 py-2 text-sm font-bold transition",
+                forceStartBusy
+                  ? "cursor-not-allowed bg-zinc-700 text-zinc-500"
+                  : "bg-red-600 text-white hover:bg-red-700"
+              )}
+            >
+              {forceStartBusy ? "処理中…" : "強制バトル開始"}
+            </button>
+            {forceStartMsg && (
+              <p className={clsx("mt-2 text-xs", forceStartMsg.startsWith("エラー") ? "text-red-400" : "text-emerald-400")}>
+                {forceStartMsg}
+              </p>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* 強制バトル参加 */}

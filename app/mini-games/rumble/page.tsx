@@ -126,7 +126,7 @@ export default function RumblePage() {
   useEffect(() => {
     if (!userId) return;
     fetch(`/api/minigames/rumble/status?userId=${encodeURIComponent(userId)}`)
-      .then(r => r.json()).then(d => { if (d.ok) { setStatus(d); if (d.bp_balance !== undefined) setBpBalance(d.bp_balance); } }).catch(() => {});
+      .then(r => r.json()).then(d => { setStatus(d); if (d.bp_balance !== undefined) setBpBalance(d.bp_balance); }).catch(() => {});
   }, [userId]);
 
   useEffect(() => {

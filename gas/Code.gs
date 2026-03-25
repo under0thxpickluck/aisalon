@@ -4661,6 +4661,7 @@ function doPost(e) {
     if (action === 'rumble_set_display_name')  return rumbleSetDisplayName_(body);
     if (action === 'rumble_spectator')         return rumbleSpectator_(body);
     if (action === 'rumble_force_entry')       return rumbleForceEntry_(body);
+    if (action === 'rumble_force_start')       return rumbleForceStart_(body);
     if (action === 'music_boost_status')     return musicBoostStatus_(body);
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
     if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
@@ -6306,6 +6307,84 @@ function rumbleForceEntry_(params) {
   }
 
   return json_({ ok: true, score: score, rp: rp, week_id: weekId, note: "force_entry_no_bp_deduction" });
+}
+
+// action: rumble_force_start（管理者用：承認済み全ユーザーを今日のバトルに強制一括参加）
+function rumbleForceStart_(params) {
+  var secrets = getSecrets_();
+  if (String(params.adminKey || "") !== secrets.ADMIN_SECRET) {
+    return json_({ ok: false, error: "admin_unauthorized" });
+  }
+
+  var today  = getTodayJst_();
+  var weekId = getWeekId_();
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+
+  // 今日エントリー済みユーザーセットを作成
+  var entrySheet = getRumbleEntrySheet_();
+  ensureRumbleEntryCols_(entrySheet);
+  var entryData = entrySheet.getDataRange().getValues();
+  var eIdx = {};
+  entryData[0].forEach(function(h, i) { eIdx[h] = i; });
+  var enteredToday = {};
+  for (var i = 1; i < entryData.length; i++) {
+    if (String(entryData[i][eIdx["date"]]) === today) {
+      enteredToday[String(entryData[i][eIdx["user_id"]])] = true;
+    }
+  }
+
+  // approved ユーザー全員取得
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+
+  // rumble_week データをプリロード（今週分）
+  var weekSheet = getRumbleWeekSheet_();
+  ensureRumbleWeekCols_(weekSheet);
+  var weekData = weekSheet.getDataRange().getValues();
+  var wHeaders = weekData[0];
+  var wIdx     = {};
+  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+  var weekMap = {};
+  for (var k = 1; k < weekData.length; k++) {
+    if (String(weekData[k][wIdx["week_id"]]) === weekId) {
+      var wUid = String(weekData[k][wIdx["user_id"]]);
+      weekMap[wUid] = { rowNum: k + 1, totalRp: Number(weekData[k][wIdx["total_rp"]] || 0) };
+    }
+  }
+
+  var forced = 0;
+  for (var j = 1; j < appliesData.length; j++) {
+    var row = appliesData[j];
+    if (String(row[aIdx["status"]] || "") !== "approved") continue;
+    var uid = String(row[aIdx["login_id"]] || "");
+    if (!uid || enteredToday[uid]) continue;
+
+    // スコア計算（BP消費なし）
+    var userLevel    = Number(row[aIdx["level"]] || 1);
+    var equipBonus   = getUserEquipmentBonus_(uid);
+    var randomFactor = Math.floor(Math.random() * 51);
+    var score        = 100 + (userLevel * 2) + equipBonus + randomFactor;
+
+    // rumble_entry に記録
+    entrySheet.appendRow([Utilities.getUuid(), uid, today, score, score, nowJst]);
+
+    // rumble_week 更新
+    if (weekMap[uid]) {
+      weekSheet.getRange(weekMap[uid].rowNum, wIdx["total_rp"] + 1).setValue(weekMap[uid].totalRp + score);
+      weekSheet.getRange(weekMap[uid].rowNum, wIdx["updated_at"] + 1).setValue(nowJst);
+      weekMap[uid].totalRp += score;
+    } else {
+      weekSheet.appendRow([uid, weekId, score, nowJst]);
+      weekMap[uid] = { rowNum: weekSheet.getLastRow(), totalRp: score };
+    }
+
+    forced++;
+  }
+
+  return json_({ ok: true, forced: forced, week_id: weekId, today: today });
 }
 
 // action: rumble_set_display_name
