@@ -1,0 +1,2743 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "lifai",
+    "languages": [
+      "typescript",
+      "javascript"
+    ],
+    "frameworks": [
+      "Next.js",
+      "React",
+      "Tailwind CSS",
+      "OpenAI",
+      "Google Apps Script"
+    ],
+    "description": "Japanese AI-education community salon web app. Users pay via USDT crypto, fill an application, get admin-approved, then access AI tools including music generation, minigames (Rumble battle royale, tap game), a marketplace, gacha, staking, and a note article generator.",
+    "analyzedAt": "2026-03-26T05:01:25.545Z",
+    "gitCommitHash": "8affd271086e73752f2a70c0ca61dcd401398962"
+  },
+  "nodes": [
+    {
+      "id": "file:app/5000/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/5000/page.tsx",
+      "summary": "Client-side page for the 5000-plan DAO membership promotion. Renders animated presale content with plan selection (1000/2000/5000 tiers), count-up hook, Framer Motion animations, and draft persistence via storage helpers.",
+      "tags": [
+        "ui",
+        "routing",
+        "client-component"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/admin/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/admin/page.tsx",
+      "summary": "Client-side admin dashboard page. Manages apply rows, member list, sell requests, rumble reward distribution, and BP grants. Fetches from multiple internal API routes (/api/admin/*).",
+      "tags": [
+        "ui",
+        "routing",
+        "client-component",
+        "admin"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/api/admin/approve/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/approve/route.ts",
+      "summary": "API route handler (POST) that proxies admin_approve action to GAS via GET query params, given a rowIndex. Validates env vars and rowIndex before calling GAS.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/dashboard/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/dashboard/route.ts",
+      "summary": "API route handler (GET) that calls GAS action admin_dashboard via POST body. Returns dashboard summary data for the admin UI.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/grant-bp/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/grant-bp/route.ts",
+      "summary": "API route handler (POST) that grants BP to a user for a sell request by calling GAS action grant_bp_for_sell. Validates request_id, user_id, and bp_amount.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy",
+        "wallet"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/list/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/list/route.ts",
+      "summary": "API route handler (GET) that retrieves all applications from GAS via admin_list action using GET query params. Returns raw GAS JSON.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/members/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/members/route.ts",
+      "summary": "API route handler (GET) that retrieves paginated member list from GAS via admin_get_members action. Accepts page and pageSize query params.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/pending/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/pending/route.ts",
+      "summary": "API route handler (GET) that retrieves pending applications from GAS via admin_list action (POST body). Normalizes response to { ok, rows } format for the admin page.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/rumble-force-start/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/rumble-force-start/route.ts",
+      "summary": "API route handler (POST) that forces a Rumble battle start by calling GAS action rumble_force_start. Uses module-level env var constants.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy",
+        "rumble"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/rumble-reward/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/rumble-reward/route.ts",
+      "summary": "API route handler (POST) that distributes Rumble rewards by calling GAS action rumble_reward_distribute. Accepts optional weekId in request body.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy",
+        "rumble"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/admin/sell-requests/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/admin/sell-requests/route.ts",
+      "summary": "API route handler (GET) that retrieves all sell requests from GAS via get_sell_requests action. Returns raw GAS JSON.",
+      "tags": [
+        "api-handler",
+        "admin",
+        "gas-proxy",
+        "wallet"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/apply/create/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/apply/create/route.ts",
+      "summary": "API route handler (POST) that calls GAS apply_create action to pre-create an application row given plan and applyId.",
+      "tags": [
+        "api-handler",
+        "apply",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/apply/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/apply/route.ts",
+      "summary": "API route handler (POST) that submits application form data to GAS via apply action. Validates applyId presence and whitelists payload fields before forwarding.",
+      "tags": [
+        "api-handler",
+        "apply",
+        "gas-proxy"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/apply/status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/apply/status/route.ts",
+      "summary": "API route handler (GET) that checks the status of an application by applyId. Queries GAS admin_list and returns the matching row's status.",
+      "tags": [
+        "api-handler",
+        "apply",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/auth/login/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/auth/login/route.ts",
+      "summary": "API route handler (POST) that proxies login credentials (id, code) to GAS login action. Appends API key as URL query param per GAS pickKey_ convention.",
+      "tags": [
+        "api-handler",
+        "auth",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/auth/reset/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/auth/reset/route.ts",
+      "summary": "API route handler (POST) that proxies password reset (token, password) to GAS reset_password action.",
+      "tags": [
+        "api-handler",
+        "auth",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/cat-chat/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/cat-chat/route.ts",
+      "summary": "AI cat mascot chat endpoint ('リファ猫') using OpenAI gpt-4o-mini. Accepts POST with {message, history}, maintains an in-memory LRU reply cache (max 200 entries, history-less messages only). Sends last 5 history turns plus a LIFAI-specific system prompt. Returns {ok, reply, cached}.",
+      "tags": [
+        "api-handler",
+        "openai",
+        "chat",
+        "bp",
+        "mascot"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/daily-login/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/daily-login/route.ts",
+      "summary": "Daily login bonus BP grant endpoint. Accepts POST with {loginId}, proxies GAS action 'daily_login_bonus' using GAS_WEBAPP_URL, GAS_API_KEY, and GAS_ADMIN_KEY. Returns GAS response directly.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "bp",
+        "daily",
+        "bonus"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/debug/env/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/debug/env/route.ts",
+      "summary": "Debug GET endpoint that exposes resolved environment variable presence: GAS_WEBAPP_URL value, GAS_API_KEY and GAS_ADMIN_KEY as 'set' or null. Intended for development/debugging only.",
+      "tags": [
+        "api-handler",
+        "debug",
+        "env"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/fortune-bp/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/fortune-bp/route.ts",
+      "summary": "Fortune-telling daily BP reward endpoint. Accepts POST with {loginId}, proxies GAS action 'fortune_daily_bp' using GAS_WEBAPP_URL, GAS_API_KEY, and GAS_ADMIN_KEY. Mirrors the daily-login pattern exactly.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "bp",
+        "fortune",
+        "daily"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/gacha/daily/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/gacha/daily/route.ts",
+      "summary": "Daily gacha draw endpoint. Accepts POST with {loginId}, proxies GAS action 'gacha_daily' with adminKey. Grants a free daily gacha pull to the user.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "gacha",
+        "daily"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/gacha/daily/status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/gacha/daily/status/route.ts",
+      "summary": "Daily gacha status check endpoint. Accepts POST with {loginId}, proxies GAS action 'gacha_daily_status'. Does not require adminKey. Returns whether the user has already used their daily gacha.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "gacha",
+        "status"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/gacha/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/gacha/route.ts",
+      "summary": "Main gacha spin endpoint. Accepts POST with {loginId, is10} (is10 flag for 10-pull). Proxies GAS action 'gacha_spin' with adminKey. Costs 100 BP per spin (or 1000 BP for 10-pull) per system prompt.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "gacha",
+        "bp"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/market/buy/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/buy/route.ts",
+      "summary": "Marketplace buy endpoint. Accepts POST with {id, code, item_id}, authenticates user via id/code, proxies GAS action 'market_buy'. Deducts BP/EP from buyer and creates an order.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "buy",
+        "bp"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/market/confirm/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/confirm/route.ts",
+      "summary": "Marketplace order confirm endpoint. Accepts POST with {id, code, order_id}, authenticates user, proxies GAS action 'market_confirm'. Seller confirms delivery of a purchased item.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "confirm"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/market/create/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/create/route.ts",
+      "summary": "Marketplace listing creation endpoint. Accepts POST with full item metadata: {id, code, title, desc, item_type, asset_count, currency, price, delivery_mode, delivery_ref, stock_total}. Proxies GAS action 'market_create'. Supports image/music packs with BP or EP pricing.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "create",
+        "listing"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/market/item/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/item/route.ts",
+      "summary": "Marketplace item detail GET endpoint. Accepts ?item_id= query param, proxies GAS action 'market_item'. Returns single item details without requiring authentication.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "item",
+        "detail"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/market/list/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/list/route.ts",
+      "summary": "Marketplace listing GET endpoint with pagination and filtering. Accepts query params: status (default 'active'), item_type, currency, page (default 1), limit (default 20). Proxies GAS action 'market_list'.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "list",
+        "pagination"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/market/refund/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/refund/route.ts",
+      "summary": "Marketplace refund endpoint. Accepts POST with {order_id, note}, requires GAS_ADMIN_KEY (admin-only operation). Proxies GAS action 'market_refund'. Returns BP/EP to buyer.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "refund",
+        "admin"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/market/report/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/report/route.ts",
+      "summary": "Marketplace item report endpoint. Accepts POST with {id, code, item_id, reason, message}, authenticates user, proxies GAS action 'market_report'. Allows users to flag inappropriate marketplace listings.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "report",
+        "moderation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/market/sell-request/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/market/sell-request/route.ts",
+      "summary": "Marketplace sell-request endpoint. Accepts POST with {id, code, item_id, seller_id}, authenticates user, proxies GAS action 'sell_request'. Used when a buyer initiates contact with a seller for delivery.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "market",
+        "sell-request"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/me/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/me/route.ts",
+      "summary": "Current user info endpoint. POST {id, code} proxies GAS action 'me' with a 15-second AbortController timeout. Returns structured user data: login_id, email, status, plan, my_ref_code, referrer chain (up to 3 levels). Has typed GasMeResponse union and a utility GET handler returning a usage hint.",
+      "tags": [
+        "api-handler",
+        "gas-proxy",
+        "auth",
+        "user",
+        "referral"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:service:GAS_WEBAPP_URL",
+      "type": "file",
+      "name": "Google Apps Script Backend",
+      "summary": "GAS web app backed by Google Sheets. Handles all persistent data operations via JSON POST actions. Called by all GAS-proxy API routes.",
+      "tags": [
+        "gas",
+        "google-sheets",
+        "backend"
+      ],
+      "complexity": "simple",
+      "filePath": "service:GAS_WEBAPP_URL"
+    },
+    {
+      "id": "file:service:OpenAI",
+      "type": "file",
+      "name": "OpenAI API",
+      "summary": "OpenAI gpt-4o-mini used for cat-chat AI responses. Configured via OPENAI_API_KEY env var.",
+      "tags": [
+        "openai",
+        "llm",
+        "chat"
+      ],
+      "complexity": "simple",
+      "filePath": "service:OpenAI"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/dismantle/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/dismantle/route.ts",
+      "summary": "POST handler that proxies the `rumble_dismantle` GAS action. Accepts userId and itemId, dismantles the specified equipment item (converting it to shards or resources).",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "equipment",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/enhance/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/enhance/route.ts",
+      "summary": "POST handler that proxies the `rumble_enhance` GAS action. Accepts userId and itemId, upgrades/enhances the specified equipment item.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "equipment",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/entry/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/entry/route.ts",
+      "summary": "POST handler that proxies the `rumble_entry` GAS action. Accepts userId and registers the user into today's Rumble battle (deducts 100BP on the GAS side).",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "entry",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/equip/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/equip/route.ts",
+      "summary": "POST handler that proxies the `rumble_equip` GAS action. Accepts userId and itemId, equips the specified item on the user's Rumble character.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "equipment",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/equipment/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/equipment/route.ts",
+      "summary": "GET handler that proxies the `rumble_equipment` GAS action. Accepts userId as a query param and returns the user's full equipment inventory.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "equipment",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/force-entry/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/force-entry/route.ts",
+      "summary": "POST handler that proxies the `rumble_force_entry` GAS action using both GAS_API_KEY and GAS_ADMIN_KEY. Forces a user into the current Rumble battle regardless of normal entry conditions; admin-only operation.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "admin",
+        "entry",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/gacha/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/gacha/route.ts",
+      "summary": "POST handler that proxies the `rumble_gacha` GAS action. Accepts userId and performs a gacha roll to award random Rumble equipment to the user.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "gacha",
+        "equipment",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/my-rank-context/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/my-rank-context/route.ts",
+      "summary": "GET handler that proxies the `rumble_my_rank_context` GAS action. Returns the requesting user's current rank, nearby competitors, and contextual ranking data for the Rumble leaderboard.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "ranking",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/ranking/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/ranking/route.ts",
+      "summary": "GET handler that proxies the `rumble_ranking` GAS action. Accepts an optional weekId query param and returns the global Rumble RP ranking for that week (or current week if omitted).",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "ranking",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/set-name/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/set-name/route.ts",
+      "summary": "POST handler that proxies the `rumble_set_display_name` GAS action. Accepts userId and display_name, updates the user's Rumble display name.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "profile",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/shard-status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/shard-status/route.ts",
+      "summary": "GET handler that proxies the `rumble_shard_status` GAS action. Returns the user's current shard counts (crafting materials obtained from dismantling equipment).",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "equipment",
+        "shards",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/spectator/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/spectator/route.ts",
+      "summary": "GET handler that proxies the `rumble_spectator` GAS action. Accepts optional userId and date query params; returns battle replay/spectator data for a specific date's Rumble match.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "spectator",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/rumble/status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/rumble/status/route.ts",
+      "summary": "GET handler that proxies the `rumble_status` GAS action. Returns the user's current Rumble state: entry status, BP balance, RP total, and current battle phase.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "rumble",
+        "status",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/tap/play/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/tap/play/route.ts",
+      "summary": "POST handler that proxies the `tap_play` GAS action. Accepts userId and comboCount (defaults to 0), records a tap game session result and awards BP based on combo performance.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "tap",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/tap/ranking/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/tap/ranking/route.ts",
+      "summary": "GET handler (no params) that proxies the `tap_ranking` GAS action. Returns the global tap game leaderboard.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "tap",
+        "ranking",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/tap/status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/tap/status/route.ts",
+      "summary": "GET handler that proxies the `tap_status` GAS action. Accepts userId and returns the user's tap game state: remaining plays, daily limits, and accumulated BP.",
+      "tags": [
+        "api-handler",
+        "minigame",
+        "tap",
+        "status",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/minigames/tap/ticker/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/minigames/tap/ticker/route.ts",
+      "summary": "GET handler that proxies the `tap_ticker` action to GAS to retrieve the current tap game countdown/ticker state.",
+      "tags": [
+        "api-handler",
+        "mini-game",
+        "tap",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/missions/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/missions/route.ts",
+      "summary": "GET retrieves daily mission status for a user via GAS `get_missions`; POST marks a mission complete via GAS `complete_mission` with a same-day duplicate guard.",
+      "tags": [
+        "api-handler",
+        "missions",
+        "gas-proxy",
+        "daily-missions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/music-boost/admin/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/music-boost/admin/route.ts",
+      "summary": "Admin GET handler that proxies `music_boost_admin_list` to GAS to list all music boost subscribers.",
+      "tags": [
+        "api-handler",
+        "music-boost",
+        "admin",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/music-boost/cancel/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/music-boost/cancel/route.ts",
+      "summary": "POST handler that cancels a user's music boost subscription via GAS `music_boost_cancel`.",
+      "tags": [
+        "api-handler",
+        "music-boost",
+        "cancel",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/music-boost/status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/music-boost/status/route.ts",
+      "summary": "GET handler that retrieves a user's music boost subscription status via GAS `music_boost_status`.",
+      "tags": [
+        "api-handler",
+        "music-boost",
+        "status",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/music-boost/subscribe/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/music-boost/subscribe/route.ts",
+      "summary": "POST handler that subscribes a user to a music boost plan via GAS `music_boost_subscribe`.",
+      "tags": [
+        "api-handler",
+        "music-boost",
+        "subscribe",
+        "gas-proxy"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/music/_cache.ts",
+      "type": "file",
+      "name": "_cache.ts",
+      "filePath": "app/api/music/_cache.ts",
+      "summary": "In-memory cache module shared between music generate and status routes. Stores lyrics keyed by predictionId (2h TTL) and multi-section job state (verseId/chorusId/bridgeId, stage, urls) keyed by jobId (4h TTL).",
+      "tags": [
+        "cache",
+        "music",
+        "in-memory",
+        "job-state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/music/generate/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/music/generate/route.ts",
+      "summary": "POST handler that generates AI music via Replicate (meta/musicgen stereo-large). Optionally generates Japanese lyrics via OpenAI gpt-4o-mini, then launches 3 parallel Replicate predictions (verse/chorus/bridge). Stores job state in _cache. maxDuration=300.",
+      "tags": [
+        "api-handler",
+        "music",
+        "ai-generation",
+        "replicate",
+        "openai",
+        "long-running"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/api/music/status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/music/status/route.ts",
+      "summary": "GET polling handler for music generation jobs. Handles multi-section jobs (verse→chorus→bridge→merge via MERGE_SERVER_URL) and legacy single-prediction polling. Reads/updates job state from _cache. maxDuration=300.",
+      "tags": [
+        "api-handler",
+        "music",
+        "polling",
+        "replicate",
+        "long-running"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/api/note/generate/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/note/generate/route.ts",
+      "summary": "POST handler that generates a full Note.com article body using OpenAI (gpt-4o or gpt-4o-mini depending on length). Returns structured sections as markdown with optional paywall markers. Uses internal lib/ai helpers.",
+      "tags": [
+        "api-handler",
+        "note",
+        "ai-generation",
+        "openai",
+        "content-generation"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/note/plan/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/note/plan/route.ts",
+      "summary": "POST handler that generates a Note.com article plan/outline using OpenAI gpt-4o-mini with JSON schema response format. Returns plan_id and structured plan data. Uses internal lib/ai helpers.",
+      "tags": [
+        "api-handler",
+        "note",
+        "ai-generation",
+        "openai",
+        "content-planning"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/nowpayments/create/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/nowpayments/create/route.ts",
+      "summary": "POST handler that creates a NOWPayments USDT invoice for a purchase. Validates amount/applyId, builds success/cancel/IPN callback URLs, and calls the NOWPayments v1/invoice API. Returns invoice_url.",
+      "tags": [
+        "api-handler",
+        "payments",
+        "nowpayments",
+        "crypto",
+        "usdt"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/nowpayments/ipn/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/nowpayments/ipn/route.ts",
+      "summary": "NOWPayments IPN webhook handler. Verifies HMAC-SHA512 signature (skippable in dev with x-test-ipn header), extracts payment details, and forwards `payment_update` to GAS. Always returns 200 to NOWPayments even on GAS failure.",
+      "tags": [
+        "api-handler",
+        "payments",
+        "nowpayments",
+        "webhook",
+        "ipn",
+        "hmac"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/radio/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/radio/route.ts",
+      "summary": "Radio/BGM endpoint. GET supports `songs` (list) and `status` (user radio status) actions proxied to GAS. POST supports `start` and `submit` (mission screenshot) actions proxied to GAS.",
+      "tags": [
+        "api-handler",
+        "radio",
+        "bgm",
+        "gas-proxy",
+        "missions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/song/_jobStore.ts",
+      "type": "file",
+      "name": "_jobStore.ts",
+      "filePath": "app/api/song/_jobStore.ts",
+      "summary": "GAS-backed persistent job store for the 3-step song generation pipeline. Replaces in-memory storage to survive Vercel serverless instance restarts. Provides createJob, getJob, updateJob CRUD backed by GAS `song_jobs` sheet actions.",
+      "tags": [
+        "job-store",
+        "song",
+        "gas-proxy",
+        "persistence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/song/approve-lyrics/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/approve-lyrics/route.ts",
+      "summary": "POST handler for approving (and optionally editing) generated lyrics in the song pipeline. Marks job as structure_generating, then calls OpenAI gpt-4o-mini to produce BPM/key/sections structure, advancing the job to structure_ready. maxDuration=60.",
+      "tags": [
+        "api-handler",
+        "song",
+        "lyrics",
+        "openai",
+        "pipeline"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:lib/ai/openai.ts",
+      "type": "file",
+      "name": "openai.ts",
+      "filePath": "lib/ai/openai.ts",
+      "summary": "Shared OpenAI client factory used by note generation routes.",
+      "tags": [
+        "lib",
+        "openai",
+        "client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/ai/schemas.ts",
+      "type": "file",
+      "name": "schemas.ts",
+      "filePath": "lib/ai/schemas.ts",
+      "summary": "JSON schema definitions (NOTE_ARTICLE_SCHEMA, NOTE_PLAN_SCHEMA) for OpenAI structured output used by note generation routes.",
+      "tags": [
+        "lib",
+        "schemas",
+        "openai"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:lib/ai/prompts/note.ts",
+      "type": "file",
+      "name": "note.ts",
+      "filePath": "lib/ai/prompts/note.ts",
+      "summary": "System prompt and prompt builder functions (NOTE_SYSTEM_PROMPT, buildArticlePrompt, buildPlanPrompt) for note article generation.",
+      "tags": [
+        "lib",
+        "prompts",
+        "note",
+        "openai"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/song/approve-structure/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/approve-structure/route.ts",
+      "summary": "Third step of the song generation flow. Validates that the job is in 'structure_ready' status, then calls ElevenLabsProvider to generate audio synchronously, uploads the result to R2, and marks the job 'completed'. Deducts BP_COSTS.music_full on completion. maxDuration=300 for long audio generation.",
+      "tags": [
+        "api",
+        "song",
+        "elevenlabs",
+        "r2",
+        "bp",
+        "audio-generation"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/api/song/cancel/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/cancel/route.ts",
+      "summary": "Cancels an in-progress song job. Computes a tiered BP refund: 100% if cancelled during lyrics stage, 70% during structure stage, 30% during audio generation. Returns the refund amount to the caller but does not itself write back to GAS — BP reinstatement is caller responsibility.",
+      "tags": [
+        "api",
+        "song",
+        "cancel",
+        "bp",
+        "refund"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/song/lyrics/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/lyrics/route.ts",
+      "summary": "GET endpoint that returns the generated lyrics (title + lyrics text) for a job once it has reached 'lyrics_ready' or any later stage. Returns error if lyrics are not yet ready.",
+      "tags": [
+        "api",
+        "song",
+        "lyrics",
+        "polling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/song/result/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/result/route.ts",
+      "summary": "GET endpoint that returns the final completed song result including audioUrl, downloadUrl, title, lyrics, and usedBp. Only succeeds when job status is 'completed'.",
+      "tags": [
+        "api",
+        "song",
+        "result",
+        "audio"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/song/start/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/start/route.ts",
+      "summary": "First step of the song generation flow. Checks user BP balance via GAS, deducts BP_COSTS.music_full via GAS 'deduct_bp' action, creates a job in _jobStore, then calls OpenAI GPT-4o-mini to generate Japanese lyrics synchronously. Returns jobId and resulting status.",
+      "tags": [
+        "api",
+        "song",
+        "start",
+        "openai",
+        "bp",
+        "gas"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/api/song/status/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/status/route.ts",
+      "summary": "Lightweight GET polling endpoint that returns current job status, bpLocked, bpFinal, and stage (when audio_generating) from _jobStore.",
+      "tags": [
+        "api",
+        "song",
+        "status",
+        "polling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/song/structure/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/song/structure/route.ts",
+      "summary": "GET endpoint that returns song structure data (bpm, key, sections, hookSummary, title) once the job reaches 'structure_ready' or later. Used by the frontend to show structure details before user approves generation.",
+      "tags": [
+        "api",
+        "song",
+        "structure",
+        "polling"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/staking/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/staking/route.ts",
+      "summary": "BP staking API with three HTTP methods: GET retrieves stake status via GAS 'get_stakes', POST initiates a new stake via 'stake_bp' (with amount and days), PATCH claims a matured stake via 'claim_stake'. All requests proxy to GAS with adminKey.",
+      "tags": [
+        "api",
+        "staking",
+        "bp",
+        "gas"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/api/user/claim-bp/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/user/claim-bp/route.ts",
+      "summary": "POST proxy that forwards user auth (id, code) to GAS 'claim_pending_bp' action to convert pending BP into usable balance. Thin wrapper with env validation.",
+      "tags": [
+        "api",
+        "user",
+        "bp",
+        "gas"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/user/pending-bp/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/user/pending-bp/route.ts",
+      "summary": "POST proxy that queries GAS 'get_pending_bp' action with user auth to check if there is unclaimed (pending) BP. Returns { ok, hasPending, amount }.",
+      "tags": [
+        "api",
+        "user",
+        "bp",
+        "gas"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/wallet/balance/route.ts",
+      "type": "file",
+      "name": "route.ts",
+      "filePath": "app/api/wallet/balance/route.ts",
+      "summary": "POST proxy to GAS 'get_balance' action. Passes the API key as a URL query param (not in body) because GAS pickKey_ reads it from the URL. Returns raw GAS response containing bp and ep balances.",
+      "tags": [
+        "api",
+        "wallet",
+        "balance",
+        "gas"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/apply-sell/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/apply-sell/page.tsx",
+      "summary": "Client-side UI stub for selling a generated song to LIFAI admins. Collects song title, R2 URL, desired price (USDT), and memo. Submit button currently only sets local 'submitted' state — no actual API call is wired up yet.",
+      "tags": [
+        "ui",
+        "music",
+        "sell",
+        "stub"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/apply/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/apply/page.tsx",
+      "summary": "Step 2 of the registration flow. Collects personal info (email, name, kana, Discord ID, age band, prefecture, city, job, referral). Reads/writes draft to sessionStorage via loadDraft/saveDraft. Handles applyId recovery for users who closed the browser after payment. Validates all required fields before allowing navigation to /confirm.",
+      "tags": [
+        "ui",
+        "form",
+        "apply",
+        "routing",
+        "draft"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/column/[id]/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/column/[id]/page.tsx",
+      "summary": "Dynamic detail page for a column or news post identified by [id] param. Currently uses hardcoded in-memory post data (3 sample posts). Renders post title, date, type badge, and full body with whitespace-pre-wrap.",
+      "tags": [
+        "ui",
+        "column",
+        "dynamic-route",
+        "hardcoded-data"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/column/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/column/page.tsx",
+      "summary": "Column/news listing page with tab switching between NEWS and COLUMN types. Posts are hardcoded in-memory with href links to static slug pages under /column/posts/. Adding new posts requires editing this file and creating a new page.tsx under the slug path.",
+      "tags": [
+        "ui",
+        "column",
+        "listing",
+        "hardcoded-data"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/column/posts/2026-01-31-design-win/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/column/posts/2026-01-31-design-win/page.tsx",
+      "summary": "Static column post page for the '設計が勝つ' entry dated 2026-01-31. Fully hardcoded content with no dynamic data fetching. Represents the file-based CMS pattern used for the column feature.",
+      "tags": [
+        "ui",
+        "column",
+        "static-content"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/api/song/_jobStore",
+      "type": "file",
+      "name": "_jobStore",
+      "filePath": "app/api/song/_jobStore.ts",
+      "summary": "In-memory job store shared across song API routes. Provides createJob, getJob, updateJob. Referenced by all song route handlers.",
+      "tags": [
+        "api",
+        "song",
+        "in-memory",
+        "shared"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/lib/bp-config.ts",
+      "type": "file",
+      "name": "bp-config.ts",
+      "filePath": "app/lib/bp-config.ts",
+      "summary": "Central BP (Battle Points) configuration constants. Exports BP_COSTS (cost per feature action), BP_PACKS (purchase tiers), SUBSCRIPTION_BP_CAPS (per plan), ENTRY_BP_GRANTS (joining bonus per plan), LOGIN_BONUS_BP (streak bonuses), DAILY_LIMITS, MISSION_REWARDS, EP_TO_BP_RATE, GACHA_COST, GACHA_TABLE, STAKING_PLANS, STAKING_MIN_BP, RADIO_REWARD_EP, RADIO_MIN_SECONDS, RADIO_DAILY_LIMITS.",
+      "tags": [
+        "utility",
+        "config",
+        "bp",
+        "constants"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/features/music/providers/elevenlabsProvider",
+      "type": "file",
+      "name": "elevenlabsProvider",
+      "filePath": "app/features/music/providers/elevenlabsProvider.ts",
+      "summary": "ElevenLabs music generation provider. Exports ElevenLabsProvider class, uploadToR2 helper, and MusicGenerateInput type.",
+      "tags": [
+        "music",
+        "elevenlabs",
+        "r2",
+        "provider"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:components/storage.ts",
+      "type": "file",
+      "name": "storage.ts",
+      "filePath": "components/storage.ts",
+      "summary": "Versioned sessionStorage helper for the apply flow draft. Exports Plan and Chain types, the Draft type (all apply form fields), and CRUD helpers: loadDraft, saveDraft (merge-safe), clearDraft, updateDraftField, hasDraft, getRawDraft. Key: addval_apply_draft_v1, version: 1. SSR-safe via isBrowser() guard.",
+      "tags": [
+        "storage",
+        "utility",
+        "apply-flow"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/StepHeader.tsx",
+      "type": "file",
+      "name": "StepHeader.tsx",
+      "filePath": "components/StepHeader.tsx",
+      "summary": "Multi-step form header component. Displays current step / total steps label, a title, optional subtitle, and an animated gradient progress bar. Used in the purchase → apply → confirm flow.",
+      "tags": [
+        "ui",
+        "client-component",
+        "form"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/Field.tsx",
+      "type": "file",
+      "name": "Field.tsx",
+      "filePath": "components/Field.tsx",
+      "summary": "Shared text input field component with label, hint, and required support.",
+      "tags": [
+        "ui",
+        "component",
+        "form"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/Select.tsx",
+      "type": "file",
+      "name": "Select.tsx",
+      "filePath": "components/Select.tsx",
+      "summary": "Generic accessible select dropdown component for forms. Accepts label, value, onChange, options array, placeholder, and optional error message. Generates unique id with useId. Used in the application form (prefecture, plan selection, etc.).",
+      "tags": [
+        "ui",
+        "client-component",
+        "form"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/confirm/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/confirm/page.tsx",
+      "summary": "Step 3 purchase confirmation page. Loads the apply draft from sessionStorage, displays all form fields for review, checks payment status via /api/apply/status, requires a 'paid' checkbox before submission. POSTs to /api/apply, clears draft, redirects to /pending on success.",
+      "tags": [
+        "page",
+        "apply-flow",
+        "confirmation",
+        "client"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/features/music/providers/elevenlabsProvider.ts",
+      "type": "file",
+      "name": "elevenlabsProvider.ts",
+      "filePath": "app/features/music/providers/elevenlabsProvider.ts",
+      "summary": "ElevenLabs music generation provider implementing the MusicProvider interface. Exports MusicGenerateInput/Result types, buildElevenLabsPrompt() helper (assembles prompt string from genre/mood/BPM/structure/etc.), ElevenLabsProvider class (calls ElevenLabs /v1/music API, returns ArrayBuffer), and uploadToR2() utility (uploads generated audio to Cloudflare R2 via AWS S3 SDK).",
+      "tags": [
+        "feature",
+        "music",
+        "provider",
+        "elevenlabs",
+        "r2",
+        "utility"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/fortune/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/fortune/page.tsx",
+      "summary": "Daily fortune-telling page ('あなだん'). Self-contained 20-question personality diagnosis (dango type) and daily fortune engine. Loads 5 JSON config files from /fortune/config/. Stores diagnosis result and install ID in localStorage (keys: dango_result, dango_install_id). Calls /api/missions with mission_type='fortune' to grant +BP to logged-in users (reads loginId from addval_auth_v1). Shows fortune view with 12 daily fortune cards.",
+      "tags": [
+        "page",
+        "fortune",
+        "quiz",
+        "bp",
+        "client"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/invest/_gate.tsx",
+      "type": "file",
+      "name": "_gate.tsx",
+      "filePath": "app/invest/_gate.tsx",
+      "summary": "Client-side password gate component for the investor-only page. Stores access state in localStorage (key: lifai_invest_gate_ok_v1). Hardcoded password 'lifai2026'. Renders a password form when locked; wraps children with a sticky unlock banner when authenticated.",
+      "tags": [
+        "component",
+        "auth",
+        "gate",
+        "invest",
+        "client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/invest/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/invest/page.tsx",
+      "summary": "Server component investor information page. Wrapped in InvestGate for access control. Presents investment tiers (100/300/500万円 with revenue share rates), payback model, collaboration/advertising opportunities (banner + BP-rewarded ad actions), fund usage breakdown, and benefits. Static content only — no API calls.",
+      "tags": [
+        "page",
+        "invest",
+        "static",
+        "server-component"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/layout.tsx",
+      "type": "file",
+      "name": "layout.tsx",
+      "filePath": "app/layout.tsx",
+      "summary": "Root Next.js layout. Sets global metadata (OGP, Twitter card, PWA icons, theme color), injects Google AdSense script, wraps all pages in LifaiCatProvider and ToastHost. HTML lang='ja'.",
+      "tags": [
+        "layout",
+        "root",
+        "metadata",
+        "pwa",
+        "providers"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/lib/auth.ts",
+      "type": "file",
+      "name": "auth.ts",
+      "filePath": "app/lib/auth.ts",
+      "summary": "Client-side auth helper. Defines AuthState type (status, id, token, plan, updatedAt). Manages localStorage key addval_auth_v1 (persisted auth) and sessionStorage key addval_auth_secret_v1 (password, session-only). Exports getAuth, setAuth, clearAuth, getAuthSecret, setAuthSecret, clearAuthSecret.",
+      "tags": [
+        "utility",
+        "auth",
+        "localStorage",
+        "sessionStorage",
+        "service"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/lib/presale.ts",
+      "type": "file",
+      "name": "presale.ts",
+      "filePath": "app/lib/presale.ts",
+      "summary": "Presale fundraising counter utility. Exports PRESALE_BASE_MS (2026-03-25 12:00 JST), PRESALE_BASE_RAISED (4852 USDT), PRESALE_INCREMENT (172 USDT/day), and computeRaised(nowMs) which calculates current raised amount by adding +172 USDT per 24h elapsed since base date.",
+      "tags": [
+        "utility",
+        "presale",
+        "constants",
+        "homepage"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/login/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/login/page.tsx",
+      "summary": "Login page. POSTs {id, code} to /api/auth/login. On success calls setAuth() (localStorage) and setAuthSecret() (sessionStorage) then redirects to /top. On 'pending' reason, saves pending state and redirects to /pending. Shows error for invalid credentials.",
+      "tags": [
+        "page",
+        "auth",
+        "login",
+        "client"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/manifest.ts",
+      "type": "file",
+      "name": "manifest.ts",
+      "filePath": "app/manifest.ts",
+      "summary": "Next.js PWA web app manifest. Returns manifest object with name 'LIFAI', standalone display, dark theme (#0B1022), and 192/512px icons.",
+      "tags": [
+        "pwa",
+        "manifest",
+        "config"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:app/market/[item_id]/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/market/[item_id]/page.tsx",
+      "summary": "Marketplace item detail page. Auth-guarded via getAuth/getAuthSecret. Fetches item from /api/market/item. Handles buy flow (POST /api/market/buy, escrow model), receipt confirmation (POST /api/market/confirm), and item reporting (POST /api/market/report). Tracks active orders in localStorage (key: market_orders_v1). Shows animated PurchaseToast on success. Uses LifaiCat trackEvent for insufficient_balance errors.",
+      "tags": [
+        "page",
+        "market",
+        "buy",
+        "confirm",
+        "escrow",
+        "client"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/market/create/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/market/create/page.tsx",
+      "summary": "Marketplace listing creation page. Auth-guarded. Fetches EP balance from /api/wallet/balance to determine if EP currency is locked (balance < 1). Form fields: title, desc, item_type (image_pack/music_pack/other_pack), asset_count, currency (EP/BP), price (min 50), stock_total, delivery_mode, delivery_ref. POSTs to /api/market/create then redirects to /market.",
+      "tags": [
+        "page",
+        "market",
+        "create",
+        "listing",
+        "client"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/market/orders/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/market/orders/page.tsx",
+      "summary": "My orders and my listings page. Auth-guarded. Reads purchase history from localStorage (market_orders_v1). Fetches seller's own active listings from /api/market/list. Supports receipt confirmation (POST /api/market/confirm) and sell-request to admin (POST /api/market/sell-request). Shows status badges (paid/confirmed/refunded).",
+      "tags": [
+        "page",
+        "market",
+        "orders",
+        "listings",
+        "client"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/market/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/market/page.tsx",
+      "summary": "Marketplace main listing page. Auth-guarded. Fetches items from /api/market/list with type/currency/keyword filters (debounced 500ms). Client-side pagination (12 per page). Shows tutorial modal on first visit (localStorage key: lifai_market_tutorial_seen). Item grid with ItemCard components linking to /market/[item_id]. Currency badges (BP cyan, EP purple animated glow).",
+      "tags": [
+        "page",
+        "market",
+        "listing",
+        "filter",
+        "pagination",
+        "tutorial",
+        "client"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:app/membership/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "filePath": "app/membership/page.tsx",
+      "summary": "Membership and BP management page. Protected by local sessionStorage password ('nagoya01@' hardcoded). Reads userId from addval_auth_v1 localStorage. Fetches BP/plan from /api/wallet/balance. Shows rank (Starter/Builder/Automation/Core/Infra), base/extra/total BP, BP pack purchase UI (currently shows 'coming soon' message). Explains monthly BP recovery mechanics.",
+      "tags": [
+        "page",
+        "membership",
+        "bp",
+        "rank",
+        "client"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:app/mini-games/page.tsx",
+      "type": "file",
+      "name": "MiniGamesPage",
+      "summary": "LIFAI Arcade hub page. Shows a password-protected list of mini-games (Rumble Arena and Tap Mining). Password is hardcoded as 'nagoya01@'. Links to /mini-games/rumble and /mini-games/tap.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/mini-games/page.tsx"
+    },
+    {
+      "id": "file:app/mini-games/rumble/page.tsx",
+      "type": "file",
+      "name": "RumblePage",
+      "summary": "Battle royale mini-game. Tabs: バトル (enter daily battle), 観戦 (spectator mode with animated event log), ランキング (weekly leaderboard with rank context), 装備 (equipment management with rarity tiers), ガチャ (gacha roll for equipment). Equipment has enhance/shard system. Countdown to next battle (weekdays 19:00 JST). Tracks BP balance, local entry prevention (localStorage), display name setting.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/mini-games/rumble/page.tsx"
+    },
+    {
+      "id": "file:app/mini-games/tap/page.tsx",
+      "type": "file",
+      "name": "TapMiningPage",
+      "summary": "Tap mining mini-game. User taps a button up to 500 times/day. Each tap costs 1 BP, rewards random BP or EP. Combo system: 20/50/100 combos give multipliers (1.1x/1.2x/1.5x). Fever mode activates at 50 combo for 10s. Rare EP jackpots available. Daily bonuses at 1/50/100/300 taps. Shows floating text on tap. Ticker scrolls recent EP winners. Help modal on first visit.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/mini-games/tap/page.tsx"
+    },
+    {
+      "id": "file:app/music-boost/page.tsx",
+      "type": "file",
+      "plans": [
+        "starter",
+        "light",
+        "basic",
+        "growth",
+        "pro",
+        "advanced",
+        "premium",
+        "elite",
+        "master",
+        "legend"
+      ],
+      "session_storage": [
+        "music_boost_authed"
+      ],
+      "name": "MusicBoostPage",
+      "summary": "Music Boost subscription management page. Password-protected (same hardcoded password 'nagoya01@', stored in sessionStorage). Shows 10 subscription plans (Starter–Legend, 2%–45% boost, $9–$1000/month). Displays slot usage bar (shared pool). Allows subscribe/cancel. Current plan shown with gradient card and expiry date.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/music-boost/page.tsx"
+    },
+    {
+      "id": "file:app/music-release-guide/page.tsx",
+      "type": "file",
+      "external_links": [
+        "https://narasu.jp",
+        "https://www.tunecore.co.jp"
+      ],
+      "name": "MusicReleaseGuidePage",
+      "summary": "Static guide page for releasing LIFAI-generated music via Narasu (recommended, Japanese service) and TuneCore (international). Lists required assets and step-by-step instructions. Also covers jacket creation tips (Canva, Adobe Express). No auth required. Links back to /music2.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/music-release-guide/page.tsx"
+    },
+    {
+      "id": "file:app/music/page.tsx",
+      "type": "file",
+      "pro_plans": [
+        "500",
+        "1000"
+      ],
+      "routes_to": [
+        "/music/standard",
+        "/music/pro"
+      ],
+      "name": "MusicPage",
+      "summary": "Music mode selection hub. Requires auth (redirects to /login if not). Fetches user plan from /api/me. Shows two cards: STANDARD (all plans) and PRO (Core/Infra plans '500' or '1000' only). PRO card is locked/greyed if plan insufficient. Handles approvedFallback to allow PRO for status=approved users.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/music/page.tsx"
+    },
+    {
+      "id": "file:app/music/pro/page.tsx",
+      "type": "file",
+      "name": "MusicProPage",
+      "summary": "PRO music generation page with extensive controls. Requires auth and PRO plan check. Full parameter set: genre (10 options), BPM (4 ranges), mood tags (20), vocal style (4), vocal mood (5), instruments (8 multi-select), waveform type (6), humanize level (4), timing (4), velocity (4), song structure (4), lyrics theme (10), lyrics language (3), lyrics tone (4). 8 presets. Dark theme UI. Generates via /api/music/generate with mode='pro'. Polls /api/music/status. Shows lyrics, release modal. Imports setAuth from auth lib.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/music/pro/page.tsx"
+    },
+    {
+      "id": "file:app/music/standard/page.tsx",
+      "type": "file",
+      "polling": "recursive setTimeout, MAX_TICKS=210 (~7min), MAX_ERRORS=3",
+      "name": "MusicStandardPage",
+      "summary": "Standard music generation page. Auth required. Controls: genre (10 options), BPM range (4 options), free-text prompt with 20 mood tag buttons. Combines selections into English prompt. Generates via /api/music/generate mode='standard'. Polls /api/music/status with recursive setTimeout (MAX_TICKS=210, ~7min). Shows progress bar, lyrics accordion, release modal (TuneCore/NaraSu info placeholders). Post-generation: WAV download, lyrics download.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/music/standard/page.tsx"
+    },
+    {
+      "id": "file:app/music2/page.tsx",
+      "type": "file",
+      "polling": [
+        "pollUntilLyricsReady: polls /api/song/status until 'lyrics_ready', MAX_TICKS=60 (~2min)",
+        "pollUntilStructureReady: polls /api/song/status until 'structure_ready', MAX_TICKS=60 (~2min)"
+      ],
+      "name": "Music2Page",
+      "summary": "3-step music generation flow. Step 0: theme/genre/mood input + password unlock ('nagoya01@' hardcoded). Step 1: AI-generated lyrics displayed and editable. Step 2: song structure review (BPM, key, sections, hookSummary). Step 3: audio generation in progress. Step 4: completed audio player + download. Polls /api/song/status for 'lyrics_ready' then 'structure_ready' then audio completion. Uses /api/song/lyrics and /api/song/structure to fetch intermediate results. Auth required via getAuth()/getAuthSecret().",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/music2/page.tsx"
+    },
+    {
+      "id": "file:app/note-generator/components/InputPanel.tsx",
+      "type": "file",
+      "props": [
+        "step: 'input'|'plan'|'article'",
+        "planData: PlanData | null",
+        "loading: boolean",
+        "onGeneratePlan: (values) => void",
+        "onGenerateArticle: (planId, title, outline) => void"
+      ],
+      "form_options": {
+        "formats": [
+          "ハウツー記事",
+          "体験談・実録",
+          "まとめ・比較",
+          "インタビュー風",
+          "事例紹介"
+        ],
+        "tones": [
+          "丁寧・親しみやすい",
+          "カジュアル・フレンドリー",
+          "専門的・解説調",
+          "note売れ筋風"
+        ],
+        "expertise": [
+          "初心者向け",
+          "中級者向け",
+          "上級者向け"
+        ],
+        "paywall_modes": [
+          "intro_free_main_paid",
+          "half_free",
+          "all_free"
+        ]
+      },
+      "name": "InputPanel",
+      "summary": "Input panel for note article generator. Two sub-views: (1) input form (step='input'): theme, format, persona, tone, length slider 2000-12000, expertise, paywall mode, extra keywords. Submits to onGeneratePlan callback. (2) plan review (step='plan'): shows AI-generated recommended angle, sellability score, suggested price, target persona, title candidates (radio select), outline with headings/purposes. Submits to onGenerateArticle callback. Cost: 8 BP.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/note-generator/components/InputPanel.tsx"
+    },
+    {
+      "id": "file:app/note-generator/components/PreviewPanel.tsx",
+      "type": "file",
+      "props": [
+        "step: 'input'|'plan'|'article'",
+        "planData: unknown",
+        "articleData: ArticleData | null"
+      ],
+      "name": "PreviewPanel",
+      "summary": "Preview panel for generated note article. Three tabs: 本文プレビュー (section-by-section with paid/free divider line), 説明文 (note description with char count + copy button), SNS投稿 (X/Twitter post + LINE announcement, both copyable). Bottom: copy full Markdown button. Empty states for input/plan steps.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/note-generator/components/PreviewPanel.tsx"
+    },
+    {
+      "id": "file:app/note-generator/page.tsx",
+      "type": "file",
+      "name": "NoteGeneratorPage",
+      "summary": "Main note article generator page. Split-panel layout (lg:grid-cols-2). Left: InputPanel with step indicator and reset button. Right: PreviewPanel. Manages 3-step flow: input → plan → article. Calls POST /api/note/plan for plan generation, POST /api/note/generate for article generation. Shows error messages. No auth gate (accessible from /top).",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/note-generator/page.tsx"
+    },
+    {
+      "id": "file:app/page.tsx",
+      "type": "file",
+      "external_links": [
+        "https://lin.ee/ERKwqcj"
+      ],
+      "name": "HomePage",
+      "summary": "Presale landing page. PresaleHeader component: live countdown to 2026-05-01T23:59:59+09:00, USDT raised bar computed via computeRaised() from app/lib/presale.ts, goal=10000 USDT. TimeBox sub-component for countdown digits. CTAs: purchase (/purchase), login (/login). Footer links: /invest, /rule, /referral, /privacy, /tokushoho. PWA install prompt. LINEお問い合わせ link.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/page.tsx"
+    },
+    {
+      "id": "file:app/pending/page.tsx",
+      "type": "file",
+      "name": "PendingPage",
+      "summary": "Pending approval holding page. Checks auth on mount: redirects to /login if no auth, redirects to /top if status='approved', otherwise stays. Shows 'checking' message with 24hr wait time. Background decorative image /arere.png (confused cat). Links to /login and /.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/pending/page.tsx"
+    },
+    {
+      "id": "file:app/privacy/backuo0211page.tsx",
+      "type": "file",
+      "name": "PrivacyPage (backup)",
+      "summary": "Old backup of the privacy policy page (Feb 2025 version). Static content: data collected (email, LINE, wallet, access logs), usage purpose, third-party sharing, data management, revision policy, contact info. Dark theme (slate-900/950). No 'use client' directive — server component. Email placeholder 'support@◯◯' not filled in.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/privacy/backuo0211page.tsx"
+    },
+    {
+      "id": "file:app/privacy/page.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "name": "PrivacyPage",
+      "summary": "Privacy policy page (プライバシーポリシー). Client component with router.back() button. Static content: data collected, purposes, third-party disclosure, data management, revisions, contact info, cookies. No external component imports.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/privacy/page.tsx"
+    },
+    {
+      "id": "file:app/purchase/backup0212page.tsx",
+      "type": "file",
+      "flags": [
+        "use client",
+        "backup file - not active route"
+      ],
+      "constants": {
+        "ENABLE_PRESALE": true,
+        "PRESALE_OFF_PCT": 25,
+        "PURCHASE_DISABLED": false,
+        "plans": [
+          "30",
+          "50",
+          "100",
+          "500",
+          "1000"
+        ]
+      },
+      "name": "PurchasePage (backup0212)",
+      "summary": "Older backup of purchase page. Defines 5 plan tiers (30/50/100/500/1000 USDT) with presale 25% OFF display and BP_BONUS table. Uses loadDraft/saveDraft from storage. NOWPayments button creates invoice via /api/nowpayments/create using tmp_ applyId prefix. No ensureApplyId flow. paidChecked checkbox gating next step.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/purchase/backup0212page.tsx"
+    },
+    {
+      "id": "file:app/purchase/jam/page.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "constants": {
+        "ENABLE_PRESALE": true,
+        "PRESALE_OFF_PCT": 25,
+        "plans": [
+          "30",
+          "50",
+          "100",
+          "500",
+          "1000"
+        ],
+        "src_tag": "jamdao"
+      },
+      "name": "PurchaseJamPage",
+      "summary": "JAMDAO collaboration-specific purchase variant at /purchase/jam. Shows hero banner /hero-collab.png. Label 'コラボ期間中！ 25%OFF'. Generates applyId with 'jam_' prefix. Calls /api/apply/create (pre-registers with refName='JAMDAO', refId='jamdao') BEFORE calling /api/nowpayments/create. Handles URL params ?applyId=&plan= on return from NOWPayments success_url. Has payBusy double-click guard. nextHref includes src=jamdao.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/purchase/jam/page.tsx"
+    },
+    {
+      "id": "file:app/purchase/page.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "constants": {
+        "ENABLE_PRESALE": false,
+        "PURCHASE_DISABLED": true,
+        "PRESALE_OFF_PCT": 15,
+        "plans": [
+          "30",
+          "50",
+          "100",
+          "500",
+          "1000"
+        ],
+        "plan_prices": [
+          "40",
+          "67",
+          "134",
+          "667",
+          "1334"
+        ]
+      },
+      "name": "PurchasePage (main)",
+      "summary": "Main purchase page at /purchase. PURCHASE_DISABLED=true shows overlay blocking purchase. ENABLE_PRESALE=false (presale OFF). Plans use full/normal pricing (40/67/134/667/1334 USDT). Generates applyId with 'lifai_' prefix via ensureApplyId(). Calls /api/apply/create then /api/nowpayments/create. Reads ?applyId= and ?plan= URL params. Has payBusy guard. MEXC banner hidden (className includes 'hidden'). canGoNext requires !PURCHASE_DISABLED && selectedPlan && applyId && paidChecked.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/purchase/page.tsx"
+    },
+    {
+      "id": "file:app/referral/page.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "inner_components": [
+        "Badge",
+        "Card",
+        "Diagram",
+        "Node",
+        "Arrow",
+        "ArrowDown"
+      ],
+      "name": "ReferralPage",
+      "summary": "Referral/introduction system explanation page at /referral. Static informational page explaining LIFAI's single-tier (1-layer) referral model: up to 20% EP on first purchase, 10% on additional credits, monthly caps per plan. Contains plan table (40/67/134/667/1334 USDT with monthly person/EP limits), EP quick-reference table, MLM comparison, diagram. Links to /purchase and /rule. No auth required.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/referral/page.tsx"
+    },
+    {
+      "id": "file:app/reset/page.tsx",
+      "type": "file",
+      "flags": [
+        "force-dynamic",
+        "server component"
+      ],
+      "name": "ResetPage",
+      "summary": "Password reset shell page at /reset. Server component with force-dynamic to prevent pre-rendering. Wraps ResetClient in Suspense (needed because ResetClient uses useSearchParams).",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/reset/page.tsx"
+    },
+    {
+      "id": "file:app/reset/reset-client.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "name": "ResetClient",
+      "summary": "Password reset client component. Reads ?token= from URL. Shows two password inputs (new + confirm, min 8 chars). On submit POSTs to /api/auth/reset with {token, password}. On success redirects to /login after 800ms. Displays error messages inline.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/reset/reset-client.tsx"
+    },
+    {
+      "id": "file:app/rule/page.tsx",
+      "type": "file",
+      "flags": [
+        "server component"
+      ],
+      "name": "TermsPage",
+      "summary": "Terms of service page at /rule (note: file comment says app/terms/page.tsx). Server component with metadata. Renders TERMS constant as preformatted text in a card. Covers 12 articles: service nature, pricing, membership ranks (Starter/Builder/Automation/Core/Infra), rank vs revenue, BP/EP points system, referral system, non-MLM declaration, refund policy, age restriction (18+), prohibited acts, disclaimer, amendments. Links back to /.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/rule/page.tsx"
+    },
+    {
+      "id": "file:app/start/page.tsx",
+      "type": "file",
+      "flags": [
+        "server component"
+      ],
+      "name": "StartPage",
+      "summary": "Onboarding/start page at /start explaining side-job opportunities within LIFAI. Server component with metadata. Shows hero images (/lifai/hero.png, /mainv.png), explains the AI-based workflow: create → publish → monetize. Detailed content about music, articles, stock sales. Links back to /.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/start/page.tsx"
+    },
+    {
+      "id": "file:app/tokushoho/backup0211page.tsx",
+      "type": "file",
+      "flags": [
+        "backup file - not active route",
+        "server component"
+      ],
+      "name": "TokushohoPage (backup0211)",
+      "summary": "Older backup of tokushoho (Japanese commercial disclosure law) page. Dark theme (bg-slate-900). Minimal content: seller=LIFAI運営事務局, contact email placeholder 'support@◯◯', LINE link, pricing=USDT, payment=USDT lump sum, service start=after payment confirmation, refund policy including presale goal-not-met clause.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/tokushoho/backup0211page.tsx"
+    },
+    {
+      "id": "file:app/tokushoho/page.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "name": "TokushohoPage (current)",
+      "summary": "Current 特定商取引法 (Japanese commercial disclosure) page at /tokushoho. Client component with router.back() button. Light theme. Sections: seller, contact (lifai.official@gmail.com + LINE), pricing, payment (Stripe/bank/USDT), service start, provided content (digital services), refund, cooling-off exemption, crypto disclaimer, reproduction disclaimer, operator change clause.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/tokushoho/page.tsx"
+    },
+    {
+      "id": "file:app/top/page.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "inner_components": [
+        "PresaleHeader",
+        "TimeBox",
+        "BalanceBadge",
+        "ReferralCard"
+      ],
+      "name": "AppHomePage (top dashboard)",
+      "summary": "Main user dashboard at /top. Large client component. Auth check on mount: redirects to /login if unauthenticated, /pending if status=pending. On mount: calls /api/user/pending-bp (BP grant notification), /api/daily-login (login bonus). Inner components: PresaleHeader (countdown + fundraise bar using computeRaised), BalanceBadge (calls /api/wallet/balance), ReferralCard (calls /api/me to get my_ref_code, builds /purchase?refCode= share URL). App grid (10 apps): fortune, market, gacha, staking, member, music2, music-boost, note, workflow, mini-games. Modals: BPGrantModal, LoginBonusModal, GachaModal, StakingModal. App detail slide-up popup sheet. logout clears auth and redirects to /. Uses useLifaiCat for trackEvent. Renders LifaiCat at bottom.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/top/page.tsx"
+    },
+    {
+      "id": "file:app/vision/page.tsx",
+      "type": "file",
+      "flags": [
+        "server component"
+      ],
+      "constants": {
+        "growth": {
+          "members": 82,
+          "fundUSD": 4831,
+          "gpuUnits": 1,
+          "vpsActive": 14,
+          "nextGoalUSD": 10000
+        }
+      },
+      "name": "VisionPage",
+      "summary": "Vision/about page at /vision. Server component. Shows hardcoded growth stats (82 members, $4831 raised, 1 GPU, 14 VPS). Milestone roadmap at $10K/$25K/$50K. Credit system explanation (30 USD = 300 credits). Earning models. Flow steps: experience → practice → monetize. Links to /purchase.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "app/vision/page.tsx"
+    },
+    {
+      "id": "file:components/BPGrantModal.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "name": "BPGrantModal",
+      "summary": "BP grant notification modal. Client component. Props: {amount: number, onClose: () => void}. Fade-in animation on mount (30ms delay). Scale+translateY spring animation. Shows /getBP.png image, '+{amount} BP 獲得！' gradient text, '売却BPが付与されました' subtitle, close button. Clicking backdrop or button triggers fade-out then calls onClose after 300ms.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "components/BPGrantModal.tsx"
+    },
+    {
+      "id": "file:components/CopyField.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "name": "CopyField",
+      "summary": "Copyable text field component. Client component. Props: {label: string, value: string}. Calls navigator.clipboard.writeText on copy button click. Uses toast() from ./useToast for success/failure feedback. Dark-themed card (bg-white/10 border-white/10).",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "components/CopyField.tsx"
+    },
+    {
+      "id": "file:components/Field.tsx",
+      "type": "file",
+      "flags": [
+        "use client"
+      ],
+      "name": "Field",
+      "summary": "Reusable form field component. Client component. Props: label, required?, type?, value, onChange, placeholder?, hint?, error?, maxLength?. Uses useId() for accessibility. Shows red '必須' badge when required. Error state shows rose ring + error message below. Styled rounded-2xl white card input.",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "components/Field.tsx"
+    },
+    {
+      "id": "file:components/GachaModal.tsx",
+      "type": "file",
+      "name": "GachaModal.tsx",
+      "filePath": "components/GachaModal.tsx",
+      "summary": "Client component modal for the BP gacha (lottery) system. Supports 1-spin (100BP), 10-spin (1000BP), and free daily spin (80BP). Displays rarity-graded prize results, a pity gauge (100-roll ceiling), fragment count, and 10-pull individual breakdown. Fetches /api/gacha and /api/gacha/daily API routes.",
+      "tags": [
+        "ui",
+        "client-component",
+        "game",
+        "gacha"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:components/GameTile.tsx",
+      "type": "file",
+      "name": "GameTile.tsx",
+      "filePath": "components/GameTile.tsx",
+      "summary": "Reusable game/feature tile card rendered as a Next.js Link. Accepts href, title, subtitle, icon, badge, and disabled props. Renders a glassmorphism card with gradient corner glow and hover transitions. Used in the /top dashboard to navigate to mini-games and features.",
+      "tags": [
+        "ui",
+        "client-component",
+        "navigation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/LifaiCat.tsx",
+      "type": "file",
+      "name": "LifaiCat.tsx",
+      "filePath": "components/LifaiCat.tsx",
+      "summary": "AI mascot cat widget (floating bottom-right). Implements a Context/Provider pattern (LifaiCatProvider + useLifaiCat hook) for event-driven speech bubbles triggered by page_view and error_event rules (CAT_RULES). Shows props-based serif messages based on mission/BP state, a mini-panel with todo list, and an AI chat mode that calls /api/cat-chat. Stores seen rule flags in localStorage.",
+      "tags": [
+        "ui",
+        "client-component",
+        "context",
+        "ai-assistant"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:components/LoginBonusModal.tsx",
+      "type": "file",
+      "name": "LoginBonusModal.tsx",
+      "filePath": "components/LoginBonusModal.tsx",
+      "summary": "Client modal that displays the daily login bonus reward. Shows earned BP amount, consecutive login streak count, and a message indicating the next streak milestone (+10BP at 3d, +20BP at 7d, +100BP at 30d). Animated entrance with scale + opacity transition.",
+      "tags": [
+        "ui",
+        "client-component",
+        "game",
+        "login-bonus"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/MissionCard.tsx",
+      "type": "file",
+      "name": "MissionCard.tsx",
+      "filePath": "components/MissionCard.tsx",
+      "summary": "Daily missions card component. Fetches mission state from /api/missions (GET) on mount and POSTs completion events. Tracks three missions: login, fortune, music — each with a BP reward. Shows an all-complete bonus row and enforces server-side once-per-day limit. Max 50BP/day.",
+      "tags": [
+        "ui",
+        "client-component",
+        "game",
+        "missions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:components/PlanPicker.tsx",
+      "type": "file",
+      "name": "PlanPicker.tsx",
+      "filePath": "components/PlanPicker.tsx",
+      "summary": "Plan selection grid component used in the purchase flow. Renders 4 plan tiers (30/100/500/1000 USDT) as clickable cards with return-rate labels (45%–60%). Imports the Plan type from components/storage. Active plan gets a highlight border and a checkmark badge.",
+      "tags": [
+        "ui",
+        "client-component",
+        "purchase"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/RadioCard.tsx",
+      "type": "file",
+      "name": "RadioCard.tsx",
+      "filePath": "components/RadioCard.tsx",
+      "summary": "LIFAI RADIO card component. Implements a 4-phase flow: song list → listening (120s countdown) → submit (optional note) → done (+5EP). Fetches song list and user radio status from /api/radio. Calls radio_start and radio_submit API actions. Daily EP limit enforced server-side.",
+      "tags": [
+        "ui",
+        "client-component",
+        "game",
+        "radio",
+        "ep"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:components/StakingModal.tsx",
+      "type": "file",
+      "name": "StakingModal.tsx",
+      "filePath": "components/StakingModal.tsx",
+      "summary": "BP staking modal. Allows users to lock BP for 30/60/90 days at 10%/25%/50% interest. Shows a live return preview (deposit, interest, total, maturity date). Fetches existing stakes from /api/staking (GET), creates new stakes (POST), and claims matured stakes (PATCH). Min 100BP required.",
+      "tags": [
+        "ui",
+        "client-component",
+        "game",
+        "staking",
+        "bp"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:components/Toast.tsx",
+      "type": "file",
+      "name": "Toast.tsx",
+      "filePath": "components/Toast.tsx",
+      "summary": "Toast notification host component. Renders a fixed top-center container that subscribes to the addval_toast custom event via the useToast hook. Each toast auto-dismisses after 2.2 seconds or on click. Used globally in the app layout.",
+      "tags": [
+        "ui",
+        "client-component",
+        "notification"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/WalletBadge.tsx",
+      "type": "file",
+      "name": "WalletBadge.tsx",
+      "filePath": "components/WalletBadge.tsx",
+      "summary": "Wallet balance badge component. Reads loginId from localStorage (key: login_id), fetches BP and EP balance from /api/wallet/balance on mount, and displays them inline. Shows an error hint on failure. Likely used in nav/header areas.",
+      "tags": [
+        "ui",
+        "client-component",
+        "wallet",
+        "bp",
+        "ep"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/auth.ts",
+      "type": "file",
+      "name": "auth.ts",
+      "filePath": "components/auth.ts",
+      "summary": "Legacy/mock auth utility in components directory. Exports LoginResult type and a loginMock() function that checks credentials against a hardcoded MOCK_USERS object with simulated async delay. Intended to be replaced by a real API fetch. Not the main auth module (app/lib/auth.ts is canonical).",
+      "tags": [
+        "auth",
+        "mock",
+        "utility"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:components/useToast.ts",
+      "type": "file",
+      "name": "useToast.ts",
+      "filePath": "components/useToast.ts",
+      "summary": "Toast notification hook and imperative toast() function. Uses a custom DOM event (addval_toast) to decouple triggering from rendering. toast() dispatches the event with a UUID-stamped message. useToast() subscribes to the event, manages the items array in state, auto-removes after 2.2s, and exposes a manual remove() function.",
+      "tags": [
+        "hook",
+        "client-component",
+        "notification"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:gas/Code.gs",
+      "type": "file",
+      "name": "Code.gs",
+      "filePath": "gas/Code.gs",
+      "summary": "The complete LIFAI backend as a Google Apps Script web app (~6800 lines). Serves as the single source of truth for all persistent data stored in Google Sheets. Handles HTTP via doGet/doPost, routing all actions through handle_() / handleMarket_(). Key domains: (1) User/auth — apply_create, apply, login (HMAC-SHA256), admin_approve, reset_password, reset_resend, me; (2) Payments — payment_update (auto-approve with 2% tolerance), NOWPayments IPN fields; (3) Economy — get_balance, deduct_bp, daily_login_bonus, fortune_daily_bp, get_missions/complete_mission, stake_bp/get_stakes/claim_stake; (4) Gacha — gacha_spin (1x/10x with pity ceiling at 100), gacha_daily/gacha_daily_status (free daily 80BP spin); (5) Radio — get_radio_songs, get_radio_status, radio_start, radio_submit (+5EP per listen); (6) Market — market_list/item/create/buy/confirm/refund/report (EP-based marketplace); (7) Referral — ref_tree_build, resolveRefChain_ (up to 3 tiers), grantReferralBonusOnce_; (8) Rumble — rumbleEntry_, rumbleRanking_, rumbleStatus_, rumbleGacha_, rumbleEquipment_, rumbleEquip_, rumbleRewardDistribute_, rumbleDismantle_, rumbleEnhance_, rumbleForceEntry_, rumbleForceStart_, rumbleSpectator_, rumbleMyRankContext_; (9) Tap game — tapPlay_, tapStatus_, tapRanking_, tapTicker_; (10) Music boost — musicBoostStatus_, musicBoostSubscribe_, musicBoostCancel_; (11) Sell/pending BP — handle_sell_request_, handle_grant_bp_for_sell_, handle_claim_pending_bp_. Utility helpers: ensureCols_, appendWalletLedger_, planToGrant_, planToExpectedPaid_, hmacSha256Hex_, genLoginId_, sendResetMail_.",
+      "tags": [
+        "backend",
+        "database",
+        "api-handler",
+        "google-apps-script"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:lib/ai/openai.ts",
+      "type": "file",
+      "summary": "OpenAI client singleton. Exports getOpenAIClient() which lazily creates and caches a single OpenAI instance using OPENAI_API_KEY env var.",
+      "dependencies": [
+        "openai"
+      ],
+      "name": "lib/ai/openai.ts",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "lib/ai/openai.ts"
+    },
+    {
+      "id": "file:lib/ai/prompts/note.ts",
+      "type": "file",
+      "summary": "Prompt builders for note article generation. Exports NOTE_SYSTEM_PROMPT (system-level instruction for note article editor persona), buildPlanPrompt() (constructs user prompt for article planning from theme/format/persona/tone/length/expertise/paywall_mode/keywords), and buildArticlePrompt() (constructs user prompt for full article body generation from selected title, outline, tone, length, paywall_mode).",
+      "dependencies": [],
+      "name": "lib/ai/prompts/note.ts",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "lib/ai/prompts/note.ts"
+    },
+    {
+      "id": "file:lib/ai/schemas.ts",
+      "type": "file",
+      "summary": "JSON Schema definitions for OpenAI structured output in note generation. NOTE_PLAN_SCHEMA defines the plan response shape (recommended_angle, sellability_score, suggested_price_yen, target_persona, 3 title_candidates, outline array). NOTE_ARTICLE_SCHEMA defines the article response shape (sections array with heading/body_markdown/is_paid, note_description, x_post, line_copy).",
+      "dependencies": [],
+      "name": "lib/ai/schemas.ts",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "lib/ai/schemas.ts"
+    },
+    {
+      "id": "file:lib/bp.ts",
+      "type": "file",
+      "summary": "BP (ボーナスポイント) cost calculation utilities for note-generator feature. calcArticleBP(length) returns BP cost tiers: ≤4000chars→18BP, ≤8000→32BP, ≤12000→48BP, else→60BP. BP_COSTS constant maps operation names to fixed BP costs: plan=8, title_regen=2, intro_regen=3, section_regen=4, thumbnail=8.",
+      "dependencies": [],
+      "name": "lib/bp.ts",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "lib/bp.ts"
+    },
+    {
+      "id": "file:middleware.ts",
+      "type": "file",
+      "summary": "Next.js edge middleware enforcing HTTP Basic Auth on protected routes. Guards /admin, /api/admin, /note-generator, and /api/note paths. Reads ADMIN_USER and ADMIN_PASS env vars. Returns 401 WWW-Authenticate challenge if credentials absent or wrong. Config matcher covers /admin/:path*, /api/admin/:path*, /note-generator/:path*, /note-generator, /api/note/:path*.",
+      "dependencies": [
+        "next/server"
+      ],
+      "name": "middleware.ts",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "middleware.ts"
+    },
+    {
+      "id": "file:public/sw.js",
+      "type": "file",
+      "summary": "PWA service worker. Sets domain/zoneId options for 5gvci.com zone 10759252 and loads a third-party service worker script from https://5gvci.com/act/files/service-worker.min.js. NOTE: This is a third-party ad/push notification service worker (5gvci.com), not a standard PWA cache worker. May be used for push notification monetization.",
+      "dependencies": [
+        "https://5gvci.com/act/files/service-worker.min.js"
+      ],
+      "name": "public/sw.js",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "public/sw.js"
+    },
+    {
+      "id": "file:tailwind.config.ts",
+      "type": "file",
+      "summary": "Tailwind CSS configuration. Content paths cover app/**/*.{ts,tsx} and components/**/*.{ts,tsx}. No theme extensions or plugins configured — uses Tailwind defaults.",
+      "dependencies": [
+        "tailwindcss"
+      ],
+      "name": "tailwind.config.ts",
+      "tags": [],
+      "complexity": "moderate",
+      "filePath": "tailwind.config.ts"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:app/api/song/approve-structure/route.ts",
+      "target": "file:app/api/song/_jobStore",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/song/approve-structure/route.ts",
+      "target": "file:app/lib/bp-config.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:app/api/song/approve-structure/route.ts",
+      "target": "file:app/features/music/providers/elevenlabsProvider",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/song/cancel/route.ts",
+      "target": "file:app/api/song/_jobStore",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/song/cancel/route.ts",
+      "target": "file:app/lib/bp-config.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:app/api/song/lyrics/route.ts",
+      "target": "file:app/api/song/_jobStore",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/song/result/route.ts",
+      "target": "file:app/api/song/_jobStore",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/song/result/route.ts",
+      "target": "file:app/lib/bp-config.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:app/api/song/start/route.ts",
+      "target": "file:app/api/song/_jobStore",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/song/start/route.ts",
+      "target": "file:app/lib/bp-config.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:app/api/song/start/route.ts",
+      "target": "file:app/api/song/lyrics/route.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:app/api/song/status/route.ts",
+      "target": "file:app/api/song/_jobStore",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/song/structure/route.ts",
+      "target": "file:app/api/song/_jobStore",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.9
+    },
+    {
+      "source": "file:app/api/staking/route.ts",
+      "target": "file:gas/Code.gs",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:app/api/user/claim-bp/route.ts",
+      "target": "file:gas/Code.gs",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:app/api/user/pending-bp/route.ts",
+      "target": "file:gas/Code.gs",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:app/api/wallet/balance/route.ts",
+      "target": "file:gas/Code.gs",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:app/apply/page.tsx",
+      "target": "file:components/StepHeader.tsx",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:app/apply/page.tsx",
+      "target": "file:components/Field.tsx",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:app/apply/page.tsx",
+      "target": "file:components/Select.tsx",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:app/apply/page.tsx",
+      "target": "file:components/storage.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:app/apply/page.tsx",
+      "target": "file:app/confirm/page.tsx",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:app/column/[id]/page.tsx",
+      "target": "file:app/column/page.tsx",
+      "type": "related",
+      "direction": "backward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:app/column/page.tsx",
+      "target": "file:app/column/posts/2026-01-31-design-win/page.tsx",
+      "type": "related",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:app/api/song/start/route.ts",
+      "target": "file:app/api/song/approve-structure/route.ts",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:ui",
+      "name": "UI Layer",
+      "description": "Next.js page routes, layout files, shared UI components, and client-side component utilities rendered in the browser",
+      "nodeIds": [
+        "file:app/5000/page.tsx",
+        "file:app/admin/page.tsx",
+        "file:app/apply-sell/page.tsx",
+        "file:app/apply/page.tsx",
+        "file:app/column/[id]/page.tsx",
+        "file:app/column/page.tsx",
+        "file:app/column/posts/2026-01-31-design-win/page.tsx",
+        "file:components/storage.ts",
+        "file:components/StepHeader.tsx",
+        "file:components/Field.tsx",
+        "file:components/Select.tsx",
+        "file:app/confirm/page.tsx",
+        "file:app/fortune/page.tsx",
+        "file:app/invest/_gate.tsx",
+        "file:app/invest/page.tsx",
+        "file:app/layout.tsx",
+        "file:app/login/page.tsx",
+        "file:app/market/[item_id]/page.tsx",
+        "file:app/market/create/page.tsx",
+        "file:app/market/orders/page.tsx",
+        "file:app/market/page.tsx",
+        "file:app/membership/page.tsx",
+        "file:components/GachaModal.tsx",
+        "file:components/GameTile.tsx",
+        "file:components/LifaiCat.tsx",
+        "file:components/LoginBonusModal.tsx",
+        "file:components/MissionCard.tsx",
+        "file:components/PlanPicker.tsx",
+        "file:components/RadioCard.tsx",
+        "file:components/StakingModal.tsx",
+        "file:components/Toast.tsx",
+        "file:components/WalletBadge.tsx",
+        "file:components/auth.ts",
+        "file:components/useToast.ts"
+      ]
+    },
+    {
+      "id": "layer:api",
+      "name": "API Layer",
+      "description": "Next.js route handlers that proxy requests to the GAS backend, handle NOWPayments webhooks, minigames, music generation, and all other server-side HTTP endpoints",
+      "nodeIds": [
+        "file:app/api/admin/approve/route.ts",
+        "file:app/api/admin/dashboard/route.ts",
+        "file:app/api/admin/grant-bp/route.ts",
+        "file:app/api/admin/list/route.ts",
+        "file:app/api/admin/members/route.ts",
+        "file:app/api/admin/pending/route.ts",
+        "file:app/api/admin/rumble-force-start/route.ts",
+        "file:app/api/admin/rumble-reward/route.ts",
+        "file:app/api/admin/sell-requests/route.ts",
+        "file:app/api/apply/create/route.ts",
+        "file:app/api/apply/route.ts",
+        "file:app/api/apply/status/route.ts",
+        "file:app/api/auth/login/route.ts",
+        "file:app/api/auth/reset/route.ts",
+        "file:app/api/cat-chat/route.ts",
+        "file:app/api/daily-login/route.ts",
+        "file:app/api/debug/env/route.ts",
+        "file:app/api/fortune-bp/route.ts",
+        "file:app/api/gacha/daily/route.ts",
+        "file:app/api/gacha/daily/status/route.ts",
+        "file:app/api/gacha/route.ts",
+        "file:app/api/market/buy/route.ts",
+        "file:app/api/market/confirm/route.ts",
+        "file:app/api/market/create/route.ts",
+        "file:app/api/market/item/route.ts",
+        "file:app/api/market/list/route.ts",
+        "file:app/api/market/refund/route.ts",
+        "file:app/api/market/report/route.ts",
+        "file:app/api/market/sell-request/route.ts",
+        "file:app/api/me/route.ts",
+        "file:app/api/minigames/rumble/dismantle/route.ts",
+        "file:app/api/minigames/rumble/enhance/route.ts",
+        "file:app/api/minigames/rumble/entry/route.ts",
+        "file:app/api/minigames/rumble/equip/route.ts",
+        "file:app/api/minigames/rumble/equipment/route.ts",
+        "file:app/api/minigames/rumble/force-entry/route.ts",
+        "file:app/api/minigames/rumble/gacha/route.ts",
+        "file:app/api/minigames/rumble/my-rank-context/route.ts",
+        "file:app/api/minigames/rumble/ranking/route.ts",
+        "file:app/api/minigames/rumble/set-name/route.ts",
+        "file:app/api/minigames/rumble/shard-status/route.ts",
+        "file:app/api/minigames/rumble/spectator/route.ts",
+        "file:app/api/minigames/rumble/status/route.ts",
+        "file:app/api/minigames/tap/play/route.ts",
+        "file:app/api/minigames/tap/ranking/route.ts",
+        "file:app/api/minigames/tap/status/route.ts",
+        "file:app/api/minigames/tap/ticker/route.ts",
+        "file:app/api/missions/route.ts",
+        "file:app/api/music-boost/admin/route.ts",
+        "file:app/api/music-boost/cancel/route.ts",
+        "file:app/api/music-boost/status/route.ts",
+        "file:app/api/music-boost/subscribe/route.ts",
+        "file:app/api/music/_cache.ts",
+        "file:app/api/music/generate/route.ts",
+        "file:app/api/music/status/route.ts",
+        "file:app/api/note/generate/route.ts",
+        "file:app/api/note/plan/route.ts",
+        "file:app/api/nowpayments/create/route.ts",
+        "file:app/api/nowpayments/ipn/route.ts",
+        "file:app/api/radio/route.ts",
+        "file:app/api/song/_jobStore.ts",
+        "file:app/api/song/approve-lyrics/route.ts",
+        "file:app/api/song/approve-structure/route.ts",
+        "file:app/api/song/cancel/route.ts",
+        "file:app/api/song/lyrics/route.ts",
+        "file:app/api/song/result/route.ts",
+        "file:app/api/song/start/route.ts",
+        "file:app/api/song/status/route.ts",
+        "file:app/api/song/structure/route.ts",
+        "file:app/api/staking/route.ts",
+        "file:app/api/user/claim-bp/route.ts",
+        "file:app/api/user/pending-bp/route.ts",
+        "file:app/api/wallet/balance/route.ts",
+        "file:app/api/song/_jobStore"
+      ]
+    },
+    {
+      "id": "layer:service",
+      "name": "Service Layer",
+      "description": "Shared server utilities, auth helpers, AI client wrappers, presale logic, and feature providers used across API routes and pages",
+      "nodeIds": [
+        "file:lib/ai/openai.ts",
+        "file:lib/ai/schemas.ts",
+        "file:lib/ai/prompts/note.ts",
+        "file:app/lib/bp-config.ts",
+        "file:app/features/music/providers/elevenlabsProvider",
+        "file:app/features/music/providers/elevenlabsProvider.ts",
+        "file:app/lib/auth.ts",
+        "file:app/lib/presale.ts"
+      ]
+    },
+    {
+      "id": "layer:middleware",
+      "name": "Middleware Layer",
+      "description": "Next.js edge middleware enforcing HTTP Basic Auth for admin routes at the network boundary",
+      "nodeIds": []
+    },
+    {
+      "id": "layer:config",
+      "name": "Config Layer",
+      "description": "Framework and application configuration files including the Next.js app manifest",
+      "nodeIds": [
+        "file:app/manifest.ts"
+      ]
+    },
+    {
+      "id": "layer:backend",
+      "name": "Backend Layer",
+      "description": "Google Apps Script backend that manages persistent data in Google Sheets, handles HMAC-based authentication, payment processing, referral trees, and wallet ledger",
+      "nodeIds": [
+        "file:gas/Code.gs"
+      ]
+    },
+    {
+      "id": "layer:assets",
+      "name": "Assets Layer",
+      "description": "Static public assets including service workers and other publicly served files",
+      "nodeIds": []
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "The Homepage & Presale Counter",
+      "description": "The public entry point is app/page.tsx — a Japanese-language landing page for the LIFAI membership salon. It features a live fundraising counter and countdown timer driven by computeRaised() in app/lib/presale.ts. That function uses a hard-coded base amount (4852 USDT on 2026-03-25) and adds +172 USDT for each 24-hour period that has passed since the base timestamp. The homepage also displays plan pricing and a call-to-action directing visitors to /purchase. Note that the same PresaleHeader component is reused verbatim on the logged-in dashboard (app/top/page.tsx), so members can also track the presale progress.",
+      "nodeIds": [
+        "file:app/lib/presale.ts"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Plan Selection & Crypto Payment (NOWPayments)",
+      "description": "At /purchase, users choose one of 5 USDT price tiers (34 / 57 / 114 / 567 / 1134 USDT). Selecting a plan calls app/api/nowpayments/create/route.ts, which hits the NOWPayments API to create an invoice and returns an invoice_url. The user is redirected to that external URL to complete the crypto payment. An applyId is generated and stored in sessionStorage to tie the payment to the subsequent application form. The NOWPayments IPN webhook at app/api/nowpayments/ipn/route.ts receives the payment notification, verifies the HMAC-SHA512 signature against NOWPAYMENTS_IPN_SECRET, then forwards the update to GAS (action: payment_update). GAS auto-approves the application if the paid amount is within 2% of the expected amount.",
+      "nodeIds": [
+        "file:app/api/nowpayments/create/route.ts",
+        "file:app/api/nowpayments/ipn/route.ts"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Application Form & GAS Submission",
+      "description": "After payment, the user fills in personal details at /apply (email, name, Discord ID, prefecture, referral code, etc.). The form draft is saved to sessionStorage under key addval_apply_draft_v1 so the user can navigate back without losing data. On the /confirm review page, a POST is sent to app/api/apply/create/route.ts, which forwards the data to the GAS backend with action: apply_create (initial row creation) and action: apply (final form data). The GAS applies sheet stores one row per applicant and tracks their status through the pipeline (pending_payment → paid → approved).",
+      "nodeIds": [
+        "file:app/apply/page.tsx",
+        "file:app/confirm/page.tsx",
+        "file:app/api/apply/create/route.ts"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "The GAS Backend: Google Apps Script as Database",
+      "description": "All persistent data lives in gas/Code.gs — a single Google Apps Script file deployed as a Web App. It acts as the entire backend database layer, backed by Google Sheets. The doPost/doGet handlers dispatch on an action field to dedicated functions. Key sheets: 'applies' (all users/payments), 'wallet_ledger' (BP/EP transactions), 'ref_tree' (referral hierarchy), 'ref_events' (referral audit log). Passwords are stored as HMAC-SHA256(SECRET_KEY, loginId + ':' + password). The GAS URL is proxied through Next.js API routes — every route appends ?key=GAS_API_KEY to authenticate requests. This architecture means there is no traditional database; Google Sheets is the datastore.",
+      "nodeIds": [
+        "file:gas/Code.gs"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Admin Panel & Route Protection",
+      "description": "Admin routes are protected by HTTP Basic Auth enforced at the edge in middleware.ts. Any request to /admin/*, /api/admin/*, /note-generator/*, or /api/note/* must pass credentials matching ADMIN_USER and ADMIN_PASS env vars. The admin panel at app/admin/page.tsx lets admins view pending applications (app/api/admin/list/route.ts), manually approve users (app/api/admin/approve/route.ts which calls GAS action: admin_approve), grant BP (app/api/admin/grant-bp/route.ts), manage Rumble rewards, and view dashboard stats. Manual approval triggers GAS to generate login credentials and send a password-reset email to the new member.",
+      "nodeIds": [
+        "file:app/admin/page.tsx",
+        "file:app/api/admin/approve/route.ts",
+        "file:app/api/admin/list/route.ts"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Authentication: localStorage + sessionStorage Pattern",
+      "description": "Auth state is entirely client-side. app/lib/auth.ts defines the AuthState type and two storage keys: addval_auth_v1 in localStorage (persists across sessions; contains status, id, token, plan) and addval_auth_secret_v1 in sessionStorage (password only; cleared when browser closes). Login at /login POSTs to app/api/auth/login/route.ts, which proxies to GAS action: login. GAS verifies the password hash and returns { ok: true, status: 'approved', ... } or { reason: 'pending' }. On success, setAuth() and setAuthSecret() are called to store the state. The /top dashboard reads getAuth() on mount and redirects to /login if no valid session is found.",
+      "nodeIds": [
+        "file:app/lib/auth.ts",
+        "file:app/login/page.tsx",
+        "file:app/api/auth/login/route.ts"
+      ]
+    },
+    {
+      "order": 7,
+      "title": "The Member Dashboard (/top)",
+      "description": "app/top/page.tsx is the main hub for logged-in members. It fetches the user's BP/EP balance via /api/wallet/balance (GAS action: get_balance), calls /api/me for referral info (GAS action: me), and displays the live presale counter (same PresaleHeader as the homepage). The dashboard is a feature-rich grid linking to all member activities: Rumble battle royale, music generation, tap game, gacha, staking, marketplace, and the AI mascot LifaiCat. It also handles daily login bonuses (BPGrantModal, LoginBonusModal) and mission tracking (MissionCard). Members must be in status: 'approved' to access this page.",
+      "nodeIds": [
+        "file:app/api/wallet/balance/route.ts",
+        "file:app/api/me/route.ts"
+      ]
+    },
+    {
+      "order": 8,
+      "title": "Rumble: Battle Royale Mini-Game",
+      "description": "The Rumble game at app/mini-games/rumble/page.tsx is a battle royale where members compete daily. Players enter via the /api/minigames/rumble/entry route (costs BP), then a server-side battle runs at a scheduled time. The game includes equipment slots with rarity tiers, a gacha system for earning gear (/api/minigames/rumble/gacha), equipment enhancement (/api/minigames/rumble/enhance), and a spectator mode that replays battle events with typed animations. Results award Rumble Points (RP) tracked weekly. The page manages several state types — RumbleStatus, Equipment, SpectatorData, SpectatorEvent — and orchestrates the full lifecycle from entry through watching the battle replay to viewing the final ranking.",
+      "nodeIds": [
+        "file:app/api/minigames/rumble/entry/route.ts",
+        "file:app/api/minigames/rumble/spectator/route.ts",
+        "file:app/api/minigames/rumble/gacha/route.ts"
+      ]
+    },
+    {
+      "order": 9,
+      "title": "Music Generation: AI Song Creation Pipeline",
+      "description": "app/music2/page.tsx implements a multi-step AI music creation wizard. Step 0: user picks genre, mood, and theme. Step 1: the app calls /api/song/structure to generate song structure (BPM, key, sections) via an LLM. Step 2: lyrics are generated at /api/song/lyrics and can be edited. Step 3: the approved structure + lyrics are sent to /api/song/start which queues a Replicate/MusicGen job. Step 4: the frontend polls /api/song/status (using a ref-based interval) until the audio URL is ready, then offers download. Because music generation takes 2–3 minutes, both the API routes and vercel.json set maxDuration: 300. The job state between poll requests is held in an in-memory store (_jobStore.ts).",
+      "nodeIds": [
+        "file:app/api/song/start/route.ts",
+        "file:app/api/song/status/route.ts",
+        "file:app/api/song/_jobStore.ts"
+      ]
+    },
+    {
+      "order": 10,
+      "title": "Note Generator: AI Content Creation Tool (Admin-Gated)",
+      "description": "The Note Generator at app/note-generator/page.tsx is an admin-only tool (protected by Basic Auth via middleware.ts) that uses AI to help create sellable note articles. It follows a 3-step flow: 'input' (topic, target audience, keywords) → 'plan' (AI generates title candidates, outline, pricing suggestions via /api/note/plan) → 'article' (full markdown generation with sections, note description, and social copy via /api/note/generate). The output includes a paid/free section split, an X (Twitter) post draft, and a LINE copy. This reflects the salon's focus on members selling AI-assisted content.",
+      "nodeIds": [
+        "file:app/api/note/plan/route.ts",
+        "file:app/api/note/generate/route.ts"
+      ]
+    },
+    {
+      "order": 11,
+      "title": "BP/EP Economy: Points, Gacha & Staking",
+      "description": "LIFAI uses two internal currencies: BP (Battle Points) and EP. BP is earned through daily login (/api/daily-login), missions (/api/missions), Rumble battles, tap game (/api/minigames/tap/play), and gacha pulls (/api/gacha). BP can be spent on Rumble entry, gacha, and marketplace items. The staking system (/api/staking) lets members lock up BP for returns. All transactions are recorded in the GAS wallet_ledger sheet with action: get_balance fetching the current balance. The referral system awards BP to up to 3 levels of referrers when a new member joins, tracked in ref_events. The GAS planToGrant_ function maps each plan price tier to a specific BP grant amount.",
+      "nodeIds": [
+        "file:app/api/wallet/balance/route.ts",
+        "file:app/api/daily-login/route.ts",
+        "file:app/api/gacha/route.ts",
+        "file:app/api/staking/route.ts"
+      ]
+    },
+    {
+      "order": 12,
+      "title": "API Architecture: Next.js as a GAS Proxy",
+      "description": "All Next.js API routes under app/api/ follow a consistent proxy pattern: validate input → append ?key=GAS_API_KEY to GAS_WEBAPP_URL → POST JSON with { action, ...params } → parse response text as JSON → return to client. The GAS_ADMIN_KEY is additionally required for admin actions. Sensitive env vars (GAS_WEBAPP_URL, GAS_API_KEY, GAS_ADMIN_KEY, ADMIN_USER, ADMIN_PASS, NOWPAYMENTS_API_KEY, NOWPAYMENTS_IPN_SECRET, NEXT_PUBLIC_SITE_URL) are never exposed to the browser. The debug endpoint GET /api/debug/env inspects resolved env vars for troubleshooting. This thin-proxy pattern means all business logic and data persistence lives in GAS — the Next.js layer handles auth, request shaping, and UI.",
+      "nodeIds": [
+        "file:app/api/auth/login/route.ts",
+        "file:app/api/admin/approve/route.ts",
+        "file:app/api/me/route.ts",
+        "file:app/api/debug/env/route.ts"
+      ]
+    }
+  ]
+}
