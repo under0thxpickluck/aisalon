@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       { role: "system", content: SYSTEM_PROMPT },
       ...((history ?? []).slice(-10).map((h: { role: string; content: string }) => ({
         role: h.role === "user" ? "user" as const : "assistant" as const,
-        content: h.content,
+        content: h.content || "",
       }))),
       { role: "user", content: message },
     ];
