@@ -907,7 +907,17 @@ export default function DaoMemberPage() {
                   { label: "ノート生成", status: "done"  },
                   { label: "Bot",        status: "dev"  },
                   { label: "ワークフロー", status: "dev" },
-                  { label: "Marketplace", status: "soon" },
+                  { label: "Marketplace",          status: "soon" },
+                  { label: "無料VPSサーバー設置",    status: "dev"  },
+                  { label: "画像生成AI",            status: "dev"  },
+                  { label: "動画生成AI",            status: "dev"  },
+                  { label: "EPステーキングシステム", status: "dev"  },
+                  { label: "SNS自動運用プロトコル",  status: "dev"  },
+                  { label: "長期記憶AIチャット",     status: "dev"  },
+                  { label: "副業マッチング",         status: "dev"  },
+                  { label: "GPUレンダリング",        status: "dev"  },
+                  { label: "アプリ生成AI",           status: "dev"  },
+                  { label: "HP & LP自動生成AI",     status: "dev"  },
                 ].map(({ label, status }, i) => {
                   const isDone = status === "done";
                   const isDev  = status === "dev";
