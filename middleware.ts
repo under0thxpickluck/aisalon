@@ -13,9 +13,13 @@ function unauthorized() {
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  // ✅ /admin と /api/admin をガード（ここ重要）
-  const isAdmin = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
-  if (!isAdmin) return NextResponse.next();
+  // ✅ /admin, /api/admin, /note-generator, /api/note をガード
+  const isProtected =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/note-generator") ||
+    pathname.startsWith("/api/note");
+  if (!isProtected) return NextResponse.next();
 
   const user = process.env.ADMIN_USER || "";
   const pass = process.env.ADMIN_PASS || "";
@@ -33,5 +37,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/note-generator/:path*", "/note-generator", "/api/note/:path*"],
 };
