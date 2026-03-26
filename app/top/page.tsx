@@ -8,8 +8,10 @@ import { clearAuth, getAuth, getAuthSecret, type AuthState } from "../lib/auth";
 import { useLifaiCat } from "@/components/LifaiCat";
 import BPGrantModal from "@/components/BPGrantModal";
 import LoginBonusModal from "@/components/LoginBonusModal";
+import MissionCard from "@/components/MissionCard";
 import GachaModal from "@/components/GachaModal";
 import StakingModal from "@/components/StakingModal";
+import RadioCard from "@/components/RadioCard";
 import LifaiCat from "@/components/LifaiCat";
 
 /** ✅ カウントダウン + 調達バー（returnの外に置く） */
@@ -692,6 +694,18 @@ export default function AppHomePage() {
               ))}
             </div>
           </div>
+
+          <MissionCard
+            loginId={loginId}
+            onBpEarned={(_amount) => {
+              setBalanceTrigger((n) => n + 1);
+            }}
+          />
+
+          <RadioCard
+            loginId={loginId}
+            onEpEarned={() => setBalanceTrigger((n) => n + 1)}
+          />
 
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             問い合わせはTOPページにございます。
