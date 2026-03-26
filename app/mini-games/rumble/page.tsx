@@ -140,7 +140,21 @@ export default function RumblePage() {
   useEffect(() => {
     if (!userId) return;
     fetch(`/api/minigames/rumble/status?userId=${encodeURIComponent(userId)}`)
-      .then(r => r.json()).then(d => { setStatus(d); if (d.bp_balance !== undefined) setBpBalance(d.bp_balance); }).catch(() => {});
+      .then(r => r.json()).then(d => {
+        setStatus(d);
+        if (d.bp_balance !== undefined) setBpBalance(d.bp_balance);
+        // サーバー側で参加済みと確認できた場合、localStorageにも記録して次回リロード後も確実に保護
+        if (d.entered_today) {
+          localStorage.setItem(`rumble_entered_${userId}`, getTodayJst());
+          setLocalEnteredToday(true);
+        }
+        // サーバーから表示名を取得してlocalStorageとstateに反映（別デバイス・キャッシュクリア後も正しく表示）
+        if (d.display_name) {
+          localStorage.setItem(`rumble_display_name_${userId}`, d.display_name);
+          setDisplayName(d.display_name);
+          setNameInput(d.display_name);
+        }
+      }).catch(() => {});
   }, [userId]);
 
   useEffect(() => {

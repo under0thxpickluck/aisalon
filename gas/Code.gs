@@ -5311,93 +5311,108 @@ function rumbleEntry_(params) {
   var userId = String(params.userId || "");
   if (!userId) return json_({ ok: false, error: "userId_required" });
 
-  var today   = getTodayJst_();
-  var weekId  = getWeekId_();
-  var nowJst  = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  // 並行実行による二重エントリーを防ぐためスクリプトロックを取得
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000); // 最大15秒待機
+  } catch (e) {
+    return json_({ ok: false, error: "lock_timeout" });
+  }
 
-  // 本日参加済みチェック
-  var entrySheet = getRumbleEntrySheet_();
-  ensureRumbleEntryCols_(entrySheet);
-  var entryData = entrySheet.getDataRange().getValues();
-  var eHeaders  = entryData[0];
-  var eIdx      = {};
-  eHeaders.forEach(function(h, i) { eIdx[h] = i; });
-  for (var i = 1; i < entryData.length; i++) {
-    if (String(entryData[i][eIdx["user_id"]]) === userId &&
-        String(entryData[i][eIdx["date"]]) === today) {
-      return json_({ ok: false, error: "already_entered_today" });
+  try {
+    var today   = getTodayJst_();
+    var weekId  = getWeekId_();
+    var nowJst  = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+
+    // 本日参加済みチェック（ロック取得後に最新データを読み直す）
+    var entrySheet = getRumbleEntrySheet_();
+    ensureRumbleEntryCols_(entrySheet);
+    var entryData = entrySheet.getDataRange().getValues();
+    var eHeaders  = entryData[0];
+    var eIdx      = {};
+    eHeaders.forEach(function(h, i) { eIdx[h] = i; });
+    for (var i = 1; i < entryData.length; i++) {
+      if (String(entryData[i][eIdx["user_id"]]) === userId &&
+          String(entryData[i][eIdx["date"]]) === today) {
+        return json_({ ok: false, error: "already_entered_today" });
+      }
     }
-  }
 
-  // BP残高確認（100BP消費）
-  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
-  var appliesData  = appliesSheet.getDataRange().getValues();
-  var aHeaders     = appliesData[0];
-  var aIdx         = {};
-  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+    // BP残高確認（100BP消費）
+    var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+    var appliesData  = appliesSheet.getDataRange().getValues();
+    var aHeaders     = appliesData[0];
+    var aIdx         = {};
+    aHeaders.forEach(function(h, i) { aIdx[h] = i; });
 
-  var userRow    = null;
-  var userRowNum = -1;
-  for (var j = 1; j < appliesData.length; j++) {
-    if (String(appliesData[j][aIdx["login_id"]]) === userId) {
-      userRow    = appliesData[j];
-      userRowNum = j + 1;
-      break;
+    var userRow    = null;
+    var userRowNum = -1;
+    for (var j = 1; j < appliesData.length; j++) {
+      if (String(appliesData[j][aIdx["login_id"]]) === userId) {
+        userRow    = appliesData[j];
+        userRowNum = j + 1;
+        break;
+      }
     }
-  }
-  if (!userRow) return json_({ ok: false, error: "user_not_found" });
+    if (!userRow) return json_({ ok: false, error: "user_not_found" });
 
-  var currentBp = Number(userRow[aIdx["bp_balance"]] || 0);
-  if (currentBp < 100) return json_({ ok: false, error: "insufficient_bp", bp: currentBp });
+    var currentBp = Number(userRow[aIdx["bp_balance"]] || 0);
+    if (currentBp < 100) return json_({ ok: false, error: "insufficient_bp", bp: currentBp });
 
-  // BP -100消費
-  var newBp = Math.round((currentBp - 100) * 100) / 100;
-  appliesSheet.getRange(userRowNum, aIdx["bp_balance"] + 1).setValue(newBp);
+    // BP -100消費
+    var newBp = Math.round((currentBp - 100) * 100) / 100;
+    appliesSheet.getRange(userRowNum, aIdx["bp_balance"] + 1).setValue(newBp);
 
-  // スコア計算
-  var userLevel    = Number(userRow[aIdx["level"]] || 1);
-  var levelBonus   = userLevel * 2;
-  var equipBonus   = getUserEquipmentBonus_(userId);
-  var randomFactor = Math.floor(Math.random() * 51); // 0〜50
-  var score        = 100 + levelBonus + equipBonus + randomFactor;
-  var rp           = score;
+    // スコア計算
+    var userLevel    = Number(userRow[aIdx["level"]] || 1);
+    var levelBonus   = userLevel * 2;
+    var equipBonus   = getUserEquipmentBonus_(userId);
+    var randomFactor = Math.floor(Math.random() * 51); // 0〜50
+    var score        = 100 + levelBonus + equipBonus + randomFactor;
+    var rp           = score;
 
-  // rumble_entryに記録
-  entrySheet.appendRow([
-    Utilities.getUuid(), userId, today, score, rp, nowJst
-  ]);
+    // rumble_entryに記録
+    entrySheet.appendRow([
+      Utilities.getUuid(), userId, today, score, rp, nowJst
+    ]);
 
-  // rumble_week更新
-  var weekSheet = getRumbleWeekSheet_();
-  ensureRumbleWeekCols_(weekSheet);
-  var weekData    = weekSheet.getDataRange().getValues();
-  var wHeaders    = weekData[0];
-  var wIdx        = {};
-  wHeaders.forEach(function(h, i) { wIdx[h] = i; });
-  var weekRowNum  = -1;
-  var currentRp   = 0;
-  for (var k = 1; k < weekData.length; k++) {
-    if (String(weekData[k][wIdx["user_id"]]) === userId &&
-        String(weekData[k][wIdx["week_id"]]) === weekId) {
-      weekRowNum = k + 1;
-      currentRp  = Number(weekData[k][wIdx["total_rp"]] || 0);
-      break;
+    // シートへの書き込みを即座に確定させる（後続の読み込みで古いキャッシュを返さないよう）
+    SpreadsheetApp.flush();
+
+    // rumble_week更新
+    var weekSheet = getRumbleWeekSheet_();
+    ensureRumbleWeekCols_(weekSheet);
+    var weekData    = weekSheet.getDataRange().getValues();
+    var wHeaders    = weekData[0];
+    var wIdx        = {};
+    wHeaders.forEach(function(h, i) { wIdx[h] = i; });
+    var weekRowNum  = -1;
+    var currentRp   = 0;
+    for (var k = 1; k < weekData.length; k++) {
+      if (String(weekData[k][wIdx["user_id"]]) === userId &&
+          String(weekData[k][wIdx["week_id"]]) === weekId) {
+        weekRowNum = k + 1;
+        currentRp  = Number(weekData[k][wIdx["total_rp"]] || 0);
+        break;
+      }
     }
-  }
-  if (weekRowNum === -1) {
-    weekSheet.appendRow([userId, weekId, rp, nowJst]);
-  } else {
-    weekSheet.getRange(weekRowNum, wIdx["total_rp"] + 1).setValue(currentRp + rp);
-    weekSheet.getRange(weekRowNum, wIdx["updated_at"] + 1).setValue(nowJst);
-  }
+    if (weekRowNum === -1) {
+      weekSheet.appendRow([userId, weekId, rp, nowJst]);
+    } else {
+      weekSheet.getRange(weekRowNum, wIdx["total_rp"] + 1).setValue(currentRp + rp);
+      weekSheet.getRange(weekRowNum, wIdx["updated_at"] + 1).setValue(nowJst);
+    }
 
-  return json_({
-    ok:    true,
-    score: score,
-    rp:    rp,
-    bp:    newBp,
-    week_id: weekId,
-  });
+    return json_({
+      ok:    true,
+      score: score,
+      rp:    rp,
+      bp:    newBp,
+      week_id: weekId,
+    });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // action: rumble_ranking
@@ -5487,10 +5502,12 @@ function rumbleStatus_(params) {
   var aHeaders  = appData[0];
   var aIdx      = {};
   aHeaders.forEach(function(h, i) { aIdx[h] = i; });
-  var bpBalance = 0;
+  var bpBalance   = 0;
+  var displayName = "";
   for (var k = 1; k < appData.length; k++) {
     if (String(appData[k][aIdx["login_id"]]) === userId) {
-      bpBalance = Number(appData[k][aIdx["bp_balance"]] || 0);
+      bpBalance   = Number(appData[k][aIdx["bp_balance"]] || 0);
+      displayName = String(appData[k][aIdx["rumble_display_name"]] || "");
       break;
     }
   }
@@ -5503,6 +5520,7 @@ function rumbleStatus_(params) {
     week_rp:      weekRp,
     week_id:      weekId,
     bp_balance:   bpBalance,
+    display_name: displayName,
   });
 }
 

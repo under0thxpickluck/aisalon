@@ -480,11 +480,9 @@ export default function AppHomePage() {
   const apps: AppDef[] = useMemo(
     () => [
       { id: "fortune",  label: "団子占い",     icon: "🔮", color: "from-violet-500 to-purple-600",  href: "/fortune",    desc: "毎日の運勢 +10BP" },
-      { id: "radio",    label: "RADIO",        icon: "📻", color: "from-emerald-400 to-green-500",  href: "#radio",      desc: "作業BGMでEP獲得" },
       { id: "market",   label: "マーケット",   icon: "🛒", color: "from-orange-400 to-amber-500",   href: "/market",     desc: "メンバー間売買" },
       { id: "gacha",    label: "ガチャ",       icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
       { id: "staking",  label: "ステーキング", icon: "💎", color: "from-cyan-400 to-teal-500",      href: "#staking",    desc: "BPを預けて増やす",      onOpen: () => { setSelectedApp(null); setShowStaking(true); } },
-      { id: "mission",   label: "ミッション",    icon: "📋", color: "from-yellow-400 to-orange-400", href: "#mission",    desc: "毎日の課題でBP" },
       { id: "member",    label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600",  href: "/membership", desc: "プランをアップグレード" },
       { id: "music2",    label: "音楽生成NEW",   icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",        desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
       { id: "music-boost", label: "Music Boost", icon: "🚀", color: "from-purple-700 to-blue-600",   href: "/music-boost",   desc: "案件優先度を高める月額ブースト",    badge: "New"  },
