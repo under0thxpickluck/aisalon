@@ -1,0 +1,13 @@
+import OpenAI from "openai";
+
+// シングルトンでインスタンスを使い回す（毎回newしない）
+let _client: OpenAI | null = null;
+
+export function getOpenAIClient(): OpenAI {
+  if (!_client) {
+    _client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return _client;
+}
