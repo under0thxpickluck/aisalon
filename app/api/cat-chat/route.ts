@@ -13,15 +13,30 @@ const replyCache = new Map<string, string>();
 
 export async function POST(req: Request) {
   try {
-    const { message, history } = await req.json();
+    const { message, history, images } = await req.json();
+    // images: string[] | undefined — base64 data URLs (e.g. "data:image/jpeg;base64,...")
 
     if (!message?.trim()) {
       return NextResponse.json({ ok: false, error: "empty message" }, { status: 400 });
     }
 
     const cacheKey = message.trim().toLowerCase();
-    if (!history?.length && replyCache.has(cacheKey)) {
+    if (!history?.length && !images?.length && replyCache.has(cacheKey)) {
       return NextResponse.json({ ok: true, reply: replyCache.get(cacheKey), cached: true });
+    }
+
+    // 画像あり: content配列形式（vision対応）
+    // 画像なし: 従来通り文字列
+    let userMessageContent: string | OpenAI.Chat.ChatCompletionContentPart[];
+    if (images?.length) {
+      const parts: OpenAI.Chat.ChatCompletionContentPart[] = [];
+      for (const img of images.slice(0, 3)) {
+        parts.push({ type: "image_url", image_url: { url: img, detail: "auto" } });
+      }
+      parts.push({ type: "text", text: message });
+      userMessageContent = parts;
+    } else {
+      userMessageContent = message;
     }
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -30,7 +45,7 @@ export async function POST(req: Request) {
         role: h.role === "user" ? "user" as const : "assistant" as const,
         content: h.content || "",
       }))),
-      { role: "user", content: message },
+      { role: "user" as const, content: userMessageContent },
     ];
 
     const completion = await openai.chat.completions.create({
@@ -42,7 +57,7 @@ export async function POST(req: Request) {
 
     const reply = completion.choices[0]?.message?.content ?? "ごめんね、うまく答えられなかったよ🙀";
 
-    if (!history?.length) {
+    if (!history?.length && !images?.length) {
       if (replyCache.size >= 200) {
         const firstKey = replyCache.keys().next().value;
         if (firstKey) replyCache.delete(firstKey);
