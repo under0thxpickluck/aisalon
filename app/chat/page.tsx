@@ -214,7 +214,7 @@ export default function ChatPage() {
                       {msg.images.map((img, i) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          key={i}
+                          key={img.slice(0, 40)}
                           src={img}
                           alt={`画像${i + 1}`}
                           style={{ maxWidth: 200, maxHeight: 200, borderRadius: 8, display: "block", objectFit: "contain" }}
