@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-type Message = { id: string; role: "user" | "assistant"; content: string };
+type Message = { id: string; role: "user" | "assistant"; content: string; images?: string[] };
 
 const GREETING: Message = {
   id: "greeting",
@@ -33,19 +33,42 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const remaining = 3 - attachedImages.length;
+    if (remaining <= 0) return;
+    const toAdd = files.slice(0, remaining);
+    toAdd.forEach((file) => {
+      if (file.size > 4 * 1024 * 1024) return; // 4MB超は無視
+      const reader = new FileReader();
+      reader.onload = () => {
+        setAttachedImages((prev) => {
+          if (prev.length >= 3) return prev;
+          return [...prev, reader.result as string];
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleSend() {
     const text = input.trim();
     if (!text || isLoading) return;
 
-    const userMessage: Message = { id: `msg-${Date.now()}`, role: "user", content: text };
+    const currentImages = [...attachedImages];
+    const userMessage: Message = { id: `msg-${Date.now()}`, role: "user", content: text, images: currentImages.length ? currentImages : undefined };
     const updatedMessages = [...messages, userMessage];
     setInput("");
     setMessages(updatedMessages);
+    setAttachedImages([]);
     setIsLoading(true);
 
     try {
@@ -55,6 +78,7 @@ export default function ChatPage() {
         body: JSON.stringify({
           message: text,
           history: updatedMessages.slice(-10),
+          images: currentImages.length ? currentImages : undefined,
         }),
       });
       const data = await res.json();
@@ -185,6 +209,19 @@ export default function ChatPage() {
                     whiteSpace: "pre-wrap",
                   }}
                 >
+                  {msg.images?.length ? (
+                    <div className="flex gap-1 flex-wrap mb-2">
+                      {msg.images.map((img, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={i}
+                          src={img}
+                          alt={`画像${i + 1}`}
+                          style={{ maxWidth: 200, borderRadius: 8, display: "block" }}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                   {msg.content}
                 </div>
               </div>
@@ -220,10 +257,61 @@ export default function ChatPage() {
             className="flex-shrink-0 px-4 py-3 border-t"
             style={{ borderColor: "rgba(255,255,255,0.08)", background: "#0A0A0A" }}
           >
+            {/* 添付画像プレビュー */}
+            {attachedImages.length > 0 && (
+              <div className="flex gap-2 flex-wrap mb-2">
+                {attachedImages.map((img, i) => (
+                  <div key={i} className="relative flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img}
+                      alt={`添付画像${i + 1}`}
+                      style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8 }}
+                    />
+                    <button
+                      onClick={() => setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 rounded-full text-white"
+                      style={{ background: "rgba(0,0,0,0.7)", fontSize: 10, lineHeight: 1 }}
+                      aria-label="画像を削除"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div
               className="flex gap-2 items-center rounded-2xl px-4 py-2"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
+              {/* 非表示ファイル選択 */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+                disabled={isLoading}
+              />
+              {/* クリップボタン */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading || attachedImages.length >= 3}
+                className="flex-shrink-0 text-base transition-opacity"
+                style={{
+                  color: "rgba(255,255,255,0.4)",
+                  opacity: isLoading || attachedImages.length >= 3 ? 0.3 : 1,
+                  cursor: isLoading || attachedImages.length >= 3 ? "not-allowed" : "pointer",
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                }}
+                aria-label="画像を添付"
+              >
+                📎
+              </button>
               <input
                 type="text"
                 value={input}
