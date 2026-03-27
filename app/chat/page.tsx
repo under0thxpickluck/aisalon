@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Message = { id: string; role: "user" | "assistant"; content: string };
 
 const GREETING: Message = {
+  id: "greeting",
   role: "assistant",
   content: "やあ！何でも聞いてね。AI・副業・LIFAIのことも、日常のことも答えるよ🐱",
 };
@@ -26,9 +27,10 @@ export default function ChatPage() {
     const text = input.trim();
     if (!text || isLoading) return;
 
-    const userMessage: Message = { role: "user", content: text };
+    const userMessage: Message = { id: `msg-${Date.now()}`, role: "user", content: text };
+    const updatedMessages = [...messages, userMessage];
     setInput("");
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(updatedMessages);
     setIsLoading(true);
 
     try {
@@ -37,18 +39,18 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          history: [...messages, userMessage].slice(-10),
+          history: updatedMessages.slice(-10),
         }),
       });
       const data = await res.json();
       const reply = data.ok
         ? data.reply
         : "ごめんね、うまく答えられなかったよ🙀 もう一度試してみて！";
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      setMessages((prev) => [...prev, { id: `msg-${Date.now()}`, role: "assistant", content: reply }]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "ごめんね、通信エラーが起きたよ🙀 もう一度試してみて！" },
+        { id: `msg-${Date.now()}`, role: "assistant", content: "ごめんね、通信エラーが起きたよ🙀 もう一度試してみて！" },
       ]);
     } finally {
       setIsLoading(false);
@@ -88,9 +90,9 @@ export default function ChatPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-4">
-        {messages.map((msg, i) => (
+        {messages.map((msg) => (
           <div
-            key={i}
+            key={msg.id}
             className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.role === "assistant" && (
