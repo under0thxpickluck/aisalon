@@ -20,17 +20,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "empty message" }, { status: 400 });
     }
 
+    // Normalize: ensure images is a valid string array of data URLs
+    const safeImages = Array.isArray(images)
+      ? (images as string[]).filter((img) => typeof img === "string" && img.startsWith("data:image/"))
+      : undefined;
+
     const cacheKey = message.trim().toLowerCase();
-    if (!history?.length && !images?.length && replyCache.has(cacheKey)) {
+    if (!history?.length && !safeImages?.length && replyCache.has(cacheKey)) {
       return NextResponse.json({ ok: true, reply: replyCache.get(cacheKey), cached: true });
     }
 
     // 画像あり: content配列形式（vision対応）
     // 画像なし: 従来通り文字列
     let userMessageContent: string | OpenAI.Chat.ChatCompletionContentPart[];
-    if (images?.length) {
+    if (safeImages?.length) {
       const parts: OpenAI.Chat.ChatCompletionContentPart[] = [];
-      for (const img of images.slice(0, 3)) {
+      for (const img of safeImages.slice(0, 3)) {
         parts.push({ type: "image_url", image_url: { url: img, detail: "auto" } });
       }
       parts.push({ type: "text", text: message });
@@ -57,7 +62,7 @@ export async function POST(req: Request) {
 
     const reply = completion.choices[0]?.message?.content ?? "ごめんね、うまく答えられなかったよ🙀";
 
-    if (!history?.length && !images?.length) {
+    if (!history?.length && !safeImages?.length) {
       if (replyCache.size >= 200) {
         const firstKey = replyCache.keys().next().value;
         if (firstKey) replyCache.delete(firstKey);
