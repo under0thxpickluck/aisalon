@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { getAuth, getAuthSecret } from "@/app/lib/auth";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -40,6 +41,32 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  function resizeImage(file: File): Promise<string> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const img = document.createElement("img");
+        img.onload = () => {
+          const MAX = 800;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+            else { width = Math.round((width * MAX) / height); height = MAX; }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
@@ -47,15 +74,13 @@ export default function ChatPage() {
     if (remaining <= 0) return;
     const toAdd = files.slice(0, remaining);
     toAdd.forEach((file) => {
-      if (file.size > 4 * 1024 * 1024) return; // 4MB超は無視
-      const reader = new FileReader();
-      reader.onload = () => {
+      if (file.size > 10 * 1024 * 1024) return; // 10MB超は無視
+      resizeImage(file).then((resized) => {
         setAttachedImages((prev) => {
           if (prev.length >= 3) return prev;
-          return [...prev, reader.result as string];
+          return [...prev, resized];
         });
-      };
-      reader.readAsDataURL(file);
+      });
     });
   }
 
@@ -71,14 +96,20 @@ export default function ChatPage() {
     setAttachedImages([]);
     setIsLoading(true);
 
+    const auth = getAuth();
+    const code = getAuthSecret();
+
     try {
       const res = await fetch("/api/cat-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: text,
-          history: updatedMessages.slice(-10),
+          // historyは images を除外して送信（ボディサイズ削減）
+          history: updatedMessages.slice(-10).map((m) => ({ id: m.id, role: m.role, content: m.content })),
           images: currentImages.length ? currentImages : undefined,
+          id: auth?.id,
+          code,
         }),
       });
       const data = await res.json();
@@ -187,7 +218,7 @@ export default function ChatPage() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex gap-3 items-start ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" && (
                   <Image
@@ -228,7 +259,7 @@ export default function ChatPage() {
             ))}
 
             {isLoading && (
-              <div className="flex gap-3 justify-start">
+              <div className="flex gap-3 items-start justify-start">
                 <Image
                   src="/aibot/cat_normal.png"
                   alt="リファ猫"

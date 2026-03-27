@@ -21,6 +21,9 @@ export const BP_COSTS = {
   app_code:         40,  // コード生成
   app_full:         60,  // フル生成
 
+  // AIチャット
+  chat_message:      2,  // リファ猫チャット1返信
+
   // 占い
   fortune_daily:     2,  // 今日占い
   fortune_match:     5,  // 相性占い

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { BP_COSTS } from "@/app/lib/bp-config";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -11,13 +12,59 @@ LIFAIの機能（団子占い・BGM生成・マーケット・ガチャ・ミッ
 
 const replyCache = new Map<string, string>();
 
+async function callGasBalance(id: string, gasUrl: string, gasKey: string): Promise<number> {
+  const url = `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ action: "get_balance", id }),
+  });
+  const data = await r.json().catch(() => ({ ok: false }));
+  if (!data.ok) throw new Error("balance_fetch_failed");
+  return Number(data.bp ?? 0);
+}
+
+async function deductBp(id: string, amount: number, gasUrl: string, gasKey: string, gasAdminKey: string): Promise<void> {
+  const url = `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ action: "deduct_bp", adminKey: gasAdminKey, loginId: String(id), amount }),
+  });
+  const data = await r.json().catch(() => ({ ok: false }));
+  if (!data.ok) throw new Error(data.error || "deduct_bp_failed");
+}
+
 export async function POST(req: Request) {
   try {
-    const { message, history, images } = await req.json();
+    const { message, history, images, id } = await req.json();
     // images: string[] | undefined — base64 data URLs (e.g. "data:image/jpeg;base64,...")
 
     if (!message?.trim()) {
       return NextResponse.json({ ok: false, error: "empty message" }, { status: 400 });
+    }
+
+    // BP 残高チェック & 消化（id/code がある場合のみ）
+    const gasUrl = process.env.GAS_WEBAPP_URL;
+    const gasKey = process.env.GAS_API_KEY;
+    const gasAdminKey = process.env.GAS_ADMIN_KEY;
+    if (id && gasUrl && gasKey && gasAdminKey) {
+      let bp: number;
+      try {
+        bp = await callGasBalance(String(id), gasUrl, gasKey);
+      } catch {
+        return NextResponse.json({ ok: false, error: "balance_check_failed" }, { status: 502 });
+      }
+      if (bp < BP_COSTS.chat_message) {
+        return NextResponse.json({ ok: false, error: "insufficient_bp", bp }, { status: 400 });
+      }
+      try {
+        await deductBp(String(id), BP_COSTS.chat_message, gasUrl, gasKey, gasAdminKey);
+      } catch {
+        return NextResponse.json({ ok: false, error: "deduct_bp_failed" }, { status: 502 });
+      }
     }
 
     // Normalize: ensure images is a valid string array of data URLs
