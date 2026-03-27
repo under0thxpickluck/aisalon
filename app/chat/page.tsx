@@ -217,7 +217,7 @@ export default function ChatPage() {
                           key={i}
                           src={img}
                           alt={`画像${i + 1}`}
-                          style={{ maxWidth: 200, borderRadius: 8, display: "block" }}
+                          style={{ maxWidth: 200, maxHeight: 200, borderRadius: 8, display: "block", objectFit: "contain" }}
                         />
                       ))}
                     </div>
@@ -261,7 +261,7 @@ export default function ChatPage() {
             {attachedImages.length > 0 && (
               <div className="flex gap-2 flex-wrap mb-2">
                 {attachedImages.map((img, i) => (
-                  <div key={i} className="relative flex-shrink-0">
+                  <div key={img.slice(0, 40)} className="relative flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={img}
