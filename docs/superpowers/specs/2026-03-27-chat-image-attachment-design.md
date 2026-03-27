@@ -110,12 +110,12 @@ const userMessage = { role: "user" as const, content: message };
 
 ## エラーハンドリング
 
-- 4MB超の画像: クライアントサイドで無視（追加しない）
+- 4MB超の画像: クライアントサイドで**意図的に**無視（アラートなし・追加しない）。ユーザーには何も通知しない設計。
 - 3枚超の選択: 最初の3枚のみ使用
+- テキストなし・画像のみのメッセージ: 送信不可（テキスト入力は必須。送信ボタンは `!input.trim()` のとき disabled のまま）
 - API失敗時: 既存のエラーハンドリングがそのまま適用される
 
 ## 制約・注意点
 
 - gpt-4o-miniはvision対応済み（`detail: "auto"` で自動最適化）
-- base64 data URLはリクエストボディに含まれるためVercelのデフォルトボディ制限（4.5MB）に注意。3枚×4MB = 最大12MBになる可能性があるため、Next.jsのAPI routeで `export const config = { api: { bodyParser: { sizeLimit: '15mb' } } }` を設定する（App Router では `next.config.js` の `experimental.serverActions` ではなく Route Handler の制限は別途なし—デフォルト4MBのため要設定）
-- App Router の Route Handler では `bodyParser` 設定が不要（ストリームで受け取るため制限なし）。ただし実際のVercelデプロイでは関数のメモリ・タイムアウトに影響する可能性あり
+- App Router の Route Handler はリクエストボディをストリームで受け取るため、Pages Routerの `bodyParser` 設定は不要。ただし実際のVercelデプロイでは関数のメモリ・タイムアウトに影響する可能性あり（3枚×4MB = 最大12MB）
