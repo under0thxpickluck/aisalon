@@ -2789,6 +2789,202 @@ function handle_(key, body) {
     return json_({ ok: true });
   }
 
+  // =========================================================
+  // admin_list_5000（/5000スプレッドシートの申請一覧を返す）
+  // =========================================================
+  if (action === "admin_list_5000") {
+    const adminKey_5000list = str_(body.adminKey);
+    if (adminKey_5000list !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "forbidden" });
+    }
+
+    const ssId_list = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+    if (!ssId_list) return json_({ ok: false, error: "SPREADSHEET_5000_ID not set" });
+
+    const ss5000_list = SpreadsheetApp.openById(ssId_list);
+    const applySheet_list = ss5000_list.getSheetByName("applies");
+    if (!applySheet_list) return json_({ ok: true, rows: [] });
+
+    const allValues = applySheet_list.getDataRange().getValues();
+    if (allValues.length < 2) return json_({ ok: true, rows: [] });
+
+    const listHeader = allValues[0];
+    const rows = allValues.slice(1).map(function(r, i) {
+      var obj = {};
+      listHeader.forEach(function(h, j) { obj[String(h)] = str_(r[j]); });
+      obj["_rowIndex"] = i + 2;
+      return obj;
+    });
+
+    return json_({ ok: true, rows: rows });
+  }
+
+  // =========================================================
+  // admin_approve_5000（/5000申請を承認 + 紹介報酬計算）
+  // =========================================================
+  if (action === "admin_approve_5000") {
+    const adminKey_5000 = str_(body.adminKey);
+    if (adminKey_5000 !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "forbidden" });
+    }
+
+    const applyId_5000 = str_(body.applyId);
+    if (!applyId_5000) return json_({ ok: false, error: "applyId required" });
+
+    const ssId_5000 = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+    if (!ssId_5000) return json_({ ok: false, error: "SPREADSHEET_5000_ID not set" });
+
+    const ss5000 = SpreadsheetApp.openById(ssId_5000);
+    const applySheet_5000 = ss5000.getSheetByName("applies");
+    if (!applySheet_5000) return json_({ ok: false, error: "applies sheet not found" });
+
+    // 必要列を保証（壊さない）
+    let header_5000 = applySheet_5000.getDataRange().getValues()[0];
+    ensureCols_(applySheet_5000, header_5000, [
+      "apply_id", "plan", "email", "name", "status", "ref_id",
+      "login_id", "pw_hash", "pw_updated_at",
+      "reset_token", "reset_expires", "reset_used_at", "reset_sent_at",
+      "my_ref_code", "mail_error"
+    ]);
+    // ensureCols_ 後はヘッダーを再取得
+    const lastCol_5000 = applySheet_5000.getLastColumn();
+    header_5000 = applySheet_5000.getRange(1, 1, 1, lastCol_5000).getValues()[0];
+    const idx_5000 = indexMap_(header_5000);
+
+    // applyId で行を検索
+    const allData_5000 = applySheet_5000.getDataRange().getValues();
+    let targetRow_5000 = -1;
+    for (let ri = 1; ri < allData_5000.length; ri++) {
+      if (str_(allData_5000[ri][idx_5000["apply_id"]]) === applyId_5000) {
+        targetRow_5000 = ri + 1; // 1-indexed for getRange
+        break;
+      }
+    }
+    if (targetRow_5000 < 0) return json_({ ok: false, error: "applyId not found" });
+
+    // 既に approved 済みなら OK を返す（冪等）
+    const curStatus_5000 = str_(applySheet_5000.getRange(targetRow_5000, idx_5000["status"] + 1).getValue());
+    if (curStatus_5000 === "approved") {
+      return json_({
+        ok: true,
+        already: true,
+        loginId: str_(applySheet_5000.getRange(targetRow_5000, idx_5000["login_id"] + 1).getValue())
+      });
+    }
+
+    const email_5000 = str_(applySheet_5000.getRange(targetRow_5000, idx_5000["email"] + 1).getValue());
+    if (!email_5000) return json_({ ok: false, error: "no_email" });
+
+    // login_id 生成（未設定の場合のみ）
+    let loginId_5000 = str_(applySheet_5000.getRange(targetRow_5000, idx_5000["login_id"] + 1).getValue());
+    if (!loginId_5000) {
+      loginId_5000 = "5k_" + randChars_(6);
+      applySheet_5000.getRange(targetRow_5000, idx_5000["login_id"] + 1).setValue(loginId_5000);
+    }
+
+    // my_ref_code 生成（未設定の場合のみ）
+    let myRefCode_5000 = str_(applySheet_5000.getRange(targetRow_5000, idx_5000["my_ref_code"] + 1).getValue());
+    if (!myRefCode_5000) {
+      myRefCode_5000 = generateRefCode5000_(applySheet_5000, idx_5000);
+      applySheet_5000.getRange(targetRow_5000, idx_5000["my_ref_code"] + 1).setValue(myRefCode_5000);
+    }
+
+    // リセットトークン生成
+    const token_5000 = genResetToken_();
+    const expires_5000 = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    applySheet_5000.getRange(targetRow_5000, idx_5000["reset_token"] + 1).setValue(token_5000);
+    applySheet_5000.getRange(targetRow_5000, idx_5000["reset_expires"] + 1).setValue(expires_5000);
+    applySheet_5000.getRange(targetRow_5000, idx_5000["reset_used_at"] + 1).setValue("");
+
+    // ステータスを approved に更新
+    applySheet_5000.getRange(targetRow_5000, idx_5000["status"] + 1).setValue("approved");
+
+    // パスワードリセットメール送信（二重送信防止）
+    const sentAt_5000 = applySheet_5000.getRange(targetRow_5000, idx_5000["reset_sent_at"] + 1).getValue();
+    let resetSent_5000 = false;
+    if (!sentAt_5000) {
+      try {
+        sendResetMail_(email_5000, loginId_5000, token_5000);
+        applySheet_5000.getRange(targetRow_5000, idx_5000["reset_sent_at"] + 1).setValue(new Date());
+        if (idx_5000["mail_error"] !== undefined) {
+          applySheet_5000.getRange(targetRow_5000, idx_5000["mail_error"] + 1).setValue("");
+        }
+        resetSent_5000 = true;
+        Logger.log("[admin_approve_5000] mail sent OK: to=" + email_5000 + " loginId=" + loginId_5000);
+      } catch (mailErr_5000) {
+        const mailErrMsg_5000 = String(mailErr_5000);
+        Logger.log("[admin_approve_5000] mail FAILED: " + mailErrMsg_5000);
+        if (idx_5000["mail_error"] !== undefined) {
+          applySheet_5000.getRange(targetRow_5000, idx_5000["mail_error"] + 1).setValue(mailErrMsg_5000);
+        }
+        return json_({ ok: false, error: "mail_failed: " + mailErrMsg_5000 });
+      }
+    } else {
+      resetSent_5000 = true;
+    }
+
+    // ========================================
+    // 紹介チェーン遡り（最大5段）+ 月別台帳記録
+    // ========================================
+    const planStr_5000 = str_(applySheet_5000.getRange(targetRow_5000, idx_5000["plan"] + 1).getValue());
+    const planAmountMap = { "500": 500, "2000": 2000, "3000": 3000, "5000": 5000 };
+    const entryAmount_5000 = planAmountMap[planStr_5000] || 0;
+
+    const refRates_5000 = [0.10, 0.05, 0.02, 0.02, 0.01];
+    const yearMonth_5000 = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy_MM");
+    const ledgerSheet_5000 = getLedgerSheet5000_(ss5000, yearMonth_5000);
+
+    const referralResults_5000 = [];
+    let currentRefCode_5000 = str_(applySheet_5000.getRange(targetRow_5000, idx_5000["ref_id"] + 1).getValue());
+
+    for (let lvl = 1; lvl <= 5 && currentRefCode_5000; lvl++) {
+      // my_ref_code が currentRefCode_5000 に一致する行を探す
+      const chainData = applySheet_5000.getDataRange().getValues();
+      let referrerLoginId_5000 = "";
+      let referrerRefId_5000 = "";
+
+      for (let ci = 1; ci < chainData.length; ci++) {
+        const rowRefCode = str_(chainData[ci][idx_5000["my_ref_code"]]);
+        if (rowRefCode === currentRefCode_5000) {
+          referrerLoginId_5000 = str_(chainData[ci][idx_5000["login_id"]]);
+          referrerRefId_5000 = str_(chainData[ci][idx_5000["ref_id"]]);
+          break;
+        }
+      }
+
+      if (!referrerLoginId_5000) break; // 紹介者が見つからない or ルート到達
+
+      if (entryAmount_5000 > 0) {
+        const rate_5000 = refRates_5000[lvl - 1];
+        const commission_5000 = Math.round(entryAmount_5000 * rate_5000 * 100) / 100;
+        const levelSuffix = lvl === 1 ? "st" : lvl === 2 ? "nd" : lvl === 3 ? "rd" : "th";
+        const memo_5000 = "$" + entryAmount_5000 + " plan " + lvl + levelSuffix + " level " + Math.round(rate_5000 * 100) + "%";
+
+        ledgerSheet_5000.appendRow([
+          new Date(),
+          referrerLoginId_5000,
+          "referral_entry",
+          commission_5000,
+          applyId_5000,
+          lvl,
+          memo_5000
+        ]);
+        referralResults_5000.push({ level: lvl, to: referrerLoginId_5000, amount: commission_5000 });
+        Logger.log("[admin_approve_5000] referral lvl=" + lvl + " to=" + referrerLoginId_5000 + " amount=" + commission_5000);
+      }
+
+      currentRefCode_5000 = referrerRefId_5000;
+    }
+
+    return json_({
+      ok: true,
+      loginId: loginId_5000,
+      myRefCode: myRefCode_5000,
+      resetSent: resetSent_5000,
+      referralResults: referralResults_5000
+    });
+  }
+
   // actionが不明
   return json_({ ok: false, error: "bad_action" });
 }
