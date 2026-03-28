@@ -17,6 +17,8 @@ export function middleware(req: NextRequest) {
   const isProtected =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/5000/admin") ||
+    pathname.startsWith("/api/5000/admin") ||
     pathname.startsWith("/note-generator") ||
     pathname.startsWith("/api/note");
   if (!isProtected) return NextResponse.next();
@@ -37,5 +39,14 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/note-generator/:path*", "/note-generator", "/api/note/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/api/admin/:path*",
+    "/5000/admin/:path*",
+    "/5000/admin",
+    "/api/5000/admin/:path*",
+    "/note-generator/:path*",
+    "/note-generator",
+    "/api/note/:path*",
+  ],
 };
