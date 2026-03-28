@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Variants, useInView } from "framer-motion";
 import { loadDraft, saveDraft } from "@/components/storage";
 
@@ -77,6 +78,7 @@ function useCountUp(target: number, duration = 1.5) {
 
 /* ===== Component ===== */
 export default function DaoMemberPage() {
+  const router = useRouter();
   const [draft, setDraft] = useState<ReturnType<typeof loadDraft> | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("5000");
   const [accordionOpen, setAccordionOpen] = useState(false);
@@ -147,13 +149,11 @@ export default function DaoMemberPage() {
   }
 
   function handleCta() {
-    handlePay(selectedPlan);
+    router.push("/5000/apply");
   }
 
   const selectedData = PLAN_DATA[selectedPlan];
-  const ctaLabel = payBusy
-    ? "処理中…"
-    : `Join LIFAI（$${selectedData.amount.toLocaleString()}）`;
+  const ctaLabel = "入会申請フォームへ →";
 
   const slots = selectedData.units;
 
