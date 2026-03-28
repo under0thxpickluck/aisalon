@@ -277,7 +277,7 @@ export default function MusicProPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
-          body: JSON.stringify({ id, code }),
+          body: JSON.stringify({ id, code, group: (getAuth() as any)?.group || "" }),
         });
         const data = await res.json().catch(() => ({ ok: false }));
 

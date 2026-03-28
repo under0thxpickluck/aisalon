@@ -66,7 +66,7 @@ export default function MembershipPage() {
     fetch("/api/wallet/balance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: userId }),
+      body: JSON.stringify({ id: userId, group: (() => { try { const a = JSON.parse(localStorage.getItem("addval_auth_v1") || "{}"); return a?.group || ""; } catch { return ""; } })() }),
     })
       .then(r => r.json())
       .then(d => {

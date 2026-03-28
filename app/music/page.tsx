@@ -48,7 +48,7 @@ export default function MusicPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
-          body: JSON.stringify({ id, code }),
+          body: JSON.stringify({ id, code, group: (auth as any)?.group || "" }),
         });
         const data = await res.json().catch(() => ({ ok: false }));
         if (data?.ok && data?.me?.plan) {

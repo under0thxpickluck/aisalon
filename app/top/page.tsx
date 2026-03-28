@@ -122,7 +122,7 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, group: (auth as any)?.group || "" }),
       });
 
       const data: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
@@ -236,7 +236,7 @@ function ReferralCard({ auth }: { auth: AuthState }) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
-          body: JSON.stringify({ id, code }),
+          body: JSON.stringify({ id, code, group: (auth as any)?.group || "" }),
         });
 
         const data: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
@@ -463,7 +463,7 @@ export default function AppHomePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, group: auth?.group || "" }),
         });
         const data = await r.json().catch(() => ({ ok: false }));
         trackEvent("page_view", {

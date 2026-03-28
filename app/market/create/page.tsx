@@ -51,7 +51,7 @@ export default function MarketCreatePage() {
     (async () => {
       try {
         const res = await fetch(
-          `/api/wallet/balance?id=${encodeURIComponent(myId)}&code=${encodeURIComponent(myCode)}`
+          `/api/wallet/balance?id=${encodeURIComponent(myId)}&code=${encodeURIComponent(myCode)}&group=${encodeURIComponent((() => { try { const a = JSON.parse(localStorage.getItem("addval_auth_v1") || "{}"); return a?.group || ""; } catch { return ""; } })())}`
         );
         const data = await res.json().catch(() => ({}));
         if (data.ok && typeof data.ep === "number") {
