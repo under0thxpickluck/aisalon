@@ -86,14 +86,17 @@ export default function Confirm5000Page() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const d = loadDraft5000();
-    setDraft(d);
     // フォームが未入力のまま直接アクセスされた場合は戻す
     if (!d.email || !d.name) {
       router.replace("/5000/apply");
+      return;
     }
+    setDraft(d);
+    setMounted(true);
   }, [router]);
 
   async function handleSubmit() {
@@ -122,6 +125,10 @@ export default function Confirm5000Page() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!mounted && !done) {
+    return <main style={{ minHeight: "100vh", background: "#0A0A0A" }} />;
   }
 
   /* ===== 送信完了画面 ===== */
