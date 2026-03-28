@@ -1376,18 +1376,20 @@ function handle_(key, body) {
   // =========================================================
   if (action === "get_balance") {
     const id = str_(body.id);
+    const group_bal = str_(body.group);
+    const targetSheet_bal = group_bal === "5000" ? getAppliesSheet5000_() : sheet;
 
     if (!id) {
       return json_({ ok: false, error: "id required" });
     }
 
-    let values = sheet.getDataRange().getValues();
+    let values = targetSheet_bal.getDataRange().getValues();
     let header = values[0];
 
     // ✅ 必要列保証（壊さない）
-    ensureCols_(sheet, header, ["login_id", "email", "bp_balance", "ep_balance", "plan"]);
+    ensureCols_(targetSheet_bal, header, ["login_id", "email", "bp_balance", "ep_balance", "plan"]);
 
-    values = sheet.getDataRange().getValues();
+    values = targetSheet_bal.getDataRange().getValues();
     header = values[0];
 
     const idx = indexMap_(header);
@@ -2647,16 +2649,18 @@ function handle_(key, body) {
   if (action === "me") {
     const id = str_(body.id);
     const code = str_(body.code);
+    const group_me = str_(body.group);
+    const targetSheet_me = group_me === "5000" ? getAppliesSheet5000_() : sheet;
 
     if (!id || !code) {
       return json_({ ok: false, reason: "invalid" });
     }
 
-    let values = sheet.getDataRange().getValues();
+    let values = targetSheet_me.getDataRange().getValues();
     let header = values[0];
 
     // ✅ 必要列保証（壊さない）
-    ensureCols_(sheet, header, [
+    ensureCols_(targetSheet_me, header, [
       "login_id",
       "pw_hash",
       "email",
@@ -2670,7 +2674,7 @@ function handle_(key, body) {
       "referrer_3_login_id",
     ]);
 
-    values = sheet.getDataRange().getValues();
+    values = targetSheet_me.getDataRange().getValues();
     header = values[0];
 
     const idx = indexMap_(header);
@@ -2735,18 +2739,20 @@ function handle_(key, body) {
   if (action === "login") {
     const id = str_(body.id);
     const code = str_(body.code);
+    const group_login = str_(body.group);
+    const targetSheet_login = group_login === "5000" ? getAppliesSheet5000_() : sheet;
 
     if (!id || !code) {
       return json_({ ok: false, reason: "invalid" });
     }
 
-    let values = sheet.getDataRange().getValues();
+    let values = targetSheet_login.getDataRange().getValues();
     let header = values[0];
 
     // ✅ 必要列保証（壊さない）
-    ensureCols_(sheet, header, ["login_id", "pw_hash", "email", "status"]);
+    ensureCols_(targetSheet_login, header, ["login_id", "pw_hash", "email", "status"]);
 
-    values = sheet.getDataRange().getValues();
+    values = targetSheet_login.getDataRange().getValues();
     header = values[0];
 
     const idx = indexMap_(header);
@@ -3643,6 +3649,52 @@ function genTempPassword_() {
 // RESET TOKEN
 function genResetToken_() {
   return Utilities.getUuid().replace(/-/g, "") + randChars_(16);
+}
+
+// ==============================
+// ✅ /5000 スプレッドシートのappliesシートを返す（group:"5000" ルーティング用）
+// ==============================
+function getAppliesSheet5000_() {
+  var ssId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+  if (!ssId) throw new Error("SPREADSHEET_5000_ID not set");
+  var ss5000 = SpreadsheetApp.openById(ssId);
+  var s = ss5000.getSheetByName("applies");
+  if (!s) throw new Error("applies sheet not found in SPREADSHEET_5000_ID");
+  return s;
+}
+
+// ==============================
+// ✅ /5000 紹介コード生成（"5K" + 6文字：紛らわしい文字除外）
+// ==============================
+function generateRefCode5000_(applySheet, idx) {
+  var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  var allRows = applySheet.getDataRange().getValues();
+  var existing = allRows.map(function(r) { return str_(r[idx["my_ref_code"]] || ""); });
+  var code;
+  var maxTries = 200;
+  var tries = 0;
+  do {
+    code = "5K";
+    for (var i = 0; i < 6; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    tries++;
+  } while (existing.indexOf(code) >= 0 && tries < maxTries);
+  return code;
+}
+
+// ==============================
+// ✅ /5000 月別台帳シートを取得または作成
+// yearMonth 形式: "2026_03"
+// ==============================
+function getLedgerSheet5000_(ss5000, yearMonth) {
+  var name = "ledger_" + yearMonth;
+  var s = ss5000.getSheetByName(name);
+  if (!s) {
+    s = ss5000.insertSheet(name);
+    s.appendRow(["created_at", "to_login_id", "type", "amount_usd", "from_apply_id", "level", "memo"]);
+  }
+  return s;
 }
 
 function __testSendMailOnce() {
