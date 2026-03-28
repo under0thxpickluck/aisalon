@@ -369,6 +369,7 @@ export default function Apply5000Page() {
             {/* 次へボタン */}
             <button
               onClick={handleNext}
+              disabled={!canGoNext}
               style={{
                 width: "100%", padding: "16px 0", borderRadius: 12, border: "none",
                 background: canGoNext
