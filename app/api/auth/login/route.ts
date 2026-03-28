@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const { id, code } = await req.json().catch(() => ({}));
+    const { id, code, group } = await req.json().catch(() => ({}));
 
     const url = process.env.GAS_WEBAPP_URL!;
     const key = process.env.GAS_API_KEY!;
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
         action: "login",
         id,
         code,
+        group: group || "",
       }),
     });
 

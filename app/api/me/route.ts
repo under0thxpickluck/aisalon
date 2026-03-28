@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 type MeRequest = {
   id?: string;
   code?: string;
+  group?: string;
 };
 
 type GasMeResponse =
@@ -67,7 +68,7 @@ async function safeReadJson(req: Request): Promise<MeRequest> {
   }
 }
 
-async function callGasMe(gasUrl: string, gasKey: string, id: string, code: string): Promise<GasMeResponse> {
+async function callGasMe(gasUrl: string, gasKey: string, id: string, code: string, group: string): Promise<GasMeResponse> {
   const url = new URL(gasUrl);
   url.searchParams.set("key", gasKey);
 
@@ -79,7 +80,7 @@ async function callGasMe(gasUrl: string, gasKey: string, id: string, code: strin
     const res = await fetch(url.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "me", id, code }),
+      body: JSON.stringify({ action: "me", id, code, group }),
       signal: controller.signal,
       cache: "no-store",
     });
@@ -133,12 +134,13 @@ export async function POST(req: Request) {
   const body = await safeReadJson(req);
   const id = str(body.id).trim();
   const code = str(body.code).trim();
+  const group = str(body.group).trim();
 
   if (!id || !code) {
     return jsonError(400, { ok: false, error: "id_and_code_required" });
   }
 
-  const gasRes = await callGasMe(env.gasUrl, env.gasKey, id, code);
+  const gasRes = await callGasMe(env.gasUrl, env.gasKey, id, code, group);
 
   if (gasRes.ok) {
     return NextResponse.json(

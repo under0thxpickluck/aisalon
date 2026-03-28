@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const { id } = await req.json().catch(() => ({}));
+    const { id, group } = await req.json().catch(() => ({}));
 
     const url = process.env.GAS_WEBAPP_URL!;
     const key = process.env.GAS_API_KEY!;
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         action: "get_balance",
         id,
+        group: group || "",
       }),
     });
 
