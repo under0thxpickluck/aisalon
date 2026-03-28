@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const applyId = body.applyId || `5000_${Date.now()}`;
 
     const safePayload = {
-      action: "apply",
+      action: "apply_5000",
       group: "5000",
       plan: "5000",
       applyId,
