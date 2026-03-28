@@ -7,6 +7,7 @@ export type AuthState = {
   // 将来API化したら token を使う想定（今はモック）
   token?: string;
   plan?: string; // /api/me 取得後にキャッシュ（sessionStorage消滅時のフォールバック用）
+  group?: string; // 追加: "5000" | undefined — /5000グループのルーティング用
   updatedAt: number;
 };
 
