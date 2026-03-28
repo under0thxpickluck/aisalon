@@ -3680,6 +3680,9 @@ function generateRefCode5000_(applySheet, idx) {
     }
     tries++;
   } while (existing.indexOf(code) >= 0 && tries < maxTries);
+  if (tries >= maxTries && existing.indexOf(code) >= 0) {
+    throw new Error("generateRefCode5000_: failed to generate unique code after " + maxTries + " tries");
+  }
   return code;
 }
 
