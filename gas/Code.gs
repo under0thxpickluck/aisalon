@@ -459,6 +459,79 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // 2-a) apply_5000（/5000グループ専用：別スプレッドシートに書き込み）
+  // =========================================================
+  if (action === "apply_5000") {
+    const plan = str_(body.plan);
+    const email = str_(body.email);
+    const name = str_(body.name);
+    const nameKana = str_(body.nameKana);
+
+    if (!plan || !email || !name || !nameKana) {
+      return json_({ ok: false, error: "missing_fields" });
+    }
+
+    const applyId = str_(body.applyId) || ("5000_" + Date.now());
+
+    const ssId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+    if (!ssId) return json_({ ok: false, error: "SPREADSHEET_5000_ID not set" });
+
+    const ss5000 = SpreadsheetApp.openById(ssId);
+    let sheet5000 = ss5000.getSheetByName("applies");
+    if (!sheet5000) {
+      sheet5000 = ss5000.insertSheet("applies");
+      sheet5000.appendRow(["created_at","apply_id","plan","email","name","name_kana","age_band","prefecture","city","job","ref_name","ref_id","status"]);
+    }
+
+    const header5000 = sheet5000.getDataRange().getValues()[0];
+    const idx5000 = {};
+    header5000.forEach(function(h, i) { idx5000[h] = i; });
+
+    // 既存行を検索
+    const data5000 = sheet5000.getDataRange().getValues().slice(1);
+    let targetRow5000 = 0;
+    for (let i = 0; i < data5000.length; i++) {
+      if (String(data5000[i][idx5000["apply_id"]] || "") === applyId) {
+        targetRow5000 = i + 2;
+        break;
+      }
+    }
+
+    if (!targetRow5000) {
+      // 新規行追記
+      const newRow5000 = new Array(header5000.length).fill("");
+      newRow5000[idx5000["created_at"]] = new Date();
+      newRow5000[idx5000["apply_id"]] = applyId;
+      newRow5000[idx5000["plan"]] = plan;
+      newRow5000[idx5000["email"]] = email;
+      newRow5000[idx5000["name"]] = name;
+      newRow5000[idx5000["name_kana"]] = nameKana;
+      newRow5000[idx5000["age_band"]] = str_(body.ageBand);
+      newRow5000[idx5000["prefecture"]] = str_(body.prefecture);
+      newRow5000[idx5000["city"]] = str_(body.city);
+      newRow5000[idx5000["job"]] = str_(body.job);
+      newRow5000[idx5000["ref_name"]] = str_(body.refName);
+      newRow5000[idx5000["ref_id"]] = str_(body.refId);
+      newRow5000[idx5000["status"]] = "pending";
+      sheet5000.appendRow(newRow5000);
+    } else {
+      // 既存行を更新
+      sheet5000.getRange(targetRow5000, idx5000["plan"] + 1).setValue(plan);
+      sheet5000.getRange(targetRow5000, idx5000["email"] + 1).setValue(email);
+      sheet5000.getRange(targetRow5000, idx5000["name"] + 1).setValue(name);
+      sheet5000.getRange(targetRow5000, idx5000["name_kana"] + 1).setValue(nameKana);
+      sheet5000.getRange(targetRow5000, idx5000["age_band"] + 1).setValue(str_(body.ageBand));
+      sheet5000.getRange(targetRow5000, idx5000["prefecture"] + 1).setValue(str_(body.prefecture));
+      sheet5000.getRange(targetRow5000, idx5000["city"] + 1).setValue(str_(body.city));
+      sheet5000.getRange(targetRow5000, idx5000["job"] + 1).setValue(str_(body.job));
+      sheet5000.getRange(targetRow5000, idx5000["ref_name"] + 1).setValue(str_(body.refName));
+      sheet5000.getRange(targetRow5000, idx5000["ref_id"] + 1).setValue(str_(body.refId));
+    }
+
+    return json_({ ok: true });
+  }
+
+  // =========================================================
   // 2) apply（申請フォーム：apply_id の行を更新）
   // =========================================================
   if (action === "apply") {
