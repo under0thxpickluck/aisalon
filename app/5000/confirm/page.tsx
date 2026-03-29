@@ -116,12 +116,7 @@ export default function Confirm5000Page() {
         return;
       }
 
-      // Step 2: draft クリア
-      if (typeof window !== "undefined") {
-        sessionStorage.removeItem(STORAGE_KEY_5000);
-      }
-
-      // Step 3: NOWPayments invoice 作成
+      // Step 2: NOWPayments invoice 作成
       const applyId = draft.applyId;
       const payRes = await fetch("/api/5000/nowpayments/create", {
         method: "POST",
@@ -133,6 +128,11 @@ export default function Confirm5000Page() {
       if (!payData?.ok || !payData?.invoice_url) {
         setErr("決済リンクの取得に失敗しました。サポートにお問い合わせください。");
         return;
+      }
+
+      // Step 3: invoice URL 確定後に draft クリア（失敗時にリトライ可能とするため）
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(STORAGE_KEY_5000);
       }
 
       // Step 4: apply_id を sessionStorage に保存してリダイレクト
