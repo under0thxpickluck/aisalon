@@ -481,11 +481,27 @@ function handle_(key, body) {
     if (!sheet5000) {
       sheet5000 = ss5000.insertSheet("applies");
       sheet5000.appendRow(["created_at","apply_id","plan","email","name","name_kana","age_band","prefecture","city","job","ref_name","ref_id","status"]);
+      // ensureCols_ は下で idx5000 構築後に呼び出す
     }
 
-    const header5000 = sheet5000.getDataRange().getValues()[0];
+    let header5000 = sheet5000.getDataRange().getValues()[0];
     const idx5000 = {};
     header5000.forEach(function(h, i) { idx5000[h] = i; });
+
+    // 既存シートにも新列を保証（後方互換）
+    ensureCols_(sheet5000, header5000, [
+      "expected_paid", "payment_id", "payment_status", "actually_paid",
+      "pay_currency", "paid_at", "approved_at", "last_ipn_at",
+      "auto_approve_reason", "login_id", "pw_hash", "pw_updated_at",
+      "reset_token", "reset_expires", "reset_used_at", "reset_sent_at",
+      "my_ref_code", "mail_error", "referral_processed_at"
+    ]);
+    // ensureCols_ 後にヘッダー再取得
+    const lastCol5000 = sheet5000.getLastColumn();
+    header5000 = sheet5000.getRange(1, 1, 1, lastCol5000).getValues()[0];
+    header5000.forEach(function(h, i) { idx5000[h] = i; });
+
+    const planAmountMap5000 = { "500": 500, "2000": 2000, "3000": 3000, "5000": 5000 };
 
     // 既存行を検索
     const data5000 = sheet5000.getDataRange().getValues().slice(1);
@@ -512,7 +528,10 @@ function handle_(key, body) {
       newRow5000[idx5000["job"]] = str_(body.job);
       newRow5000[idx5000["ref_name"]] = str_(body.refName);
       newRow5000[idx5000["ref_id"]] = str_(body.refId);
-      newRow5000[idx5000["status"]] = "pending";
+      newRow5000[idx5000["status"]] = "pending_payment";
+      if (idx5000["expected_paid"] !== undefined) {
+        newRow5000[idx5000["expected_paid"]] = planAmountMap5000[plan] || 0;
+      }
       sheet5000.appendRow(newRow5000);
     } else {
       // 既存行を更新
@@ -526,9 +545,21 @@ function handle_(key, body) {
       sheet5000.getRange(targetRow5000, idx5000["job"] + 1).setValue(str_(body.job));
       sheet5000.getRange(targetRow5000, idx5000["ref_name"] + 1).setValue(str_(body.refName));
       sheet5000.getRange(targetRow5000, idx5000["ref_id"] + 1).setValue(str_(body.refId));
+      // expected_paid が未設定なら設定する
+      if (idx5000["expected_paid"] !== undefined) {
+        const existingExpected = sheet5000.getRange(targetRow5000, idx5000["expected_paid"] + 1).getValue();
+        if (!existingExpected) {
+          sheet5000.getRange(targetRow5000, idx5000["expected_paid"] + 1).setValue(planAmountMap5000[plan] || 0);
+        }
+      }
+      // status が pending なら pending_payment に更新
+      const existingStatus5000 = str_(sheet5000.getRange(targetRow5000, idx5000["status"] + 1).getValue());
+      if (existingStatus5000 === "pending") {
+        sheet5000.getRange(targetRow5000, idx5000["status"] + 1).setValue("pending_payment");
+      }
     }
 
-    return json_({ ok: true });
+    return json_({ ok: true, apply_id: applyId });
   }
 
   // =========================================================
