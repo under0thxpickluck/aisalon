@@ -103,6 +103,7 @@ export default function Confirm5000Page() {
     setErr(null);
     setLoading(true);
     try {
+      // Step 1: フォームデータを GAS apply_5000 に送信
       const res = await fetch("/api/5000/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,16 +111,35 @@ export default function Confirm5000Page() {
       });
       const data = await res.json();
 
-      if (data?.ok) {
-        // 送信成功 → draftをクリアして完了表示
-        if (typeof window !== "undefined") {
-          sessionStorage.removeItem(STORAGE_KEY_5000);
-        }
-        setDone(true);
+      if (!data?.ok) {
+        setErr("送信に失敗しました。もう一度お試しください。");
         return;
       }
 
-      setErr("送信に失敗しました。もう一度お試しください。");
+      // Step 2: draft クリア
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(STORAGE_KEY_5000);
+      }
+
+      // Step 3: NOWPayments invoice 作成
+      const applyId = draft.applyId;
+      const payRes = await fetch("/api/5000/nowpayments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apply_id: applyId, plan: draft.plan }),
+      });
+      const payData = await payRes.json();
+
+      if (!payData?.ok || !payData?.invoice_url) {
+        setErr("決済リンクの取得に失敗しました。サポートにお問い合わせください。");
+        return;
+      }
+
+      // Step 4: apply_id を sessionStorage に保存してリダイレクト
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("5000_apply_id", applyId);
+      }
+      window.location.href = payData.invoice_url;
     } catch {
       setErr("送信に失敗しました。通信状況をご確認ください。");
     } finally {
@@ -193,7 +213,7 @@ export default function Confirm5000Page() {
             申請内容の確認
           </h1>
           <p style={{ marginTop: 10, fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
-            以下の内容で申請します。よろしければ「申請する」をタップしてください。
+            以下の内容で申請します。よろしければ「申請して決済へ進む」をタップしてください。
           </p>
         </div>
 
@@ -240,7 +260,7 @@ export default function Confirm5000Page() {
             transition: "all 0.2s",
           }}
         >
-          {loading ? "送信中…" : "申請する"}
+          {loading ? "処理中…" : "申請して決済へ進む →"}
         </button>
       </div>
     </main>
