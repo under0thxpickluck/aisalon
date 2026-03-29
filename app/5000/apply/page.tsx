@@ -17,12 +17,13 @@ type Draft5000 = {
   refName: string;
   refId: string;
   applyId: string;
+  plan: string;
 };
 
 const EMPTY: Draft5000 = {
   email: "", name: "", nameKana: "",
   ageBand: "", prefecture: "", city: "", job: "",
-  refName: "", refId: "", applyId: "",
+  refName: "", refId: "", applyId: "", plan: "",
 };
 
 function loadDraft5000(): Draft5000 {
@@ -226,8 +227,11 @@ export default function Apply5000Page() {
     // applyIdがなければ生成
     if (!d.applyId) {
       d.applyId = `5000_${Date.now()}`;
-      saveDraft5000(d);
     }
+    if (!d.plan) {
+      d.plan = sessionStorage.getItem("5000_plan") || "5000";
+    }
+    saveDraft5000(d);
     setDraft(d);
   }, []);
 

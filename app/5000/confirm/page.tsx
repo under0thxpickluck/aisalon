@@ -9,13 +9,13 @@ const STORAGE_KEY_5000 = "addval_5000_draft_v1";
 type Draft5000 = {
   email: string; name: string; nameKana: string;
   ageBand: string; prefecture: string; city: string; job: string;
-  refName: string; refId: string; applyId: string;
+  refName: string; refId: string; applyId: string; plan: string;
 };
 
 const EMPTY: Draft5000 = {
   email: "", name: "", nameKana: "",
   ageBand: "", prefecture: "", city: "", job: "",
-  refName: "", refId: "", applyId: "",
+  refName: "", refId: "", applyId: "", plan: "",
 };
 
 function loadDraft5000(): Draft5000 {
@@ -203,6 +203,7 @@ export default function Confirm5000Page() {
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: 16, padding: "0 20px", marginBottom: 20,
         }}>
+          <Row title="プラン" value={draft.plan ? `$${draft.plan} プラン` : "—"} />
           <Row title="メールアドレス" value={draft.email} />
           <Row title="お名前" value={draft.name} />
           <Row title="お名前（カタカナ）" value={draft.nameKana} />

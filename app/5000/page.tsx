@@ -149,6 +149,9 @@ export default function DaoMemberPage() {
   }
 
   function handleCta() {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("5000_plan", selectedPlan);
+    }
     router.push("/5000/apply");
   }
 

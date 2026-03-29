@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 type Apply5000Payload = {
   applyId?: string;
+  plan?: string;
   email?: string;
   name?: string;
   nameKana?: string;
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
     const safePayload = {
       action: "apply_5000",
       group: "5000",
-      plan: "5000",
+      plan: body.plan || "5000",
       applyId,
       email: body.email ?? "",
       name: body.name ?? "",
@@ -70,9 +71,11 @@ export async function POST(req: Request) {
       parsed = null;
     }
 
+    const ok = r.ok && (parsed as any)?.ok !== false;
     return NextResponse.json(
       {
-        ok: r.ok && (parsed as any)?.ok !== false,
+        ok,
+        apply_id: ok ? applyId : undefined,
         gas: { httpStatus: r.status, parsed },
       },
       { status: r.ok ? 200 : 400 }
