@@ -2919,6 +2919,8 @@ function handle_(key, body) {
         return json_({ ok: false, error: "mail_failed: " + mailErrMsg_5000 });
       }
     } else {
+      // メール送信済みだがステータスが未更新のケースを修正（GAS実行中断の救済）
+      applySheet_5000.getRange(targetRow_5000, idx_5000["status"] + 1).setValue("approved");
       resetSent_5000 = true;
     }
 
