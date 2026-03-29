@@ -2821,6 +2821,210 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // reset_resend_5000（/5000: 認証メール再送）
+  // =========================================================
+  if (action === "reset_resend_5000") {
+    const applyId_rr5 = str_(body.applyId);
+    if (!applyId_rr5) return json_({ ok: false, error: "applyId required" });
+
+    const ssId_rr5 = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+    if (!ssId_rr5) return json_({ ok: false, error: "SPREADSHEET_5000_ID not set" });
+
+    const applySheet_rr5 = SpreadsheetApp.openById(ssId_rr5).getSheetByName("applies");
+    if (!applySheet_rr5) return json_({ ok: false, error: "applies sheet not found" });
+
+    let header_rr5 = applySheet_rr5.getDataRange().getValues()[0];
+    ensureCols_(applySheet_rr5, header_rr5, [
+      "apply_id", "status", "email", "login_id",
+      "reset_token", "reset_expires", "reset_used_at", "reset_sent_at", "mail_error"
+    ]);
+    const lastCol_rr5 = applySheet_rr5.getLastColumn();
+    header_rr5 = applySheet_rr5.getRange(1, 1, 1, lastCol_rr5).getValues()[0];
+    const idx_rr5 = indexMap_(header_rr5);
+
+    const allData_rr5 = applySheet_rr5.getDataRange().getValues();
+    let targetRow_rr5 = -1;
+    for (let ri = 1; ri < allData_rr5.length; ri++) {
+      if (str_(allData_rr5[ri][idx_rr5["apply_id"]]) === applyId_rr5) {
+        targetRow_rr5 = ri + 1;
+        break;
+      }
+    }
+    if (targetRow_rr5 < 0) return json_({ ok: false, error: "applyId not found" });
+
+    // approved の行のみ再送可
+    const status_rr5 = str_(applySheet_rr5.getRange(targetRow_rr5, idx_rr5["status"] + 1).getValue());
+    if (status_rr5 !== "approved") {
+      return json_({ ok: false, error: "not_approved" });
+    }
+
+    const email_rr5 = str_(applySheet_rr5.getRange(targetRow_rr5, idx_rr5["email"] + 1).getValue());
+    const loginId_rr5 = str_(applySheet_rr5.getRange(targetRow_rr5, idx_rr5["login_id"] + 1).getValue());
+    if (!email_rr5 || !loginId_rr5) return json_({ ok: false, error: "missing email or login_id" });
+
+    // トークン再生成
+    const newToken_rr5 = genResetToken_();
+    const newExpires_rr5 = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    applySheet_rr5.getRange(targetRow_rr5, idx_rr5["reset_token"] + 1).setValue(newToken_rr5);
+    applySheet_rr5.getRange(targetRow_rr5, idx_rr5["reset_expires"] + 1).setValue(newExpires_rr5);
+    applySheet_rr5.getRange(targetRow_rr5, idx_rr5["reset_used_at"] + 1).setValue("");
+
+    sendResetMail_(email_rr5, loginId_rr5, newToken_rr5);
+    applySheet_rr5.getRange(targetRow_rr5, idx_rr5["reset_sent_at"] + 1).setValue(new Date());
+    if (idx_rr5["mail_error"] !== undefined) {
+      applySheet_rr5.getRange(targetRow_rr5, idx_rr5["mail_error"] + 1).setValue("");
+    }
+
+    return json_({ ok: true });
+  }
+
+  // =========================================================
+  // get_apply_status_5000（/5000: 申請ステータス照会）
+  // =========================================================
+  if (action === "get_apply_status_5000") {
+    const applyId_gs5 = str_(body.applyId);
+    if (!applyId_gs5) return json_({ ok: false, error: "applyId required" });
+
+    const ssId_gs5 = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+    if (!ssId_gs5) return json_({ ok: false, error: "SPREADSHEET_5000_ID not set" });
+
+    const applySheet_gs5 = SpreadsheetApp.openById(ssId_gs5).getSheetByName("applies");
+    if (!applySheet_gs5) return json_({ ok: false, error: "applies sheet not found" });
+
+    const header_gs5 = applySheet_gs5.getDataRange().getValues()[0];
+    const idx_gs5 = indexMap_(header_gs5);
+
+    const allData_gs5 = applySheet_gs5.getDataRange().getValues();
+    for (let ri = 1; ri < allData_gs5.length; ri++) {
+      if (str_(allData_gs5[ri][idx_gs5["apply_id"]]) === applyId_gs5) {
+        const row_gs5 = allData_gs5[ri];
+        const status_gs5 = str_(row_gs5[idx_gs5["status"]]);
+        const resetSentAt_gs5 = idx_gs5["reset_sent_at"] !== undefined ? row_gs5[idx_gs5["reset_sent_at"]] : "";
+        return json_({
+          ok: true,
+          apply_id: applyId_gs5,
+          status: status_gs5,
+          payment_status: idx_gs5["payment_status"] !== undefined ? str_(row_gs5[idx_gs5["payment_status"]]) : "",
+          plan: str_(row_gs5[idx_gs5["plan"]]),
+          mail_sent: Boolean(resetSentAt_gs5)
+        });
+      }
+    }
+    return json_({ ok: false, error: "applyId not found" });
+  }
+
+  // =========================================================
+  // payment_update_5000（/5000: IPN受信→シート更新→自動承認判定）
+  // =========================================================
+  if (action === "payment_update_5000") {
+    const ssId_pu5 = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+    if (!ssId_pu5) return json_({ ok: false, error: "SPREADSHEET_5000_ID not set" });
+
+    const ss_pu5 = SpreadsheetApp.openById(ssId_pu5);
+    const applySheet_pu5 = ss_pu5.getSheetByName("applies");
+    if (!applySheet_pu5) return json_({ ok: false, error: "applies sheet not found" });
+
+    // 必要列を保証
+    let header_pu5 = applySheet_pu5.getDataRange().getValues()[0];
+    ensureCols_(applySheet_pu5, header_pu5, [
+      "apply_id", "plan", "email", "status", "ref_id",
+      "expected_paid", "payment_id", "payment_status", "actually_paid",
+      "pay_currency", "paid_at", "approved_at", "last_ipn_at",
+      "auto_approve_reason", "login_id", "pw_hash", "pw_updated_at",
+      "reset_token", "reset_expires", "reset_used_at", "reset_sent_at",
+      "my_ref_code", "mail_error", "referral_processed_at"
+    ]);
+    const lastCol_pu5 = applySheet_pu5.getLastColumn();
+    header_pu5 = applySheet_pu5.getRange(1, 1, 1, lastCol_pu5).getValues()[0];
+    const idx_pu5 = indexMap_(header_pu5);
+
+    // apply_id で行を検索
+    const applyId_pu5 = str_(body.applyId);
+    if (!applyId_pu5) return json_({ ok: false, error: "applyId required" });
+
+    const allData_pu5 = applySheet_pu5.getDataRange().getValues();
+    let targetRow_pu5 = -1;
+    for (let ri = 1; ri < allData_pu5.length; ri++) {
+      if (str_(allData_pu5[ri][idx_pu5["apply_id"]]) === applyId_pu5) {
+        targetRow_pu5 = ri + 1;
+        break;
+      }
+    }
+    if (targetRow_pu5 < 0) return json_({ ok: false, error: "applyId not found" });
+
+    const paymentStatus_pu5 = str_(body.paymentStatus);
+    const actuallyPaid_pu5 = Number(body.actuallyPaid) || 0;
+
+    // payment_id / payment_status / actually_paid / pay_currency / last_ipn_at を更新
+    if (idx_pu5["payment_id"] !== undefined && body.paymentId) {
+      applySheet_pu5.getRange(targetRow_pu5, idx_pu5["payment_id"] + 1).setValue(str_(body.paymentId));
+    }
+    if (idx_pu5["payment_status"] !== undefined) {
+      applySheet_pu5.getRange(targetRow_pu5, idx_pu5["payment_status"] + 1).setValue(paymentStatus_pu5);
+    }
+    if (idx_pu5["actually_paid"] !== undefined) {
+      applySheet_pu5.getRange(targetRow_pu5, idx_pu5["actually_paid"] + 1).setValue(actuallyPaid_pu5);
+    }
+    if (idx_pu5["pay_currency"] !== undefined && body.payCurrency) {
+      applySheet_pu5.getRange(targetRow_pu5, idx_pu5["pay_currency"] + 1).setValue(str_(body.payCurrency));
+    }
+    if (idx_pu5["last_ipn_at"] !== undefined) {
+      applySheet_pu5.getRange(targetRow_pu5, idx_pu5["last_ipn_at"] + 1).setValue(new Date());
+    }
+
+    // NOWPayments status → /5000 内部 status マッピング
+    const statusMap_pu5 = {
+      "waiting": "payment_waiting",
+      "confirming": "payment_confirming",
+      "confirmed": "payment_confirmed",
+      "partially_paid": "manual_review",
+      "failed": "pending_error",
+      "expired": "pending_error",
+      "refunded": "pending_error"
+    };
+
+    let autoApproved_pu5 = false;
+    let approveResult_pu5 = null;
+
+    if (paymentStatus_pu5 === "finished") {
+      // paid_at 記録
+      if (idx_pu5["paid_at"] !== undefined) {
+        applySheet_pu5.getRange(targetRow_pu5, idx_pu5["paid_at"] + 1).setValue(new Date());
+      }
+
+      // 金額チェック
+      const expectedPaid_pu5 = Number(applySheet_pu5.getRange(targetRow_pu5, idx_pu5["expected_paid"] + 1).getValue()) || 0;
+      const tolerance_pu5 = 0.02;
+
+      if (expectedPaid_pu5 > 0 && actuallyPaid_pu5 >= expectedPaid_pu5 * (1 - tolerance_pu5)) {
+        // 自動承認
+        approveResult_pu5 = approveRowCore5000_(ss_pu5, applySheet_pu5, header_pu5, idx_pu5, targetRow_pu5, "payment_finished");
+        if (approveResult_pu5.ok) {
+          autoApproved_pu5 = true;
+        }
+      } else {
+        // 金額不足
+        applySheet_pu5.getRange(targetRow_pu5, idx_pu5["status"] + 1).setValue("manual_review");
+        Logger.log("[payment_update_5000] amount insufficient: actually=" + actuallyPaid_pu5 + " expected=" + expectedPaid_pu5);
+      }
+    } else if (statusMap_pu5[paymentStatus_pu5]) {
+      // approved_at が既にある（承認済み）なら status を上書きしない
+      const approvedAt_pu5 = applySheet_pu5.getRange(targetRow_pu5, idx_pu5["approved_at"] + 1).getValue();
+      if (!approvedAt_pu5) {
+        applySheet_pu5.getRange(targetRow_pu5, idx_pu5["status"] + 1).setValue(statusMap_pu5[paymentStatus_pu5]);
+      }
+    }
+
+    Logger.log("[payment_update_5000] applyId=" + applyId_pu5 + " paymentStatus=" + paymentStatus_pu5 + " autoApproved=" + autoApproved_pu5);
+    return json_({
+      ok: true,
+      autoApproved: autoApproved_pu5,
+      reason: autoApproved_pu5 ? "payment_finished" : (statusMap_pu5[paymentStatus_pu5] || paymentStatus_pu5),
+      approveResult: approveResult_pu5
+    });
+  }
+
+  // =========================================================
   // admin_list_5000（/5000スプレッドシートの申請一覧を返す）
   // =========================================================
   if (action === "admin_list_5000") {
