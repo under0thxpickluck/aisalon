@@ -1,4 +1,7 @@
 // app/api/song/approve-lyrics/route.ts
+// NOTE: 現行フロー（/start → /approve-structure）では未使用ルート。
+// start が直接 structure_ready まで生成するため、このルートへは到達しない。
+// 将来の「手動歌詞承認」導線として残置。削除は将来のフロー再設計時に行うこと。
 import { NextResponse } from "next/server";
 import { getJob, updateJob } from "../_jobStore";
 
@@ -58,12 +61,12 @@ async function generateStructureBackground(
     await updateJob(jobId, {
       status: "structure_ready",
       structureData: {
-        bpm:      Number(parsed.bpm ?? 120),
-        key:      String(parsed.key ?? "C major"),
-        sections: Array.isArray(parsed.sections)
+        bpm:         Number(parsed.bpm ?? 120),
+        key:         String(parsed.key ?? "C major"),
+        sections:    Array.isArray(parsed.sections)
           ? parsed.sections.map(String)
           : ["Intro", "Verse", "Chorus", "Outro"],
-        hook: String(parsed.hookSummary ?? ""),
+        hookSummary: String(parsed.hookSummary ?? ""),
       },
     });
   } catch (e: any) {
