@@ -43,6 +43,7 @@ export type SongJob = {
     theme?: string; genre?: string; mood?: string;
     language?: string; durationTargetSec?: number;
     structurePreset?: string; moodTags?: string[];
+    isPro?: boolean;
   };
   audioUrl?:      string;
   downloadUrl?:   string;

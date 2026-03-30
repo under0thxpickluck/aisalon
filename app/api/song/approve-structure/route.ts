@@ -24,12 +24,27 @@ export const maxDuration = 300;
 // ── メイン生成パイプライン ────────────────────────────────────────────────────
 
 async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
-  const { jobId, structureData, prompt, lyricsData } = job;
+  const { jobId, structureData, prompt } = job;
   const rawTempPath   = path.join(os.tmpdir(), `${jobId}_raw.mp3`);
   const finalTempPath = path.join(os.tmpdir(), `${jobId}_final.mp3`);
 
   // ── Phase 1: ElevenLabs 音声生成 ────────────────────────────────────────────
   await updateJob(jobId, { status: "generating_audio", stage: "generating" });
+
+  const isPro = !!prompt.isPro;
+
+  // Pro: ムードに応じて構成プリセットを選択
+  function chooseStructurePreset(mood?: string): string {
+    if (!mood) return isPro ? "short_pop" : "hook_only";
+    const m = mood;
+    if (isPro) {
+      if (/激しい|明るい|さわやか/.test(m)) return "upbeat";
+      if (/ロマンチック|切ない|エモい/.test(m)) return "ballad";
+      if (/クール|落ち着いた/.test(m)) return "cinematic";
+      return "short_pop";
+    }
+    return "hook_only";
+  }
 
   let audioBuffer: ArrayBuffer;
   try {
@@ -39,13 +54,13 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
       mood:              prompt.mood,
       bpm:               structureData?.bpm ?? 120,
       key:               structureData?.key ?? "C major",
-      lyrics:            lyricsData?.lyrics,
-      lyricsMode:        lyricsData?.lyrics ? "manual" : "auto",
+      lyricsMode:        "auto",
       language:          prompt.language ?? "ja",
-      durationTargetSec: 150,
+      durationTargetSec: isPro ? 180 : 150,
       vocalMode:         "vocal",
-      structurePreset:   "hook_only",
+      structurePreset:   chooseStructurePreset(prompt.mood),
       moodTags:          prompt.moodTags ?? [],
+      isPro,
     };
 
     const provider = new ElevenLabsProvider(apiKey);

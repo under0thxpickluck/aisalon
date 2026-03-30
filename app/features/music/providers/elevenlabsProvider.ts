@@ -15,6 +15,7 @@ export type MusicGenerateInput = {
   mood?: string
   bpm?: number
   key?: string
+  isPro?: boolean
 }
 
 export type MusicGenerateResult = {
@@ -75,6 +76,80 @@ export function buildElevenLabsPrompt(input: MusicGenerateInput): string {
   return parts.filter(Boolean).join(", ")
 }
 
+// Pro用の詳細プロンプト（Core/Infraプラン向け）
+export function buildElevenLabsProPrompt(input: MusicGenerateInput): string {
+  const parts: string[] = []
+
+  // ジャンルを英語的な詳細表現に
+  const genreMap: Record<string, string> = {
+    "ポップ": "J-Pop, modern pop production",
+    "ロック": "J-Rock, electric guitar driven rock",
+    "ジャズ": "contemporary jazz, sophisticated chord progressions",
+    "クラシック": "orchestral, classical arrangement, strings and piano",
+    "EDM": "electronic dance music, powerful synthesizer leads, four-on-the-floor beat",
+    "ヒップホップ": "J-Hip-Hop, trap influenced, heavy 808 bass",
+    "R&B": "R&B, smooth groove, warm bass line, lush chords",
+    "アニメ": "anime-style J-Pop, energetic and melodic, catchy hook",
+    "ローファイ": "lo-fi hip-hop, relaxed tempo, warm vinyl texture, mellow chords",
+    "シネマティック": "cinematic orchestral, epic build-up, emotional strings and piano",
+  }
+  parts.push(genreMap[input.genre ?? ""] || input.genre || "J-Pop")
+
+  // ムードを詳細な英語表現に
+  const moodMap: Record<string, string> = {
+    "さわやか": "fresh, breezy, uplifting, bright atmosphere",
+    "クール": "cool, sophisticated, smooth, laid-back vibe",
+    "エモい": "emotionally resonant, heartfelt, nostalgic, bittersweet",
+    "明るい": "cheerful, bright, energetic, positive energy",
+    "落ち着いた": "calm, serene, relaxed, peaceful mood",
+    "ロマンチック": "romantic, tender, warm and intimate, passionate",
+    "激しい": "intense, powerful, high energy, dynamic and driving",
+    "切ない": "melancholic, poignant, longing, emotional depth",
+  }
+  const moodStr = input.mood?.split("・").map((m) => moodMap[m.trim()] || m).join(", ")
+  if (moodStr) parts.push(moodStr)
+
+  // テーマ
+  if (input.prompt) parts.push(input.prompt)
+
+  // ボーカル（詳細指定）
+  parts.push(
+    "professional Japanese female vocalist, clear and expressive singing, " +
+    "warm timbre, precise intonation, emotional delivery with natural vibrato, " +
+    "studio vocal recording quality"
+  )
+
+  // BPM・Key
+  if (input.bpm) parts.push(`${input.bpm} BPM, precise tempo`)
+  if (input.key)  parts.push(`key of ${input.key}`)
+
+  // オーディオ品質（詳細）
+  parts.push(
+    "professional studio production, crystal clear mix, " +
+    "well-balanced frequency spectrum, punchy transients, " +
+    "wide stereo field, mastered to commercial loudness standards"
+  )
+
+  // デュレーション
+  const duration = input.durationTargetSec ?? 180
+  const minutes  = Math.floor(duration / 60)
+  const seconds  = duration % 60
+  parts.push(`around ${minutes} minutes ${seconds > 0 ? seconds + " seconds" : ""}`)
+
+  // 構成（Proは詳細）
+  const structureMap: Record<string, string> = {
+    short_pop:  "song structure: 8-bar intro, 16-bar verse, 8-bar pre-chorus, 16-bar chorus, 16-bar verse, 16-bar chorus, 8-bar outro",
+    ballad:     "song structure: 8-bar intro, 16-bar verse, 8-bar pre-chorus, 16-bar chorus, 16-bar verse, 16-bar chorus, 8-bar bridge, 16-bar final chorus, 8-bar outro",
+    upbeat:     "song structure: 4-bar intro, 16-bar verse, 8-bar pre-chorus, 16-bar chorus, 16-bar verse, 16-bar chorus, 8-bar bridge, 16-bar final chorus, 4-bar outro",
+    cinematic:  "song structure: 16-bar atmospheric intro, gradual build, 32-bar climax, emotional resolution, 8-bar outro",
+    hook_only:  "song structure: 16-bar powerful hook chorus section, repeated with variation",
+  }
+  const structStr = structureMap[input.structurePreset ?? "short_pop"]
+  if (structStr) parts.push(structStr)
+
+  return parts.filter(Boolean).join(", ")
+}
+
 export class ElevenLabsProvider implements MusicProvider {
   name = "elevenlabs"
   private apiKey: string
@@ -84,8 +159,8 @@ export class ElevenLabsProvider implements MusicProvider {
   }
 
   async generateMusic(input: MusicGenerateInput): Promise<MusicGenerateResult> {
-    const prompt      = buildElevenLabsPrompt(input)
-    const durationSec = input.durationTargetSec ?? 165
+    const prompt      = input.isPro ? buildElevenLabsProPrompt(input) : buildElevenLabsPrompt(input)
+    const durationSec = input.durationTargetSec ?? (input.isPro ? 180 : 165)
 
     console.log(`[ElevenLabs] Starting music generation`, {
       promptLength: prompt.length,
@@ -102,7 +177,7 @@ export class ElevenLabsProvider implements MusicProvider {
       body: JSON.stringify({
         prompt:             prompt,
         lyrics:             input.lyrics ?? undefined,
-        music_length_ms:    150000,
+        music_length_ms:    durationSec * 1000,
         model_id:           "music_v1",
         force_instrumental: input.vocalMode === "instrumental",
       }),
