@@ -181,6 +181,7 @@ type QualityCheckResult = {
   gate:               "pass" | "review" | "reject" | null;
   lyricsQualityScore: number;
   repeatScore:        number;
+  qualityUnavailable: boolean;  // ASR未実施等で品質スコアが信頼できない場合 true
 };
 
 async function runAsrAndQuality(
@@ -280,11 +281,12 @@ async function runAsrAndQuality(
       gate:               gateResult.gate,
       lyricsQualityScore: qualityResult.lyricsQualityScore,
       repeatScore:        repeatResult.repeatScore,
+      qualityUnavailable: false,
     };
 
   } catch (asrErr: any) {
     const msg = String(asrErr?.message ?? asrErr);
-    console.warn(`[Job ${jobId}] ASR failed (fallback to singable): ${msg}`);
+    console.warn(`[Job ${jobId}] ASR failed — qualityUnavailable=true (reason: ${msg})`);
     await updateJob(jobId, {
       asrStatus:            "failed",
       asrError:             msg,
@@ -292,9 +294,9 @@ async function runAsrAndQuality(
       lyricsSource:         "singable",
       distributionReady:    false,
       lyricsReviewRequired: true,
-      lyricsGateResult:     "reject",
+      lyricsGateResult:     null,   // スコア不明なので reject と断定しない
     });
-    return { gate: "reject", lyricsQualityScore: 0, repeatScore: 0 };
+    return { gate: null, lyricsQualityScore: 0, repeatScore: 0, qualityUnavailable: true };
   }
 }
 
@@ -310,28 +312,35 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
   if (!attempt1.audioAvailable) return; // ElevenLabs 失敗 → already set status=failed
 
   const audioForAsr1 = attempt1.finalUrl ?? attempt1.rawUrl ?? null;
-  let quality1: QualityCheckResult = { gate: null, lyricsQualityScore: 0, repeatScore: 0 };
+  let quality1: QualityCheckResult = { gate: null, lyricsQualityScore: 0, repeatScore: 0, qualityUnavailable: true };
 
   if (audioForAsr1) {
     quality1 = await runAsrAndQuality(job, apiKey, audioForAsr1);
   } else {
+    console.warn(`[Job ${jobId}] ASR skipped — no audio URL available (qualityUnavailable=true)`);
     await updateJob(jobId, {
       asrStatus:            "failed",
       asrError:             "no_audio_url",
       lyricsSource:         "singable",
       distributionReady:    false,
       lyricsReviewRequired: true,
-      lyricsGateResult:     "reject",
+      lyricsGateResult:     null,  // スコア不明なので reject と断定しない
     });
-    quality1 = { gate: "reject", lyricsQualityScore: 0, repeatScore: 0 };
+    // qualityUnavailable=true のまま（デフォルト値を使用）
   }
 
   // ── 自動再生成チェック ──────────────────────────────────────────────────────
   const currentJob1       = await getJob(jobId);
   const generationAttempt = currentJob1?.generationAttempt ?? 1;
+  // qualityUnavailable の場合は品質スコアが信頼できないため再生成しない
   const shouldRegenerate  =
     generationAttempt === 1 &&
+    !quality1.qualityUnavailable &&
     (quality1.lyricsQualityScore < 65 || quality1.repeatScore >= 60);
+
+  if (quality1.qualityUnavailable) {
+    console.log(`[Job ${jobId}] Skipping auto-regeneration — quality unavailable (ASR not executed)`);
+  }
 
   let usedFinalUrl      = attempt1.finalUrl;
   let usedRawUrl        = attempt1.rawUrl;
