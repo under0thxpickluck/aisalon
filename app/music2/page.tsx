@@ -27,6 +27,47 @@ type StructureData = {
   title: string;
 };
 
+// ── 履歴 ─────────────────────────────────────────────────────────────────────
+
+const HISTORY_KEY = "lifai_music2_history_v1";
+const HISTORY_MAX = 5;
+
+type MusicHistoryEntry = {
+  jobId: string;
+  title: string;
+  audioUrl: string;
+  downloadUrl: string;
+  lyrics: string;
+  createdAt: string; // ISO string
+};
+
+function loadHistory(): MusicHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveToHistory(entry: MusicHistoryEntry): MusicHistoryEntry[] {
+  const prev = loadHistory().filter((e) => e.jobId !== entry.jobId);
+  const next = [entry, ...prev].slice(0, HISTORY_MAX);
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
+}
+
+function formatDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return "";
+  }
+}
+
 // ── ユーティリティ ───────────────────────────────────────────────────────────
 
 function downloadAudio(url: string, title: string) {
@@ -79,11 +120,17 @@ export default function Music2Page() {
   const [unlocked, setUnlocked] = useState(false);
   const [pwInput, setPwInput] = useState("");
 
+  // 履歴
+  const [history, setHistory] = useState<MusicHistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyPlaying, setHistoryPlaying] = useState<string | null>(null);
+
   // ── 認証チェック ─────────────────────────────────────────────────────────
 
   useEffect(() => {
     const auth = getAuth();
     if (!auth) router.replace("/login");
+    setHistory(loadHistory());
     return () => {
       if (pollRef.current) clearTimeout(pollRef.current);
     };
@@ -286,6 +333,18 @@ export default function Music2Page() {
             setResultLyrics(rData.lyrics ?? "");
             setInfoMsg(null);
             setStep(4);
+            // 履歴に保存
+            if (rData.audioUrl) {
+              const updated = saveToHistory({
+                jobId: jid,
+                title: rData.title || "無題",
+                audioUrl: rData.audioUrl,
+                downloadUrl: rData.downloadUrl ?? rData.audioUrl,
+                lyrics: rData.lyrics ?? "",
+                createdAt: new Date().toISOString(),
+              });
+              setHistory(updated);
+            }
           } else {
             setErrorMsg("曲の取得に失敗しました。");
           }
@@ -592,11 +651,89 @@ export default function Music2Page() {
 
   // ── レンダリング ──────────────────────────────────────────────────────────
 
+  // ── 履歴サイドバー ────────────────────────────────────────────────────────
+
+  const HistorySidebar = () => (
+    <div className="w-full lg:w-52 flex-shrink-0">
+      {/* モバイル：折りたたみ */}
+      <div className="lg:hidden mb-3">
+        <button
+          onClick={() => setHistoryOpen((v) => !v)}
+          className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          <span>🎵 最近の曲 ({history.length})</span>
+          <span>{historyOpen ? "▲" : "▼"}</span>
+        </button>
+        {historyOpen && <HistoryList />}
+      </div>
+      {/* デスクトップ：常時表示 */}
+      <div className="hidden lg:block">
+        <p className="mb-2 px-1 text-[11px] font-bold text-slate-400 uppercase tracking-wide">最近の曲</p>
+        <HistoryList />
+      </div>
+    </div>
+  );
+
+  const HistoryList = () => (
+    <div className="mt-1 flex flex-col gap-2">
+      {history.length === 0 && (
+        <p className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 text-[11px] text-slate-400 text-center">
+          まだ曲がありません
+        </p>
+      )}
+      {history.map((entry) => (
+        <div
+          key={entry.jobId}
+          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+        >
+          <p className="text-[11px] font-bold text-slate-800 truncate" title={entry.title}>
+            {entry.title || "無題"}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">{formatDate(entry.createdAt)}</p>
+          <audio
+            controls
+            src={entry.audioUrl}
+            className="mt-2 w-full h-7"
+            style={{ height: "28px" }}
+          />
+          <div className="mt-2 flex gap-1.5">
+            <button
+              onClick={() => downloadAudio(entry.downloadUrl, entry.title)}
+              className="flex-1 rounded-xl border border-indigo-200 bg-white py-1 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50"
+            >
+              MP3
+            </button>
+            {entry.lyrics && (
+              <button
+                onClick={() => {
+                  const blob = new Blob([`${entry.title}\n\n${entry.lyrics}`], { type: "text/plain;charset=utf-8" });
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `${entry.title || "lyrics"}_lyrics.txt`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                }}
+                className="flex-1 rounded-xl border border-slate-200 bg-white py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                歌詞
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <main className="min-h-screen text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
 
-      <div className="mx-auto max-w-[720px] px-4 py-10">
+      <div className="mx-auto max-w-[960px] px-4 py-10 lg:flex lg:gap-5 lg:items-start">
+        {/* 左サイドバー（履歴） */}
+        <HistorySidebar />
+
+        {/* メインカード */}
+        <div className="flex-1 min-w-0">
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
 
           {/* ヘッダー */}
@@ -997,6 +1134,7 @@ export default function Music2Page() {
 
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
+    </div>
     </main>
   );
 }
