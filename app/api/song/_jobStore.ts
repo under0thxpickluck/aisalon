@@ -47,6 +47,9 @@ export type SongJob = {
     language?: string; durationTargetSec?: number;
     structurePreset?: string; moodTags?: string[];
     isPro?: boolean;
+    bpmHint?: number;       // Pro: BPMヒント
+    vocalStyle?: string;    // Pro: ボーカルスタイル
+    vocalMood?: string;     // Pro: ボーカルムード
   };
   audioUrl?:      string;
   downloadUrl?:   string;

@@ -5402,12 +5402,17 @@ function ensureMusicJobCols_(sheet) {
   }
   var existing = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
     .map(function(h) { return String(h); });
+  var missingCols = [];
   MUSIC_JOB_COLS_.forEach(function(col) {
     if (existing.indexOf(col) === -1) {
       sheet.getRange(1, existing.length + 1).setValue(col);
       existing.push(col);
+      missingCols.push(col);
     }
   });
+  if (missingCols.length > 0) {
+    Logger.log('song_jobs: added missing columns: ' + missingCols.join(', '));
+  }
 }
 
 // action: create_music_job

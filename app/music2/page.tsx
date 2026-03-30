@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, getAuthSecret } from "../lib/auth";
+import { AppSidebar } from "@/components/AppSidebar";
 
 // ── 定数 ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,16 @@ const MOODS = [
 ];
 
 const PRO_PLANS = ["500", "1000"];
+
+const BPM_OPTIONS = [
+  { label: "スロー (60-80)",      value: 70  },
+  { label: "ミディアム (90-110)", value: 100 },
+  { label: "アップテンポ (120-140)", value: 130 },
+  { label: "激速 (150+)",         value: 160 },
+];
+
+const VOCAL_STYLES = ["女性ボーカル", "男性ボーカル", "混声", "ボーカルなし"];
+const VOCAL_MOODS  = ["甘い", "クール", "パワフル", "ウィスパー", "エモーショナル"];
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -124,6 +135,11 @@ export default function Music2Page() {
   // 履歴
   const [history, setHistory] = useState<MusicHistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Pro 追加入力
+  const [bpmHint, setBpmHint] = useState<number | null>(null);
+  const [vocalStyle, setVocalStyle] = useState<string>("");
+  const [vocalMood, setVocalMood] = useState<string>("");
 
   const isPro = plan !== null && PRO_PLANS.includes(plan);
 
@@ -294,7 +310,13 @@ export default function Music2Page() {
       const res  = await fetch("/api/song/start", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ id: (auth as any).id, code, theme: theme.trim(), genre, mood: moodStr, isPro }),
+        body:    JSON.stringify({
+          id: (auth as any).id, code, theme: theme.trim(), genre, mood: moodStr, isPro,
+          bpmHint:    isPro && bpmHint    ? bpmHint    : undefined,
+          vocalStyle: isPro && vocalStyle ? vocalStyle : undefined,
+          vocalMood:  isPro && vocalMood  ? vocalMood  : undefined,
+          language:   "ja",
+        }),
       });
       const data = await res.json();
 
@@ -426,6 +448,9 @@ export default function Music2Page() {
     setInfoMsg(null);
     setAudioStage(null);
     setStageLabel(null);
+    setBpmHint(null);
+    setVocalStyle("");
+    setVocalMood("");
   }
 
   // ── ムード切り替え ────────────────────────────────────────────────────────
@@ -490,84 +515,31 @@ export default function Music2Page() {
 
   // ── 履歴サイドバー ────────────────────────────────────────────────────────
 
-  const HistorySidebar = () => (
-    <div className="w-full lg:w-52 flex-shrink-0">
-      {/* モバイル：折りたたみ */}
-      <div className="lg:hidden mb-3">
-        <button
-          onClick={() => setHistoryOpen((v) => !v)}
-          className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-        >
-          <span>🎵 最近の曲 ({history.length})</span>
-          <span>{historyOpen ? "▲" : "▼"}</span>
-        </button>
-        {historyOpen && <HistoryList />}
-      </div>
-      {/* デスクトップ：常時表示 */}
-      <div className="hidden lg:block">
-        <p className="mb-2 px-1 text-[11px] font-bold text-slate-400 uppercase tracking-wide">最近の曲</p>
-        <HistoryList />
-      </div>
-    </div>
-  );
-
-  const HistoryList = () => (
-    <div className="mt-1 flex flex-col gap-2">
-      {history.length === 0 && (
-        <p className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 text-[11px] text-slate-400 text-center">
-          まだ曲がありません
-        </p>
-      )}
-      {history.map((entry) => (
-        <div
-          key={entry.jobId}
-          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-        >
-          <p className="text-[11px] font-bold text-slate-800 truncate" title={entry.title}>
-            {entry.title || "無題"}
-          </p>
-          <p className="mt-0.5 text-[10px] text-slate-400">{formatDate(entry.createdAt)}</p>
-          <audio
-            controls
-            src={entry.audioUrl}
-            className="mt-2 w-full h-7"
-            style={{ height: "28px" }}
-          />
-          <div className="mt-2 flex gap-1.5">
-            <button
-              onClick={() => downloadAudio(entry.downloadUrl, entry.title)}
-              className="flex-1 rounded-xl border border-indigo-200 bg-white py-1 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50"
-            >
-              MP3
-            </button>
-            {entry.lyrics && (
-              <button
-                onClick={() => {
-                  const blob = new Blob([`${entry.title}\n\n${entry.lyrics}`], { type: "text/plain;charset=utf-8" });
-                  const a = document.createElement("a");
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `${entry.title || "lyrics"}_lyrics.txt`;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                }}
-                className="flex-1 rounded-xl border border-slate-200 bg-white py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
-              >
-                歌詞
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 
   return (
     <main className="min-h-screen text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
 
-      <div className="mx-auto max-w-[960px] px-4 py-10 lg:flex lg:gap-5 lg:items-start">
-        {/* 左サイドバー（履歴） */}
-        <HistorySidebar />
+      <div className="mx-auto max-w-[1100px] px-4 py-10 lg:flex lg:gap-5 lg:items-start">
+        {/* 左サイドバー（共通） */}
+        <div className="hidden lg:block">
+          <AppSidebar musicHistory={history} activePage="/music2" />
+        </div>
+        {/* モバイル用折りたたみ履歴ボタン */}
+        <div className="lg:hidden mb-3">
+          <button
+            onClick={() => setHistoryOpen((v) => !v)}
+            className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            <span>🎵 最近の曲 ({history.length})</span>
+            <span>{historyOpen ? "▲" : "▼"}</span>
+          </button>
+          {historyOpen && (
+            <div className="mt-2">
+              <AppSidebar musicHistory={history} activePage="/music2" />
+            </div>
+          )}
+        </div>
 
         {/* メインカード */}
         <div className="flex-1 min-w-0">
@@ -680,6 +652,67 @@ export default function Music2Page() {
                   ))}
                 </div>
               </div>
+
+              {/* Pro追加設定（isPro === true の場合のみ表示） */}
+              {isPro && (
+                <div className="mt-5 rounded-[18px] border border-violet-200 bg-violet-50 p-4">
+                  <p className="text-xs font-bold text-violet-700 mb-3">🎛️ Pro設定（任意）</p>
+
+                  {/* BPMヒント */}
+                  <div className="mb-3">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">BPM目安</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {BPM_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setBpmHint(bpmHint === opt.value ? null : opt.value)}
+                          className={[chipBase, bpmHint === opt.value ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ボーカルスタイル */}
+                  <div className="mb-3">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">ボーカルスタイル</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {VOCAL_STYLES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setVocalStyle(vocalStyle === v ? "" : v)}
+                          className={[chipBase, vocalStyle === v ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ボーカルムード */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">ボーカルムード</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {VOCAL_MOODS.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setVocalMood(vocalMood === v ? "" : v)}
+                          className={[chipBase, vocalMood === v ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* BP表示 */}
               <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">

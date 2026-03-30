@@ -36,7 +36,8 @@ async function generateStructureAndLyrics(
   theme: string,
   genre: string,
   mood: string,
-  apiKey: string
+  apiKey: string,
+  options?: { isPro?: boolean; bpmHint?: number; vocalStyle?: string; vocalMood?: string; language?: string }
 ): Promise<{ structureData: any; masterLyrics: string } | null> {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 40_000);
@@ -85,7 +86,11 @@ async function generateStructureAndLyrics(
           },
           {
             role: "user",
-            content: `以下のテーマ・ジャンル・雰囲気から楽曲構成と歌詞を生成してください。\n\nテーマ：${theme}\nジャンル：${genre}\n雰囲気：${mood}`,
+            content: `以下のテーマ・ジャンル・雰囲気から楽曲構成と歌詞を生成してください。\n\nテーマ：${theme}\nジャンル：${genre}\n雰囲気：${mood}${
+  options?.isPro
+    ? `\nBPM目安：${options.bpmHint ?? "自由"}\nボーカルスタイル：${options.vocalStyle ?? "指定なし"}\nボーカルムード：${options.vocalMood ?? "指定なし"}\n言語：${options.language ?? "日本語"}\n\n※Proモード：歌詞は歌唱表現に優れた自然な日本語を使い、1行12〜16音節に収めてください。`
+    : ""
+}`,
           },
         ],
       }),
@@ -131,7 +136,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const { id, code, theme, genre, mood, isPro } = body ?? {};
+  const { id, code, theme, genre, mood, isPro, bpmHint, vocalStyle, vocalMood, language } = body ?? {};
 
   if (!id || !code) {
     return NextResponse.json({ ok: false, error: "auth_required" }, { status: 401 });
@@ -193,10 +198,14 @@ export async function POST(req: Request) {
     jobId,
     String(id),
     {
-      theme:  String(theme),
-      genre:  String(genre),
-      mood:   String(mood),
-      isPro:  !!isPro,
+      theme:      String(theme),
+      genre:      String(genre),
+      mood:       String(mood),
+      isPro:      !!isPro,
+      bpmHint:    bpmHint ? Number(bpmHint) : undefined,
+      vocalStyle: vocalStyle ? String(vocalStyle) : undefined,
+      vocalMood:  vocalMood ? String(vocalMood) : undefined,
+      language:   language  ? String(language)  : "ja",
     },
     BP_COSTS.music_full
   );
@@ -209,7 +218,10 @@ export async function POST(req: Request) {
   }
 
   // 構成 + master_lyrics を同時生成
-  const generated = await generateStructureAndLyrics(jobId, String(theme), String(genre), String(mood), openaiKey);
+  const generated = await generateStructureAndLyrics(
+    jobId, String(theme), String(genre), String(mood), openaiKey,
+    { isPro: !!isPro, bpmHint: bpmHint ? Number(bpmHint) : undefined, vocalStyle, vocalMood, language }
+  );
 
   // singable_lyrics を生成（失敗してもmaster_lyricsで続行）
   if (generated?.masterLyrics) {
