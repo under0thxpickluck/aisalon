@@ -362,6 +362,8 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
     console.log(`[Job ${jobId}] attempt2 started`);
     const attempt2 = await generateAudioAttempt(job, apiKey, { attemptNum: 2, maxChorusRepeats: 1 });
 
+    let attempt2Adopted = false;  // 実際に attempt2 を最終採用したかどうか
+
     if (!attempt2.audioAvailable) {
       console.warn(`[Job ${jobId}] attempt2 generation failed — falling back to attempt1 results`);
       // attempt1 の usedFinalUrl / usedRawUrl はそのまま維持
@@ -377,6 +379,7 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
           usedRawUrl        = attempt2.rawUrl;
           usedPostprocessOk = attempt2.postprocessOk;
           usedPreset        = (attempt2.preset as PostprocessPreset) || "natural";
+          attempt2Adopted   = true;
         } else {
           console.warn(`[Job ${jobId}] attempt2 ASR unavailable — falling back to attempt1 results`);
         }
@@ -385,7 +388,7 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
       }
     }
 
-    const selectedAttempt = (usedFinalUrl === attempt2.finalUrl || usedRawUrl === attempt2.rawUrl) ? 2 : 1;
+    const selectedAttempt = attempt2Adopted ? 2 : 1;
     console.log(`[Job ${jobId}] final selected attempt=${selectedAttempt} finalGate=${finalGate}`);
   }
 
