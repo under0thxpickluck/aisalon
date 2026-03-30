@@ -1,24 +1,38 @@
 // app/api/song/approve-structure/route.ts
-// ElevenLabs版（Replicate + Renderマージサーバー → ElevenLabs 1回呼び出しに置き換え）
+// 後加工パイプライン付き音楽生成
+// ElevenLabs → raw保存 → postprocess → final保存 → completed
+
 import { NextResponse } from "next/server";
+import os from "os";
+import path from "path";
+import fs from "fs";
 import { getJob, updateJob, type SongJob } from "../_jobStore";
 import { BP_COSTS } from "@/app/lib/bp-config";
 import {
   ElevenLabsProvider,
-  uploadToR2,
   type MusicGenerateInput,
 } from "@/app/features/music/providers/elevenlabsProvider";
+import { choosePostprocessPreset } from "@/lib/music/presets";
+import { runPostprocess } from "@/lib/music/postprocess";
+import { uploadRawAudio, uploadFinalAudio, uploadAnalysisJson, cleanupTempFiles } from "@/lib/music/storage";
+import { mergeRightsLog } from "@/lib/music/rights-log";
 
 export const runtime     = "nodejs";
 export const dynamic     = "force-dynamic";
 export const maxDuration = 300;
 
-async function generateAudioBackground(job: SongJob, apiKey: string): Promise<void> {
+// ── メイン生成パイプライン ────────────────────────────────────────────────────
+
+async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
   const { jobId, structureData, prompt, lyricsData } = job;
+  const rawTempPath   = path.join(os.tmpdir(), `${jobId}_raw.mp3`);
+  const finalTempPath = path.join(os.tmpdir(), `${jobId}_final.mp3`);
 
+  // ── Phase 1: ElevenLabs 音声生成 ────────────────────────────────────────────
+  await updateJob(jobId, { status: "generating_audio", stage: "generating" });
+
+  let audioBuffer: ArrayBuffer;
   try {
-    await updateJob(jobId, { stage: "generating" });
-
     const input: MusicGenerateInput = {
       prompt:            prompt.theme ?? prompt.genre ?? "",
       genre:             prompt.genre,
@@ -36,29 +50,143 @@ async function generateAudioBackground(job: SongJob, apiKey: string): Promise<vo
 
     const provider = new ElevenLabsProvider(apiKey);
     const result   = await provider.generateMusic(input);
+    audioBuffer    = result.audioBuffer;
 
-    // R2に必ず保存する（base64/data URLは使わない）
-    const r2Url = await uploadToR2(result.audioBuffer, jobId, job.userId ?? "unknown");
-    if (!r2Url) {
-      throw new Error("r2_upload_failed: R2へのアップロードに失敗しました");
+    // raw を一時ファイルに書き出し
+    fs.writeFileSync(rawTempPath, Buffer.from(audioBuffer));
+    console.log(`[Job ${jobId}] ElevenLabs raw generated: ${audioBuffer.byteLength} bytes`);
+  } catch (err: any) {
+    const msg = String(err?.message ?? err);
+    console.error(`[Job ${jobId}] ElevenLabs failed:`, msg);
+    await updateJob(jobId, {
+      status: "failed",
+      postprocessStatus: "failed",
+      postprocessError: `audio_generation_failed: ${msg}`,
+    });
+    return;
+  }
+
+  // raw を R2 に保存
+  const rawUrl = await uploadRawAudio(audioBuffer, jobId);
+  if (rawUrl) {
+    await updateJob(jobId, { rawAudioUrl: rawUrl });
+    console.log(`[Job ${jobId}] raw uploaded: ${rawUrl}`);
+  } else {
+    console.warn(`[Job ${jobId}] raw R2 upload failed (continuing)`);
+  }
+
+  // ── Phase 2: postprocess ────────────────────────────────────────────────────
+  const preset = choosePostprocessPreset({
+    genre:           prompt.genre,
+    mood:            prompt.mood,
+    structurePreset: prompt.structurePreset,
+  });
+
+  await updateJob(jobId, {
+    status:                "postprocessing",
+    postprocessStatus:     "running",
+    postprocessPreset:     preset,
+    postprocessStartedAt:  new Date().toISOString(),
+    humanizeLevel:         0,
+  });
+
+  let postprocessOk = false;
+  let finalUrl: string | null = null;
+  let finalLufs: number | null = null;
+  let finalPeakDb: number | null = null;
+  let analysisRecord: Record<string, unknown> = {};
+
+  try {
+    const ppResult = await runPostprocess({
+      inputPath: rawTempPath,
+      jobId,
+      preset,
+    });
+
+    finalLufs    = ppResult.finalLufs;
+    finalPeakDb  = ppResult.finalPeakDb;
+    analysisRecord = ppResult.analysis as unknown as Record<string, unknown>;
+
+    console.log(`[Job ${jobId}] postprocess done: lufs=${finalLufs} peak=${finalPeakDb}`);
+
+    // ── Phase 3: uploading_result ──────────────────────────────────────────────
+    await updateJob(jobId, { status: "uploading_result" });
+
+    finalUrl = await uploadFinalAudio(ppResult.outputPath, jobId);
+
+    // analysis.json を R2 に保存（失敗は無視）
+    await uploadAnalysisJson(analysisRecord, jobId).catch((e) =>
+      console.warn(`[Job ${jobId}] analysis.json upload failed:`, e?.message)
+    );
+
+    postprocessOk = !!finalUrl;
+
+    await updateJob(jobId, {
+      postprocessStatus:      "done",
+      postprocessVersion:     ppResult.version,
+      postprocessCompletedAt: new Date().toISOString(),
+      analysisJson:           JSON.stringify(analysisRecord),
+      finalLufs,
+      finalPeakDb,
+    });
+
+    if (finalUrl) {
+      await updateJob(jobId, { processedAudioUrl: finalUrl });
     }
-    const finalUrl = r2Url;
-    console.log(`[Job ${jobId}] Uploaded to R2: ${r2Url}`);
+  } catch (err: any) {
+    const msg = String(err?.message ?? err);
+    console.error(`[Job ${jobId}] postprocess failed:`, msg);
+    await updateJob(jobId, {
+      postprocessStatus: "failed",
+      postprocessError:  msg,
+    });
+    // postprocess 失敗でも raw があれば completed へフォールバック
+  } finally {
+    cleanupTempFiles(rawTempPath, finalTempPath);
+  }
 
+  // ── Phase 4: completed（または raw フォールバック）─────────────────────────
+  const currentJob = await getJob(jobId);
+  const rawAudioUrl = currentJob?.rawAudioUrl ?? rawUrl ?? undefined;
+
+  if (postprocessOk && finalUrl) {
+    // 正常完了: final を使用
+    const updatedRightsLog = mergeRightsLog(currentJob?.rightsLog, {
+      type:    "postprocessApplied",
+      preset,
+      version: "v1",
+    });
     await updateJob(jobId, {
       status:      "completed",
       audioUrl:    finalUrl,
       downloadUrl: finalUrl,
       bpFinal:     BP_COSTS.music_full,
+      rightsLog:   updatedRightsLog,
     });
+    console.log(`[Job ${jobId}] Completed with final: ${finalUrl}`);
+  } else {
+    // フォールバック: raw を使用
+    const fallbackUrl = rawAudioUrl;
+    const fallbackReason = postprocessOk
+      ? "final_upload_failed"
+      : "postprocess_failed";
 
-    console.log(`[Job ${jobId}] Completed successfully`);
-  } catch (err: any) {
-    const errorMsg = String(err?.message ?? err);
-    console.error(`[Job ${jobId}] Failed:`, errorMsg);
-    await updateJob(jobId, { status: "failed", error: errorMsg });
+    const updatedRightsLog = mergeRightsLog(currentJob?.rightsLog, {
+      type:   "postprocessFallbackRaw",
+      reason: fallbackReason,
+    });
+    await updateJob(jobId, {
+      status:      "completed",
+      audioUrl:    fallbackUrl,
+      downloadUrl: fallbackUrl,
+      bpFinal:     BP_COSTS.music_full,
+      rightsLog:   updatedRightsLog,
+    });
+    console.log(`[Job ${jobId}] Completed with raw fallback (${fallbackReason}): ${fallbackUrl}`);
   }
 }
+
+// ── Route Handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: Request) {
   let body: any;
@@ -89,16 +217,21 @@ export async function POST(req: Request) {
     }, { status: 500 });
   }
 
+  // structure 承認ログを記録してからパイプライン開始
+  const rightsLog = mergeRightsLog(job.rightsLog, { type: "structureApproved" });
   await updateJob(String(jobId), {
-    status:    "audio_generating",
-    rightsLog: { ...job.rightsLog, structureApproved: true },
+    status:            "generating_audio",
+    postprocessStatus: "pending",
+    rightsLog,
   });
 
   const updatedJob = await getJob(String(jobId));
   if (!updatedJob) {
     return NextResponse.json({ ok: false, error: "job_not_found" }, { status: 404 });
   }
-  await generateAudioBackground(updatedJob, apiKey); // 完了まで待つ
+
+  await runAudioPipeline(updatedJob, apiKey);
+
   const finalJob = await getJob(String(jobId));
   return NextResponse.json({ ok: true, status: finalJob?.status ?? "completed" });
 }

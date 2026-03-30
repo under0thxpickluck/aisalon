@@ -26,7 +26,11 @@ async function callGas(action: string, params: Record<string, unknown>) {
 export type JobStatus =
   | "queued" | "lyrics_generating" | "lyrics_ready"
   | "structure_generating" | "structure_ready"
-  | "audio_generating" | "completed" | "failed" | "cancelled";
+  | "audio_generating"        // 旧ステータス（後方互換）
+  | "generating_audio"        // ElevenLabs 音声生成中
+  | "postprocessing"          // EQ/Comp/Reverb/Loudness 処理中
+  | "uploading_result"        // final 音源を R2 へ保存中
+  | "completed" | "failed" | "cancelled";
 
 export type SongJob = {
   jobId:          string;
@@ -45,7 +49,29 @@ export type SongJob = {
   error?:         string;
   bpLocked?:      number;
   bpFinal?:       number;
-  rightsLog?:     { lyricsApproved?: boolean; structureApproved?: boolean; humanEdited?: boolean };
+  rightsLog?:     {
+    lyricsApproved?: boolean;
+    structureApproved?: boolean;
+    humanEdited?: boolean;
+    postprocessApplied?: boolean;
+    postprocessPreset?: string;
+    postprocessVersion?: string;
+    postprocessFallbackRaw?: boolean;
+    fallbackReason?: string;
+  };
+  // 後加工パイプライン追加フィールド
+  rawAudioUrl?:           string;
+  processedAudioUrl?:     string;
+  postprocessStatus?:     "pending" | "running" | "done" | "failed";
+  postprocessPreset?:     string;
+  postprocessVersion?:    string;
+  analysisJson?:          string;
+  postprocessStartedAt?:  string;
+  postprocessCompletedAt?: string;
+  postprocessError?:      string;
+  finalLufs?:             number | null;
+  finalPeakDb?:           number | null;
+  humanizeLevel?:         number;
 };
 
 // ========== CRUD ==========

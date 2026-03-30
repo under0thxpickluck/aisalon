@@ -75,6 +75,7 @@ export default function Music2Page() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [audioStage, setAudioStage] = useState<string | null>(null);
+  const [stageLabel, setStageLabel] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState(false);
   const [pwInput, setPwInput] = useState("");
 
@@ -265,6 +266,12 @@ export default function Music2Page() {
 
         if (data.stage) {
           setAudioStage(data.stage);
+        }
+        if (data.stageLabel) {
+          setStageLabel(data.stageLabel);
+        }
+        if (typeof data.progress === "number") {
+          setProgress(data.progress);
         }
 
         if (data.status === "completed") {
@@ -503,6 +510,7 @@ export default function Music2Page() {
     setErrorMsg(null);
     setInfoMsg(null);
     setAudioStage(null);
+    setStageLabel(null);
   }
 
   // ── ムード切り替え ────────────────────────────────────────────────────────
@@ -864,16 +872,19 @@ export default function Music2Page() {
                 AIが曲を生成しています。完成まで約8分かかります。このページを閉じずにお待ちください。
               </p>
 
-              <ProgressBar label="音楽を生成しています…" />
+              <ProgressBar label={stageLabel ?? "音楽を生成しています…"} />
 
               <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <p className="text-xs font-semibold leading-relaxed text-indigo-700">
-                  {audioStage === "intro"   && "イントロ生成中... (1/4)"}
-                  {audioStage === "verse"   && "Verse生成中... (2/4)"}
-                  {audioStage === "chorus"  && "サビ生成中... (3/4)"}
-                  {audioStage === "outro"   && "アウトロ生成中... (4/4)"}
-                  {audioStage === "merging" && "仕上げ中..."}
-                  {!audioStage && "りふぁねこが一生懸命作曲中です🎵"}
+                  {stageLabel
+                    ? stageLabel
+                    : audioStage === "intro"   ? "イントロ生成中... (1/4)"
+                    : audioStage === "verse"   ? "Verse生成中... (2/4)"
+                    : audioStage === "chorus"  ? "サビ生成中... (3/4)"
+                    : audioStage === "outro"   ? "アウトロ生成中... (4/4)"
+                    : audioStage === "merging" ? "仕上げ中..."
+                    : "りふぁねこが一生懸命作曲中です🎵"
+                  }
                   <br />
                   完成すると自動的に次のステップに進みます。
                 </p>
