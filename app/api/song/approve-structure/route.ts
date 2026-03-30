@@ -350,7 +350,7 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
 
   if (shouldRegenerate) {
     const regenReason = `qualityScore=${quality1.lyricsQualityScore} repeatScore=${quality1.repeatScore}`;
-    console.log(`[Job ${jobId}] Auto-regenerating: ${regenReason}`);
+    console.log(`[Job ${jobId}] Auto-regenerating — reason: ${regenReason}`);
 
     await updateJob(jobId, {
       status:             "regenerating_audio",
@@ -359,20 +359,34 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
     });
 
     // ── Attempt 2: 強化された拘束プロンプトで再生成 ─────────────────────────
+    console.log(`[Job ${jobId}] attempt2 started`);
     const attempt2 = await generateAudioAttempt(job, apiKey, { attemptNum: 2, maxChorusRepeats: 1 });
 
-    if (attempt2.audioAvailable) {
+    if (!attempt2.audioAvailable) {
+      console.warn(`[Job ${jobId}] attempt2 generation failed — falling back to attempt1 results`);
+      // attempt1 の usedFinalUrl / usedRawUrl はそのまま維持
+    } else {
       const audioForAsr2 = attempt2.finalUrl ?? attempt2.rawUrl ?? null;
       if (audioForAsr2) {
+        console.log(`[Job ${jobId}] attempt2 audio available — running ASR quality check`);
         const quality2 = await runAsrAndQuality(job, apiKey, audioForAsr2);
-        finalGate         = quality2.gate;
-        usedFinalUrl      = attempt2.finalUrl;
-        usedRawUrl        = attempt2.rawUrl;
-        usedPostprocessOk = attempt2.postprocessOk;
-        usedPreset        = (attempt2.preset as PostprocessPreset) || "natural";
+        if (!quality2.qualityUnavailable) {
+          console.log(`[Job ${jobId}] attempt2 quality: score=${quality2.lyricsQualityScore} repeat=${quality2.repeatScore} gate=${quality2.gate} — adopting attempt2`);
+          finalGate         = quality2.gate;
+          usedFinalUrl      = attempt2.finalUrl;
+          usedRawUrl        = attempt2.rawUrl;
+          usedPostprocessOk = attempt2.postprocessOk;
+          usedPreset        = (attempt2.preset as PostprocessPreset) || "natural";
+        } else {
+          console.warn(`[Job ${jobId}] attempt2 ASR unavailable — falling back to attempt1 results`);
+        }
+      } else {
+        console.warn(`[Job ${jobId}] attempt2 no audio URL for ASR — falling back to attempt1 results`);
       }
     }
-    // attempt2 が失敗しても attempt1 の結果を使って続行
+
+    const selectedAttempt = (usedFinalUrl === attempt2.finalUrl || usedRawUrl === attempt2.rawUrl) ? 2 : 1;
+    console.log(`[Job ${jobId}] final selected attempt=${selectedAttempt} finalGate=${finalGate}`);
   }
 
   // ── Phase 6: completed / review_required 決定 ────────────────────────────
