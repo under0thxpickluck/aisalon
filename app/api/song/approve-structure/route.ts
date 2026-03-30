@@ -59,8 +59,12 @@ async function generateAudioAttempt(
   // anchorWords / hookLines を取得
   let anchorWords: string[] = [];
   let hookLines: string[] = [];
-  try { anchorWords = job.anchorWordsJson ? JSON.parse(job.anchorWordsJson) : []; } catch {}
-  try { hookLines   = job.hookLinesJson   ? JSON.parse(job.hookLinesJson)   : []; } catch {}
+  try { anchorWords = job.anchorWordsJson ? JSON.parse(job.anchorWordsJson) : []; } catch (e) {
+    console.warn(`[Job ${jobId}][attempt${attemptNum}] failed to parse anchorWordsJson`, e);
+  }
+  try { hookLines   = job.hookLinesJson   ? JSON.parse(job.hookLinesJson)   : []; } catch (e) {
+    console.warn(`[Job ${jobId}][attempt${attemptNum}] failed to parse hookLinesJson`, e);
+  }
 
   // ── Phase 1: ElevenLabs 音声生成 ────────────────────────────────────────────
   let audioBuffer: ArrayBuffer;
@@ -188,8 +192,12 @@ async function runAsrAndQuality(
 
   let anchorWords: string[] = [];
   let hookLines: string[] = [];
-  try { anchorWords = job.anchorWordsJson ? JSON.parse(job.anchorWordsJson) : []; } catch {}
-  try { hookLines   = job.hookLinesJson   ? JSON.parse(job.hookLinesJson)   : []; } catch {}
+  try { anchorWords = job.anchorWordsJson ? JSON.parse(job.anchorWordsJson) : []; } catch (e) {
+    console.warn(`[Job ${jobId}][asr] failed to parse anchorWordsJson`, e);
+  }
+  try { hookLines   = job.hookLinesJson   ? JSON.parse(job.hookLinesJson)   : []; } catch (e) {
+    console.warn(`[Job ${jobId}][asr] failed to parse hookLinesJson`, e);
+  }
 
   const singable = job.singableLyrics ?? job.masterLyrics ?? "";
 
