@@ -87,6 +87,11 @@ export type SongJob = {
   distributionReady?:     boolean;
   lyricsSource?:          "master" | "singable" | "asr_merged" | "manual";
   asrStatus?:             "pending" | "running" | "done" | "failed";
+  asrError?:              string | null;
+  asrStartedAt?:          string | null;
+  asrCompletedAt?:        string | null;
+  lyricsDiffJson?:        string | null;
+  lyricsTimestampsJson?:  string | null;
 };
 
 // ========== CRUD ==========

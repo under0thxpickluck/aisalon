@@ -5380,6 +5380,9 @@ var MUSIC_JOB_COLS_ = [
   "display_lyrics", "distribution_lyrics",
   "lyrics_match_score", "lyrics_review_required", "distribution_ready",
   "lyrics_source", "asr_status",
+  // ASR Phase 2 追加列
+  "asr_error", "asr_started_at", "asr_completed_at",
+  "lyrics_diff_json", "lyrics_timestamps_json",
   "created_at", "updated_at"
 ];
 
@@ -5453,6 +5456,11 @@ function createMusicJob_(params) {
     "distribution_ready":       false,
     "lyrics_source":            "singable",
     "asr_status":               "pending",
+    "asr_error":                "",
+    "asr_started_at":           "",
+    "asr_completed_at":         "",
+    "lyrics_diff_json":         "",
+    "lyrics_timestamps_json":   "",
     "created_at":               now,
     "updated_at":               now
   };
@@ -5517,6 +5525,11 @@ function getMusicJob_(params) {
         distributionReady:      col_("distribution_ready") === true || col_("distribution_ready") === "true",
         lyricsSource:           col_("lyrics_source")           || "singable",
         asrStatus:              col_("asr_status")              || null,
+        asrError:               col_("asr_error")               || null,
+        asrStartedAt:           col_("asr_started_at")          || null,
+        asrCompletedAt:         col_("asr_completed_at")        || null,
+        lyricsDiffJson:         col_("lyrics_diff_json")        || null,
+        lyricsTimestampsJson:   col_("lyrics_timestamps_json")  || null,
         createdAt:              col_("created_at"),
         updatedAt:              col_("updated_at")
       });
@@ -5571,7 +5584,12 @@ function updateMusicJob_(params) {
         lyricsReviewRequired:   "lyrics_review_required",
         distributionReady:      "distribution_ready",
         lyricsSource:           "lyrics_source",
-        asrStatus:              "asr_status"
+        asrStatus:              "asr_status",
+        asrError:               "asr_error",
+        asrStartedAt:           "asr_started_at",
+        asrCompletedAt:         "asr_completed_at",
+        lyricsDiffJson:         "lyrics_diff_json",
+        lyricsTimestampsJson:   "lyrics_timestamps_json"
       };
       Object.keys(fields).forEach(function(key) {
         if (colMap[key] !== undefined && idx[colMap[key]] !== undefined) {

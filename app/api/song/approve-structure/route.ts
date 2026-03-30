@@ -163,6 +163,86 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
     cleanupTempFiles(rawTempPath, finalTempPath);
   }
 
+  // ── Phase 4: transcribing_lyrics（ASR） ───────────────────────────────────────
+  // postprocess成否に関わらずASRを試みる。失敗しても completed へ進む。
+  const audioUrlForAsr = finalUrl ?? rawUrl ?? undefined;
+  if (audioUrlForAsr) {
+    try {
+      await updateJob(jobId, {
+        status:         "transcribing_lyrics",
+        asrStatus:      "running",
+        asrStartedAt:   new Date().toISOString(),
+      });
+
+      const { transcribeSongLyrics } = await import("@/lib/music/asr");
+      const asrResult = await transcribeSongLyrics({
+        audioUrl:     audioUrlForAsr,
+        languageHint: job.prompt.language ?? "ja",
+        apiKey,
+      });
+
+      await updateJob(jobId, {
+        asrLyrics:           asrResult.text,
+        lyricsTimestampsJson: asrResult.timestampsJson,
+        asrStatus:           "done",
+        asrCompletedAt:      new Date().toISOString(),
+      });
+
+      // ── Phase 5: merging_lyrics ─────────────────────────────────────────────
+      await updateJob(jobId, { status: "merging_lyrics" });
+
+      const { compareLyrics } = await import("@/lib/music/lyrics-compare");
+      const { mergeLyricsForDisplay } = await import("@/lib/music/lyrics-merge");
+
+      const singable = job.singableLyrics ?? job.masterLyrics ?? "";
+      const compareResult = compareLyrics({
+        singableLyrics: singable,
+        asrLyrics:      asrResult.text,
+      });
+
+      const mergeResult = mergeLyricsForDisplay({
+        singableLyrics: singable,
+        asrLyrics:      asrResult.text,
+        score:          compareResult.score,
+      });
+
+      await updateJob(jobId, {
+        lyricsMatchScore:    compareResult.score,
+        lyricsDiffJson:      compareResult.diffJson,
+        displayLyrics:       mergeResult.displayLyrics,
+        distributionLyrics:  mergeResult.distributionLyrics,
+        lyricsReviewRequired: mergeResult.reviewRequired,
+        distributionReady:   mergeResult.distributionReady,
+        lyricsSource:        mergeResult.lyricsSource,
+      });
+
+      console.log(`[Job ${jobId}] ASR done: score=${compareResult.score} distributionReady=${mergeResult.distributionReady}`);
+
+    } catch (asrErr: any) {
+      // ASR失敗: サイレントフォールバック（singable_lyricsをそのまま使用）
+      const msg = String(asrErr?.message ?? asrErr);
+      console.warn(`[Job ${jobId}] ASR failed (fallback to singable): ${msg}`);
+      await updateJob(jobId, {
+        asrStatus:           "failed",
+        asrError:            msg,
+        asrCompletedAt:      new Date().toISOString(),
+        lyricsSource:        "singable",
+        distributionReady:   false,
+        lyricsReviewRequired: true,
+      });
+    }
+  } else {
+    // 音声URLが取得できなかった場合もフォールバック
+    console.warn(`[Job ${jobId}] No audio URL available for ASR, skipping`);
+    await updateJob(jobId, {
+      asrStatus:           "failed",
+      asrError:            "no_audio_url",
+      lyricsSource:        "singable",
+      distributionReady:   false,
+      lyricsReviewRequired: true,
+    });
+  }
+
   // ── Phase 4: completed（または raw フォールバック）─────────────────────────
   const currentJob = await getJob(jobId);
   const rawAudioUrl = currentJob?.rawAudioUrl ?? rawUrl ?? undefined;
