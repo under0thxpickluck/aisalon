@@ -949,8 +949,30 @@ export default function Music2Page() {
                   </Link>
                 </div>
 
-                {/* 歌詞表示（サービス開始時に開放） */}
-                <div className="relative mt-4">
+                {/* 歌詞ダウンロード */}
+                {resultLyrics && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => {
+                        const blob = new Blob(
+                          [`${resultTitle}\n\n${resultLyrics}`],
+                          { type: "text/plain;charset=utf-8" }
+                        );
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `${resultTitle || "lyrics"}_lyrics.txt`;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      📄 歌詞をダウンロード
+                    </button>
+                  </div>
+                )}
+
+                {/* 歌詞表示（サービス開始時に開放） - resultLyrics がない場合のみ表示 */}
+                {!resultLyrics && <div className="relative mt-4">
                   {/* ぼかし表示 */}
                   <div className="blur-sm select-none pointer-events-none bg-white/5 border border-white/10 rounded-xl p-4 h-32 overflow-hidden">
                     <p className="text-sm text-gray-400">
@@ -967,7 +989,7 @@ export default function Music2Page() {
                     <p className="text-sm font-bold text-gray-700">歌詞機能は近日公開予定</p>
                     <p className="text-xs text-gray-500">サービス正式開始時に解放されます</p>
                   </div>
-                </div>
+                </div>}
               </div>
             </>
           )}
