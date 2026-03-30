@@ -5360,8 +5360,31 @@ function __rescueAllPendingMail() {
 
 // ============================================================
 // MUSIC JOB STORE（song_jobs シートによるジョブ永続化）
-// 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
+// 追加日: 2026-03 / 後加工パイプライン対応: 2026-03
 // ============================================================
+
+// song_jobs 全列定義（順序固定）
+var MUSIC_JOB_COLS_ = [
+  "job_id", "user_id", "status", "stage",
+  "lyrics_data", "structure_data", "prompt",
+  "audio_url", "download_url", "error",
+  "bp_locked", "bp_final", "rights_log",
+  // 後加工パイプライン追加列
+  "raw_audio_url", "processed_audio_url",
+  "postprocess_status", "postprocess_preset", "postprocess_version",
+  "analysis_json",
+  "postprocess_started_at", "postprocess_completed_at", "postprocess_error",
+  "final_lufs", "final_peak_db", "humanize_level",
+  // 歌詞パイプライン列（Phase 1〜）
+  "master_lyrics", "singable_lyrics", "asr_lyrics",
+  "display_lyrics", "distribution_lyrics",
+  "lyrics_match_score", "lyrics_review_required", "distribution_ready",
+  "lyrics_source", "asr_status",
+  // ASR Phase 2 追加列
+  "asr_error", "asr_started_at", "asr_completed_at",
+  "lyrics_diff_json", "lyrics_timestamps_json",
+  "created_at", "updated_at"
+];
 
 function getMusicJobSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -5370,15 +5393,26 @@ function getMusicJobSheet_() {
   return sheet;
 }
 
+// 新規シートはヘッダー行を一括追加
+// 既存シートは不足列を末尾に自動マイグレーション（既存データは壊さない）
 function ensureMusicJobCols_(sheet) {
-  if (sheet.getLastRow() > 0) return;
-  sheet.appendRow([
-    "job_id", "user_id", "status", "stage",
-    "lyrics_data", "structure_data", "prompt",
-    "audio_url", "download_url", "error",
-    "bp_locked", "bp_final",
-    "created_at", "updated_at"
-  ]);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(MUSIC_JOB_COLS_);
+    return;
+  }
+  var existing = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+    .map(function(h) { return String(h); });
+  var missingCols = [];
+  MUSIC_JOB_COLS_.forEach(function(col) {
+    if (existing.indexOf(col) === -1) {
+      sheet.getRange(1, existing.length + 1).setValue(col);
+      existing.push(col);
+      missingCols.push(col);
+    }
+  });
+  if (missingCols.length > 0) {
+    Logger.log('song_jobs: added missing columns: ' + missingCols.join(', '));
+  }
 }
 
 // action: create_music_job
@@ -5387,22 +5421,58 @@ function createMusicJob_(params) {
   var sheet = getMusicJobSheet_();
   ensureMusicJobCols_(sheet);
   var now = new Date().toISOString();
-  sheet.appendRow([
-    params.jobId,
-    params.userId || "",
-    "lyrics_generating",
-    "",
-    "",
-    "",
-    JSON.stringify(params.prompt || {}),
-    "",
-    "",
-    "",
-    params.bpLocked || 0,
-    0,
-    now,
-    now
-  ]);
+  // ヘッダー順に値をマップして appendRow（列追加に強い）
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]
+    .map(function(h) { return String(h); });
+  var defaults = {
+    "job_id":                   params.jobId,
+    "user_id":                  params.userId || "",
+    "status":                   "lyrics_generating",
+    "stage":                    "",
+    "lyrics_data":              "",
+    "structure_data":           "",
+    "prompt":                   JSON.stringify(params.prompt || {}),
+    "audio_url":                "",
+    "download_url":             "",
+    "error":                    "",
+    "bp_locked":                params.bpLocked || 0,
+    "bp_final":                 0,
+    "rights_log":               "",
+    "raw_audio_url":            "",
+    "processed_audio_url":      "",
+    "postprocess_status":       "pending",
+    "postprocess_preset":       "",
+    "postprocess_version":      "",
+    "analysis_json":            "",
+    "postprocess_started_at":   "",
+    "postprocess_completed_at": "",
+    "postprocess_error":        "",
+    "final_lufs":               "",
+    "final_peak_db":            "",
+    "humanize_level":           0,
+    // 歌詞パイプライン
+    "master_lyrics":            "",
+    "singable_lyrics":          "",
+    "asr_lyrics":               "",
+    "display_lyrics":           "",
+    "distribution_lyrics":      "",
+    "lyrics_match_score":       "",
+    "lyrics_review_required":   true,
+    "distribution_ready":       false,
+    "lyrics_source":            "singable",
+    "asr_status":               "pending",
+    "asr_error":                "",
+    "asr_started_at":           "",
+    "asr_completed_at":         "",
+    "lyrics_diff_json":         "",
+    "lyrics_timestamps_json":   "",
+    "created_at":               now,
+    "updated_at":               now
+  };
+  var row = headers.map(function(h) {
+    return defaults[h] !== undefined ? defaults[h] : "";
+  });
+  sheet.appendRow(row);
   return json_({ ok: true, jobId: params.jobId });
 }
 
@@ -5418,22 +5488,55 @@ function getMusicJob_(params) {
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][idx["job_id"]]) === String(params.jobId)) {
       var row = data[i];
+      function col_(name) { return idx[name] !== undefined ? row[idx[name]] : ""; }
+      function safeJson_(s) { try { return s ? JSON.parse(s) : null; } catch(e) { return null; } }
+      function safeNum_(s) { var n = parseFloat(s); return isNaN(n) ? null : n; }
       return json_({
-        ok:            true,
-        jobId:         row[idx["job_id"]],
-        userId:        row[idx["user_id"]],
-        status:        row[idx["status"]],
-        stage:         row[idx["stage"]],
-        lyricsData:    row[idx["lyrics_data"]]    ? JSON.parse(row[idx["lyrics_data"]])    : null,
-        structureData: row[idx["structure_data"]] ? JSON.parse(row[idx["structure_data"]]) : null,
-        prompt:        row[idx["prompt"]]         ? JSON.parse(row[idx["prompt"]])         : {},
-        audioUrl:      row[idx["audio_url"]],
-        downloadUrl:   row[idx["download_url"]],
-        error:         row[idx["error"]],
-        bpLocked:      row[idx["bp_locked"]],
-        bpFinal:       row[idx["bp_final"]],
-        createdAt:     row[idx["created_at"]],
-        updatedAt:     row[idx["updated_at"]],
+        ok:                     true,
+        jobId:                  col_("job_id"),
+        userId:                 col_("user_id"),
+        status:                 col_("status"),
+        stage:                  col_("stage"),
+        lyricsData:             safeJson_(col_("lyrics_data")),
+        structureData:          safeJson_(col_("structure_data")),
+        prompt:                 safeJson_(col_("prompt")) || {},
+        audioUrl:               col_("audio_url")       || null,
+        downloadUrl:            col_("download_url")    || null,
+        error:                  col_("error")           || null,
+        bpLocked:               col_("bp_locked"),
+        bpFinal:                col_("bp_final"),
+        rightsLog:              safeJson_(col_("rights_log")),
+        // 後加工パイプライン
+        rawAudioUrl:            col_("raw_audio_url")            || null,
+        processedAudioUrl:      col_("processed_audio_url")      || null,
+        postprocessStatus:      col_("postprocess_status")       || null,
+        postprocessPreset:      col_("postprocess_preset")       || null,
+        postprocessVersion:     col_("postprocess_version")      || null,
+        analysisJson:           col_("analysis_json")            || null,
+        postprocessStartedAt:   col_("postprocess_started_at")   || null,
+        postprocessCompletedAt: col_("postprocess_completed_at") || null,
+        postprocessError:       col_("postprocess_error")        || null,
+        finalLufs:              safeNum_(col_("final_lufs")),
+        finalPeakDb:            safeNum_(col_("final_peak_db")),
+        humanizeLevel:          safeNum_(col_("humanize_level")),
+        // 歌詞パイプライン
+        masterLyrics:           col_("master_lyrics")           || null,
+        singableLyrics:         col_("singable_lyrics")         || null,
+        asrLyrics:              col_("asr_lyrics")              || null,
+        displayLyrics:          col_("display_lyrics")          || null,
+        distributionLyrics:     col_("distribution_lyrics")     || null,
+        lyricsMatchScore:       safeNum_(col_("lyrics_match_score")),
+        lyricsReviewRequired:   col_("lyrics_review_required") !== false && col_("lyrics_review_required") !== "false",
+        distributionReady:      col_("distribution_ready") === true || col_("distribution_ready") === "true",
+        lyricsSource:           col_("lyrics_source")           || "singable",
+        asrStatus:              col_("asr_status")              || null,
+        asrError:               col_("asr_error")               || null,
+        asrStartedAt:           col_("asr_started_at")          || null,
+        asrCompletedAt:         col_("asr_completed_at")        || null,
+        lyricsDiffJson:         col_("lyrics_diff_json")        || null,
+        lyricsTimestampsJson:   col_("lyrics_timestamps_json")  || null,
+        createdAt:              col_("created_at"),
+        updatedAt:              col_("updated_at")
       });
     }
   }
@@ -5454,14 +5557,44 @@ function updateMusicJob_(params) {
       var rowNum = i + 1;
       var fields = params.fields || {};
       var colMap = {
-        status:        "status",
-        stage:         "stage",
-        lyricsData:    "lyrics_data",
-        structureData: "structure_data",
-        audioUrl:      "audio_url",
-        downloadUrl:   "download_url",
-        error:         "error",
-        bpFinal:       "bp_final",
+        status:                 "status",
+        stage:                  "stage",
+        lyricsData:             "lyrics_data",
+        structureData:          "structure_data",
+        audioUrl:               "audio_url",
+        downloadUrl:            "download_url",
+        error:                  "error",
+        bpFinal:                "bp_final",
+        rightsLog:              "rights_log",
+        // 後加工パイプライン
+        rawAudioUrl:            "raw_audio_url",
+        processedAudioUrl:      "processed_audio_url",
+        postprocessStatus:      "postprocess_status",
+        postprocessPreset:      "postprocess_preset",
+        postprocessVersion:     "postprocess_version",
+        analysisJson:           "analysis_json",
+        postprocessStartedAt:   "postprocess_started_at",
+        postprocessCompletedAt: "postprocess_completed_at",
+        postprocessError:       "postprocess_error",
+        finalLufs:              "final_lufs",
+        finalPeakDb:            "final_peak_db",
+        humanizeLevel:          "humanize_level",
+        // 歌詞パイプライン
+        masterLyrics:           "master_lyrics",
+        singableLyrics:         "singable_lyrics",
+        asrLyrics:              "asr_lyrics",
+        displayLyrics:          "display_lyrics",
+        distributionLyrics:     "distribution_lyrics",
+        lyricsMatchScore:       "lyrics_match_score",
+        lyricsReviewRequired:   "lyrics_review_required",
+        distributionReady:      "distribution_ready",
+        lyricsSource:           "lyrics_source",
+        asrStatus:              "asr_status",
+        asrError:               "asr_error",
+        asrStartedAt:           "asr_started_at",
+        asrCompletedAt:         "asr_completed_at",
+        lyricsDiffJson:         "lyrics_diff_json",
+        lyricsTimestampsJson:   "lyrics_timestamps_json"
       };
       Object.keys(fields).forEach(function(key) {
         if (colMap[key] !== undefined && idx[colMap[key]] !== undefined) {

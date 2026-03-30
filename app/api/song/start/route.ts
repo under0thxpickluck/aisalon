@@ -1,7 +1,12 @@
 // app/api/song/start/route.ts
+// 歌詞ステップなし。直接 structure_ready まで生成して返す。
+// master_lyrics / singable_lyrics も同時生成・保存。
 import { NextResponse } from "next/server";
 import { createJob, updateJob, getJob } from "../_jobStore";
 import { BP_COSTS } from "@/app/lib/bp-config";
+import { buildSingableLyrics } from "@/lib/music/lyrics-singable";
+import { extractAnchorWords } from "@/lib/music/lyrics-anchor";
+import { extractHookLines } from "@/lib/music/lyrics-hook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,15 +32,17 @@ async function callGasBalance(id: string, gasUrl: string, gasKey: string): Promi
   return Number(data.bp ?? 0);
 }
 
-async function generateLyricsBackground(
+// テーマ・ジャンル・雰囲気から構成 + master_lyrics を一気に生成
+async function generateStructureAndLyrics(
   jobId: string,
   theme: string,
   genre: string,
   mood: string,
-  apiKey: string
-): Promise<void> {
+  apiKey: string,
+  options?: { isPro?: boolean; bpmHint?: number; vocalStyle?: string; vocalMood?: string; language?: string }
+): Promise<{ structureData: any; masterLyrics: string } | null> {
   const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 30_000);
+  const t = setTimeout(() => controller.abort(), 40_000);
 
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -46,43 +53,78 @@ async function generateLyricsBackground(
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 1000,
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content:
-              "あなたはプロの作詞家です。ユーザーの音楽テーマ・ジャンル・雰囲気に合った日本語の歌詞とタイトルを作成します。Aメロ・Bメロ・サビ・Aメロ・サビの構成で生成してください。合計最大40行、1行20文字以内の日本語歌詞にしてください。必ず以下のフォーマットで出力してください：\n\nTITLE: （タイトル）\n\n[Verse A]\n（Aメロ歌詞を4〜8行、1行20文字以内）\n\n[Verse B]\n（Bメロ歌詞を4〜8行、1行20文字以内）\n\n[Chorus]\n（サビ歌詞を4〜8行、1行20文字以内）\n\n[Verse A]\n（Aメロ歌詞を4〜8行、1行20文字以内）\n\n[Chorus]\n（サビ歌詞を4〜8行、1行20文字以内）\n\nタイトルと歌詞のみ出力し、説明やト書きは不要です。",
+            content: `あなたはプロの音楽プロデューサー兼作詞家です。テーマ・ジャンル・雰囲気から楽曲構成と歌詞を同時に生成します。
+
+必ずJSON形式で以下のフィールドを返してください：
+{
+  "bpm": 数値,
+  "key": "キー（例: C major）",
+  "sections": ["Intro", "Verse", "Chorus", "Bridge", "Outro" などのリスト],
+  "hookSummary": "サビの内容の一行要約",
+  "title": "曲タイトル",
+  "lyrics": "歌詞全文（[Verse A]\\n...\\n[Chorus]\\n... の形式、最大40行、1行20文字以内）"
+}
+
+歌詞のフォーマット例：
+[Verse A]
+（Aメロ4〜8行）
+
+[Verse B]
+（Bメロ4〜8行）
+
+[Chorus]
+（サビ4〜8行）
+
+[Verse A]
+（Aメロ4〜8行）
+
+[Chorus]
+（サビ4〜8行）`,
           },
           {
             role: "user",
-            content: `テーマ：${theme}\nジャンル：${genre}\n雰囲気：${mood}\n\n上記のテーマ・ジャンル・雰囲気に合った日本語の歌詞を作成してください。`,
+            content: `以下のテーマ・ジャンル・雰囲気から楽曲構成と歌詞を生成してください。\n\nテーマ：${theme}\nジャンル：${genre}\n雰囲気：${mood}${
+  options?.isPro
+    ? `\nBPM目安：${options.bpmHint ?? "自由"}\nボーカルスタイル：${options.vocalStyle ?? "指定なし"}\nボーカルムード：${options.vocalMood ?? "指定なし"}\n言語：${options.language ?? "日本語"}\n\n※Proモード：歌詞は歌唱表現に優れた自然な日本語を使い、1行12〜16音節に収めてください。`
+    : ""
+}`,
           },
         ],
       }),
       signal: controller.signal,
     });
 
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "(unreadable)");
-      console.error(`[song/start] OpenAI API error: status=${res.status} body=${errBody}`);
-      throw new Error(`openai_http_${res.status}`);
-    }
+    if (!res.ok) throw new Error(`openai_error_${res.status}`);
 
     const data = await res.json();
-    const content = String(data?.choices?.[0]?.message?.content ?? "");
+    const content = String(data?.choices?.[0]?.message?.content ?? "{}");
+    let parsed: any = {};
+    try { parsed = JSON.parse(content); } catch {}
 
-    const titleMatch = content.match(/TITLE:\s*(.+)/);
-    const title = titleMatch ? titleMatch[1].trim() : `${theme}の歌`;
-    const lyrics = content.replace(/TITLE:\s*.+\n?/, "").trim();
+    const structureData = {
+      bpm:         Number(parsed.bpm ?? 120),
+      key:         String(parsed.key ?? "C major"),
+      sections:    Array.isArray(parsed.sections) ? parsed.sections.map(String) : ["Intro", "Verse", "Chorus", "Outro"],
+      hookSummary: String(parsed.hookSummary ?? ""),
+      title:       String(parsed.title ?? theme),
+    };
+    const masterLyrics = String(parsed.lyrics ?? "");
 
     await updateJob(jobId, {
-      status: "lyrics_ready",
-      lyricsData: { title, lyrics },
+      status: "structure_ready",
+      structureData,
+      masterLyrics,
     });
+
+    return { structureData, masterLyrics };
   } catch (e: any) {
-    console.error("[song/start] lyrics generation error:", e);
-    console.error("[song/start] error details:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
     await updateJob(jobId, { status: "failed", error: String(e?.message ?? e) });
+    return null;
   } finally {
     clearTimeout(t);
   }
@@ -96,16 +138,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const { id, code, theme, genre, mood } = body ?? {};
+  const { id, code, theme, genre, mood, isPro, bpmHint, vocalStyle, vocalMood, language } = body ?? {};
 
   if (!id || !code) {
     return NextResponse.json({ ok: false, error: "auth_required" }, { status: 401 });
   }
   if (!theme || !genre || !mood) {
-    return NextResponse.json(
-      { ok: false, error: "theme_genre_mood_required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: "theme_genre_mood_required" }, { status: 400 });
   }
 
   const gasUrl = process.env.GAS_WEBAPP_URL;
@@ -125,11 +164,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "insufficient_bp", bp }, { status: 400 });
   }
 
-  // GAS に BP 減算を要求（失敗したらジョブを作らない）
   const gasAdminKey = process.env.GAS_ADMIN_KEY;
   if (!gasAdminKey) {
     return NextResponse.json({ ok: false, error: "gas_admin_key_missing" }, { status: 500 });
   }
+
   try {
     const deductRes = await fetch(
       `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`,
@@ -138,10 +177,10 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         body: JSON.stringify({
-          action: "deduct_bp",
+          action:   "deduct_bp",
           adminKey: gasAdminKey,
-          loginId: String(id),
-          amount: BP_COSTS.music_full,
+          loginId:  String(id),
+          amount:   BP_COSTS.music_full,
         }),
       }
     );
@@ -160,19 +199,70 @@ export async function POST(req: Request) {
   await createJob(
     jobId,
     String(id),
-    { theme: String(theme), genre: String(genre), mood: String(mood) },
+    {
+      theme:      String(theme),
+      genre:      String(genre),
+      mood:       String(mood),
+      isPro:      !!isPro,
+      bpmHint:    bpmHint ? Number(bpmHint) : undefined,
+      vocalStyle: vocalStyle ? String(vocalStyle) : undefined,
+      vocalMood:  vocalMood ? String(vocalMood) : undefined,
+      language:   language  ? String(language)  : "ja",
+    },
     BP_COSTS.music_full
   );
 
   const openaiKey = process.env.OPENAI_API_KEY;
-  console.log("[song/start] OPENAI_API_KEY present:", !!openaiKey);
-  if (openaiKey) {
-    await generateLyricsBackground(jobId, String(theme), String(genre), String(mood), openaiKey); // 完了まで待つ
-  } else {
-    console.error("[song/start] OPENAI_API_KEY is missing, marking job failed");
+  if (!openaiKey) {
     await updateJob(jobId, { status: "failed", error: "openai_key_missing" });
+    const failedJob = await getJob(jobId);
+    return NextResponse.json({ ok: true, jobId, status: failedJob?.status ?? "failed", structureData: null });
+  }
+
+  // 構成 + master_lyrics を同時生成
+  const generated = await generateStructureAndLyrics(
+    jobId, String(theme), String(genre), String(mood), openaiKey,
+    { isPro: !!isPro, bpmHint: bpmHint ? Number(bpmHint) : undefined, vocalStyle, vocalMood, language }
+  );
+
+  // singable_lyrics を生成（失敗してもmaster_lyricsで続行）
+  if (generated?.masterLyrics) {
+    // anchorWords / hookLines を抽出
+    const anchorWords = extractAnchorWords({
+      title:       generated.structureData.title ?? String(theme),
+      hookSummary: generated.structureData.hookSummary ?? "",
+      masterLyrics: generated.masterLyrics,
+      theme:       String(theme),
+    });
+    const hookLines = extractHookLines(generated.masterLyrics);
+
+    const singable = await buildSingableLyrics({
+      masterLyrics: generated.masterLyrics,
+      bpm:          generated.structureData.bpm,
+      genre:        String(genre),
+      mood:         String(mood),
+      anchorWords,
+      hookLines,
+      apiKey:       openaiKey,
+    });
+    await updateJob(jobId, {
+      singableLyrics:       singable,
+      displayLyrics:        generated.masterLyrics,  // 表示用は自然な日本語（master）
+      distributionLyrics:   generated.masterLyrics,  // 配信用も master を初期値に（ASR後に上書き）
+      lyricsSource:         "master",
+      lyricsReviewRequired: true,        // ASR完了まで要確認
+      distributionReady:    false,       // ASR未実施なのでfalse
+      anchorWordsJson:      JSON.stringify(anchorWords),
+      hookLinesJson:        JSON.stringify(hookLines),
+      generationAttempt:    1,
+    });
   }
 
   const completedJob = await getJob(jobId);
-  return NextResponse.json({ ok: true, jobId, status: completedJob?.status ?? "lyrics_ready", bpLocked: BP_COSTS.music_full });
+  return NextResponse.json({
+    ok:            true,
+    jobId,
+    status:        completedJob?.status ?? "structure_ready",
+    structureData: completedJob?.structureData ?? null,
+  });
 }

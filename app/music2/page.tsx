@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, getAuthSecret } from "../lib/auth";
+import { AppSidebar } from "@/components/AppSidebar";
 
 // ── 定数 ────────────────────────────────────────────────────────────────────
 
@@ -17,7 +18,19 @@ const MOODS = [
   "ロマンチック", "激しい", "切ない",
 ];
 
-type Step = 0 | 1 | 2 | 3 | 4;
+const PRO_PLANS = ["500", "1000"];
+
+const BPM_OPTIONS = [
+  { label: "スロー (60-80)",      value: 70  },
+  { label: "ミディアム (90-110)", value: 100 },
+  { label: "アップテンポ (120-140)", value: 130 },
+  { label: "激速 (150+)",         value: 160 },
+];
+
+const VOCAL_STYLES = ["女性ボーカル", "男性ボーカル", "混声", "ボーカルなし"];
+const VOCAL_MOODS  = ["甘い", "クール", "パワフル", "ウィスパー", "エモーショナル"];
+
+type Step = 0 | 1 | 2 | 3;
 
 type StructureData = {
   bpm: number;
@@ -26,6 +39,47 @@ type StructureData = {
   hookSummary: string;
   title: string;
 };
+
+// ── 履歴 ─────────────────────────────────────────────────────────────────────
+
+const HISTORY_KEY = "lifai_music2_history_v1";
+const HISTORY_MAX = 5;
+
+type MusicHistoryEntry = {
+  jobId: string;
+  title: string;
+  audioUrl: string;
+  downloadUrl: string;
+  lyrics: string;
+  createdAt: string; // ISO string
+};
+
+function loadHistory(): MusicHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveToHistory(entry: MusicHistoryEntry): MusicHistoryEntry[] {
+  const prev = loadHistory().filter((e) => e.jobId !== entry.jobId);
+  const next = [entry, ...prev].slice(0, HISTORY_MAX);
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
+}
+
+function formatDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return "";
+  }
+}
 
 // ── ユーティリティ ───────────────────────────────────────────────────────────
 
@@ -54,11 +108,6 @@ export default function Music2Page() {
   const [jobId, setJobId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 歌詞
-  const [lyricsTitle, setLyricsTitle] = useState("");
-  const [editedLyrics, setEditedLyrics] = useState("");
-  const [originalLyrics, setOriginalLyrics] = useState("");
-
   // 構成
   const [structureData, setStructureData] = useState<StructureData | null>(null);
 
@@ -67,7 +116,11 @@ export default function Music2Page() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [resultTitle, setResultTitle] = useState("");
   const [resultLyrics, setResultLyrics] = useState("");
-  const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [displayLyrics, setDisplayLyrics] = useState("");
+  const [distributionLyrics, setDistributionLyrics] = useState("");
+  const [distributionReady, setDistributionReady] = useState(false);
+  const [lyricsGateResult, setLyricsGateResult] = useState<"pass" | "review" | "reject" | null>(null);
+  const [lyricsReviewRequired, setLyricsReviewRequired] = useState(false);
 
   // UI状態
   const [loading, setLoading] = useState(false);
@@ -75,14 +128,65 @@ export default function Music2Page() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [audioStage, setAudioStage] = useState<string | null>(null);
-  const [unlocked, setUnlocked] = useState(false);
-  const [pwInput, setPwInput] = useState("");
+  const [stageLabel, setStageLabel] = useState<string | null>(null);
 
-  // ── 認証チェック ─────────────────────────────────────────────────────────
+  // プラン
+  const [plan, setPlan] = useState<string | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
+
+  // 履歴
+  const [history, setHistory] = useState<MusicHistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Pro 追加入力
+  const [bpmHint, setBpmHint] = useState<number | null>(null);
+  const [vocalStyle, setVocalStyle] = useState<string>("");
+  const [vocalMood, setVocalMood] = useState<string>("");
+
+  const isPro = plan !== null && PRO_PLANS.includes(plan);
+
+  // ── 認証チェック & プラン取得 ───────────────────────────────────────────
 
   useEffect(() => {
     const auth = getAuth();
-    if (!auth) router.replace("/login");
+    if (!auth) {
+      router.replace("/login");
+      return;
+    }
+    setHistory(loadHistory());
+
+    const id   = (auth as any)?.id || (auth as any)?.loginId || "";
+    const code = getAuthSecret() || (auth as any)?.token || "";
+
+    const cachedPlan = String((auth as any)?.plan ?? "");
+    if (cachedPlan) setPlan(cachedPlan);
+
+    if (!id || !code) {
+      setPlanLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await fetch("/api/me", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ id, code, group: (auth as any)?.group || "" }),
+        });
+        const data = await res.json().catch(() => ({ ok: false }));
+        if (data?.ok && data?.me?.plan) {
+          setPlan(String(data.me.plan));
+        } else {
+          setPlan(cachedPlan || "");
+        }
+      } catch {
+        setPlan(cachedPlan || "");
+      } finally {
+        setPlanLoading(false);
+      }
+    })();
+
     return () => {
       if (pollRef.current) clearTimeout(pollRef.current);
     };
@@ -97,151 +201,12 @@ export default function Music2Page() {
     }
   }
 
-  // ── ステータスポーリング（lyrics_ready まで） ──────────────────────────────
-
-  const pollUntilLyricsReady = useCallback((jid: string) => {
-    let ticks = 0;
-    const MAX_TICKS = 60; // 2分
-
-    const poll = async () => {
-      if (!pollRef.current) return;
-      ticks++;
-      setProgress(Math.min(85, 10 + ticks * 1.2));
-
-      try {
-        const res = await fetch(`/api/song/status?jobId=${jid}`, { cache: "no-store" });
-        const data = await res.json();
-
-        if (!data.ok) {
-          if (ticks >= MAX_TICKS) {
-            stopPoll();
-            setErrorMsg("歌詞の生成に失敗しました。もう一度お試しください。");
-            setLoading(false);
-          } else {
-            const t = setTimeout(poll, 2000);
-            pollRef.current = t;
-          }
-          return;
-        }
-
-        if (data.status === "lyrics_ready") {
-          // 歌詞を取得
-          const lRes = await fetch(`/api/song/lyrics?jobId=${jid}`, { cache: "no-store" });
-          const lData = await lRes.json();
-          stopPoll();
-          setProgress(100);
-          if (lData.ok) {
-            setLyricsTitle(lData.title ?? "");
-            setOriginalLyrics(lData.lyrics ?? "");
-            setEditedLyrics(lData.lyrics ?? "");
-            setLoading(false);
-            setStep(1);
-          } else {
-            setErrorMsg("歌詞の取得に失敗しました。");
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (data.status === "failed" || data.status === "cancelled") {
-          stopPoll();
-          setErrorMsg("歌詞の生成に失敗しました。もう一度お試しください。");
-          setLoading(false);
-          return;
-        }
-
-        if (ticks >= MAX_TICKS) {
-          stopPoll();
-          setErrorMsg("歌詞の生成がタイムアウトしました。");
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // ネットワークエラーは無視して継続
-      }
-
-      const t = setTimeout(poll, 2000);
-      pollRef.current = t;
-    };
-
-    const t = setTimeout(poll, 2000);
-    pollRef.current = t;
-  }, []);
-
-  // ── ステータスポーリング（structure_ready まで） ──────────────────────────
-
-  const pollUntilStructureReady = useCallback((jid: string) => {
-    let ticks = 0;
-    const MAX_TICKS = 60;
-
-    const poll = async () => {
-      if (!pollRef.current) return;
-      ticks++;
-      setProgress(Math.min(85, 10 + ticks * 1.2));
-
-      try {
-        const res = await fetch(`/api/song/status?jobId=${jid}`, { cache: "no-store" });
-        const data = await res.json();
-
-        if (!data.ok) {
-          if (ticks >= MAX_TICKS) {
-            stopPoll();
-            setErrorMsg("構成の生成に失敗しました。");
-            setLoading(false);
-          } else {
-            const t = setTimeout(poll, 2000);
-            pollRef.current = t;
-          }
-          return;
-        }
-
-        if (data.status === "structure_ready") {
-          const sRes = await fetch(`/api/song/structure?jobId=${jid}`, { cache: "no-store" });
-          const sData = await sRes.json();
-          stopPoll();
-          setProgress(100);
-          if (sData.ok) {
-            setStructureData(sData);
-            setLoading(false);
-            setStep(2);
-          } else {
-            setErrorMsg("構成の取得に失敗しました。");
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (data.status === "failed" || data.status === "cancelled") {
-          stopPoll();
-          setErrorMsg("構成の生成に失敗しました。");
-          setLoading(false);
-          return;
-        }
-
-        if (ticks >= MAX_TICKS) {
-          stopPoll();
-          setErrorMsg("構成の生成がタイムアウトしました。");
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // ネットワークエラーは無視
-      }
-
-      const t = setTimeout(poll, 2000);
-      pollRef.current = t;
-    };
-
-    const t = setTimeout(poll, 2000);
-    pollRef.current = t;
-  }, []);
-
   // ── ステータスポーリング（completed まで） ────────────────────────────────
 
   const pollUntilCompleted = useCallback((jid: string) => {
     let ticks = 0;
-    const INFO_TICKS = 100; // 5分（3秒×100）：インフォメッセージを表示してポーリング継続
-    const MAX_TICKS = 200;  // 10分（3秒×200）：本当のタイムアウトエラー
+    const INFO_TICKS = 100;
+    const MAX_TICKS  = 200;
 
     const poll = async () => {
       if (!pollRef.current) return;
@@ -249,7 +214,7 @@ export default function Music2Page() {
       setProgress(Math.min(90, 5 + ticks * 0.425));
 
       try {
-        const res = await fetch(`/api/song/status?jobId=${jid}`, { cache: "no-store" });
+        const res  = await fetch(`/api/song/status?jobId=${jid}`, { cache: "no-store" });
         const data = await res.json();
 
         if (!data.ok) {
@@ -257,18 +222,17 @@ export default function Music2Page() {
             stopPoll();
             setErrorMsg("生成に失敗しました。もう一度お試しください。");
           } else {
-            const t = setTimeout(poll, 3000);
-            pollRef.current = t;
+            pollRef.current = setTimeout(poll, 3000);
           }
           return;
         }
 
-        if (data.stage) {
-          setAudioStage(data.stage);
-        }
+        if (data.stage)                      setAudioStage(data.stage);
+        if (data.stageLabel)                 setStageLabel(data.stageLabel);
+        if (typeof data.progress === "number") setProgress(data.progress);
 
-        if (data.status === "completed") {
-          const rRes = await fetch(`/api/song/result?jobId=${jid}`, { cache: "no-store" });
+        if (data.status === "completed" || data.status === "review_required") {
+          const rRes  = await fetch(`/api/song/result?jobId=${jid}`, { cache: "no-store" });
           const rData = await rRes.json();
           stopPoll();
           setProgress(100);
@@ -277,8 +241,24 @@ export default function Music2Page() {
             setAudioUrl(rData.audioUrl ?? null);
             setDownloadUrl(rData.downloadUrl ?? null);
             setResultLyrics(rData.lyrics ?? "");
+            setDisplayLyrics(rData.displayLyrics ?? rData.lyrics ?? "");
+            setDistributionLyrics(rData.distributionLyrics ?? "");
+            setDistributionReady(!!rData.distributionReady);
+            setLyricsGateResult(rData.lyricsGateResult ?? null);
+            setLyricsReviewRequired(!!rData.lyricsReviewRequired);
             setInfoMsg(null);
-            setStep(4);
+            setStep(3);
+            if (rData.audioUrl) {
+              const updated = saveToHistory({
+                jobId:       jid,
+                title:       rData.title || "無題",
+                audioUrl:    rData.audioUrl,
+                downloadUrl: rData.downloadUrl ?? rData.audioUrl,
+                lyrics:      rData.displayLyrics ?? rData.lyrics ?? "",
+                createdAt:   new Date().toISOString(),
+              });
+              setHistory(updated);
+            }
           } else {
             setErrorMsg("曲の取得に失敗しました。");
           }
@@ -304,15 +284,13 @@ export default function Music2Page() {
         // ネットワークエラーは無視
       }
 
-      const t = setTimeout(poll, 3000);
-      pollRef.current = t;
+      pollRef.current = setTimeout(poll, 3000);
     };
 
-    const t = setTimeout(poll, 3000);
-    pollRef.current = t;
+    pollRef.current = setTimeout(poll, 3000);
   }, []);
 
-  // ── Step 0: 曲を作る ─────────────────────────────────────────────────────
+  // ── Step 0: 曲を作る（構成生成まで一気に） ──────────────────────────────
 
   async function handleStart() {
     const auth = getAuth();
@@ -326,22 +304,30 @@ export default function Music2Page() {
     stopPoll();
     setLoading(true);
     setErrorMsg(null);
-    setProgress(5);
+    setProgress(10);
 
     const moodStr = selectedMoods.join("・");
 
     try {
-      const res = await fetch("/api/song/start", {
-        method: "POST",
+      // start API が同期的に structure_ready まで実行して返す
+      setProgress(30);
+      const res  = await fetch("/api/song/start", {
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: auth.id, code, theme: theme.trim(), genre, mood: moodStr }),
+        body:    JSON.stringify({
+          id: (auth as any).id, code, theme: theme.trim(), genre, mood: moodStr, isPro,
+          bpmHint:    isPro && bpmHint    ? bpmHint    : undefined,
+          vocalStyle: isPro && vocalStyle ? vocalStyle : undefined,
+          vocalMood:  isPro && vocalMood  ? vocalMood  : undefined,
+          language:   "ja",
+        }),
       });
       const data = await res.json();
 
       if (!data.ok) {
         const msg =
           data.error === "insufficient_bp"
-            ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: 10BP）`
+            ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: 100BP）`
             : `エラーが発生しました（${data.error ?? "unknown"}）`;
         setErrorMsg(msg);
         setLoading(false);
@@ -349,81 +335,45 @@ export default function Music2Page() {
       }
 
       setJobId(data.jobId);
-      const t = setTimeout(() => {}, 0);
-      pollRef.current = t;
-      pollUntilLyricsReady(data.jobId);
-    } catch {
-      setErrorMsg("ネットワークエラーが発生しました。");
-      setLoading(false);
-    }
-  }
+      setProgress(100);
 
-  // ── Step 1: 作り直す（同じ入力で再生成） ──────────────────────────────────
-
-  async function handleRedoLyrics() {
-    if (jobId) {
-      await fetch("/api/song/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId }),
-      }).catch(() => {});
-    }
-    setStep(0);
-    setJobId(null);
-    setLyricsTitle("");
-    setEditedLyrics("");
-    setOriginalLyrics("");
-    setErrorMsg(null);
-    setLoading(false);
-    setProgress(0);
-    stopPoll();
-  }
-
-  // ── Step 1: キャンセル ────────────────────────────────────────────────────
-
-  async function handleCancelFromStep1() {
-    if (jobId) {
-      await fetch("/api/song/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId }),
-      }).catch(() => {});
-    }
-    handleFullReset();
-  }
-
-  // ── Step 1: 歌詞を承認して構成生成へ ─────────────────────────────────────
-
-  async function handleApproveLyrics() {
-    if (!jobId) return;
-    setLoading(true);
-    setErrorMsg(null);
-    setProgress(5);
-
-    try {
-      const res = await fetch("/api/song/approve-lyrics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId, lyrics: editedLyrics }),
-      });
-      const data = await res.json();
-
-      if (!data.ok) {
-        setErrorMsg(`エラー: ${data.error ?? "unknown"}`);
+      // structure データを取得して Step 1 へ
+      if (data.structureData) {
+        setStructureData({
+          bpm:         data.structureData.bpm  ?? 120,
+          key:         data.structureData.key  ?? "C major",
+          sections:    data.structureData.sections ?? [],
+          hookSummary: data.structureData.hookSummary ?? "",
+          title:       data.structureData.title ?? "",
+        });
         setLoading(false);
-        return;
+        setStep(1);
+      } else {
+        // フォールバック: structure API で取得
+        const sRes  = await fetch(`/api/song/structure?jobId=${data.jobId}`, { cache: "no-store" });
+        const sData = await sRes.json();
+        if (sData.ok) {
+          setStructureData({
+            bpm:         sData.bpm  ?? 120,
+            key:         sData.key  ?? "C major",
+            sections:    sData.sections ?? [],
+            hookSummary: sData.hookSummary ?? "",
+            title:       sData.title ?? "",
+          });
+          setLoading(false);
+          setStep(1);
+        } else {
+          setErrorMsg("構成の取得に失敗しました。");
+          setLoading(false);
+        }
       }
-
-      const t = setTimeout(() => {}, 0);
-      pollRef.current = t;
-      pollUntilStructureReady(jobId);
     } catch {
       setErrorMsg("ネットワークエラーが発生しました。");
       setLoading(false);
     }
   }
 
-  // ── Step 2: 作り直す（歌詞承認に戻る） ───────────────────────────────────
+  // ── Step 1: 構成を作り直す ────────────────────────────────────────────────
 
   function handleRedoStructure() {
     stopPoll();
@@ -431,24 +381,24 @@ export default function Music2Page() {
     setProgress(0);
     setErrorMsg(null);
     setStructureData(null);
-    // lyrics_ready に戻す（再ポーリング不要、すでにlyricsDataはある）
-    setStep(1);
+    setJobId(null);
+    setStep(0);
   }
 
-  // ── Step 2: キャンセル ────────────────────────────────────────────────────
+  // ── Step 1: キャンセル ────────────────────────────────────────────────────
 
-  async function handleCancelFromStep2() {
+  async function handleCancelFromStep1() {
     if (jobId) {
       await fetch("/api/song/cancel", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId }),
+        body:    JSON.stringify({ jobId }),
       }).catch(() => {});
     }
     handleFullReset();
   }
 
-  // ── Step 2: 構成承認して音楽生成へ ───────────────────────────────────────
+  // ── Step 1: 構成承認して音楽生成へ ────────────────────────────────────────
 
   async function handleApproveStructure() {
     if (!jobId) return;
@@ -457,10 +407,10 @@ export default function Music2Page() {
     setProgress(5);
 
     try {
-      const res = await fetch("/api/song/approve-structure", {
-        method: "POST",
+      const res  = await fetch("/api/song/approve-structure", {
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId, approved: true }),
+        body:    JSON.stringify({ jobId, approved: true }),
       });
       const data = await res.json();
 
@@ -470,9 +420,8 @@ export default function Music2Page() {
         return;
       }
 
-      setStep(3);
-      const t = setTimeout(() => {}, 0);
-      pollRef.current = t;
+      setStep(2);
+      pollRef.current = setTimeout(() => {}, 0);
       pollUntilCompleted(jobId);
     } catch {
       setErrorMsg("ネットワークエラーが発生しました。");
@@ -489,20 +438,23 @@ export default function Music2Page() {
     setTheme("");
     setGenre("");
     setSelectedMoods([]);
-    setLyricsTitle("");
-    setEditedLyrics("");
-    setOriginalLyrics("");
     setStructureData(null);
     setAudioUrl(null);
     setDownloadUrl(null);
     setResultTitle("");
     setResultLyrics("");
-    setLyricsOpen(false);
+    setDisplayLyrics("");
+    setDistributionLyrics("");
+    setDistributionReady(false);
     setLoading(false);
     setProgress(0);
     setErrorMsg(null);
     setInfoMsg(null);
     setAudioStage(null);
+    setStageLabel(null);
+    setBpmHint(null);
+    setVocalStyle("");
+    setVocalMood("");
   }
 
   // ── ムード切り替え ────────────────────────────────────────────────────────
@@ -513,30 +465,12 @@ export default function Music2Page() {
     );
   }
 
-  // if (!unlocked) return (
-  //   <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-white">
-  //     <p className="text-sm text-gray-400">管理者パスワードを入力してください</p>
-  //     <input
-  //       type="password"
-  //       value={pwInput}
-  //       onChange={e => setPwInput(e.target.value)}
-  //       className="border rounded px-3 py-2 text-sm"
-  //     />
-  //     <button
-  //       onClick={() => { if (pwInput === "nagoya01@") setUnlocked(true); }}
-  //       className="bg-blue-600 text-white px-4 py-2 rounded text-sm"
-  //     >
-  //       入力
-  //     </button>
-  //   </div>
-  // );
-
-  const canStart = theme.trim().length > 0 && genre !== "" && selectedMoods.length > 0 && !loading;
+  const canStart = theme.trim().length > 0 && genre !== "" && selectedMoods.length > 0 && !loading && !planLoading;
 
   // ── 共通スタイル ──────────────────────────────────────────────────────────
 
-  const chipBase = "rounded-full border px-3 py-1 text-xs font-semibold transition";
-  const chipActive = "border-indigo-500 bg-indigo-600 text-white";
+  const chipBase    = "rounded-full border px-3 py-1 text-xs font-semibold transition";
+  const chipActive  = "border-indigo-500 bg-indigo-600 text-white";
   const chipInactive = "border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700";
 
   const btnPrimary =
@@ -559,7 +493,6 @@ export default function Music2Page() {
           className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
           style={{ width: `${progress}%` }}
         />
-        {/* 猫がバーの先端を走る */}
         <span
           className="absolute -top-3 text-base transition-all duration-500"
           style={{ left: `calc(${progress}% - 10px)` }}
@@ -584,11 +517,36 @@ export default function Music2Page() {
 
   // ── レンダリング ──────────────────────────────────────────────────────────
 
+  // ── 履歴サイドバー ────────────────────────────────────────────────────────
+
+
   return (
     <main className="min-h-screen text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
 
-      <div className="mx-auto max-w-[720px] px-4 py-10">
+      <div className="mx-auto max-w-[1100px] px-4 py-10 lg:flex lg:gap-5 lg:items-start">
+        {/* 左サイドバー（共通） */}
+        <div className="hidden lg:block">
+          <AppSidebar musicHistory={history} activePage="/music2" />
+        </div>
+        {/* モバイル用折りたたみ履歴ボタン */}
+        <div className="lg:hidden mb-3">
+          <button
+            onClick={() => setHistoryOpen((v) => !v)}
+            className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            <span>🎵 最近の曲 ({history.length})</span>
+            <span>{historyOpen ? "▲" : "▼"}</span>
+          </button>
+          {historyOpen && (
+            <div className="mt-2">
+              <AppSidebar musicHistory={history} activePage="/music2" />
+            </div>
+          )}
+        </div>
+
+        {/* メインカード */}
+        <div className="flex-1 min-w-0">
         <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
 
           {/* ヘッダー */}
@@ -603,10 +561,16 @@ export default function Music2Page() {
               <span className="text-base">🎵</span>
               音楽生成 NEW
             </div>
+            {/* Pro バッジ */}
+            {!planLoading && isPro && (
+              <span className="rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-bold text-white">
+                PRO
+              </span>
+            )}
             {/* ステップインジケーター */}
             {step > 0 && (
               <div className="ml-auto flex items-center gap-1">
-                {([1, 2, 3, 4] as const).map((s) => (
+                {([1, 2, 3] as const).map((s) => (
                   <div
                     key={s}
                     className={[
@@ -621,10 +585,9 @@ export default function Music2Page() {
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
             {step === 0 && "新しい曲を作る"}
-            {step === 1 && "歌詞案を確認"}
-            {step === 2 && "構成案を確認"}
-            {step === 3 && "曲を生成しています…"}
-            {step === 4 && "曲が完成しました！"}
+            {step === 1 && "構成案を確認"}
+            {step === 2 && "曲を生成しています…"}
+            {step === 3 && "曲が完成しました！"}
           </h1>
 
           <ErrorBox />
@@ -635,7 +598,7 @@ export default function Music2Page() {
           {step === 0 && (
             <>
               <p className="mt-2 text-sm text-slate-600">
-                テーマ・ジャンル・雰囲気を選ぶと、AIが歌詞と構成を提案してから曲を生成します。
+                テーマ・ジャンル・雰囲気を選ぶと、AIが構成を提案してから曲を生成します。
               </p>
 
               {/* テーマ */}
@@ -694,15 +657,80 @@ export default function Music2Page() {
                 </div>
               </div>
 
+              {/* Pro追加設定（isPro === true の場合のみ表示） */}
+              {isPro && (
+                <div className="mt-5 rounded-[18px] border border-violet-200 bg-violet-50 p-4">
+                  <p className="text-xs font-bold text-violet-700 mb-3">🎛️ Pro設定（任意）</p>
+
+                  {/* BPMヒント */}
+                  <div className="mb-3">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">BPM目安</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {BPM_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setBpmHint(bpmHint === opt.value ? null : opt.value)}
+                          className={[chipBase, bpmHint === opt.value ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ボーカルスタイル */}
+                  <div className="mb-3">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">ボーカルスタイル</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {VOCAL_STYLES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setVocalStyle(vocalStyle === v ? "" : v)}
+                          className={[chipBase, vocalStyle === v ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ボーカルムード */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">ボーカルムード</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {VOCAL_MOODS.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setVocalMood(vocalMood === v ? "" : v)}
+                          className={[chipBase, vocalMood === v ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* BP表示 */}
               <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <span className="text-xs font-bold text-indigo-700">必要BP</span>
-                <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">10 BP</span>
-                <span className="ml-auto text-[11px] text-indigo-500">歌詞生成→構成生成→音楽生成の3ステップ</span>
+                <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">100 BP</span>
+                {isPro ? (
+                  <span className="ml-auto text-[11px] text-violet-600 font-semibold">🎛️ Proモード：高品質プロンプトで生成</span>
+                ) : (
+                  <span className="ml-auto text-[11px] text-indigo-500">構成生成→音楽生成の2ステップ</span>
+                )}
               </div>
 
               {/* ローディング中のプログレス */}
-              {loading && <ProgressBar label="歌詞を生成しています…" />}
+              {loading && <ProgressBar label="楽曲構成を生成しています…" />}
 
               {/* 生成ボタン */}
               <div className="mt-6">
@@ -711,7 +739,7 @@ export default function Music2Page() {
                   disabled={!canStart}
                   className={btnPrimary}
                 >
-                  {loading ? "歌詞を生成中…" : "曲を作る"}
+                  {loading ? "構成を生成中…" : "曲を作る"}
                 </button>
                 {!canStart && !loading && (
                   <p className="mt-2 text-center text-[11px] text-slate-400">
@@ -723,65 +751,9 @@ export default function Music2Page() {
           )}
 
           {/* ════════════════════════════════════════════════════
-              Step 1：歌詞確認
+              Step 1：構成確認
           ════════════════════════════════════════════════════ */}
-          {step === 1 && !loading && (
-            <>
-              <p className="mt-2 text-sm text-slate-600">
-                AIが歌詞案を作成しました。修正してから「この歌詞で進む」を押してください。
-              </p>
-
-              {/* タイトル */}
-              <div className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                <p className="text-[10px] font-bold text-indigo-500">タイトル案</p>
-                <p className="mt-1 text-base font-extrabold text-slate-900">{lyricsTitle}</p>
-              </div>
-
-              {/* 歌詞編集 */}
-              <div className="mt-4">
-                <label className="block text-xs font-bold text-slate-700">
-                  歌詞
-                  <span className="ml-2 text-[10px] font-normal text-slate-400">
-                    自由に編集できます
-                  </span>
-                </label>
-                <textarea
-                  value={editedLyrics}
-                  onChange={(e) => setEditedLyrics(e.target.value)}
-                  rows={14}
-                  className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-xs leading-relaxed text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                />
-                {editedLyrics !== originalLyrics && (
-                  <p className="mt-1 text-[11px] text-indigo-500">編集済み（オリジナルから変更あり）</p>
-                )}
-              </div>
-
-              {/* ボタン群 */}
-              <div className="mt-5 flex flex-col gap-2">
-                <button onClick={handleApproveLyrics} className={btnPrimary}>
-                  この歌詞で進む →
-                </button>
-                <div className="flex gap-2">
-                  <button onClick={handleRedoLyrics} className={`flex-1 ${btnSecondary}`}>
-                    作り直す
-                  </button>
-                  <button onClick={handleCancelFromStep1} className={`flex-1 ${btnDanger}`}>
-                    キャンセル
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* 歌詞承認後のローディング */}
-          {step === 1 && loading && (
-            <ProgressBar label="構成を生成しています…" />
-          )}
-
-          {/* ════════════════════════════════════════════════════
-              Step 2：構成確認
-          ════════════════════════════════════════════════════ */}
-          {step === 2 && !loading && structureData && (
+          {step === 1 && !loading && structureData && (
             <>
               <p className="mt-2 text-sm text-slate-600">
                 AIが楽曲構成を提案しました。確認してから「これで曲を作る」を押してください。
@@ -835,15 +807,14 @@ export default function Music2Page() {
                 <button onClick={handleApproveStructure} className={btnPrimary}>
                   これで曲を作る →
                 </button>
-                {/* Beta版注記 */}
                 <p className="text-xs text-orange-400 text-center mt-2">
-                  ⚠️ Beta版のため、現在は2分〜2分30秒の生成となります
+                  ⚠️ Beta版のため、現在は2分〜3分の生成となります
                 </p>
                 <div className="flex gap-2">
                   <button onClick={handleRedoStructure} className={`flex-1 ${btnSecondary}`}>
-                    歌詞に戻る
+                    作り直す
                   </button>
-                  <button onClick={handleCancelFromStep2} className={`flex-1 ${btnDanger}`}>
+                  <button onClick={handleCancelFromStep1} className={`flex-1 ${btnDanger}`}>
                     キャンセル
                   </button>
                 </div>
@@ -851,29 +822,32 @@ export default function Music2Page() {
             </>
           )}
 
-          {step === 2 && loading && (
-            <ProgressBar label="構成を生成しています…" />
+          {step === 1 && loading && (
+            <ProgressBar label="音楽生成を開始しています…" />
           )}
 
           {/* ════════════════════════════════════════════════════
-              Step 3：曲生成中
+              Step 2：曲生成中
           ════════════════════════════════════════════════════ */}
-          {step === 3 && (
+          {step === 2 && (
             <>
               <p className="mt-2 text-sm text-slate-600">
                 AIが曲を生成しています。完成まで約8分かかります。このページを閉じずにお待ちください。
               </p>
 
-              <ProgressBar label="音楽を生成しています…" />
+              <ProgressBar label={stageLabel ?? "音楽を生成しています…"} />
 
               <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <p className="text-xs font-semibold leading-relaxed text-indigo-700">
-                  {audioStage === "intro"   && "イントロ生成中... (1/4)"}
-                  {audioStage === "verse"   && "Verse生成中... (2/4)"}
-                  {audioStage === "chorus"  && "サビ生成中... (3/4)"}
-                  {audioStage === "outro"   && "アウトロ生成中... (4/4)"}
-                  {audioStage === "merging" && "仕上げ中..."}
-                  {!audioStage && "りふぁねこが一生懸命作曲中です🎵"}
+                  {stageLabel
+                    ? stageLabel
+                    : audioStage === "intro"   ? "イントロ生成中... (1/4)"
+                    : audioStage === "verse"   ? "Verse生成中... (2/4)"
+                    : audioStage === "chorus"  ? "サビ生成中... (3/4)"
+                    : audioStage === "outro"   ? "アウトロ生成中... (4/4)"
+                    : audioStage === "merging" ? "仕上げ中..."
+                    : "りふぁねこが一生懸命作曲中です🎵"
+                  }
                   <br />
                   完成すると自動的に次のステップに進みます。
                 </p>
@@ -888,18 +862,44 @@ export default function Music2Page() {
           )}
 
           {/* ════════════════════════════════════════════════════
-              Step 4：完成
+              Step 3：完成
           ════════════════════════════════════════════════════ */}
-          {step === 4 && audioUrl && (
+          {step === 3 && audioUrl && (
             <>
               <p className="mt-2 text-sm text-slate-600">
                 曲が完成しました！再生・ダウンロードできます。
               </p>
 
               <div className="mt-5 rounded-[20px] border border-indigo-100 bg-indigo-50 p-4">
-                {/* タイトル */}
-                <p className="text-sm font-extrabold text-slate-900">{resultTitle}</p>
-                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：10BP</p>
+                {/* タイトル + 品質バッジ */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-extrabold text-slate-900">{resultTitle}</p>
+                  {lyricsGateResult === "pass" && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                      ✓ 品質 良好
+                    </span>
+                  )}
+                  {lyricsGateResult === "review" && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                      ⚠ 要確認
+                    </span>
+                  )}
+                  {lyricsGateResult === "reject" && (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                      ✕ 品質不足
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：100BP</p>
+
+                {/* 品質警告 */}
+                {(lyricsReviewRequired || !distributionReady) && audioUrl && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-[11px] font-semibold text-amber-800">
+                      ⚠ この曲は歌詞一致または反復に問題があるため、配信提出前に確認してください。
+                    </p>
+                  </div>
+                )}
 
                 {/* オーディオプレイヤー */}
                 <audio controls src={audioUrl} className="mt-3 w-full" />
@@ -938,25 +938,53 @@ export default function Music2Page() {
                   </Link>
                 </div>
 
-                {/* 歌詞表示（サービス開始時に開放） */}
-                <div className="relative mt-4">
-                  {/* ぼかし表示 */}
-                  <div className="blur-sm select-none pointer-events-none bg-white/5 border border-white/10 rounded-xl p-4 h-32 overflow-hidden">
-                    <p className="text-sm text-gray-400">
-                      [Verse A]<br/>
-                      歌詞は近日公開予定です<br/>
-                      もうしばらくお待ちください<br/>
-                      [Chorus]<br/>
-                      サービス開始時に解放されます
-                    </p>
+                {/* 歌詞ダウンロード */}
+                {displayLyrics && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <button
+                      onClick={() => {
+                        const blob = new Blob(
+                          [`${resultTitle}\n\n${displayLyrics}`],
+                          { type: "text/plain;charset=utf-8" }
+                        );
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `lyrics-display-${jobId || "song"}.txt`;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      📄 歌詞をダウンロード（表示用）
+                    </button>
+                    {distributionLyrics ? (
+                      <button
+                        onClick={() => {
+                          const blob = new Blob(
+                            [`${resultTitle}\n\n${distributionLyrics}`],
+                            { type: "text/plain;charset=utf-8" }
+                          );
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `lyrics-distribution-${jobId || "song"}.txt`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                        }}
+                        className={`w-full rounded-2xl border px-4 py-2.5 text-xs font-semibold transition ${
+                          distributionReady
+                            ? "border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+                            : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {distributionReady ? "✅ 配信用歌詞をダウンロード" : "📋 配信用歌詞をダウンロード（要確認）"}
+                      </button>
+                    ) : (
+                      <div className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-center text-xs font-semibold text-red-600">
+                        🚫 配信用歌詞：品質確認が必要なため提出前に手動確認が必要です
+                      </div>
+                    )}
                   </div>
-                  {/* ロックオーバーレイ */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 rounded-xl">
-                    <span className="text-2xl mb-1">🔒</span>
-                    <p className="text-sm font-bold text-gray-700">歌詞機能は近日公開予定</p>
-                    <p className="text-xs text-gray-500">サービス正式開始時に解放されます</p>
-                  </div>
-                </div>
+                )}
               </div>
             </>
           )}
@@ -964,6 +992,7 @@ export default function Music2Page() {
 
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
+    </div>
     </main>
   );
 }

@@ -3,7 +3,7 @@ export const BP_COSTS = {
   music_lyrics:     10,  // 歌詞生成
   music_structure:   5,  // 構成生成
   music_bgm:        20,  // BGM生成
-  music_full:       40,  // フル生成（歌詞+構成+音楽）
+  music_full:      100,  // フル生成（構成+音楽）
 
   // note記事生成
   note_title:        3,  // タイトル生成
