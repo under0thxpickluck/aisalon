@@ -119,6 +119,8 @@ export default function Music2Page() {
   const [displayLyrics, setDisplayLyrics] = useState("");
   const [distributionLyrics, setDistributionLyrics] = useState("");
   const [distributionReady, setDistributionReady] = useState(false);
+  const [lyricsGateResult, setLyricsGateResult] = useState<"pass" | "review" | "reject" | null>(null);
+  const [lyricsReviewRequired, setLyricsReviewRequired] = useState(false);
 
   // UI状態
   const [loading, setLoading] = useState(false);
@@ -229,7 +231,7 @@ export default function Music2Page() {
         if (data.stageLabel)                 setStageLabel(data.stageLabel);
         if (typeof data.progress === "number") setProgress(data.progress);
 
-        if (data.status === "completed") {
+        if (data.status === "completed" || data.status === "review_required") {
           const rRes  = await fetch(`/api/song/result?jobId=${jid}`, { cache: "no-store" });
           const rData = await rRes.json();
           stopPoll();
@@ -240,8 +242,10 @@ export default function Music2Page() {
             setDownloadUrl(rData.downloadUrl ?? null);
             setResultLyrics(rData.lyrics ?? "");
             setDisplayLyrics(rData.displayLyrics ?? rData.lyrics ?? "");
-            setDistributionLyrics(rData.distributionLyrics ?? rData.lyrics ?? "");
+            setDistributionLyrics(rData.distributionLyrics ?? "");
             setDistributionReady(!!rData.distributionReady);
+            setLyricsGateResult(rData.lyricsGateResult ?? null);
+            setLyricsReviewRequired(!!rData.lyricsReviewRequired);
             setInfoMsg(null);
             setStep(3);
             if (rData.audioUrl) {
@@ -867,9 +871,35 @@ export default function Music2Page() {
               </p>
 
               <div className="mt-5 rounded-[20px] border border-indigo-100 bg-indigo-50 p-4">
-                {/* タイトル */}
-                <p className="text-sm font-extrabold text-slate-900">{resultTitle}</p>
+                {/* タイトル + 品質バッジ */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-extrabold text-slate-900">{resultTitle}</p>
+                  {lyricsGateResult === "pass" && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                      ✓ 品質 良好
+                    </span>
+                  )}
+                  {lyricsGateResult === "review" && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                      ⚠ 要確認
+                    </span>
+                  )}
+                  {lyricsGateResult === "reject" && (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                      ✕ 品質不足
+                    </span>
+                  )}
+                </div>
                 <p className="mt-0.5 text-[11px] text-slate-500">使用BP：100BP</p>
+
+                {/* 品質警告 */}
+                {(lyricsReviewRequired || !distributionReady) && audioUrl && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-[11px] font-semibold text-amber-800">
+                      ⚠ この曲は歌詞一致または反復に問題があるため、配信提出前に確認してください。
+                    </p>
+                  </div>
+                )}
 
                 {/* オーディオプレイヤー */}
                 <audio controls src={audioUrl} className="mt-3 w-full" />
@@ -909,27 +939,25 @@ export default function Music2Page() {
                 </div>
 
                 {/* 歌詞ダウンロード */}
-                {(displayLyrics || distributionLyrics) && (
+                {displayLyrics && (
                   <div className="mt-3 flex flex-col gap-2">
-                    {displayLyrics && (
-                      <button
-                        onClick={() => {
-                          const blob = new Blob(
-                            [`${resultTitle}\n\n${displayLyrics}`],
-                            { type: "text/plain;charset=utf-8" }
-                          );
-                          const a = document.createElement("a");
-                          a.href = URL.createObjectURL(blob);
-                          a.download = `lyrics-display-${jobId || "song"}.txt`;
-                          a.click();
-                          URL.revokeObjectURL(a.href);
-                        }}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        📄 歌詞をダウンロード（表示用）
-                      </button>
-                    )}
-                    {distributionLyrics && (
+                    <button
+                      onClick={() => {
+                        const blob = new Blob(
+                          [`${resultTitle}\n\n${displayLyrics}`],
+                          { type: "text/plain;charset=utf-8" }
+                        );
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `lyrics-display-${jobId || "song"}.txt`;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      📄 歌詞をダウンロード（表示用）
+                    </button>
+                    {distributionLyrics ? (
                       <button
                         onClick={() => {
                           const blob = new Blob(
@@ -950,6 +978,10 @@ export default function Music2Page() {
                       >
                         {distributionReady ? "✅ 配信用歌詞をダウンロード" : "📋 配信用歌詞をダウンロード（要確認）"}
                       </button>
+                    ) : (
+                      <div className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-center text-xs font-semibold text-red-600">
+                        🚫 配信用歌詞：品質確認が必要なため提出前に手動確認が必要です
+                      </div>
                     )}
                   </div>
                 )}

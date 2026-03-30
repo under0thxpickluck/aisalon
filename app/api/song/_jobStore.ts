@@ -32,6 +32,8 @@ export type JobStatus =
   | "uploading_result"        // final 音源を R2 へ保存中
   | "transcribing_lyrics"     // ASR で歌詞書き起こし中（Phase 2）
   | "merging_lyrics"          // 歌詞マージ中（Phase 2）
+  | "quality_checking"        // 反復検知・品質スコア計算中（Phase 1）
+  | "regenerating_audio"      // 品質不足による自動再生成中（Phase 3）
   | "review_required"         // 一致率低・人手確認要
   | "completed" | "failed" | "cancelled";
 
@@ -95,6 +97,18 @@ export type SongJob = {
   asrCompletedAt?:        string | null;
   lyricsDiffJson?:        string | null;
   lyricsTimestampsJson?:  string | null;
+  // Phase 1 追加フィールド
+  anchorWordsJson?:       string | null;   // 意味拘束キーワード一覧 JSON
+  hookLinesJson?:         string | null;   // サビ固定行 JSON
+  repeatScore?:           number | null;   // 反復スコア 0-100
+  repeatDetected?:        boolean | null;  // 反復検知フラグ
+  repeatSegmentsJson?:    string | null;   // 反復セグメント JSON
+  lyricsQualityScore?:    number | null;   // 統合品質スコア 0-100
+  lyricsGateResult?:      "pass" | "review" | "reject" | null;
+  mergedLyrics?:          string | null;   // ASR 補正後の候補歌詞
+  distributionReviewReason?: string | null; // 配信提出 NG 理由
+  generationAttempt?:     number;          // 何回目の生成か
+  regenerationReason?:    string | null;   // 再生成した理由
 };
 
 // ========== CRUD ==========

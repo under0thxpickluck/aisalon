@@ -74,6 +74,30 @@ type DashboardData = {
   radio_summary: RadioSummary;
 };
 
+type MusicReviewJob = {
+  jobId: string;
+  userId?: string;
+  status: string;
+  audioUrl?: string;
+  displayLyrics?: string;
+  distributionLyrics?: string;
+  masterLyrics?: string;
+  singableLyrics?: string;
+  asrLyrics?: string;
+  mergedLyrics?: string;
+  lyricsQualityScore?: number | null;
+  repeatScore?: number | null;
+  lyricsGateResult?: "pass" | "review" | "reject" | null;
+  repeatDetected?: boolean | null;
+  anchorWordsJson?: string | null;
+  hookLinesJson?: string | null;
+  repeatSegmentsJson?: string | null;
+  generationAttempt?: number;
+  regenerationReason?: string | null;
+  prompt?: { theme?: string; genre?: string; mood?: string };
+  structureData?: { title?: string };
+};
+
 // ─── ユーティリティ ────────────────────────────────────────
 function clsx(...a: Array<string | false | null | undefined>) {
   return a.filter(Boolean).join(" ");
@@ -164,6 +188,14 @@ export default function AdminPage() {
   const [membersLoading, setMembersLoading] = useState(true);
   const PAGE_SIZE = 20;
 
+  // --- 新規: 音楽レビュー ---
+  const [musicReviews,    setMusicReviews]    = useState<MusicReviewJob[]>([]);
+  const [musicReviewLoading, setMusicReviewLoading] = useState(false);
+  const [musicReviewErr,  setMusicReviewErr]  = useState<string | null>(null);
+  const [musicReviewMsg,  setMusicReviewMsg]  = useState<string | null>(null);
+  const [musicReviewBusy, setMusicReviewBusy] = useState<string | null>(null);
+  const [editLyrics,      setEditLyrics]      = useState<Record<string, string>>({});
+
   // ── データ取得 ────────────────────────────────────────────
   const load = async () => {
     setErr(null); setMsg(null); setLoading(true);
@@ -225,11 +257,51 @@ export default function AdminPage() {
     }
   };
 
+  const loadMusicReviews = async () => {
+    setMusicReviewLoading(true); setMusicReviewErr(null);
+    try {
+      const res  = await fetch("/api/admin/music-review", { credentials: "include", cache: "no-store" });
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.error || "failed");
+      setMusicReviews(Array.isArray(json.jobs) ? json.jobs : []);
+    } catch (e: any) {
+      setMusicReviewErr(String(e?.message ?? e));
+    } finally {
+      setMusicReviewLoading(false);
+    }
+  };
+
+  const handleMusicReview = async (jobId: string, action: "confirm_distribution" | "reject_distribution" | "update_lyrics") => {
+    setMusicReviewBusy(jobId); setMusicReviewMsg(null); setMusicReviewErr(null);
+    try {
+      const body: Record<string, unknown> = { jobId, action };
+      if (action === "update_lyrics") {
+        body.displayLyrics      = editLyrics[`display_${jobId}`] ?? undefined;
+        body.distributionLyrics = editLyrics[`distribution_${jobId}`] ?? undefined;
+      }
+      const res  = await fetch("/api/admin/music-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.error || "failed");
+      setMusicReviewMsg(`完了: ${jobId} → ${action}`);
+      await loadMusicReviews();
+    } catch (e: any) {
+      setMusicReviewErr(String(e?.message ?? e));
+    } finally {
+      setMusicReviewBusy(null);
+    }
+  };
+
   useEffect(() => {
     load();
     loadSellRequests();
     loadDashboard();
     loadMembers(0);
+    loadMusicReviews();
   }, []);
 
   // ── pending 一覧 ──────────────────────────────────────────
@@ -779,6 +851,172 @@ export default function AdminPage() {
               )}
             </div>
           </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════
+            音楽レビュー（review_required な曲の手動確認）
+        ══════════════════════════════════════════════════ */}
+        <section className="mt-10">
+          <h2 className="mb-4 text-lg font-bold text-white">🎵 音楽レビュー（要確認曲）</h2>
+
+          {musicReviewMsg && (
+            <div className="mb-3 rounded-lg bg-emerald-900 px-4 py-2 text-sm text-emerald-300">{musicReviewMsg}</div>
+          )}
+          {musicReviewErr && (
+            <div className="mb-3 rounded-lg bg-red-900 px-4 py-2 text-sm text-red-300">エラー: {musicReviewErr}</div>
+          )}
+
+          {musicReviewLoading ? (
+            <SkeletonCard />
+          ) : musicReviews.length === 0 ? (
+            <EmptyState title="レビュー待ち曲なし" desc="review_required な曲はありません。" />
+          ) : (
+            <div className="flex flex-col gap-6">
+              {musicReviews.map((job) => {
+                const isBusy    = musicReviewBusy === job.jobId;
+                const gateColor = job.lyricsGateResult === "pass"
+                  ? "text-emerald-400"
+                  : job.lyricsGateResult === "review"
+                  ? "text-amber-400"
+                  : "text-red-400";
+
+                let anchorWords: string[] = [];
+                let hookLines: string[]   = [];
+                let repeatSegments: Array<{ text: string; count: number }> = [];
+                try { anchorWords     = job.anchorWordsJson    ? JSON.parse(job.anchorWordsJson)    : []; } catch {}
+                try { hookLines       = job.hookLinesJson      ? JSON.parse(job.hookLinesJson)      : []; } catch {}
+                try { repeatSegments  = job.repeatSegmentsJson ? JSON.parse(job.repeatSegmentsJson) : []; } catch {}
+
+                return (
+                  <div key={job.jobId} className="rounded-2xl border border-zinc-700 bg-zinc-900 p-5">
+                    {/* ヘッダー */}
+                    <div className="flex flex-wrap items-center gap-3 mb-3">
+                      <p className="text-sm font-bold text-white">
+                        {job.structureData?.title ?? job.prompt?.theme ?? job.jobId}
+                      </p>
+                      <span className={clsx("text-xs font-bold", gateColor)}>
+                        [{job.lyricsGateResult ?? "—"}]
+                      </span>
+                      <span className="text-xs text-zinc-400">
+                        品質: {job.lyricsQualityScore ?? "—"} / 反復: {job.repeatScore ?? "—"}
+                        {job.generationAttempt && job.generationAttempt > 1 && (
+                          <span className="ml-2 text-amber-400">（再生成: {job.generationAttempt}回目）</span>
+                        )}
+                      </span>
+                      <span className="text-xs text-zinc-500">{job.jobId}</span>
+                    </div>
+
+                    {/* 音源 */}
+                    {job.audioUrl && (
+                      <audio controls src={job.audioUrl} className="mb-3 w-full" />
+                    )}
+
+                    {/* 品質詳細 */}
+                    <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {anchorWords.length > 0 && (
+                        <div className="rounded-lg bg-zinc-800 p-3">
+                          <p className="mb-1 text-xs font-bold text-zinc-400">anchorWords</p>
+                          <p className="text-xs text-zinc-300">{anchorWords.join("、")}</p>
+                        </div>
+                      )}
+                      {hookLines.length > 0 && (
+                        <div className="rounded-lg bg-zinc-800 p-3">
+                          <p className="mb-1 text-xs font-bold text-zinc-400">hookLines</p>
+                          <p className="text-xs text-zinc-300 whitespace-pre-line">{hookLines.join("\n")}</p>
+                        </div>
+                      )}
+                      {repeatSegments.length > 0 && (
+                        <div className="rounded-lg bg-zinc-800 p-3 sm:col-span-2">
+                          <p className="mb-1 text-xs font-bold text-red-400">反復検知</p>
+                          {repeatSegments.map((seg, i) => (
+                            <p key={i} className="text-xs text-red-300">「{seg.text}」×{seg.count}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 歌詞比較 */}
+                    <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {job.masterLyrics && (
+                        <div className="rounded-lg bg-zinc-800 p-3">
+                          <p className="mb-1 text-xs font-bold text-zinc-400">masterLyrics</p>
+                          <pre className="text-xs text-zinc-300 whitespace-pre-wrap break-words">{job.masterLyrics}</pre>
+                        </div>
+                      )}
+                      {job.asrLyrics && (
+                        <div className="rounded-lg bg-zinc-800 p-3">
+                          <p className="mb-1 text-xs font-bold text-zinc-400">asrLyrics（実際に歌われた内容）</p>
+                          <pre className="text-xs text-zinc-300 whitespace-pre-wrap break-words">{job.asrLyrics}</pre>
+                        </div>
+                      )}
+                      {job.mergedLyrics && (
+                        <div className="rounded-lg bg-zinc-800 p-3">
+                          <p className="mb-1 text-xs font-bold text-zinc-400">mergedLyrics（補正候補）</p>
+                          <pre className="text-xs text-zinc-300 whitespace-pre-wrap break-words">{job.mergedLyrics}</pre>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 手動編集 */}
+                    <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <p className="mb-1 text-xs font-bold text-zinc-400">displayLyrics（表示用・編集可）</p>
+                        <textarea
+                          rows={8}
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                          value={editLyrics[`display_${job.jobId}`] ?? job.displayLyrics ?? ""}
+                          onChange={e => setEditLyrics(prev => ({ ...prev, [`display_${job.jobId}`]: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-bold text-zinc-400">distributionLyrics（配信用・編集可）</p>
+                        <textarea
+                          rows={8}
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-white focus:border-violet-500 focus:outline-none"
+                          value={editLyrics[`distribution_${job.jobId}`] ?? job.distributionLyrics ?? ""}
+                          onChange={e => setEditLyrics(prev => ({ ...prev, [`distribution_${job.jobId}`]: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    {/* アクションボタン */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleMusicReview(job.jobId, "confirm_distribution")}
+                        disabled={isBusy}
+                        className={clsx(
+                          "rounded-lg px-4 py-2 text-xs font-bold transition",
+                          isBusy ? "cursor-not-allowed bg-zinc-700 text-zinc-500" : "bg-emerald-600 text-white hover:bg-emerald-700"
+                        )}
+                      >
+                        {isBusy ? "処理中…" : "✅ 配信可にする"}
+                      </button>
+                      <button
+                        onClick={() => handleMusicReview(job.jobId, "update_lyrics")}
+                        disabled={isBusy}
+                        className={clsx(
+                          "rounded-lg px-4 py-2 text-xs font-bold transition",
+                          isBusy ? "cursor-not-allowed bg-zinc-700 text-zinc-500" : "bg-indigo-600 text-white hover:bg-indigo-700"
+                        )}
+                      >
+                        {isBusy ? "処理中…" : "💾 歌詞を編集して保存"}
+                      </button>
+                      <button
+                        onClick={() => handleMusicReview(job.jobId, "reject_distribution")}
+                        disabled={isBusy}
+                        className={clsx(
+                          "rounded-lg px-4 py-2 text-xs font-bold transition",
+                          isBusy ? "cursor-not-allowed bg-zinc-700 text-zinc-500" : "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
+                        )}
+                      >
+                        {isBusy ? "処理中…" : "🚫 配信不可のまま完了"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         <footer className="mt-8 text-center text-xs text-zinc-600">© LIFAI</footer>

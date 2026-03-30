@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
   console.log(`[song/result] jobId=${jobId} status=${job.status} processedAudioUrl=${job.processedAudioUrl} rawAudioUrl=${job.rawAudioUrl} audioUrl=${job.audioUrl}`);
 
-  if (job.status !== "completed") {
+  if (job.status !== "completed" && job.status !== "review_required") {
     return NextResponse.json(
       { ok: false, error: "not_completed", status: job.status },
       { status: 200 }
@@ -39,6 +39,12 @@ export async function GET(req: Request) {
   const displayLyrics      = job.displayLyrics      ?? job.singableLyrics ?? job.masterLyrics ?? "";
   const distributionLyrics = job.distributionLyrics ?? job.singableLyrics ?? job.masterLyrics ?? "";
 
+  // anchorWords / hookLines を JSON からパース
+  let anchorWords: string[] | undefined;
+  let hookLines: string[] | undefined;
+  try { anchorWords = job.anchorWordsJson ? JSON.parse(job.anchorWordsJson) : undefined; } catch {}
+  try { hookLines   = job.hookLinesJson   ? JSON.parse(job.hookLinesJson)   : undefined; } catch {}
+
   return NextResponse.json({
     ok:                   true,
     jobId:                job.jobId,
@@ -53,16 +59,25 @@ export async function GET(req: Request) {
     lyrics:               displayLyrics,
     displayLyrics,
     distributionLyrics,
-    masterLyrics:         job.masterLyrics         ?? null,
-    singableLyrics:       job.singableLyrics        ?? null,
-    lyricsMatchScore:     job.lyricsMatchScore      ?? null,
-    lyricsReviewRequired: job.lyricsReviewRequired  ?? true,
-    distributionReady:    job.distributionReady     ?? false,
-    lyricsSource:         job.lyricsSource          ?? "singable",
-    asrStatus:            job.asrStatus             ?? null,
-    postprocessPreset:    job.postprocessPreset      ?? null,
-    postprocessVersion:   job.postprocessVersion     ?? null,
-    finalLufs:            job.finalLufs              ?? null,
-    finalPeakDb:          job.finalPeakDb            ?? null,
+    mergedLyrics:         job.mergedLyrics          ?? null,
+    masterLyrics:         job.masterLyrics          ?? null,
+    singableLyrics:       job.singableLyrics         ?? null,
+    asrLyrics:            job.asrLyrics             ?? null,
+    lyricsMatchScore:     job.lyricsMatchScore       ?? null,
+    lyricsQualityScore:   job.lyricsQualityScore     ?? null,
+    repeatScore:          job.repeatScore            ?? null,
+    repeatDetected:       job.repeatDetected         ?? null,
+    lyricsGateResult:     job.lyricsGateResult       ?? null,
+    lyricsReviewRequired: job.lyricsReviewRequired   ?? true,
+    distributionReady:    job.distributionReady      ?? false,
+    lyricsSource:         job.lyricsSource           ?? "singable",
+    anchorWords,
+    hookLines,
+    generationAttempt:    job.generationAttempt      ?? 1,
+    asrStatus:            job.asrStatus              ?? null,
+    postprocessPreset:    job.postprocessPreset       ?? null,
+    postprocessVersion:   job.postprocessVersion      ?? null,
+    finalLufs:            job.finalLufs               ?? null,
+    finalPeakDb:          job.finalPeakDb             ?? null,
   });
 }

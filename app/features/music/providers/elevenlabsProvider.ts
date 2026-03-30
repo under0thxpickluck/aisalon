@@ -2,6 +2,8 @@
 // ElevenLabs Music Generation Provider
 // 将来他のプロバイダーに差し替え可能なインターフェース実装
 
+import { buildLyricsConstraintPrompt } from "@/lib/music/elevenlabs-constraints";
+
 export type MusicGenerateInput = {
   prompt: string
   lyrics?: string
@@ -16,6 +18,9 @@ export type MusicGenerateInput = {
   bpm?: number
   key?: string
   isPro?: boolean
+  anchorWords?: string[]   // Phase 1: 意味拘束キーワード
+  hookLines?: string[]     // Phase 1: サビ固定行
+  maxChorusRepeats?: number // Phase 3: 再生成時に反復制限を強化
 }
 
 export type MusicGenerateResult = {
@@ -49,6 +54,15 @@ export function buildElevenLabsPrompt(input: MusicGenerateInput): string {
 
   if (input.bpm) parts.push(`${input.bpm} BPM`)
   if (input.key) parts.push(`key of ${input.key}`)
+
+  // 歌詞拘束プロンプト（anchorWords / hookLines がある場合）
+  if (input.anchorWords?.length || input.hookLines?.length) {
+    parts.push(buildLyricsConstraintPrompt({
+      anchorWords:      input.anchorWords,
+      hookLines:        input.hookLines,
+      maxChorusRepeats: input.maxChorusRepeats,
+    }))
+  }
 
   parts.push("low noise, clear mix, studio quality")
 
@@ -122,6 +136,15 @@ export function buildElevenLabsProPrompt(input: MusicGenerateInput): string {
   // BPM・Key
   if (input.bpm) parts.push(`${input.bpm} BPM, precise tempo`)
   if (input.key)  parts.push(`key of ${input.key}`)
+
+  // 歌詞拘束プロンプト（anchorWords / hookLines がある場合）
+  if (input.anchorWords?.length || input.hookLines?.length) {
+    parts.push(buildLyricsConstraintPrompt({
+      anchorWords:      input.anchorWords,
+      hookLines:        input.hookLines,
+      maxChorusRepeats: input.maxChorusRepeats,
+    }))
+  }
 
   // オーディオ品質（詳細）
   parts.push(

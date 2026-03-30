@@ -1,6 +1,6 @@
 // app/api/song/approve-structure/route.ts
-// 後加工パイプライン付き音楽生成
-// ElevenLabs → raw保存 → postprocess → final保存 → completed
+// 後加工パイプライン付き音楽生成（Phase 3: 自動再生成対応）
+// ElevenLabs → raw保存 → postprocess → final保存 → ASR → 品質チェック → [再生成] → completed/review_required
 
 import { NextResponse } from "next/server";
 import os from "os";
@@ -12,7 +12,7 @@ import {
   ElevenLabsProvider,
   type MusicGenerateInput,
 } from "@/app/features/music/providers/elevenlabsProvider";
-import { choosePostprocessPreset } from "@/lib/music/presets";
+import { choosePostprocessPreset, type PostprocessPreset } from "@/lib/music/presets";
 import { runPostprocess } from "@/lib/music/postprocess";
 import { uploadRawAudio, uploadFinalAudio, uploadAnalysisJson, cleanupTempFiles } from "@/lib/music/storage";
 import { mergeRightsLog } from "@/lib/music/rights-log";
@@ -21,34 +21,50 @@ export const runtime     = "nodejs";
 export const dynamic     = "force-dynamic";
 export const maxDuration = 300;
 
-// ── メイン生成パイプライン ────────────────────────────────────────────────────
+// ── 構成プリセット選択 ──────────────────────────────────────────────────────────
 
-async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
+function chooseStructurePreset(mood?: string, isPro?: boolean): string {
+  if (!mood) return isPro ? "short_pop" : "hook_only";
+  if (isPro) {
+    if (/激しい|明るい|さわやか/.test(mood)) return "upbeat";
+    if (/ロマンチック|切ない|エモい/.test(mood))  return "ballad";
+    if (/クール|落ち着いた/.test(mood))         return "cinematic";
+    return "short_pop";
+  }
+  return "hook_only";
+}
+
+// ── Helper 1: ElevenLabs 生成 + postprocess + R2 アップロード ───────────────────
+
+type GenerateAttemptResult = {
+  rawUrl:         string | null;
+  finalUrl:       string | null;
+  postprocessOk:  boolean;
+  preset:         PostprocessPreset | "";
+  audioAvailable: boolean;
+};
+
+async function generateAudioAttempt(
+  job: SongJob,
+  apiKey: string,
+  opts: { maxChorusRepeats?: number; attemptNum?: number } = {}
+): Promise<GenerateAttemptResult> {
   const { jobId, structureData, prompt, singableLyrics } = job;
-  const rawTempPath   = path.join(os.tmpdir(), `${jobId}_raw.mp3`);
-  const finalTempPath = path.join(os.tmpdir(), `${jobId}_final.mp3`);
-
-  // ── Phase 1: ElevenLabs 音声生成 ────────────────────────────────────────────
-  await updateJob(jobId, { status: "generating_audio", stage: "generating" });
-
+  const { attemptNum = 1, maxChorusRepeats = 2 } = opts;
   const isPro = !!prompt.isPro;
 
-  // Pro: ムードに応じて構成プリセットを選択
-  function chooseStructurePreset(mood?: string): string {
-    if (!mood) return isPro ? "short_pop" : "hook_only";
-    const m = mood;
-    if (isPro) {
-      if (/激しい|明るい|さわやか/.test(m)) return "upbeat";
-      if (/ロマンチック|切ない|エモい/.test(m)) return "ballad";
-      if (/クール|落ち着いた/.test(m)) return "cinematic";
-      return "short_pop";
-    }
-    return "hook_only";
-  }
+  const rawTempPath   = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_raw.mp3`);
+  const finalTempPath = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_final.mp3`);
 
+  // anchorWords / hookLines を取得
+  let anchorWords: string[] = [];
+  let hookLines: string[] = [];
+  try { anchorWords = job.anchorWordsJson ? JSON.parse(job.anchorWordsJson) : []; } catch {}
+  try { hookLines   = job.hookLinesJson   ? JSON.parse(job.hookLinesJson)   : []; } catch {}
+
+  // ── Phase 1: ElevenLabs 音声生成 ────────────────────────────────────────────
   let audioBuffer: ArrayBuffer;
   try {
-    // singable_lyrics があれば manual モードで渡す（Phase 1）
     const hasSingable = !!(singableLyrics && singableLyrics.trim().length > 0);
     const input: MusicGenerateInput = {
       prompt:            prompt.theme ?? prompt.genre ?? "",
@@ -61,36 +77,38 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
       language:          prompt.language ?? "ja",
       durationTargetSec: isPro ? 180 : 150,
       vocalMode:         "vocal",
-      structurePreset:   chooseStructurePreset(prompt.mood),
+      structurePreset:   chooseStructurePreset(prompt.mood, isPro),
       moodTags:          prompt.moodTags ?? [],
       isPro,
+      anchorWords:       anchorWords.length > 0 ? anchorWords : undefined,
+      hookLines:         hookLines.length > 0   ? hookLines   : undefined,
+      maxChorusRepeats,
     };
 
     const provider = new ElevenLabsProvider(apiKey);
     const result   = await provider.generateMusic(input);
     audioBuffer    = result.audioBuffer;
 
-    // raw を一時ファイルに書き出し
     fs.writeFileSync(rawTempPath, Buffer.from(audioBuffer));
-    console.log(`[Job ${jobId}] ElevenLabs raw generated: ${audioBuffer.byteLength} bytes`);
+    console.log(`[Job ${jobId}][attempt${attemptNum}] ElevenLabs raw generated: ${audioBuffer.byteLength} bytes`);
   } catch (err: any) {
     const msg = String(err?.message ?? err);
-    console.error(`[Job ${jobId}] ElevenLabs failed:`, msg);
+    console.error(`[Job ${jobId}][attempt${attemptNum}] ElevenLabs failed:`, msg);
     await updateJob(jobId, {
-      status: "failed",
+      status:            "failed",
       postprocessStatus: "failed",
-      postprocessError: `audio_generation_failed: ${msg}`,
+      postprocessError:  `audio_generation_failed: ${msg}`,
     });
-    return;
+    return { rawUrl: null, finalUrl: null, postprocessOk: false, preset: "natural" as PostprocessPreset, audioAvailable: false };
   }
 
   // raw を R2 に保存
   const rawUrl = await uploadRawAudio(audioBuffer, jobId);
   if (rawUrl) {
     await updateJob(jobId, { rawAudioUrl: rawUrl });
-    console.log(`[Job ${jobId}] raw uploaded: ${rawUrl}`);
+    console.log(`[Job ${jobId}][attempt${attemptNum}] raw uploaded: ${rawUrl}`);
   } else {
-    console.warn(`[Job ${jobId}] raw R2 upload failed (continuing)`);
+    console.warn(`[Job ${jobId}][attempt${attemptNum}] raw R2 upload failed (continuing)`);
   }
 
   // ── Phase 2: postprocess ────────────────────────────────────────────────────
@@ -101,41 +119,26 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
   });
 
   await updateJob(jobId, {
-    status:                "postprocessing",
-    postprocessStatus:     "running",
-    postprocessPreset:     preset,
-    postprocessStartedAt:  new Date().toISOString(),
-    humanizeLevel:         0,
+    status:               "postprocessing",
+    postprocessStatus:    "running",
+    postprocessPreset:    preset,
+    postprocessStartedAt: new Date().toISOString(),
+    humanizeLevel:        0,
   });
 
   let postprocessOk = false;
   let finalUrl: string | null = null;
-  let finalLufs: number | null = null;
-  let finalPeakDb: number | null = null;
-  let analysisRecord: Record<string, unknown> = {};
 
   try {
-    const ppResult = await runPostprocess({
-      inputPath: rawTempPath,
-      jobId,
-      preset,
-    });
+    const ppResult = await runPostprocess({ inputPath: rawTempPath, jobId, preset });
 
-    finalLufs    = ppResult.finalLufs;
-    finalPeakDb  = ppResult.finalPeakDb;
-    analysisRecord = ppResult.analysis as unknown as Record<string, unknown>;
+    console.log(`[Job ${jobId}][attempt${attemptNum}] postprocess done: lufs=${ppResult.finalLufs} peak=${ppResult.finalPeakDb}`);
 
-    console.log(`[Job ${jobId}] postprocess done: lufs=${finalLufs} peak=${finalPeakDb}`);
-
-    // ── Phase 3: uploading_result ──────────────────────────────────────────────
     await updateJob(jobId, { status: "uploading_result" });
 
     finalUrl = await uploadFinalAudio(ppResult.outputPath, jobId);
 
-    // analysis.json を R2 に保存（失敗は無視）
-    await uploadAnalysisJson(analysisRecord, jobId).catch((e) =>
-      console.warn(`[Job ${jobId}] analysis.json upload failed:`, e?.message)
-    );
+    await uploadAnalysisJson(ppResult.analysis as Record<string, unknown>, jobId).catch(() => {});
 
     postprocessOk = !!finalUrl;
 
@@ -143,9 +146,9 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
       postprocessStatus:      "done",
       postprocessVersion:     ppResult.version,
       postprocessCompletedAt: new Date().toISOString(),
-      analysisJson:           JSON.stringify(analysisRecord),
-      finalLufs,
-      finalPeakDb,
+      analysisJson:           JSON.stringify(ppResult.analysis),
+      finalLufs:              ppResult.finalLufs,
+      finalPeakDb:            ppResult.finalPeakDb,
     });
 
     if (finalUrl) {
@@ -153,137 +156,248 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
     }
   } catch (err: any) {
     const msg = String(err?.message ?? err);
-    console.error(`[Job ${jobId}] postprocess failed:`, msg);
-    await updateJob(jobId, {
-      postprocessStatus: "failed",
-      postprocessError:  msg,
-    });
-    // postprocess 失敗でも raw があれば completed へフォールバック
+    console.error(`[Job ${jobId}][attempt${attemptNum}] postprocess failed:`, msg);
+    await updateJob(jobId, { postprocessStatus: "failed", postprocessError: msg });
   } finally {
     cleanupTempFiles(rawTempPath, finalTempPath);
   }
 
-  // ── Phase 4: transcribing_lyrics（ASR） ───────────────────────────────────────
-  // postprocess成否に関わらずASRを試みる。失敗しても completed へ進む。
-  const audioUrlForAsr = finalUrl ?? rawUrl ?? undefined;
-  if (audioUrlForAsr) {
-    try {
-      await updateJob(jobId, {
-        status:         "transcribing_lyrics",
-        asrStatus:      "running",
-        asrStartedAt:   new Date().toISOString(),
-      });
+  return {
+    rawUrl,
+    finalUrl,
+    postprocessOk,
+    preset,
+    audioAvailable: !!(finalUrl ?? rawUrl),
+  };
+}
 
-      const { transcribeSongLyrics } = await import("@/lib/music/asr");
-      const asrResult = await transcribeSongLyrics({
-        audioUrl:     audioUrlForAsr,
-        languageHint: job.prompt.language ?? "ja",
-        apiKey,
-      });
+// ── Helper 2: ASR + 品質チェック ─────────────────────────────────────────────
 
-      await updateJob(jobId, {
-        asrLyrics:           asrResult.text,
-        lyricsTimestampsJson: asrResult.timestampsJson,
-        asrStatus:           "done",
-        asrCompletedAt:      new Date().toISOString(),
-      });
+type QualityCheckResult = {
+  gate:               "pass" | "review" | "reject" | null;
+  lyricsQualityScore: number;
+  repeatScore:        number;
+};
 
-      // ── Phase 5: merging_lyrics ─────────────────────────────────────────────
-      await updateJob(jobId, { status: "merging_lyrics" });
+async function runAsrAndQuality(
+  job: SongJob,
+  apiKey: string,
+  audioUrl: string
+): Promise<QualityCheckResult> {
+  const { jobId } = job;
 
-      const { compareLyrics } = await import("@/lib/music/lyrics-compare");
-      const { mergeLyricsForDisplay } = await import("@/lib/music/lyrics-merge");
+  let anchorWords: string[] = [];
+  let hookLines: string[] = [];
+  try { anchorWords = job.anchorWordsJson ? JSON.parse(job.anchorWordsJson) : []; } catch {}
+  try { hookLines   = job.hookLinesJson   ? JSON.parse(job.hookLinesJson)   : []; } catch {}
 
-      const singable = job.singableLyrics ?? job.masterLyrics ?? "";
-      const compareResult = compareLyrics({
-        singableLyrics: singable,
-        asrLyrics:      asrResult.text,
-      });
+  const singable = job.singableLyrics ?? job.masterLyrics ?? "";
 
-      const mergeResult = mergeLyricsForDisplay({
-        singableLyrics: singable,
-        asrLyrics:      asrResult.text,
-        score:          compareResult.score,
-      });
-
-      // 表示・配信歌詞は自然な日本語（master_lyrics）を優先。
-      // singable_lyrics はElevenLabs向け発音最適化版なので表示には使わない。
-      const masterForDisplay = job.masterLyrics ?? singable;
-      await updateJob(jobId, {
-        lyricsMatchScore:    compareResult.score,
-        lyricsDiffJson:      compareResult.diffJson,
-        displayLyrics:       masterForDisplay,
-        distributionLyrics:  masterForDisplay,
-        lyricsReviewRequired: mergeResult.reviewRequired,
-        distributionReady:   mergeResult.distributionReady,
-        lyricsSource:        mergeResult.lyricsSource,
-      });
-
-      console.log(`[Job ${jobId}] ASR done: score=${compareResult.score} distributionReady=${mergeResult.distributionReady}`);
-
-    } catch (asrErr: any) {
-      // ASR失敗: サイレントフォールバック（singable_lyricsをそのまま使用）
-      const msg = String(asrErr?.message ?? asrErr);
-      console.warn(`[Job ${jobId}] ASR failed (fallback to singable): ${msg}`);
-      await updateJob(jobId, {
-        asrStatus:           "failed",
-        asrError:            msg,
-        asrCompletedAt:      new Date().toISOString(),
-        lyricsSource:        "singable",
-        distributionReady:   false,
-        lyricsReviewRequired: true,
-      });
-    }
-  } else {
-    // 音声URLが取得できなかった場合もフォールバック
-    console.warn(`[Job ${jobId}] No audio URL available for ASR, skipping`);
+  // ── Phase 4: transcribing_lyrics（ASR）────────────────────────────────────
+  try {
     await updateJob(jobId, {
-      asrStatus:           "failed",
-      asrError:            "no_audio_url",
-      lyricsSource:        "singable",
-      distributionReady:   false,
-      lyricsReviewRequired: true,
+      status:       "transcribing_lyrics",
+      asrStatus:    "running",
+      asrStartedAt: new Date().toISOString(),
     });
+
+    const { transcribeSongLyrics } = await import("@/lib/music/asr");
+    const asrResult = await transcribeSongLyrics({
+      audioUrl,
+      languageHint: job.prompt.language ?? "ja",
+      apiKey,
+    });
+
+    await updateJob(jobId, {
+      asrLyrics:            asrResult.text,
+      lyricsTimestampsJson: asrResult.timestampsJson,
+      asrStatus:            "done",
+      asrCompletedAt:       new Date().toISOString(),
+    });
+
+    // ── Phase 5: merging_lyrics → quality_checking ───────────────────────────
+    await updateJob(jobId, { status: "merging_lyrics" });
+
+    const { compareLyrics }        = await import("@/lib/music/lyrics-compare");
+    const { mergeLyricsForDisplay } = await import("@/lib/music/lyrics-merge");
+    const { detectRepetition }     = await import("@/lib/music/lyrics-repeat");
+    const { computeLyricsQuality } = await import("@/lib/music/lyrics-quality");
+    const { gateLyricsQuality }    = await import("@/lib/music/lyrics-gate");
+
+    const compareResult = compareLyrics({ singableLyrics: singable, asrLyrics: asrResult.text });
+
+    await updateJob(jobId, { status: "quality_checking" });
+
+    const repeatResult  = detectRepetition({ asrLyrics: asrResult.text, chorusLines: hookLines });
+    const mergeResult   = mergeLyricsForDisplay({
+      singableLyrics: singable,
+      asrLyrics:      asrResult.text,
+      score:          compareResult.score,
+      repeatScore:    repeatResult.repeatScore,
+      anchorWords,
+      hookLines,
+    });
+    const qualityResult = computeLyricsQuality({
+      singableLyrics:   singable,
+      asrLyrics:        asrResult.text,
+      anchorWords,
+      hookLines,
+      baseCompareScore: compareResult.score,
+      repeatScore:      repeatResult.repeatScore,
+    });
+    const gateResult    = gateLyricsQuality({
+      lyricsQualityScore: qualityResult.lyricsQualityScore,
+      repeatScore:        repeatResult.repeatScore,
+    });
+
+    await updateJob(jobId, {
+      lyricsMatchScore:     compareResult.score,
+      lyricsDiffJson:       compareResult.diffJson,
+      displayLyrics:        mergeResult.displayLyrics,
+      distributionLyrics:   mergeResult.distributionLyrics,
+      mergedLyrics:         mergeResult.mergedLyrics,
+      lyricsReviewRequired: gateResult.reviewRequired,
+      distributionReady:    gateResult.distributionReady,
+      lyricsSource:         mergeResult.lyricsSource,
+      lyricsGateResult:     gateResult.gate,
+      lyricsQualityScore:   qualityResult.lyricsQualityScore,
+      repeatScore:          repeatResult.repeatScore,
+      repeatDetected:       repeatResult.repeatDetected,
+      repeatSegmentsJson:   JSON.stringify(repeatResult.repeatSegments),
+    });
+
+    console.log(`[Job ${jobId}] quality done: matchScore=${compareResult.score} qualityScore=${qualityResult.lyricsQualityScore} repeatScore=${repeatResult.repeatScore} gate=${gateResult.gate}`);
+
+    return {
+      gate:               gateResult.gate,
+      lyricsQualityScore: qualityResult.lyricsQualityScore,
+      repeatScore:        repeatResult.repeatScore,
+    };
+
+  } catch (asrErr: any) {
+    const msg = String(asrErr?.message ?? asrErr);
+    console.warn(`[Job ${jobId}] ASR failed (fallback to singable): ${msg}`);
+    await updateJob(jobId, {
+      asrStatus:            "failed",
+      asrError:             msg,
+      asrCompletedAt:       new Date().toISOString(),
+      lyricsSource:         "singable",
+      distributionReady:    false,
+      lyricsReviewRequired: true,
+      lyricsGateResult:     "reject",
+    });
+    return { gate: "reject", lyricsQualityScore: 0, repeatScore: 0 };
+  }
+}
+
+// ── メイン生成パイプライン ────────────────────────────────────────────────────
+
+async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
+  const { jobId } = job;
+
+  // ── Attempt 1 ──────────────────────────────────────────────────────────────
+  await updateJob(jobId, { status: "generating_audio", stage: "generating" });
+
+  const attempt1 = await generateAudioAttempt(job, apiKey, { attemptNum: 1, maxChorusRepeats: 2 });
+  if (!attempt1.audioAvailable) return; // ElevenLabs 失敗 → already set status=failed
+
+  const audioForAsr1 = attempt1.finalUrl ?? attempt1.rawUrl ?? null;
+  let quality1: QualityCheckResult = { gate: null, lyricsQualityScore: 0, repeatScore: 0 };
+
+  if (audioForAsr1) {
+    quality1 = await runAsrAndQuality(job, apiKey, audioForAsr1);
+  } else {
+    await updateJob(jobId, {
+      asrStatus:            "failed",
+      asrError:             "no_audio_url",
+      lyricsSource:         "singable",
+      distributionReady:    false,
+      lyricsReviewRequired: true,
+      lyricsGateResult:     "reject",
+    });
+    quality1 = { gate: "reject", lyricsQualityScore: 0, repeatScore: 0 };
   }
 
-  // ── Phase 4: completed（または raw フォールバック）─────────────────────────
-  const currentJob = await getJob(jobId);
-  const rawAudioUrl = currentJob?.rawAudioUrl ?? rawUrl ?? undefined;
+  // ── 自動再生成チェック ──────────────────────────────────────────────────────
+  const currentJob1       = await getJob(jobId);
+  const generationAttempt = currentJob1?.generationAttempt ?? 1;
+  const shouldRegenerate  =
+    generationAttempt === 1 &&
+    (quality1.lyricsQualityScore < 65 || quality1.repeatScore >= 60);
 
-  if (postprocessOk && finalUrl) {
-    // 正常完了: final を使用
+  let usedFinalUrl      = attempt1.finalUrl;
+  let usedRawUrl        = attempt1.rawUrl;
+  let usedPostprocessOk = attempt1.postprocessOk;
+  let usedPreset: PostprocessPreset = (attempt1.preset as PostprocessPreset) || "natural";
+  let finalGate         = quality1.gate;
+
+  if (shouldRegenerate) {
+    const regenReason = `qualityScore=${quality1.lyricsQualityScore} repeatScore=${quality1.repeatScore}`;
+    console.log(`[Job ${jobId}] Auto-regenerating: ${regenReason}`);
+
+    await updateJob(jobId, {
+      status:             "regenerating_audio",
+      generationAttempt:  2,
+      regenerationReason: regenReason,
+    });
+
+    // ── Attempt 2: 強化された拘束プロンプトで再生成 ─────────────────────────
+    const attempt2 = await generateAudioAttempt(job, apiKey, { attemptNum: 2, maxChorusRepeats: 1 });
+
+    if (attempt2.audioAvailable) {
+      const audioForAsr2 = attempt2.finalUrl ?? attempt2.rawUrl ?? null;
+      if (audioForAsr2) {
+        const quality2 = await runAsrAndQuality(job, apiKey, audioForAsr2);
+        finalGate         = quality2.gate;
+        usedFinalUrl      = attempt2.finalUrl;
+        usedRawUrl        = attempt2.rawUrl;
+        usedPostprocessOk = attempt2.postprocessOk;
+        usedPreset        = (attempt2.preset as PostprocessPreset) || "natural";
+      }
+    }
+    // attempt2 が失敗しても attempt1 の結果を使って続行
+  }
+
+  // ── Phase 6: completed / review_required 決定 ────────────────────────────
+  const currentJob = await getJob(jobId);
+  const rawAudioUrl = currentJob?.rawAudioUrl ?? usedRawUrl ?? undefined;
+
+  const finalStatus = (finalGate === "pass" || finalGate === "review")
+    ? "completed"
+    : "review_required";
+
+  const audioFinalUrl = usedPostprocessOk && usedFinalUrl
+    ? usedFinalUrl
+    : rawAudioUrl;
+
+  if (usedPostprocessOk && usedFinalUrl) {
     const updatedRightsLog = mergeRightsLog(currentJob?.rightsLog, {
       type:    "postprocessApplied",
-      preset,
+      preset:  usedPreset,
       version: "v1",
     });
     await updateJob(jobId, {
-      status:      "completed",
-      audioUrl:    finalUrl,
-      downloadUrl: finalUrl,
+      status:      finalStatus,
+      audioUrl:    usedFinalUrl,
+      downloadUrl: usedFinalUrl,
       bpFinal:     BP_COSTS.music_full,
       rightsLog:   updatedRightsLog,
     });
-    console.log(`[Job ${jobId}] Completed with final: ${finalUrl}`);
+    console.log(`[Job ${jobId}] ${finalStatus} (gate=${finalGate}) with final: ${usedFinalUrl}`);
   } else {
-    // フォールバック: raw を使用
-    const fallbackUrl = rawAudioUrl;
-    const fallbackReason = postprocessOk
-      ? "final_upload_failed"
-      : "postprocess_failed";
-
+    const fallbackReason = usedPostprocessOk ? "final_upload_failed" : "postprocess_failed";
     const updatedRightsLog = mergeRightsLog(currentJob?.rightsLog, {
       type:   "postprocessFallbackRaw",
       reason: fallbackReason,
     });
     await updateJob(jobId, {
-      status:      "completed",
-      audioUrl:    fallbackUrl,
-      downloadUrl: fallbackUrl,
+      status:      finalStatus,
+      audioUrl:    audioFinalUrl,
+      downloadUrl: audioFinalUrl,
       bpFinal:     BP_COSTS.music_full,
       rightsLog:   updatedRightsLog,
     });
-    console.log(`[Job ${jobId}] Completed with raw fallback (${fallbackReason}): ${fallbackUrl}`);
+    console.log(`[Job ${jobId}] ${finalStatus} (gate=${finalGate}) with raw fallback (${fallbackReason}): ${audioFinalUrl}`);
   }
 }
 
@@ -323,6 +437,7 @@ export async function POST(req: Request) {
   await updateJob(String(jobId), {
     status:            "generating_audio",
     postprocessStatus: "pending",
+    generationAttempt: 1,
     rightsLog,
   });
 

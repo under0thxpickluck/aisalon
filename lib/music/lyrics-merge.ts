@@ -3,57 +3,158 @@
 export type MergeResult = {
   displayLyrics: string;
   distributionLyrics: string;
+  mergedLyrics: string;
   reviewRequired: boolean;
   distributionReady: boolean;
   lyricsSource: "singable" | "asr_merged" | "manual";
+  lyricsGateResult: "pass" | "review" | "reject";
 };
 
+/**
+ * ASR スコアと反復スコアをもとに displayLyrics / distributionLyrics を決定する。
+ *
+ * Case A (score >= 90, repeatScore < 15): 高品質
+ *   displayLyrics = singableLyrics, distributionLyrics = singableLyrics
+ *
+ * Case B (80 <= score < 90): 軽微ずれ
+ *   displayLyrics = mergedLyrics, distributionLyrics = mergedLyrics
+ *
+ * Case C (65 <= score < 80): 中程度ずれ
+ *   displayLyrics = mergedLyrics, distributionLyrics = "" (配信不可)
+ *
+ * Case D (score < 65 または repeatScore >= 35): 重度ずれ・強反復
+ *   displayLyrics = singableLyrics, distributionLyrics = "" (配信不可)
+ */
 export function mergeLyricsForDisplay(params: {
   singableLyrics: string;
   asrLyrics: string;
   score: number;
+  repeatScore?: number;
+  anchorWords?: string[];
+  hookLines?: string[];
 }): MergeResult {
-  const { singableLyrics, asrLyrics, score } = params;
+  const { singableLyrics, asrLyrics, score, repeatScore = 0 } = params;
 
-  // ケースA (score >= 95): singable をそのまま使用、distributionReady=true
-  if (score >= 95) {
+  // merged の生成: singable と asr を行単位でブレンド
+  const mergedLyrics = buildMergedLyrics(singableLyrics, asrLyrics, score);
+
+  // Case A: 高品質
+  if (score >= 90 && repeatScore < 15) {
     return {
-      displayLyrics: singableLyrics,
+      displayLyrics:    singableLyrics,
       distributionLyrics: singableLyrics,
-      reviewRequired: false,
+      mergedLyrics,
+      reviewRequired:   false,
       distributionReady: true,
-      lyricsSource: "singable",
+      lyricsSource:     "singable",
+      lyricsGateResult: "pass",
     };
   }
 
-  // ケースB (85 <= score < 95): conservative merge、distributionReady=true
-  if (score >= 85 && score < 95) {
+  // Case B: 軽微ずれ
+  if (score >= 80) {
     return {
-      displayLyrics: singableLyrics,
-      distributionLyrics: singableLyrics,
-      reviewRequired: false,
+      displayLyrics:    mergedLyrics,
+      distributionLyrics: mergedLyrics,
+      mergedLyrics,
+      reviewRequired:   false,
       distributionReady: true,
-      lyricsSource: "singable",
+      lyricsSource:     "asr_merged",
+      lyricsGateResult: "review",
     };
   }
 
-  // ケースC (70 <= score < 85): mergedを使用、reviewRequired=true、distributionReady=false
-  if (score >= 70 && score < 85) {
+  // Case C: 中程度ずれ
+  if (score >= 65 && repeatScore < 35) {
     return {
-      displayLyrics: singableLyrics,
-      distributionLyrics: singableLyrics,
-      reviewRequired: true,
+      displayLyrics:    mergedLyrics,
+      distributionLyrics: "",
+      mergedLyrics,
+      reviewRequired:   true,
       distributionReady: false,
-      lyricsSource: "asr_merged",
+      lyricsSource:     "asr_merged",
+      lyricsGateResult: "review",
     };
   }
 
-  // ケースD (score < 70): singableをそのまま、reviewRequired=true、distributionReady=false
+  // Case D: 重度ずれ / 強反復
   return {
-    displayLyrics: singableLyrics,
-    distributionLyrics: singableLyrics,
-    reviewRequired: true,
+    displayLyrics:    singableLyrics,
+    distributionLyrics: "",
+    mergedLyrics,
+    reviewRequired:   true,
     distributionReady: false,
-    lyricsSource: "singable",
+    lyricsSource:     "singable",
+    lyricsGateResult: "reject",
   };
+}
+
+/**
+ * singableLyrics と asrLyrics を行単位でブレンドして mergedLyrics を生成する。
+ * スコアが高いほど singable を優先し、低いほど asr をそのまま使う。
+ */
+function buildMergedLyrics(singable: string, asr: string, score: number): string {
+  if (!singable && !asr) return "";
+  if (!asr) return singable;
+  if (!singable) return asr;
+
+  const singableLines = splitLyricLines(singable);
+  const asrLines      = splitLyricLines(asr);
+
+  // スコアが高い場合は singable 優先、低い場合は asr 優先
+  if (score >= 80) {
+    // singable をベースに、セクションタグは singable から取る
+    return singable;
+  }
+
+  // score 65〜80: 行数の多い方をベース、セクションタグは singable から取る
+  const singableSections = extractSectionStructure(singable);
+  const merged: string[] = [];
+  let asrIdx = 0;
+
+  for (const { tag, lines } of singableSections) {
+    if (tag) merged.push(tag);
+    for (let i = 0; i < lines.length; i++) {
+      // セクション内の対応するASR行があれば使う
+      if (asrIdx < asrLines.length && !asrLines[asrIdx].startsWith("[")) {
+        merged.push(asrLines[asrIdx]);
+        asrIdx++;
+      } else {
+        merged.push(lines[i]);
+      }
+    }
+  }
+
+  return merged.join("\n") || singable;
+}
+
+/** セクションタグと行を分けて構造化する */
+function extractSectionStructure(lyrics: string): Array<{ tag: string; lines: string[] }> {
+  const result: Array<{ tag: string; lines: string[] }> = [];
+  let currentTag = "";
+  let currentLines: string[] = [];
+
+  for (const line of lyrics.split("\n")) {
+    const trimmed = line.trim();
+    if (/^\[/.test(trimmed)) {
+      if (currentTag || currentLines.length > 0) {
+        result.push({ tag: currentTag, lines: currentLines });
+      }
+      currentTag = trimmed;
+      currentLines = [];
+    } else if (trimmed.length > 0) {
+      currentLines.push(trimmed);
+    }
+  }
+
+  if (currentTag || currentLines.length > 0) {
+    result.push({ tag: currentTag, lines: currentLines });
+  }
+
+  return result;
+}
+
+/** 歌詞を行単位で分割（空行・セクションタグを含む） */
+function splitLyricLines(lyrics: string): string[] {
+  return lyrics.split("\n").map(l => l.trim()).filter(l => l.length > 0);
 }

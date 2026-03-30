@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { createJob, updateJob, getJob } from "../_jobStore";
 import { BP_COSTS } from "@/app/lib/bp-config";
 import { buildSingableLyrics } from "@/lib/music/lyrics-singable";
+import { extractAnchorWords } from "@/lib/music/lyrics-anchor";
+import { extractHookLines } from "@/lib/music/lyrics-hook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -225,20 +227,34 @@ export async function POST(req: Request) {
 
   // singable_lyrics を生成（失敗してもmaster_lyricsで続行）
   if (generated?.masterLyrics) {
+    // anchorWords / hookLines を抽出
+    const anchorWords = extractAnchorWords({
+      title:       generated.structureData.title ?? String(theme),
+      hookSummary: generated.structureData.hookSummary ?? "",
+      masterLyrics: generated.masterLyrics,
+      theme:       String(theme),
+    });
+    const hookLines = extractHookLines(generated.masterLyrics);
+
     const singable = await buildSingableLyrics({
       masterLyrics: generated.masterLyrics,
       bpm:          generated.structureData.bpm,
       genre:        String(genre),
       mood:         String(mood),
+      anchorWords,
+      hookLines,
       apiKey:       openaiKey,
     });
     await updateJob(jobId, {
       singableLyrics:       singable,
       displayLyrics:        generated.masterLyrics,  // 表示用は自然な日本語（master）
-      distributionLyrics:   generated.masterLyrics,  // 配信用も master を初期値に
+      distributionLyrics:   generated.masterLyrics,  // 配信用も master を初期値に（ASR後に上書き）
       lyricsSource:         "master",
       lyricsReviewRequired: true,        // ASR完了まで要確認
       distributionReady:    false,       // ASR未実施なのでfalse
+      anchorWordsJson:      JSON.stringify(anchorWords),
+      hookLinesJson:        JSON.stringify(hookLines),
+      generationAttempt:    1,
     });
   }
 
