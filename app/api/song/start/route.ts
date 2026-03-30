@@ -245,11 +245,17 @@ export async function POST(req: Request) {
       hookLines,
       apiKey:       openaiKey,
     });
+    // singableLyrics が空のときのみ masterLyrics にフォールバック
+    const displayLyricsSource = (singable && singable.trim().length > 0) ? "singable" : "master";
+    const displayLyricsValue  = displayLyricsSource === "singable" ? singable : generated.masterLyrics;
+
+    console.log(`[Job ${jobId}][start] masterLyrics=${generated.masterLyrics.length}chars singableLyrics=${singable?.length ?? 0}chars displaySource=${displayLyricsSource}`);
+
     await updateJob(jobId, {
       singableLyrics:       singable,
-      displayLyrics:        generated.masterLyrics,  // 表示用は自然な日本語（master）
-      distributionLyrics:   generated.masterLyrics,  // 配信用も master を初期値に（ASR後に上書き）
-      lyricsSource:         "master",
+      displayLyrics:        displayLyricsValue,
+      distributionLyrics:   generated.masterLyrics,  // 配信用は master を初期値に（ASR後に上書き）
+      lyricsSource:         displayLyricsSource,
       lyricsReviewRequired: true,        // ASR完了まで要確認
       distributionReady:    false,       // ASR未実施なのでfalse
       anchorWordsJson:      JSON.stringify(anchorWords),

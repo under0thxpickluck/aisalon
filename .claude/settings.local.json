@@ -6,6 +6,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git stash:*)",
+      "Bash(git reset:*)",
+      "Bash(git:*)",
       "Bash(find app/api/minigames -name *.ts)",
       "Bash(xargs grep:*)",
       "Bash(npx tsc:*)",
@@ -23,7 +25,14 @@
       "Bash(ls C:/Users/unitu/aisalon/*.js C:/Users/unitu/aisalon/*.mjs C:/Users/unitu/aisalon/*.ts)",
       "Bash(timeout 20 npm run build)",
       "Bash(timeout 30 npm run build)",
-      "Bash(timeout 60 npm run build)"
+      "Bash(timeout 60 npm run build)",
+      "Bash(set -a)",
+      "Bash(source .env.local)",
+      "Bash(set +a)",
+      "Bash(python -m json.tool)",
+      "Read(//c/Users/unite/aisalon/**)",
+      "Bash(winget install:*)",
+      "Bash(taskkill /PID 1202 /F)"
     ]
   }
 }

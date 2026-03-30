@@ -2556,29 +2556,61 @@ function handle_(key, body) {
       }
     }
 
-    if (!hitRowIndex) return json_({ ok: false, error: "invalid_token" });
+    // /5000シートも検索（通常シートで見つからない場合）
+    let is5000_rp = false;
+    let targetSheet_rp = sheet;
+    let targetIdx_rp = idx;
+    let targetHitRow_rp = hitRowIndex;
+
+    if (!hitRowIndex) {
+      const ssId_rp5 = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+      if (ssId_rp5) {
+        const sheet5000_rp = SpreadsheetApp.openById(ssId_rp5).getSheetByName("applies");
+        if (sheet5000_rp) {
+          ensureCols_(sheet5000_rp, sheet5000_rp.getDataRange().getValues()[0], [
+            "login_id", "pw_hash", "pw_updated_at", "reset_token", "reset_expires", "reset_used_at"
+          ]);
+          const vals5000_rp = sheet5000_rp.getDataRange().getValues();
+          const hdr5000_rp = vals5000_rp[0];
+          const idx5000_rp = indexMap_(hdr5000_rp);
+          const rows5000_rp = vals5000_rp.slice(1);
+          for (let i = 0; i < rows5000_rp.length; i++) {
+            if (str_(rows5000_rp[i][idx5000_rp["reset_token"]]) === token) {
+              targetHitRow_rp = i + 2;
+              is5000_rp = true;
+              targetSheet_rp = sheet5000_rp;
+              targetIdx_rp = idx5000_rp;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!targetHitRow_rp) return json_({ ok: false, error: "invalid_token" });
 
     // 期限チェック（追加：安全）
-    const exp = sheet.getRange(hitRowIndex, idx["reset_expires"] + 1).getValue();
+    const exp = targetSheet_rp.getRange(targetHitRow_rp, targetIdx_rp["reset_expires"] + 1).getValue();
     if (exp && new Date(exp).getTime && new Date(exp).getTime() < Date.now()) {
       return json_({ ok: false, error: "token_expired" });
     }
 
     // 使用済みチェック（追加：安全）
-    const used = sheet.getRange(hitRowIndex, idx["reset_used_at"] + 1).getValue();
+    const used = targetSheet_rp.getRange(targetHitRow_rp, targetIdx_rp["reset_used_at"] + 1).getValue();
     if (used) {
       return json_({ ok: false, error: "token_used" });
     }
 
-    const loginId = str_(sheet.getRange(hitRowIndex, idx["login_id"] + 1).getValue());
+    const loginId = str_(targetSheet_rp.getRange(targetHitRow_rp, targetIdx_rp["login_id"] + 1).getValue());
     if (!loginId) return json_({ ok: false, error: "missing_login_id" });
 
-    const hash = hmacSha256Hex_(SECRET, loginId + ":" + password);
+    // /5000グループは平文で保存、通常グループはハッシュで保存
+    const pwValue = is5000_rp ? password : hmacSha256Hex_(SECRET, loginId + ":" + password);
 
-    sheet.getRange(hitRowIndex, idx["pw_hash"] + 1).setValue(hash);
-    sheet.getRange(hitRowIndex, idx["pw_updated_at"] + 1).setValue(new Date());
-    sheet.getRange(hitRowIndex, idx["reset_used_at"] + 1).setValue(new Date());
-    sheet.getRange(hitRowIndex, idx["reset_token"] + 1).setValue("");
+    targetSheet_rp.getRange(targetHitRow_rp, targetIdx_rp["pw_hash"] + 1).setValue(pwValue);
+    targetSheet_rp.getRange(targetHitRow_rp, targetIdx_rp["pw_updated_at"] + 1).setValue(new Date());
+    targetSheet_rp.getRange(targetHitRow_rp, targetIdx_rp["reset_used_at"] + 1).setValue(new Date());
+    targetSheet_rp.getRange(targetHitRow_rp, targetIdx_rp["reset_token"] + 1).setValue("");
 
     return json_({ ok: true });
   }
@@ -2814,8 +2846,14 @@ function handle_(key, body) {
 
     if (!loginId || !pwHashSaved) return json_({ ok: false, reason: "invalid" });
 
-    const pwHashInput = hmacSha256Hex_(SECRET, loginId + ":" + code);
-    if (pwHashInput !== pwHashSaved) return json_({ ok: false, reason: "invalid" });
+    let loginOk;
+    if (group_login === "5000") {
+      // /5000グループは平文パスワードで照合
+      loginOk = (code === pwHashSaved);
+    } else {
+      loginOk = (hmacSha256Hex_(SECRET, loginId + ":" + code) === pwHashSaved);
+    }
+    if (!loginOk) return json_({ ok: false, reason: "invalid" });
 
     return json_({ ok: true });
   }
