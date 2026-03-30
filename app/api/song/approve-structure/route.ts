@@ -393,9 +393,18 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
   const currentJob = await getJob(jobId);
   const rawAudioUrl = currentJob?.rawAudioUrl ?? usedRawUrl ?? undefined;
 
-  const finalStatus = (finalGate === "pass" || finalGate === "review")
+  const hasAudioUrl = !!(usedFinalUrl ?? usedRawUrl ?? rawAudioUrl);
+
+  // 音源URLが存在しない場合は completed にしない
+  if (!hasAudioUrl) {
+    console.error(`[Job ${jobId}] No audio URL available — forcing review_required instead of completed`);
+  }
+
+  const finalStatus = hasAudioUrl && (finalGate === "pass" || finalGate === "review")
     ? "completed"
     : "review_required";
+
+  console.log(`[Job ${jobId}] finalStatus=${finalStatus} hasAudioUrl=${hasAudioUrl} gate=${finalGate}`);
 
   const audioFinalUrl = usedPostprocessOk && usedFinalUrl
     ? usedFinalUrl
