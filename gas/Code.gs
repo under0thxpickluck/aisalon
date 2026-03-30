@@ -5375,6 +5375,11 @@ var MUSIC_JOB_COLS_ = [
   "analysis_json",
   "postprocess_started_at", "postprocess_completed_at", "postprocess_error",
   "final_lufs", "final_peak_db", "humanize_level",
+  // 歌詞パイプライン列（Phase 1〜）
+  "master_lyrics", "singable_lyrics", "asr_lyrics",
+  "display_lyrics", "distribution_lyrics",
+  "lyrics_match_score", "lyrics_review_required", "distribution_ready",
+  "lyrics_source", "asr_status",
   "created_at", "updated_at"
 ];
 
@@ -5437,6 +5442,17 @@ function createMusicJob_(params) {
     "final_lufs":               "",
     "final_peak_db":            "",
     "humanize_level":           0,
+    // 歌詞パイプライン
+    "master_lyrics":            "",
+    "singable_lyrics":          "",
+    "asr_lyrics":               "",
+    "display_lyrics":           "",
+    "distribution_lyrics":      "",
+    "lyrics_match_score":       "",
+    "lyrics_review_required":   true,
+    "distribution_ready":       false,
+    "lyrics_source":            "singable",
+    "asr_status":               "pending",
     "created_at":               now,
     "updated_at":               now
   };
@@ -5490,6 +5506,17 @@ function getMusicJob_(params) {
         finalLufs:              safeNum_(col_("final_lufs")),
         finalPeakDb:            safeNum_(col_("final_peak_db")),
         humanizeLevel:          safeNum_(col_("humanize_level")),
+        // 歌詞パイプライン
+        masterLyrics:           col_("master_lyrics")           || null,
+        singableLyrics:         col_("singable_lyrics")         || null,
+        asrLyrics:              col_("asr_lyrics")              || null,
+        displayLyrics:          col_("display_lyrics")          || null,
+        distributionLyrics:     col_("distribution_lyrics")     || null,
+        lyricsMatchScore:       safeNum_(col_("lyrics_match_score")),
+        lyricsReviewRequired:   col_("lyrics_review_required") !== false && col_("lyrics_review_required") !== "false",
+        distributionReady:      col_("distribution_ready") === true || col_("distribution_ready") === "true",
+        lyricsSource:           col_("lyrics_source")           || "singable",
+        asrStatus:              col_("asr_status")              || null,
         createdAt:              col_("created_at"),
         updatedAt:              col_("updated_at")
       });
@@ -5533,7 +5560,18 @@ function updateMusicJob_(params) {
         postprocessError:       "postprocess_error",
         finalLufs:              "final_lufs",
         finalPeakDb:            "final_peak_db",
-        humanizeLevel:          "humanize_level"
+        humanizeLevel:          "humanize_level",
+        // 歌詞パイプライン
+        masterLyrics:           "master_lyrics",
+        singableLyrics:         "singable_lyrics",
+        asrLyrics:              "asr_lyrics",
+        displayLyrics:          "display_lyrics",
+        distributionLyrics:     "distribution_lyrics",
+        lyricsMatchScore:       "lyrics_match_score",
+        lyricsReviewRequired:   "lyrics_review_required",
+        distributionReady:      "distribution_ready",
+        lyricsSource:           "lyrics_source",
+        asrStatus:              "asr_status"
       };
       Object.keys(fields).forEach(function(key) {
         if (colMap[key] !== undefined && idx[colMap[key]] !== undefined) {

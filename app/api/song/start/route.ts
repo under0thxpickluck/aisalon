@@ -1,8 +1,10 @@
 // app/api/song/start/route.ts
 // 歌詞ステップなし。直接 structure_ready まで生成して返す。
+// master_lyrics / singable_lyrics も同時生成・保存。
 import { NextResponse } from "next/server";
 import { createJob, updateJob, getJob } from "../_jobStore";
 import { BP_COSTS } from "@/app/lib/bp-config";
+import { buildSingableLyrics } from "@/lib/music/lyrics-singable";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,16 +30,16 @@ async function callGasBalance(id: string, gasUrl: string, gasKey: string): Promi
   return Number(data.bp ?? 0);
 }
 
-// テーマ・ジャンル・雰囲気から構成を直接生成
-async function generateStructure(
+// テーマ・ジャンル・雰囲気から構成 + master_lyrics を一気に生成
+async function generateStructureAndLyrics(
   jobId: string,
   theme: string,
   genre: string,
   mood: string,
   apiKey: string
-): Promise<void> {
+): Promise<{ structureData: any; masterLyrics: string } | null> {
   const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 30_000);
+  const t = setTimeout(() => controller.abort(), 40_000);
 
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -48,17 +50,42 @@ async function generateStructure(
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 500,
+        max_tokens: 1500,
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content:
-              'あなたは音楽プロデューサーです。テーマ・ジャンル・雰囲気から楽曲の構成を提案します。必ずJSON形式で以下のフィールドを返してください：{"bpm": 数値, "key": "キー（例: C major）", "sections": ["Intro", "Verse", "Chorus", "Bridge", "Outro"などのリスト], "hookSummary": "サビの内容の一行要約", "title": "曲タイトル"}',
+            content: `あなたはプロの音楽プロデューサー兼作詞家です。テーマ・ジャンル・雰囲気から楽曲構成と歌詞を同時に生成します。
+
+必ずJSON形式で以下のフィールドを返してください：
+{
+  "bpm": 数値,
+  "key": "キー（例: C major）",
+  "sections": ["Intro", "Verse", "Chorus", "Bridge", "Outro" などのリスト],
+  "hookSummary": "サビの内容の一行要約",
+  "title": "曲タイトル",
+  "lyrics": "歌詞全文（[Verse A]\\n...\\n[Chorus]\\n... の形式、最大40行、1行20文字以内）"
+}
+
+歌詞のフォーマット例：
+[Verse A]
+（Aメロ4〜8行）
+
+[Verse B]
+（Bメロ4〜8行）
+
+[Chorus]
+（サビ4〜8行）
+
+[Verse A]
+（Aメロ4〜8行）
+
+[Chorus]
+（サビ4〜8行）`,
           },
           {
             role: "user",
-            content: `以下のテーマ・ジャンル・雰囲気から楽曲構成を提案してください。\n\nテーマ：${theme}\nジャンル：${genre}\n雰囲気：${mood}`,
+            content: `以下のテーマ・ジャンル・雰囲気から楽曲構成と歌詞を生成してください。\n\nテーマ：${theme}\nジャンル：${genre}\n雰囲気：${mood}`,
           },
         ],
       }),
@@ -72,18 +99,25 @@ async function generateStructure(
     let parsed: any = {};
     try { parsed = JSON.parse(content); } catch {}
 
+    const structureData = {
+      bpm:         Number(parsed.bpm ?? 120),
+      key:         String(parsed.key ?? "C major"),
+      sections:    Array.isArray(parsed.sections) ? parsed.sections.map(String) : ["Intro", "Verse", "Chorus", "Outro"],
+      hookSummary: String(parsed.hookSummary ?? ""),
+      title:       String(parsed.title ?? theme),
+    };
+    const masterLyrics = String(parsed.lyrics ?? "");
+
     await updateJob(jobId, {
       status: "structure_ready",
-      structureData: {
-        bpm:         Number(parsed.bpm ?? 120),
-        key:         String(parsed.key ?? "C major"),
-        sections:    Array.isArray(parsed.sections) ? parsed.sections.map(String) : ["Intro", "Verse", "Chorus", "Outro"],
-        hookSummary: String(parsed.hookSummary ?? ""),
-        title:       String(parsed.title ?? theme),
-      },
+      structureData,
+      masterLyrics,
     });
+
+    return { structureData, masterLyrics };
   } catch (e: any) {
     await updateJob(jobId, { status: "failed", error: String(e?.message ?? e) });
+    return null;
   } finally {
     clearTimeout(t);
   }
@@ -168,15 +202,37 @@ export async function POST(req: Request) {
   );
 
   const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey) {
-    await generateStructure(jobId, String(theme), String(genre), String(mood), openaiKey);
-  } else {
+  if (!openaiKey) {
     await updateJob(jobId, { status: "failed", error: "openai_key_missing" });
+    const failedJob = await getJob(jobId);
+    return NextResponse.json({ ok: true, jobId, status: failedJob?.status ?? "failed", structureData: null });
+  }
+
+  // 構成 + master_lyrics を同時生成
+  const generated = await generateStructureAndLyrics(jobId, String(theme), String(genre), String(mood), openaiKey);
+
+  // singable_lyrics を生成（失敗してもmaster_lyricsで続行）
+  if (generated?.masterLyrics) {
+    const singable = await buildSingableLyrics({
+      masterLyrics: generated.masterLyrics,
+      bpm:          generated.structureData.bpm,
+      genre:        String(genre),
+      mood:         String(mood),
+      apiKey:       openaiKey,
+    });
+    await updateJob(jobId, {
+      singableLyrics:       singable,
+      displayLyrics:        singable,    // Phase 1: singable をそのまま表示用に
+      distributionLyrics:   singable,    // Phase 1: singable をそのまま配信用に
+      lyricsSource:         "singable",
+      lyricsReviewRequired: true,        // ASR完了まで要確認
+      distributionReady:    false,       // ASR未実施なのでfalse
+    });
   }
 
   const completedJob = await getJob(jobId);
   return NextResponse.json({
-    ok: true,
+    ok:            true,
     jobId,
     status:        completedJob?.status ?? "structure_ready",
     structureData: completedJob?.structureData ?? null,

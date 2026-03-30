@@ -24,7 +24,7 @@ export const maxDuration = 300;
 // ── メイン生成パイプライン ────────────────────────────────────────────────────
 
 async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
-  const { jobId, structureData, prompt } = job;
+  const { jobId, structureData, prompt, singableLyrics } = job;
   const rawTempPath   = path.join(os.tmpdir(), `${jobId}_raw.mp3`);
   const finalTempPath = path.join(os.tmpdir(), `${jobId}_final.mp3`);
 
@@ -48,13 +48,16 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
 
   let audioBuffer: ArrayBuffer;
   try {
+    // singable_lyrics があれば manual モードで渡す（Phase 1）
+    const hasSingable = !!(singableLyrics && singableLyrics.trim().length > 0);
     const input: MusicGenerateInput = {
       prompt:            prompt.theme ?? prompt.genre ?? "",
       genre:             prompt.genre,
       mood:              prompt.mood,
       bpm:               structureData?.bpm ?? 120,
       key:               structureData?.key ?? "C major",
-      lyricsMode:        "auto",
+      lyrics:            hasSingable ? singableLyrics : undefined,
+      lyricsMode:        hasSingable ? "manual" : "auto",
       language:          prompt.language ?? "ja",
       durationTargetSec: isPro ? 180 : 150,
       vocalMode:         "vocal",

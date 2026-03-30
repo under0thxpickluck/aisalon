@@ -30,6 +30,9 @@ export type JobStatus =
   | "generating_audio"        // ElevenLabs 音声生成中
   | "postprocessing"          // EQ/Comp/Reverb/Loudness 処理中
   | "uploading_result"        // final 音源を R2 へ保存中
+  | "transcribing_lyrics"     // ASR で歌詞書き起こし中（Phase 2）
+  | "merging_lyrics"          // 歌詞マージ中（Phase 2）
+  | "review_required"         // 一致率低・人手確認要
   | "completed" | "failed" | "cancelled";
 
 export type SongJob = {
@@ -73,6 +76,17 @@ export type SongJob = {
   finalLufs?:             number | null;
   finalPeakDb?:           number | null;
   humanizeLevel?:         number;
+  // 歌詞パイプライン（Phase 1〜）
+  masterLyrics?:          string;   // OpenAI 生成歌詞（原本）
+  singableLyrics?:        string;   // ElevenLabs 向け発音最適化版
+  asrLyrics?:             string;   // ASR 書き起こし（Phase 2）
+  displayLyrics?:         string;   // ユーザー表示用（確定版）
+  distributionLyrics?:    string;   // 配信提出用（確定版）
+  lyricsMatchScore?:      number | null;   // 一致率 0〜100（Phase 2）
+  lyricsReviewRequired?:  boolean;
+  distributionReady?:     boolean;
+  lyricsSource?:          "master" | "singable" | "asr_merged" | "manual";
+  asrStatus?:             "pending" | "running" | "done" | "failed";
 };
 
 // ========== CRUD ==========

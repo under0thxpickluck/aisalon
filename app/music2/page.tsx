@@ -105,6 +105,9 @@ export default function Music2Page() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [resultTitle, setResultTitle] = useState("");
   const [resultLyrics, setResultLyrics] = useState("");
+  const [displayLyrics, setDisplayLyrics] = useState("");
+  const [distributionLyrics, setDistributionLyrics] = useState("");
+  const [distributionReady, setDistributionReady] = useState(false);
 
   // UI状態
   const [loading, setLoading] = useState(false);
@@ -220,6 +223,9 @@ export default function Music2Page() {
             setAudioUrl(rData.audioUrl ?? null);
             setDownloadUrl(rData.downloadUrl ?? null);
             setResultLyrics(rData.lyrics ?? "");
+            setDisplayLyrics(rData.displayLyrics ?? rData.lyrics ?? "");
+            setDistributionLyrics(rData.distributionLyrics ?? rData.lyrics ?? "");
+            setDistributionReady(!!rData.distributionReady);
             setInfoMsg(null);
             setStep(3);
             if (rData.audioUrl) {
@@ -228,7 +234,7 @@ export default function Music2Page() {
                 title:       rData.title || "無題",
                 audioUrl:    rData.audioUrl,
                 downloadUrl: rData.downloadUrl ?? rData.audioUrl,
-                lyrics:      rData.lyrics ?? "",
+                lyrics:      rData.displayLyrics ?? rData.lyrics ?? "",
                 createdAt:   new Date().toISOString(),
               });
               setHistory(updated);
@@ -411,6 +417,9 @@ export default function Music2Page() {
     setDownloadUrl(null);
     setResultTitle("");
     setResultLyrics("");
+    setDisplayLyrics("");
+    setDistributionLyrics("");
+    setDistributionReady(false);
     setLoading(false);
     setProgress(0);
     setErrorMsg(null);
@@ -867,24 +876,48 @@ export default function Music2Page() {
                 </div>
 
                 {/* 歌詞ダウンロード */}
-                {resultLyrics && (
-                  <div className="mt-3">
-                    <button
-                      onClick={() => {
-                        const blob = new Blob(
-                          [`${resultTitle}\n\n${resultLyrics}`],
-                          { type: "text/plain;charset=utf-8" }
-                        );
-                        const a = document.createElement("a");
-                        a.href = URL.createObjectURL(blob);
-                        a.download = `${resultTitle || "lyrics"}_lyrics.txt`;
-                        a.click();
-                        URL.revokeObjectURL(a.href);
-                      }}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      📄 歌詞をダウンロード
-                    </button>
+                {(displayLyrics || distributionLyrics) && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    {displayLyrics && (
+                      <button
+                        onClick={() => {
+                          const blob = new Blob(
+                            [`${resultTitle}\n\n${displayLyrics}`],
+                            { type: "text/plain;charset=utf-8" }
+                          );
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `lyrics-display-${jobId || "song"}.txt`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                        }}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        📄 歌詞をダウンロード（表示用）
+                      </button>
+                    )}
+                    {distributionLyrics && (
+                      <button
+                        onClick={() => {
+                          const blob = new Blob(
+                            [`${resultTitle}\n\n${distributionLyrics}`],
+                            { type: "text/plain;charset=utf-8" }
+                          );
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `lyrics-distribution-${jobId || "song"}.txt`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                        }}
+                        className={`w-full rounded-2xl border px-4 py-2.5 text-xs font-semibold transition ${
+                          distributionReady
+                            ? "border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+                            : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {distributionReady ? "✅ 配信用歌詞をダウンロード" : "📋 配信用歌詞をダウンロード（要確認）"}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

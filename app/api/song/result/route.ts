@@ -35,20 +35,34 @@ export async function GET(req: Request) {
   const usedFallback      = !processedAudioUrl && !!rawAudioUrl;
   const audioUrl          = processedAudioUrl ?? rawAudioUrl ?? job.audioUrl ?? null;
 
+  // 歌詞の優先順位: display_lyrics > singable_lyrics > master_lyrics
+  const displayLyrics      = job.displayLyrics      ?? job.singableLyrics ?? job.masterLyrics ?? "";
+  const distributionLyrics = job.distributionLyrics ?? job.singableLyrics ?? job.masterLyrics ?? "";
+
   return NextResponse.json({
-    ok:                 true,
-    jobId:              job.jobId,
-    title:              job.structureData?.title ?? job.lyricsData?.title ?? "",
+    ok:                   true,
+    jobId:                job.jobId,
+    title:                job.structureData?.title ?? job.lyricsData?.title ?? "",
     audioUrl,
-    downloadUrl:        audioUrl,
+    downloadUrl:          audioUrl,
     rawAudioUrl,
     processedAudioUrl,
     usedFallback,
-    usedBp:             job.bpFinal ?? BP_COSTS.music_full,
-    lyrics:             job.lyricsData?.lyrics ?? "",
-    postprocessPreset:  job.postprocessPreset ?? null,
-    postprocessVersion: job.postprocessVersion ?? null,
-    finalLufs:          job.finalLufs ?? null,
-    finalPeakDb:        job.finalPeakDb ?? null,
+    usedBp:               job.bpFinal ?? BP_COSTS.music_full,
+    // 後方互換: lyrics は displayLyrics と同値
+    lyrics:               displayLyrics,
+    displayLyrics,
+    distributionLyrics,
+    masterLyrics:         job.masterLyrics         ?? null,
+    singableLyrics:       job.singableLyrics        ?? null,
+    lyricsMatchScore:     job.lyricsMatchScore      ?? null,
+    lyricsReviewRequired: job.lyricsReviewRequired  ?? true,
+    distributionReady:    job.distributionReady     ?? false,
+    lyricsSource:         job.lyricsSource          ?? "singable",
+    asrStatus:            job.asrStatus             ?? null,
+    postprocessPreset:    job.postprocessPreset      ?? null,
+    postprocessVersion:   job.postprocessVersion     ?? null,
+    finalLufs:            job.finalLufs              ?? null,
+    finalPeakDb:          job.finalPeakDb            ?? null,
   });
 }
