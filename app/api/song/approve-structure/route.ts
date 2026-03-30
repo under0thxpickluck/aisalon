@@ -206,11 +206,14 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
         score:          compareResult.score,
       });
 
+      // 表示・配信歌詞は自然な日本語（master_lyrics）を優先。
+      // singable_lyrics はElevenLabs向け発音最適化版なので表示には使わない。
+      const masterForDisplay = job.masterLyrics ?? singable;
       await updateJob(jobId, {
         lyricsMatchScore:    compareResult.score,
         lyricsDiffJson:      compareResult.diffJson,
-        displayLyrics:       mergeResult.displayLyrics,
-        distributionLyrics:  mergeResult.distributionLyrics,
+        displayLyrics:       masterForDisplay,
+        distributionLyrics:  masterForDisplay,
         lyricsReviewRequired: mergeResult.reviewRequired,
         distributionReady:   mergeResult.distributionReady,
         lyricsSource:        mergeResult.lyricsSource,

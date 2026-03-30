@@ -21,7 +21,7 @@ export async function transcribeSongLyrics(params: {
   // 2. FormDataにaudioを添付してScribeへPOST
   const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
   const formData = new FormData();
-  formData.append("audio", blob, "audio.mp3");
+  formData.append("file", blob, "audio.mp3");
   formData.append("model_id", "scribe_v1");
   formData.append("timestamps_granularity", "word");
   formData.append("language_code", params.languageHint ?? "ja");

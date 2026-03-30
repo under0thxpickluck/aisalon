@@ -234,9 +234,9 @@ export async function POST(req: Request) {
     });
     await updateJob(jobId, {
       singableLyrics:       singable,
-      displayLyrics:        singable,    // Phase 1: singable をそのまま表示用に
-      distributionLyrics:   singable,    // Phase 1: singable をそのまま配信用に
-      lyricsSource:         "singable",
+      displayLyrics:        generated.masterLyrics,  // 表示用は自然な日本語（master）
+      distributionLyrics:   generated.masterLyrics,  // 配信用も master を初期値に
+      lyricsSource:         "master",
       lyricsReviewRequired: true,        // ASR完了まで要確認
       distributionReady:    false,       // ASR未実施なのでfalse
     });
