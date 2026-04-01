@@ -7948,13 +7948,17 @@ function handleGift_(key, body) {
       const toUserData = mktGetUserByLoginId_(toUser);
       if (!toUserData) return json_({ ok: false, error: "to_user_not_found" });
 
-      // 送信者のEP残高確認（mktAuth_が返したep_balanceを使う）
-      if (user.ep_balance < amount) {
-        return json_({ ok: false, error: "insufficient_ep", ep_balance: user.ep_balance });
+      // 送信者のEP残高確認（ロック内で再取得）
+      const senderData = mktGetUserByLoginId_(user.login_id);
+      if (!senderData || senderData.ep_balance < amount) {
+        return json_({ ok: false, error: "insufficient_ep", ep_balance: senderData ? senderData.ep_balance : 0 });
       }
 
       // EP減算（送信者）
-      mktAdjustEp_(user.login_id, user.email, -amount, "gift_send", "to=" + toUser);
+      const debitResult = mktAdjustEp_(user.login_id, user.email, -amount, "gift_send", "to=" + toUser);
+      if (!debitResult || !debitResult.ok) {
+        return json_({ ok: false, error: "ep_debit_failed", detail: debitResult ? debitResult.error : "unknown" });
+      }
 
       // GiftEP付与（受信者）
       const expiryDate = new Date(nowDate.getTime() + GIFT_EP_EXPIRY_DAYS_ * 24 * 60 * 60 * 1000)
@@ -7962,23 +7966,30 @@ function handleGift_(key, body) {
       const grantResult = giftAdjustGiftEp_(toUser, amount, expiryDate);
       if (!grantResult.ok) {
         // GiftEP付与失敗 → EPを戻す（ロールバック）
-        mktAdjustEp_(user.login_id, user.email, amount, "gift_send_rollback", "rollback to=" + toUser);
-        return json_({ ok: false, error: "gift_grant_failed", detail: grantResult.error });
+        const rollbackResult = mktAdjustEp_(user.login_id, user.email, amount, "gift_send_rollback", "rollback to=" + toUser);
+        return json_({ ok: false, error: "gift_grant_failed", detail: grantResult.error, rollback_ok: !!(rollbackResult && rollbackResult.ok) });
       }
 
       // 取引記録
       const giftId = "GFT_" + Utilities.getUuid().replace(/-/g, "").substring(0, 16).toUpperCase();
-      txSheet.appendRow([
-        giftId,           // id
-        user.login_id,    // from_user
-        toUser,           // to_user
-        amount,           // amount
-        nowDate,          // created_at
-        expiryDate,       // expiry_date
-        "completed",      // status
-        note,             // note
-        "",               // flagged_reason
-      ]);
+      try {
+        txSheet.appendRow([
+          giftId,                    // id
+          user.login_id,             // from_user
+          toUser,                    // to_user
+          amount,                    // amount
+          nowDate.toISOString(),     // created_at
+          expiryDate,                // expiry_date
+          "completed",               // status
+          note,                      // note
+          "",                        // flagged_reason
+        ]);
+      } catch (appendErr) {
+        // 記録失敗 → ロールバック
+        mktAdjustEp_(user.login_id, user.email, amount, "gift_send_rollback", "append_failed to=" + toUser);
+        giftAdjustGiftEp_(toUser, -amount, expiryDate);
+        return json_({ ok: false, error: "transaction_record_failed", detail: String(appendErr) });
+      }
 
       return json_({
         ok: true,
