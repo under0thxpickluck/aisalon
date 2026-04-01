@@ -4274,7 +4274,7 @@ var MARKET_MIN_PRICE_ = 50;
 var MARKET_MIN_EP_TO_LIST_ = 1;
 var MARKET_RESERVE_HOURS_ = 24;
 
-// ---- doPost 再定義（market_ アクションを handleMarket_ へルーティング）----
+// ---- doPost 再定義（market_ / gift_ アクションをそれぞれのハンドラへルーティング）----
 function doPost(e) {
   try {
     const key = pickKey_(e);
@@ -4282,6 +4282,9 @@ function doPost(e) {
     const action = str_(body.action);
     if (action && action.startsWith("market_")) {
       return handleMarket_(key, body);
+    }
+    if (action && action.startsWith("gift_")) {
+      return handleGift_(key, body);
     }
     return handle_(key, body);
   } catch (err) {
@@ -7717,4 +7720,106 @@ function gachaDailyStatus_(body) {
     }
   }
   return json_({ ok: true, used: false });
+}
+
+// ==============================
+// GiftEP システム
+// ==============================
+
+var GIFT_EP_EXPIRY_DAYS_ = 30;
+var GIFT_EP_MAX_SINGLE_  = 10000;
+var GIFT_EP_MAX_MONTHLY_ = 50000;
+var GIFT_FEATURES_ALLOWED_ = ["musicboost", "workflow"];
+
+function giftGetSheet_(ss, name) {
+  var HEADERS = {
+    "gift_transactions": [
+      "id", "from_user", "to_user", "amount", "created_at",
+      "expiry_date", "status", "note", "flagged_reason",
+    ],
+    "gift_usage_logs": [
+      "id", "user_id", "feature_type", "feature_ref",
+      "amount", "used_at", "source_expiry_date",
+    ],
+  };
+  return getOrCreateSheetByName_(ss, name, HEADERS[name] || []);
+}
+
+function giftGetUserGiftData_(loginId) {
+  var sheet = getOrCreateSheet_();
+  var values = getValuesSafe_(sheet);
+  if (values.length < 2) return null;
+
+  var header = values[0];
+  ensureCols_(sheet, header, ["gift_ep_balance", "gift_ep_expiry_map"]);
+  var freshValues = getValuesSafe_(sheet);
+  var freshIdx = indexMap_(freshValues[0]);
+  var rows = freshValues.slice(1);
+
+  for (var i = 0; i < rows.length; i++) {
+    if (str_(rows[i][freshIdx["login_id"]]) === loginId) {
+      var rawBalance = sheet.getRange(i + 2, freshIdx["gift_ep_balance"] + 1).getValue();
+      var rawMap = sheet.getRange(i + 2, freshIdx["gift_ep_expiry_map"] + 1).getValue();
+      var expiryMap = {};
+      try { expiryMap = JSON.parse(String(rawMap || "{}")); } catch (e) { expiryMap = {}; }
+      return {
+        balance: num_(rawBalance),
+        expiryMap: expiryMap,
+        rowIndex: i + 2,
+        sheet: sheet,
+        idx: freshIdx,
+      };
+    }
+  }
+  return null;
+}
+
+function giftAdjustGiftEp_(loginId, delta, expiryDate) {
+  var data = giftGetUserGiftData_(loginId);
+  if (!data) return { ok: false, error: "user_not_found" };
+
+  var map = data.expiryMap;
+  var newBalance;
+
+  if (delta > 0) {
+    var key = expiryDate;
+    map[key] = (map[key] || 0) + delta;
+    newBalance = data.balance + delta;
+  } else {
+    var amount = -delta;
+    if (data.balance < amount) return { ok: false, error: "insufficient_gift_ep" };
+
+    var sortedDates = Object.keys(map).sort();
+    var remaining = amount;
+    for (var j = 0; j < sortedDates.length; j++) {
+      var d = sortedDates[j];
+      if (map[d] <= remaining) {
+        remaining -= map[d];
+        delete map[d];
+      } else {
+        map[d] -= remaining;
+        remaining = 0;
+        break;
+      }
+    }
+    newBalance = data.balance - amount;
+  }
+
+  data.sheet.getRange(data.rowIndex, data.idx["gift_ep_balance"] + 1).setValue(newBalance);
+  data.sheet.getRange(data.rowIndex, data.idx["gift_ep_expiry_map"] + 1).setValue(JSON.stringify(map));
+  return { ok: true, new_balance: newBalance };
+}
+
+function giftAuth_(SECRET, id, code) {
+  return mktAuth_(SECRET, id, code);
+}
+
+function handleGift_(key, body) {
+  var GAS_API_KEY = PropertiesService.getScriptProperties().getProperty("GAS_API_KEY") || "";
+  if (key !== GAS_API_KEY) return json_({ ok: false, error: "invalid_key" });
+
+  var SECRET = PropertiesService.getScriptProperties().getProperty("SECRET_KEY") || "LIFAITOMAKEMONEY";
+  var action = str_(body.action);
+
+  return json_({ ok: false, error: "bad_gift_action" });
 }
