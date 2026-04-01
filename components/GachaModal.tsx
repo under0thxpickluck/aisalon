@@ -34,6 +34,24 @@ const GACHA_TABLE = [
   { bp: 20000, pct: "0.02%", rarity: "god"       },
 ] as const;
 
+const GACHA_TUTORIAL_SLIDES = [
+  {
+    icon: "🎰",
+    title: "BPガチャとは？",
+    body: "BPを消費して抽選し、当たったBPをそのまま獲得できます。消費より多いBPが当たることも！最大20,000BPのGODレアも存在します。",
+  },
+  {
+    icon: "🎯",
+    title: "3つの引き方",
+    body: "「1回引く」は100BP消費。「10連」は1,000BPで10回まとめて引け、合計150BP以上が保証されます。「デイリー」は1日1回だけ参加できる特別枠（80BP）です。",
+  },
+  {
+    icon: "⚡",
+    title: "天井システムと欠片",
+    body: "100回引くと高レアが必ず当たる「天井」があります。50回を超えると高レアの確率もUP。ガチャを回すたびに「欠片」も獲得でき、将来的な特典交換に使えます。",
+  },
+] as const;
+
 const RARITY_STYLE: Record<string, { color: string; label: string }> = {
   common:    { color: "#a1a1aa", label: "COMMON"    },
   uncommon:  { color: "#4ade80", label: "UNCOMMON"  },
@@ -45,11 +63,13 @@ const RARITY_STYLE: Record<string, { color: string; label: string }> = {
 };
 
 export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
-  const [visible,  setVisible]  = useState(false);
-  const [spinning, setSpinning] = useState(false);
-  const [result,    setResult]   = useState<GachaResult | null>(null);
-  const [errMsg,    setErrMsg]   = useState<string>("");
-  const [dailyUsed, setDailyUsed] = useState(false);
+  const [visible,       setVisible]       = useState(false);
+  const [spinning,      setSpinning]      = useState(false);
+  const [result,        setResult]        = useState<GachaResult | null>(null);
+  const [errMsg,        setErrMsg]        = useState<string>("");
+  const [dailyUsed,     setDailyUsed]     = useState(false);
+  const [showTutorial,  setShowTutorial]  = useState(false);
+  const [tutorialStep,  setTutorialStep]  = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 30);
@@ -190,8 +210,68 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
           overflowY:    "auto",
         }}
       >
-        {/* ===== 結果画面 ===== */}
-        {result ? (
+        {/* ===== チュートリアル画面 ===== */}
+        {showTutorial ? (
+          <div style={{ textAlign: "center" }}>
+            {/* スライドインジケーター */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "20px" }}>
+              {GACHA_TUTORIAL_SLIDES.map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height:       "6px",
+                    borderRadius: "999px",
+                    background:   i === tutorialStep ? "#7c3aed" : "rgba(255,255,255,0.12)",
+                    width:        i === tutorialStep ? "24px" : "6px",
+                    transition:   "width 0.2s ease, background 0.2s ease",
+                  }}
+                />
+              ))}
+            </div>
+
+            <div style={{ fontSize: "40px", marginBottom: "12px" }}>
+              {GACHA_TUTORIAL_SLIDES[tutorialStep].icon}
+            </div>
+            <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", marginBottom: "10px" }}>
+              {GACHA_TUTORIAL_SLIDES[tutorialStep].title}
+            </p>
+            <p style={{ fontSize: "13px", color: "#a1a1aa", lineHeight: 1.7, marginBottom: "24px", textAlign: "left" }}>
+              {GACHA_TUTORIAL_SLIDES[tutorialStep].body}
+            </p>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              {tutorialStep > 0 && (
+                <button
+                  onClick={() => setTutorialStep(tutorialStep - 1)}
+                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#a1a1aa", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+                >
+                  ← 戻る
+                </button>
+              )}
+              {tutorialStep < GACHA_TUTORIAL_SLIDES.length - 1 ? (
+                <button
+                  onClick={() => setTutorialStep(tutorialStep + 1)}
+                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg,#7c3aed,#6366f1)", color: "#fff", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  次へ →
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
+                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg,#7c3aed,#6366f1)", color: "#fff", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  はじめる
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
+              style={{ marginTop: "10px", width: "100%", background: "none", border: "none", color: "#52525b", fontSize: "12px", cursor: "pointer" }}
+            >
+              スキップ
+            </button>
+          </div>
+        ) : result ? (
           <div style={{ textAlign: "center" }}>
             {(() => {
               const style = RARITY_STYLE[result.rarity ?? "common"] ?? RARITY_STYLE.common;
@@ -306,9 +386,18 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
         ) : (
           /* ===== 通常画面 ===== */
           <>
-            <p style={{ fontSize: "16px", fontWeight: 900, color: "#f4f4f5", marginBottom: "4px" }}>
-              🎰 BPガチャ
-            </p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+              <p style={{ fontSize: "16px", fontWeight: 900, color: "#f4f4f5", margin: 0 }}>
+                🎰 BPガチャ
+              </p>
+              <button
+                onClick={() => { setShowTutorial(true); setTutorialStep(0); }}
+                title="使い方を見る"
+                style={{ width: "26px", height: "26px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.06)", color: "#a1a1aa", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+              >
+                ?
+              </button>
+            </div>
             <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>
               10連150BP以上保証・100回天井あり
             </p>

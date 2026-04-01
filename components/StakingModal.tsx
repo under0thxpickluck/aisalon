@@ -22,6 +22,24 @@ type Props = {
   onBpChanged: () => void;
 };
 
+const STAKING_TUTORIAL_SLIDES = [
+  {
+    icon: "💎",
+    title: "ステーキングとは？",
+    body: "手持ちのBPを一定期間「預ける」と、満期後に利息付きで受け取れる仕組みです。銀行の定期預金のようなイメージ。預けたBPは満期まで引き出せないので、余裕のある分で運用しましょう。",
+  },
+  {
+    icon: "📅",
+    title: "3つのプランを選ぼう",
+    body: "30日で+10%、60日で+25%、90日で+50%。期間が長いほど受取額が大きくなります。最低100BPから預けられます。BP数を入力するとリターンの予測が表示されます。",
+  },
+  {
+    icon: "⚠️",
+    title: "ステーキング率は変動します",
+    body: "表示されているレート（+10% / +25% / +50%）は現在の基準値です。LIFAIのBP・EP流通率の状況によって今後変動する場合があります。あらかじめご了承のうえ、ご利用ください。",
+  },
+] as const;
+
 const PLANS = [
   { days: 30 as const, rate: 0.10, label: "30日", desc: "+10%" },
   { days: 60 as const, rate: 0.25, label: "60日", desc: "+25%" },
@@ -40,14 +58,16 @@ function expiresInDays(isoStr: string): number {
 }
 
 export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
-  const [visible,      setVisible]      = useState(false);
-  const [amount,       setAmount]       = useState("");
-  const [selectedDays, setSelectedDays] = useState<30 | 60 | 90>(30);
-  const [stakes,       setStakes]       = useState<StakeItem[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [staking,      setStaking]      = useState(false);
-  const [claiming,     setClaiming]     = useState<string | null>(null);
-  const [errMsg,       setErrMsg]       = useState("");
+  const [visible,       setVisible]       = useState(false);
+  const [amount,        setAmount]        = useState("");
+  const [selectedDays,  setSelectedDays]  = useState<30 | 60 | 90>(30);
+  const [stakes,        setStakes]        = useState<StakeItem[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [staking,       setStaking]       = useState(false);
+  const [claiming,      setClaiming]      = useState<string | null>(null);
+  const [errMsg,        setErrMsg]        = useState("");
+  const [showTutorial,  setShowTutorial]  = useState(false);
+  const [tutorialStep,  setTutorialStep]  = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 30);
@@ -167,10 +187,82 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
           cursor:       "default",
         }}
       >
+        {/* ===== チュートリアル画面 ===== */}
+        {showTutorial ? (
+          <div style={{ textAlign: "center" }}>
+            {/* スライドインジケーター */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "20px" }}>
+              {STAKING_TUTORIAL_SLIDES.map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height:       "6px",
+                    borderRadius: "999px",
+                    background:   i === tutorialStep ? "#f59e0b" : "rgba(255,255,255,0.12)",
+                    width:        i === tutorialStep ? "24px" : "6px",
+                    transition:   "width 0.2s ease, background 0.2s ease",
+                  }}
+                />
+              ))}
+            </div>
+
+            <div style={{ fontSize: "40px", marginBottom: "12px" }}>
+              {STAKING_TUTORIAL_SLIDES[tutorialStep].icon}
+            </div>
+            <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", marginBottom: "10px" }}>
+              {STAKING_TUTORIAL_SLIDES[tutorialStep].title}
+            </p>
+            <p style={{ fontSize: "13px", color: "#a1a1aa", lineHeight: 1.7, marginBottom: "24px", textAlign: "left" }}>
+              {STAKING_TUTORIAL_SLIDES[tutorialStep].body}
+            </p>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              {tutorialStep > 0 && (
+                <button
+                  onClick={() => setTutorialStep(tutorialStep - 1)}
+                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#a1a1aa", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+                >
+                  ← 戻る
+                </button>
+              )}
+              {tutorialStep < STAKING_TUTORIAL_SLIDES.length - 1 ? (
+                <button
+                  onClick={() => setTutorialStep(tutorialStep + 1)}
+                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "#f59e0b", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  次へ →
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
+                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "#f59e0b", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  はじめる
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
+              style={{ marginTop: "10px", width: "100%", background: "none", border: "none", color: "#52525b", fontSize: "12px", cursor: "pointer" }}
+            >
+              スキップ
+            </button>
+          </div>
+        ) : (
+        <>
         {/* ===== セクション1: 新規ステーク ===== */}
-        <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", marginBottom: "16px" }}>
-          🔒 BPをステークする
-        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+          <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", margin: 0 }}>
+            🔒 BPをステークする
+          </p>
+          <button
+            onClick={() => { setShowTutorial(true); setTutorialStep(0); }}
+            title="使い方を見る"
+            style={{ width: "26px", height: "26px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.06)", color: "#a1a1aa", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+          >
+            ?
+          </button>
+        </div>
 
         {/* 期間選択 */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
@@ -373,6 +465,8 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         >
           閉じる
         </button>
+        </>
+        )}
       </div>
     </div>
   );
