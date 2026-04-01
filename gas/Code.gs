@@ -6174,6 +6174,204 @@ function tapTicker_(params) {
   return json_({ ok: true, events: rows.slice(0, 20) });
 }
 
+function getTapBatchLogsSheet_() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("tap_batch_logs");
+  if (!sheet) {
+    sheet = ss.insertSheet("tap_batch_logs");
+    sheet.appendRow([
+      "session_id", "user_id",
+      "requested_tap_count", "processed_tap_count",
+      "bp_cost", "bp_reward", "ep_reward",
+      "rare_count", "max_combo", "suspicious_flag",
+      "started_at", "ended_at", "created_at"
+    ]);
+  }
+  return sheet;
+}
+
+function getTapRareLogsSheet_() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("rare_logs");
+  if (!sheet) {
+    sheet = ss.insertSheet("rare_logs");
+    sheet.appendRow(["id", "user_id", "reward", "type", "session_id", "created_at"]);
+  }
+  return sheet;
+}
+
+// action: tap_batch_play
+// params: userId, sessionId, tapCount, maxCombo, startedAt, endedAt
+function tapBatchPlay_(params) {
+  var userId    = String(params.userId    || "");
+  var sessionId = String(params.sessionId || "");
+  var tapCount  = Math.floor(Number(params.tapCount  || 0));
+  var maxCombo  = Math.floor(Number(params.maxCombo  || 0));
+  var startedAt = String(params.startedAt || "");
+  var endedAt   = String(params.endedAt   || "");
+
+  if (!userId)       return json_({ ok: false, error: "userId_required" });
+  if (tapCount <= 0) return json_({ ok: false, error: "invalid_tap_count" });
+
+  var MAX_TAPS_PER_DAY = 500;
+  var MAX_BATCH        = 50;
+
+  var suspicious = tapCount > MAX_BATCH;
+  if (suspicious) tapCount = MAX_BATCH;
+  var requestedTapCount = tapCount;
+
+  var sheet = getTapGameSheet_();
+  ensureTapGameCols_(sheet);
+
+  var nowJst   = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var nowStr   = nowJst.toISOString();
+  var todayStr = nowStr.slice(0, 10);
+
+  var found = getTapGameRow_(sheet, userId);
+  var rowNum, idx, row;
+  if (!found) {
+    sheet.appendRow([userId, 0, 0, 0, 0, 0, 0, todayStr, nowStr, false]);
+    var data    = sheet.getDataRange().getValues();
+    var headers = data[0];
+    idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+    rowNum = sheet.getLastRow();
+    row    = data[rowNum - 1];
+  } else {
+    rowNum = found.rowNum;
+    idx    = found.idx;
+    row    = found.row;
+    resetTapIfNeeded_(sheet, rowNum, idx, row);
+    row = sheet.getRange(rowNum, 1, 1, Object.keys(idx).length).getValues()[0];
+  }
+
+  if (suspicious) {
+    sheet.getRange(rowNum, idx["suspicious_flag"] + 1).setValue(true);
+  }
+
+  var todayTaps = Number(row[idx["today_taps"]] || 0);
+  var totalTaps = Number(row[idx["total_taps"]] || 0);
+
+  var remaining    = MAX_TAPS_PER_DAY - todayTaps;
+  if (remaining <= 0) {
+    return json_({ ok: false, error: "daily_limit_reached", taps_remaining: 0 });
+  }
+  var processCount = Math.min(tapCount, remaining);
+
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+  var userRow = null, userRowNum = -1;
+  for (var i = 1; i < appliesData.length; i++) {
+    if (String(appliesData[i][aIdx["login_id"]]) === userId) {
+      userRow    = appliesData[i];
+      userRowNum = i + 1;
+      break;
+    }
+  }
+  if (!userRow) return json_({ ok: false, error: "user_not_found" });
+
+  var currentBp = Number(userRow[aIdx["bp_balance"]] || 0);
+  var affordable = Math.min(processCount, Math.floor(currentBp));
+  if (affordable <= 0) return json_({ ok: false, error: "insufficient_bp", bp: currentBp });
+  processCount = affordable;
+
+  var bpCost = processCount;
+  var afterBp = Math.round((currentBp - bpCost) * 100) / 100;
+
+  var REWARD_TABLE = [
+    { type: "BP", amount: 0.1,   prob: 0.45     },
+    { type: "BP", amount: 0.2,   prob: 0.25     },
+    { type: "BP", amount: 0.5,   prob: 0.08     },
+    { type: "EP", amount: 1,     prob: 0.15     },
+    { type: "EP", amount: 3,     prob: 0.05     },
+    { type: "EP", amount: 10,    prob: 0.015    },
+    { type: "EP", amount: 100,   prob: 0.0009   },
+    { type: "EP", amount: 10000, prob: 0.000001 }
+  ];
+
+  var totalBpReward = 0;
+  var totalEpReward = 0;
+  var rareRewards   = [];
+  var rareCount     = 0;
+
+  for (var t = 0; t < processCount; t++) {
+    var rand = Math.random(), cumulative = 0;
+    var rType = "BP", rAmount = 0.1;
+    for (var j = 0; j < REWARD_TABLE.length; j++) {
+      cumulative += REWARD_TABLE[j].prob;
+      if (rand < cumulative) { rType = REWARD_TABLE[j].type; rAmount = REWARD_TABLE[j].amount; break; }
+    }
+    if (rType === "BP") {
+      totalBpReward = Math.round((totalBpReward + rAmount) * 100) / 100;
+    } else {
+      totalEpReward = Math.round((totalEpReward + rAmount) * 100) / 100;
+      if (rAmount >= 50) { rareRewards.push({ type: "EP", amount: rAmount }); rareCount++; }
+    }
+  }
+
+  afterBp = Math.round((afterBp + totalBpReward) * 100) / 100;
+  var currentEp = Number(userRow[aIdx["ep_balance"]] || 0);
+  var afterEp   = Math.round((currentEp + totalEpReward) * 100) / 100;
+  appliesSheet.getRange(userRowNum, aIdx["bp_balance"] + 1).setValue(afterBp);
+  if (totalEpReward > 0) {
+    appliesSheet.getRange(userRowNum, aIdx["ep_balance"] + 1).setValue(afterEp);
+  }
+
+  var newTodayTaps     = todayTaps + processCount;
+  var newTotalTaps     = totalTaps + processCount;
+  var todayBp          = Number(row[idx["today_bp_earned"]] || 0);
+  var todayEp          = Number(row[idx["today_ep_earned"]] || 0);
+  var newTodayBp       = Math.round((todayBp + totalBpReward) * 100) / 100;
+  var newTodayEp       = Math.round((todayEp + totalEpReward) * 100) / 100;
+  var newMaxCombo      = Math.max(Number(row[idx["max_combo"]]       || 0), maxCombo);
+  var newTodayMaxCombo = Math.max(Number(row[idx["today_max_combo"]] || 0), maxCombo);
+
+  sheet.getRange(rowNum, idx["total_taps"]       + 1).setValue(newTotalTaps);
+  sheet.getRange(rowNum, idx["today_taps"]       + 1).setValue(newTodayTaps);
+  sheet.getRange(rowNum, idx["today_bp_earned"]  + 1).setValue(newTodayBp);
+  sheet.getRange(rowNum, idx["today_ep_earned"]  + 1).setValue(newTodayEp);
+  sheet.getRange(rowNum, idx["max_combo"]        + 1).setValue(newMaxCombo);
+  sheet.getRange(rowNum, idx["today_max_combo"]  + 1).setValue(newTodayMaxCombo);
+  sheet.getRange(rowNum, idx["last_tap_at"]      + 1).setValue(nowStr);
+
+  var batchSheet = getTapBatchLogsSheet_();
+  batchSheet.appendRow([
+    sessionId || Utilities.getUuid(), userId,
+    requestedTapCount, processCount,
+    bpCost, totalBpReward, totalEpReward,
+    rareCount, maxCombo, suspicious,
+    startedAt || nowStr, endedAt || nowStr, nowStr
+  ]);
+
+  if (rareRewards.length > 0) {
+    var rareSheet   = getTapRareLogsSheet_();
+    var tickerSheet = getOrCreateTickerSheet_();
+    var masked      = userId.length > 2 ? userId.slice(0, 2) + "***" : userId + "***";
+    rareRewards.forEach(function(r) {
+      rareSheet.appendRow([Utilities.getUuid(), userId, r.amount, "EP", sessionId || "", nowStr]);
+      tickerSheet.appendRow([Utilities.getUuid(), masked, r.amount, "EP", nowStr]);
+    });
+  }
+
+  return json_({
+    ok:                true,
+    processedTapCount: processCount,
+    bpCost:            bpCost,
+    bpReward:          totalBpReward,
+    epReward:          totalEpReward,
+    rareRewards:       rareRewards,
+    todayTaps:         newTodayTaps,
+    tapsRemaining:     MAX_TAPS_PER_DAY - newTodayTaps,
+    bpBalance:         afterBp,
+    epBalance:         afterEp,
+    today_bp:          newTodayBp,
+    today_ep:          newTodayEp
+  });
+}
+
 // ============================================================
 // RUMBLE LEAGUE（rumble_entry / rumble_week / equipment シート）
 // 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
