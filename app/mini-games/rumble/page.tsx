@@ -58,6 +58,7 @@ type SpectatorData = {
   self: (SpectatorPlayer & { week_rp: number; week_rank: number }) | null;
   ranking: { user_id: string; display_name: string; total_rp: number }[];
   total: number;
+  date?: string;
 };
 
 const RARITY_COLOR: Record<string, string> = {
@@ -103,13 +104,15 @@ export default function RumblePage() {
   const [nameBusy, setNameBusy]           = useState(false);
   const [nameMsg, setNameMsg]             = useState("");
   // 観戦モード
-  const [spectatorData,    setSpectatorData]    = useState<SpectatorData | null>(null);
-  const [spectatorLoading, setSpectatorLoading] = useState(false);
-  const [spectatorPlayers, setSpectatorPlayers] = useState<SpectatorPlayer[]>([]);
-  const [battleLogs,       setBattleLogs]       = useState<{ text: string; color: string; id: number }[]>([]);
-  const [spectatorPhase,   setSpectatorPhase]   = useState<"waiting" | "live" | "result">("waiting");
-  const [isPlaying,        setIsPlaying]        = useState(false);
-  const [logCounter,       setLogCounter]       = useState(0);
+  const [spectatorData,      setSpectatorData]      = useState<SpectatorData | null>(null);
+  const [spectatorLoading,   setSpectatorLoading]   = useState(false);
+  const [spectatorPlayers,   setSpectatorPlayers]   = useState<SpectatorPlayer[]>([]);
+  const [battleLogs,         setBattleLogs]         = useState<{ text: string; color: string; id: number }[]>([]);
+  const [spectatorPhase,     setSpectatorPhase]     = useState<"waiting" | "live" | "result">("waiting");
+  const [isPlaying,          setIsPlaying]          = useState(false);
+  const [logCounter,         setLogCounter]         = useState(0);
+  const [spectatorFetchedAt, setSpectatorFetchedAt] = useState<number | null>(null);
+  const [spectatorDate,      setSpectatorDate]      = useState<string | null>(null);
 
   useEffect(() => {
     const seen = localStorage.getItem("rumble_help_seen");
@@ -171,16 +174,36 @@ export default function RumblePage() {
 
   useEffect(() => {
     const calcCountdown = () => {
-      const now    = new Date();
-      const nowJst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      const target = new Date(nowJst);
-      target.setHours(19, 0, 0, 0);
-      if (nowJst.getHours() >= 19) target.setDate(target.getDate() + 1);
-      while (target.getDay() === 0 || target.getDay() === 6) target.setDate(target.getDate() + 1);
-      const diff = target.getTime() - nowJst.getTime();
-      const h    = Math.floor(diff / 3600000);
-      const m    = Math.floor((diff % 3600000) / 60000);
-      const s    = Math.floor((diff % 60000) / 1000);
+      const now = new Date();
+      // JST年月日をロケールで取得（UTC環境でもズレない）
+      const jstParts = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", hour12: false,
+      }).formatToParts(now);
+      const jstYear  = jstParts.find(p => p.type === "year")!.value;
+      const jstMonth = jstParts.find(p => p.type === "month")!.value;
+      const jstDay   = jstParts.find(p => p.type === "day")!.value;
+      const jstHour  = parseInt(jstParts.find(p => p.type === "hour")!.value, 10);
+
+      // 目標日付の計算
+      let targetDate = new Date(`${jstYear}-${jstMonth}-${jstDay}T19:00:00+09:00`);
+      if (jstHour >= 19) targetDate = new Date(targetDate.getTime() + 86400000);
+      // 土日スキップ（JSTで曜日取得）
+      while (true) {
+        const dow = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", weekday: "short" }).format(targetDate);
+        if (dow !== "土" && dow !== "日") break;
+        targetDate = new Date(targetDate.getTime() + 86400000);
+      }
+
+      const diff = targetDate.getTime() - now.getTime();
+      if (diff <= 0) {
+        setCountdown("00:00:00");
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
       setCountdown(`${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`);
     };
     calcCountdown();
@@ -200,15 +223,25 @@ export default function RumblePage() {
       .then(r => r.json()).then(d => { if (d.ok) setRankContext(d); }).catch(() => {});
   }, [tab, userId]);
 
-  // 観戦タブに切り替えたときにデータ取得
+  // 観戦タブに切り替えたときにデータ取得（キャッシュ30秒）
   useEffect(() => {
-    if (tab !== "観戦" || !userId || spectatorData) return;
+    if (tab !== "観戦" || !userId) return;
+    const todayJst = getTodayJst();
+    const needsFetch =
+      spectatorData === null ||
+      spectatorFetchedAt === null ||
+      spectatorDate !== todayJst ||
+      spectatorData.status === "no_data" ||
+      Date.now() - (spectatorFetchedAt ?? 0) > 30000;
+    if (!needsFetch) return;
     setSpectatorLoading(true);
     fetch(`/api/minigames/rumble/spectator?userId=${encodeURIComponent(userId)}`)
       .then(r => r.json())
       .then((d: SpectatorData) => {
         if (d.ok) {
           setSpectatorData(d);
+          setSpectatorFetchedAt(Date.now());
+          setSpectatorDate(d.date ?? todayJst);
           if (d.status === "ready") {
             setSpectatorPlayers(d.players.map(p => ({ ...p, status: "alive" as const })));
             setSpectatorPhase("waiting");
@@ -217,7 +250,7 @@ export default function RumblePage() {
       })
       .catch(() => {})
       .finally(() => setSpectatorLoading(false));
-  }, [tab, userId, spectatorData]);
+  }, [tab, userId, spectatorData, spectatorFetchedAt, spectatorDate]);
 
   const handleSetName = async () => {
     const trimmed = nameInput.trim();
@@ -253,7 +286,7 @@ export default function RumblePage() {
       const id = counter;
       setBattleLogs(prev => {
         const next = [...prev, { text, color, id }];
-        return next.slice(-8);
+        return next.slice(-20);
       });
       setLogCounter(id);
     };
@@ -281,6 +314,27 @@ export default function RumblePage() {
       }
     }
     setIsPlaying(false);
+  };
+
+  const handleSpectatorRefresh = async () => {
+    if (!userId || spectatorLoading) return;
+    const todayJst = getTodayJst();
+    setSpectatorLoading(true);
+    try {
+      const d: SpectatorData = await fetch(
+        `/api/minigames/rumble/spectator?userId=${encodeURIComponent(userId)}`
+      ).then(r => r.json());
+      if (d.ok) {
+        setSpectatorData(d);
+        setSpectatorFetchedAt(Date.now());
+        setSpectatorDate(d.date ?? todayJst);
+        if (d.status === "ready") {
+          setSpectatorPlayers(d.players.map(p => ({ ...p, status: "alive" as const })));
+          setSpectatorPhase("waiting");
+        }
+      }
+    } catch {}
+    finally { setSpectatorLoading(false); }
   };
 
   const handleEntry = async () => {
@@ -793,12 +847,12 @@ export default function RumblePage() {
                     {spectatorPhase === "live" ? (
                       <span className="flex items-center gap-1 text-xs font-black text-pink-400">
                         <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
-                        LIVE NOW
+                        観戦中
                       </span>
                     ) : spectatorPhase === "result" ? (
-                      <span className="text-xs font-black text-yellow-400">⚔️ RESULT</span>
+                      <span className="text-xs font-black text-yellow-400">🏆 結果確定</span>
                     ) : (
-                      <span className="text-xs text-white/40">観戦準備完了</span>
+                      <span className="text-xs text-white/40">参加受付中</span>
                     )}
                   </div>
                   <span className="text-xs text-white/40">参加者 {spectatorData.total}人</span>
@@ -855,27 +909,36 @@ export default function RumblePage() {
                 </div>
               </div>
 
-              {/* 再生ボタン */}
-              {!isPlaying && spectatorPhase !== "result" && (
+              {/* 再生ボタン群 */}
+              <div className="flex flex-col gap-2">
+                {!isPlaying && spectatorPhase !== "result" && (
+                  <button
+                    onClick={handleSpectatorPlay}
+                    className="w-full py-4 rounded-xl font-black text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition"
+                  >
+                    ⚔️ 観戦スタート
+                  </button>
+                )}
+                {!isPlaying && spectatorPhase === "result" && (
+                  <button
+                    onClick={() => {
+                      setBattleLogs([]);
+                      setSpectatorPlayers(spectatorData.players.map(p => ({ ...p, status: "alive" as const })));
+                      handleSpectatorPlay();
+                    }}
+                    className="w-full py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition"
+                  >
+                    🔄 もう一度見る
+                  </button>
+                )}
                 <button
-                  onClick={handleSpectatorPlay}
-                  className="w-full py-4 rounded-xl font-black text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition"
+                  onClick={handleSpectatorRefresh}
+                  disabled={spectatorLoading}
+                  className="w-full py-2 rounded-xl font-bold text-xs bg-white/5 hover:bg-white/10 transition text-white/50 disabled:opacity-40"
                 >
-                  ⚔️ 観戦スタート
+                  {spectatorLoading ? "取得中..." : "🔃 最新を取得"}
                 </button>
-              )}
-              {!isPlaying && spectatorPhase === "result" && (
-                <button
-                  onClick={() => {
-                    setSpectatorPhase("waiting");
-                    setBattleLogs([]);
-                    setSpectatorPlayers(spectatorData.players.map(p => ({ ...p, status: "alive" as const })));
-                  }}
-                  className="w-full py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition"
-                >
-                  🔄 もう一度見る
-                </button>
-              )}
+              </div>
 
               {/* 生存者一覧カード */}
               <div className="bg-white/5 rounded-2xl p-4">
