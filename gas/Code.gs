@@ -7838,5 +7838,57 @@ function handleGift_(key, body) {
   var SECRET = PropertiesService.getScriptProperties().getProperty("SECRET_KEY") || "LIFAITOMAKEMONEY";
   var action = str_(body.action);
 
+  // =========================================================
+  // gift_balance（GiftEP残高・期限情報取得）
+  // =========================================================
+  if (action === "gift_balance") {
+    const id = str_(body.id);
+    const code = str_(body.code);
+    if (!id || !code) return json_({ ok: false, error: "missing_auth" });
+
+    const user = giftAuth_(SECRET, id, code);
+    if (!user.ok) return json_({ ok: false, error: "auth_failed" });
+
+    const data = giftGetUserGiftData_(user.login_id);
+    if (!data) return json_({ ok: false, error: "user_not_found" });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const sortedEntries = Object.entries(data.expiryMap)
+      .filter(function(e) { return e[0] >= today; })
+      .sort(function(a, b) { return a[0].localeCompare(b[0]); });
+
+    let expiringSoon = 0;
+    let nextExpiryDate = null;
+
+    for (let i = 0; i < sortedEntries.length; i++) {
+      const d = sortedEntries[i][0];
+      const amt = sortedEntries[i][1];
+      const diffDays = (new Date(d).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays <= 7) expiringSoon += amt;
+      if (!nextExpiryDate) nextExpiryDate = d;
+    }
+
+    // 有効残高（失効済みを除く）を再計算
+    let validBalance = 0;
+    sortedEntries.forEach(function(e) { validBalance += e[1]; });
+
+    return json_({
+      ok: true,
+      balance: validBalance,
+      expiring_soon: expiringSoon,
+      next_expiry_date: nextExpiryDate,
+      expiry_map: data.expiryMap,
+    });
+  }
+
+  // =========================================================
+  // gift_rules_check（特定機能でGiftEPが利用可能か判定）
+  // =========================================================
+  if (action === "gift_rules_check") {
+    const featureType = str_(body.feature_type);
+    const allowed = GIFT_FEATURES_ALLOWED_.indexOf(featureType) !== -1;
+    return json_({ ok: true, allowed: allowed, feature_type: featureType });
+  }
+
   return json_({ ok: false, error: "bad_gift_action" });
 }
