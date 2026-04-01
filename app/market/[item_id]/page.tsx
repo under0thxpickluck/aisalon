@@ -468,7 +468,7 @@ export default function ItemDetailPage() {
               color: "rgba(167,139,250,0.7)",
               lineHeight: 1.75,
             }}>
-              <span>⚠ EP/BPは換金できません　</span>
+              <span>⚠ EP（Exchangeポイント）は換金できません　</span>
               <span>⚠ 外部売買は禁止されています</span>
             </div>
 

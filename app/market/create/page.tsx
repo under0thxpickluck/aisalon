@@ -216,7 +216,7 @@ export default function MarketCreatePage() {
             lineHeight: 1.8,
           }}>
             <p style={{ fontWeight: 700, marginBottom: 4, color: "rgba(167,139,250,0.9)" }}>⚠ 出品ルール・禁止事項</p>
-            <p>・EP/BPは現金化・外部移転・ユーザー間直接送金はできません</p>
+            <p>・EP（Exchangeポイント）/BPは現金化・外部移転・ユーザー間直接送金はできません</p>
             <p>・著作権を侵害するコンテンツの出品は禁止です</p>
             <p>・外部でのポイント売買・換金行為は永久BAN対象です</p>
             <p>・初回出品は審査が入る場合があります</p>

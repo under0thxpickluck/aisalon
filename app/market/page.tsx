@@ -172,7 +172,7 @@ const TUTORIAL_STEPS = [
   },
   {
     title: "通貨で絞り込む",
-    desc: "BP（ボーナスポイント）とEP（エナジーポイント）の2通貨に対応しています。",
+    desc: "BP（ボーナスポイント）とEP（Exchangeポイント）の2通貨に対応しています。",
     highlightId: "filter-currency",
   },
   {
@@ -548,7 +548,7 @@ export default function MarketPage() {
             flexWrap: "wrap",
             gap: "4px 16px",
           }}>
-            <span>⚠ EPは換金できません</span>
+            <span>⚠ EP（Exchangeポイント）は換金できません</span>
             <span>⚠ 外部売買は禁止されています</span>
             <span>⚠ 違反時はアカウント停止</span>
           </div>
@@ -680,7 +680,7 @@ export default function MarketPage() {
           <p style={{ fontSize: 13, fontWeight: 800, color: "#EAF0FF", marginBottom: 16 }}>よくある質問（FAQ）</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {[
-              { q: "EP・BPの違いは？", a: "EP（エナジーポイント）は課金ポイントです。BP（ボーナスポイント）はサービス内の活動で獲得できる消費・報酬ポイントです。どちらも現金化・外部移転はできません。" },
+              { q: "EP・BPの違いは？", a: "EP（Exchangeポイント）は課金ポイントです。BP（ボーナスポイント）はサービス内の活動で獲得できる消費・報酬ポイントです。どちらも現金化・外部移転はできません。" },
               { q: "返金してもらえますか？", a: "納品URLが無効・商品が説明と大きく異なる・アセット不足（100枚/10曲未満）・著作権侵害の疑いがある場合に返金申請できます。単なる好みや使用後の返品は対応できません。" },
               { q: "購入後の流れは？", a: "購入するとポイントがエスクロー（一時保留）に入ります。商品を受け取り確認後、「受領確定」を押すと出品者へ代金が支払われます。" },
               { q: "納品はどうやって確認しますか？", a: "出品者が登録した納品URL・ダウンロードリンクは購入確定後にご確認いただけます。商品詳細ページまたは購入履歴から確認できます。" },

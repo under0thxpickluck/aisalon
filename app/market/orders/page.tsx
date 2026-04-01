@@ -237,6 +237,16 @@ export default function OrdersPage() {
             {ordersSource === "gas" ? "サーバーから取得した購入履歴です。" : "このデバイスでの購入履歴です。"}
           </p>
 
+          {/* 利用ルール */}
+          <div className="mt-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3">
+            <p className="mb-1.5 text-xs font-bold text-violet-700">利用ルール</p>
+            <ul className="space-y-1 text-xs text-violet-600">
+              <li>⚠ EP（Exchangeポイント）は換金できません</li>
+              <li>⚠ 外部売買は禁止されています</li>
+              <li>⚠ 違反時はアカウント停止となる場合があります</li>
+            </ul>
+          </div>
+
           {/* ── 出品中アイテム（売却申請） ── */}
           <div className="mt-8">
             <h2 className="text-base font-extrabold text-slate-900">出品中のアイテム</h2>
