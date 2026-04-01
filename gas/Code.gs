@@ -7890,5 +7890,107 @@ function handleGift_(key, body) {
     return json_({ ok: true, allowed: allowed, feature_type: featureType });
   }
 
+  // =========================================================
+  // gift_send（EP送信 → 全量GiftEPへ変換）
+  // =========================================================
+  if (action === "gift_send") {
+    const id = str_(body.id);
+    const code = str_(body.code);
+    if (!id || !code) return json_({ ok: false, error: "missing_auth" });
+
+    const user = giftAuth_(SECRET, id, code);
+    if (!user.ok) return json_({ ok: false, error: "auth_failed" });
+
+    const toUser = str_(body.to_user);
+    const amount = num_(body.amount);
+    const note = str_(body.note || "").slice(0, 200);
+
+    if (!toUser) return json_({ ok: false, error: "missing_to_user" });
+    if (toUser === user.login_id) return json_({ ok: false, error: "cannot_send_to_self" });
+    if (amount < 1) return json_({ ok: false, error: "amount_must_be_positive" });
+    if (amount > GIFT_EP_MAX_SINGLE_) {
+      return json_({ ok: false, error: "exceeds_single_limit", limit: GIFT_EP_MAX_SINGLE_ });
+    }
+
+    const lock = LockService.getScriptLock();
+    try { lock.waitLock(8000); } catch(e) { return json_({ ok: false, error: "lock_timeout" }); }
+
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+      // 月間送信上限チェック
+      const txSheet = giftGetSheet_(ss, "gift_transactions");
+      const txValues = getValuesSafe_(txSheet);
+      const nowDate = new Date();
+      const ym = nowDate.getFullYear() + "-" + String(nowDate.getMonth() + 1).padStart(2, "0");
+      let monthTotal = 0;
+      if (txValues.length >= 2) {
+        const tHeader = txValues[0];
+        const tIdx = indexMap_(tHeader);
+        txValues.slice(1).forEach(function(row) {
+          if (str_(row[tIdx["from_user"]]) === user.login_id &&
+              str_(row[tIdx["status"]]) === "completed" &&
+              str_(row[tIdx["created_at"]]).startsWith(ym)) {
+            monthTotal += num_(row[tIdx["amount"]]);
+          }
+        });
+      }
+      if (monthTotal + amount > GIFT_EP_MAX_MONTHLY_) {
+        return json_({
+          ok: false,
+          error: "exceeds_monthly_limit",
+          limit: GIFT_EP_MAX_MONTHLY_,
+          used: monthTotal,
+        });
+      }
+
+      // 受信者の存在確認
+      const toUserData = mktGetUserByLoginId_(toUser);
+      if (!toUserData) return json_({ ok: false, error: "to_user_not_found" });
+
+      // 送信者のEP残高確認（mktAuth_が返したep_balanceを使う）
+      if (user.ep_balance < amount) {
+        return json_({ ok: false, error: "insufficient_ep", ep_balance: user.ep_balance });
+      }
+
+      // EP減算（送信者）
+      mktAdjustEp_(user.login_id, user.email, -amount, "gift_send", "to=" + toUser);
+
+      // GiftEP付与（受信者）
+      const expiryDate = new Date(nowDate.getTime() + GIFT_EP_EXPIRY_DAYS_ * 24 * 60 * 60 * 1000)
+        .toISOString().slice(0, 10);
+      const grantResult = giftAdjustGiftEp_(toUser, amount, expiryDate);
+      if (!grantResult.ok) {
+        // GiftEP付与失敗 → EPを戻す（ロールバック）
+        mktAdjustEp_(user.login_id, user.email, amount, "gift_send_rollback", "rollback to=" + toUser);
+        return json_({ ok: false, error: "gift_grant_failed", detail: grantResult.error });
+      }
+
+      // 取引記録
+      const giftId = "GFT_" + Utilities.getUuid().replace(/-/g, "").substring(0, 16).toUpperCase();
+      txSheet.appendRow([
+        giftId,           // id
+        user.login_id,    // from_user
+        toUser,           // to_user
+        amount,           // amount
+        nowDate,          // created_at
+        expiryDate,       // expiry_date
+        "completed",      // status
+        note,             // note
+        "",               // flagged_reason
+      ]);
+
+      return json_({
+        ok: true,
+        gift_id: giftId,
+        amount: amount,
+        to_user: toUser,
+        expiry_date: expiryDate,
+      });
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
   return json_({ ok: false, error: "bad_gift_action" });
 }
