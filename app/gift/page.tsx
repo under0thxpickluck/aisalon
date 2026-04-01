@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAuth, getAuthSecret } from "@/app/lib/auth";
 
+const GIFT_PASSWORD = "nagoya01@";
+
 type BalanceData = {
   balance: number;
   expiring_soon: number;
@@ -12,12 +14,20 @@ type BalanceData = {
 
 export default function GiftEPTopPage() {
   const router = useRouter();
+  const [authed, setAuthed] = useState(false);
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState(false);
   const [myId, setMyId] = useState("");
   const [myCode, setMyCode] = useState("");
   const [data, setData] = useState<BalanceData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (sessionStorage.getItem("gift_ep_authed") === "1") setAuthed(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
     const auth = getAuth();
     if (!auth) { router.replace("/login"); return; }
     const id = (auth as any)?.id || (auth as any)?.loginId || "";
@@ -37,7 +47,37 @@ export default function GiftEPTopPage() {
         if (res.ok) setData({ balance: res.balance, expiring_soon: res.expiring_soon, next_expiry_date: res.next_expiry_date });
       })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [authed, router]);
+
+  const handleAuth = () => {
+    if (pwInput === GIFT_PASSWORD) { sessionStorage.setItem("gift_ep_authed", "1"); setAuthed(true); }
+    else setPwError(true);
+  };
+
+  if (!authed) return (
+    <div style={{ minHeight: "100vh", background: "#0B1220", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
+      <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 24, padding: 32, width: "100%", maxWidth: 360 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 800, textAlign: "center", marginBottom: 24, color: "#EAF0FF" }}>🔒 GiftEP</h2>
+        <input
+          type="password"
+          value={pwInput}
+          onChange={e => { setPwInput(e.target.value); setPwError(false); }}
+          onKeyDown={e => { if (e.key === "Enter") handleAuth(); }}
+          placeholder="パスワードを入力"
+          style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "#EAF0FF", outline: "none",
+            marginBottom: 10, boxSizing: "border-box" }}
+        />
+        {pwError && <p style={{ fontSize: 12, color: "#FCA5A5", textAlign: "center", marginBottom: 10 }}>パスワードが違います</p>}
+        <button
+          onClick={handleAuth}
+          style={{ width: "100%", padding: "13px", borderRadius: 14, background: "linear-gradient(90deg,#6366F1,#A78BFA)",
+            border: "none", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}>
+          入室する
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>

@@ -13,20 +13,6 @@ function unauthorized(realm: string) {
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  // /gift, /api/gift をパスワード保護
-  const isGiftProtected =
-    pathname.startsWith("/gift") ||
-    pathname.startsWith("/api/gift");
-
-  if (isGiftProtected) {
-    const giftPass = process.env.GIFT_PASS || "nagoya01@";
-    const auth = req.headers.get("authorization");
-    if (!auth?.startsWith("Basic ")) return unauthorized("LIFAI GiftEP");
-    const [, p] = Buffer.from(auth.slice(6), "base64").toString().split(":");
-    if (p !== giftPass) return unauthorized("LIFAI GiftEP");
-    return NextResponse.next();
-  }
-
   // ✅ /admin, /api/admin をガード（/note-generator は BP 課金に移行）
   const isProtected =
     pathname.startsWith("/admin") ||
@@ -52,9 +38,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/gift/:path*",
-    "/gift",
-    "/api/gift/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
     "/5000/admin/:path*",
