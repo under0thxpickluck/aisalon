@@ -7835,10 +7835,10 @@ function giftAuth_(SECRET, id, code) {
 }
 
 function handleGift_(key, body) {
-  var GAS_API_KEY = PropertiesService.getScriptProperties().getProperty("GAS_API_KEY") || "";
-  if (key !== GAS_API_KEY) return json_({ ok: false, error: "invalid_key" });
+  var secrets = getSecrets_();
+  if (key !== secrets.SECRET) return json_({ ok: false, error: "unauthorized" });
 
-  var SECRET = PropertiesService.getScriptProperties().getProperty("SECRET_KEY") || "LIFAITOMAKEMONEY";
+  var SECRET = secrets.SECRET;
   var action = str_(body.action);
 
   // =========================================================
