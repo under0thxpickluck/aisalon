@@ -5437,6 +5437,9 @@ function doPost(e) {
     if (action && action.startsWith("market_")) {
       return handleMarket_(key, body);
     }
+    if (action && action.startsWith("gift_")) {
+      return handleGift_(key, body);
+    }
     if (action === 'sell_request')      return json_(handle_sell_request_(body));
     if (action === 'get_sell_requests') return json_(handle_get_sell_requests_(body));
     if (action === 'grant_bp_for_sell') return json_(handle_grant_bp_for_sell_(body)); // ✅ 追記
