@@ -5451,8 +5451,9 @@ function doPost(e) {
     if (action === 'tap_play')    return tapPlay_(body);
     if (action === 'tap_status')  return tapStatus_(body);
     if (action === 'tap_ranking') return tapRanking_(body);
-    if (action === 'tap_ticker') return tapTicker_(body);
-    if (action === 'rumble_entry')     return rumbleEntry_(body);
+    if (action === 'tap_ticker')     return tapTicker_(body);
+    if (action === 'tap_batch_play') return tapBatchPlay_(body);
+    if (action === 'rumble_entry')   return rumbleEntry_(body);
     if (action === 'rumble_ranking')   return rumbleRanking_(body);
     if (action === 'rumble_status')    return rumbleStatus_(body);
     if (action === 'rumble_gacha')     return rumbleGacha_(body);
@@ -5917,6 +5918,7 @@ function resetTapIfNeeded_(sheet, rowNum, idx, row) {
   return false;
 }
 
+// @deprecated: Use tapBatchPlay_ instead. Kept for debug/fallback/rollback only.
 // action: tap_play
 // params: userId
 function tapPlay_(params) {
