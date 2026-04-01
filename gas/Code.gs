@@ -8064,5 +8064,64 @@ function handleGift_(key, body) {
     });
   }
 
+  // =========================================================
+  // gift_use（運営コンテンツでGiftEPを消費）
+  // =========================================================
+  if (action === "gift_use") {
+    const id = str_(body.id);
+    const code = str_(body.code);
+    if (!id || !code) return json_({ ok: false, error: "missing_auth" });
+
+    const user = giftAuth_(SECRET, id, code);
+    if (!user.ok) return json_({ ok: false, error: "auth_failed" });
+
+    const featureType = str_(body.feature_type);
+    const featureRef  = str_(body.feature_ref || "");
+    const amount      = num_(body.amount);
+
+    if (!featureType) return json_({ ok: false, error: "missing_feature_type" });
+    if (GIFT_FEATURES_ALLOWED_.indexOf(featureType) === -1) {
+      return json_({ ok: false, error: "feature_not_allowed", feature_type: featureType });
+    }
+    if (amount < 1) return json_({ ok: false, error: "amount_must_be_positive" });
+
+    const lock = LockService.getScriptLock();
+    try { lock.waitLock(8000); } catch(e) { return json_({ ok: false, error: "lock_timeout" }); }
+
+    try {
+      // 残高確認 & 消費（期限近い順）
+      const data = giftGetUserGiftData_(user.login_id);
+      if (!data) return json_({ ok: false, error: "user_not_found" });
+      if (data.balance < amount) {
+        return json_({ ok: false, error: "insufficient_gift_ep", balance: data.balance });
+      }
+
+      // 消費する際に使ったexpiryDateを記録用に取得
+      const sortedDates = Object.keys(data.expiryMap).sort();
+      const sourceExpiryDate = sortedDates.length > 0 ? sortedDates[0] : "";
+
+      const result = giftAdjustGiftEp_(user.login_id, -amount, null);
+      if (!result.ok) return json_(result);
+
+      // usage_logs記録
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const logSheet = giftGetSheet_(ss, "gift_usage_logs");
+      const logId = "GUL_" + Utilities.getUuid().replace(/-/g, "").substring(0, 16).toUpperCase();
+      logSheet.appendRow([
+        logId,            // id
+        user.login_id,    // user_id
+        featureType,      // feature_type
+        featureRef,       // feature_ref
+        amount,           // amount
+        new Date(),       // used_at
+        sourceExpiryDate, // source_expiry_date
+      ]);
+
+      return json_({ ok: true, remaining_balance: result.new_balance });
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
   return json_({ ok: false, error: "bad_gift_action" });
 }
