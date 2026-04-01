@@ -8003,5 +8003,66 @@ function handleGift_(key, body) {
     }
   }
 
+  // =========================================================
+  // gift_history（送受信・失効履歴取得）
+  // =========================================================
+  if (action === "gift_history") {
+    const id = str_(body.id);
+    const code = str_(body.code);
+    if (!id || !code) return json_({ ok: false, error: "missing_auth" });
+
+    const user = giftAuth_(SECRET, id, code);
+    if (!user.ok) return json_({ ok: false, error: "auth_failed" });
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const txSheet = giftGetSheet_(ss, "gift_transactions");
+    const txValues = getValuesSafe_(txSheet);
+
+    const sent = [];
+    const received = [];
+    const expired = [];
+
+    if (txValues.length >= 2) {
+      const tHeader = txValues[0];
+      const tIdx = indexMap_(tHeader);
+      txValues.slice(1).forEach(function(row) {
+        const fromUser = str_(row[tIdx["from_user"]]);
+        const toUser   = str_(row[tIdx["to_user"]]);
+        const status   = str_(row[tIdx["status"]]);
+        const record = {
+          id:           str_(row[tIdx["id"]]),
+          from_user:    fromUser,
+          to_user:      toUser,
+          amount:       num_(row[tIdx["amount"]]),
+          created_at:   str_(row[tIdx["created_at"]]),
+          expiry_date:  str_(row[tIdx["expiry_date"]]),
+          status:       status,
+          note:         str_(row[tIdx["note"]]),
+        };
+        if (fromUser === user.login_id) {
+          sent.push(record);
+        } else if (toUser === user.login_id) {
+          if (status === "expired") {
+            expired.push(record);
+          } else {
+            received.push(record);
+          }
+        }
+      });
+    }
+
+    // 新しい順
+    const byDate = function(a, b) {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    };
+
+    return json_({
+      ok: true,
+      sent: sent.sort(byDate),
+      received: received.sort(byDate),
+      expired: expired.sort(byDate),
+    });
+  }
+
   return json_({ ok: false, error: "bad_gift_action" });
 }
