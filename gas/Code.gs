@@ -7775,39 +7775,56 @@ function giftGetUserGiftData_(loginId) {
 }
 
 function giftAdjustGiftEp_(loginId, delta, expiryDate) {
-  var data = giftGetUserGiftData_(loginId);
-  if (!data) return { ok: false, error: "user_not_found" };
+  try {
+    const data = giftGetUserGiftData_(loginId);
+    if (!data) return { ok: false, error: "user_not_found" };
 
-  var map = data.expiryMap;
-  var newBalance;
+    const map = data.expiryMap;
+    const today = new Date().toISOString().slice(0, 10);
+    let newBalance;
 
-  if (delta > 0) {
-    var key = expiryDate;
-    map[key] = (map[key] || 0) + delta;
-    newBalance = data.balance + delta;
-  } else {
-    var amount = -delta;
-    if (data.balance < amount) return { ok: false, error: "insufficient_gift_ep" };
+    if (delta > 0) {
+      // 付与：expiryDateのバケツに加算
+      const key = expiryDate;
+      map[key] = (map[key] || 0) + delta;
+      newBalance = data.balance + delta;
+    } else {
+      // 消費：期限が近い順に減算（失効済みキーはスキップ）
+      const amount = -delta;
 
-    var sortedDates = Object.keys(map).sort();
-    var remaining = amount;
-    for (var j = 0; j < sortedDates.length; j++) {
-      var d = sortedDates[j];
-      if (map[d] <= remaining) {
-        remaining -= map[d];
-        delete map[d];
-      } else {
-        map[d] -= remaining;
-        remaining = 0;
-        break;
+      // 有効残高のみで不足チェック
+      let validBalance = 0;
+      Object.keys(map).forEach(function(d) {
+        if (d >= today) validBalance += map[d];
+      });
+      if (validBalance < amount) return { ok: false, error: "insufficient_gift_ep" };
+
+      const sortedDates = Object.keys(map).sort();
+      let remaining = amount;
+      for (let j = 0; j < sortedDates.length; j++) {
+        const d = sortedDates[j];
+        if (d < today) continue; // 失効済みはスキップ
+        if (map[d] <= remaining) {
+          remaining -= map[d];
+          delete map[d];
+        } else {
+          map[d] -= remaining;
+          remaining = 0;
+          break;
+        }
       }
+      // balanceも有効残高ベースで再計算
+      let recalc = 0;
+      Object.keys(map).forEach(function(d) { if (d >= today) recalc += map[d]; });
+      newBalance = recalc;
     }
-    newBalance = data.balance - amount;
-  }
 
-  data.sheet.getRange(data.rowIndex, data.idx["gift_ep_balance"] + 1).setValue(newBalance);
-  data.sheet.getRange(data.rowIndex, data.idx["gift_ep_expiry_map"] + 1).setValue(JSON.stringify(map));
-  return { ok: true, new_balance: newBalance };
+    data.sheet.getRange(data.rowIndex, data.idx["gift_ep_balance"] + 1).setValue(newBalance);
+    data.sheet.getRange(data.rowIndex, data.idx["gift_ep_expiry_map"] + 1).setValue(JSON.stringify(map));
+    return { ok: true, new_balance: newBalance };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }
 
 function giftAuth_(SECRET, id, code) {
