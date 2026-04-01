@@ -245,6 +245,7 @@ async function runAsrAndQuality(
       repeatScore:    repeatResult.repeatScore,
       anchorWords,
       hookLines,
+      jobId,
     });
     const qualityResult = computeLyricsQuality({
       singableLyrics:   singable,

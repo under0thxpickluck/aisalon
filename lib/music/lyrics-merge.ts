@@ -1,5 +1,7 @@
 // lib/music/lyrics-merge.ts
 
+import { finalizeDisplayLyrics } from "./lyrics-display";
+
 export type MergeResult = {
   displayLyrics: string;
   distributionLyrics: string;
@@ -32,60 +34,64 @@ export function mergeLyricsForDisplay(params: {
   repeatScore?: number;
   anchorWords?: string[];
   hookLines?: string[];
+  jobId?: string;
 }): MergeResult {
-  const { singableLyrics, asrLyrics, score, repeatScore = 0 } = params;
+  const { singableLyrics, asrLyrics, score, repeatScore = 0, jobId } = params;
 
   // merged の生成: singable と asr を行単位でブレンド
   const mergedLyrics = buildMergedLyrics(singableLyrics, asrLyrics, score);
 
+  // displayLyrics / lyricsSource は新ロジックで一意に決定する
+  const { displayLyrics, lyricsSource } = finalizeDisplayLyrics(singableLyrics, asrLyrics, jobId);
+
   // Case A: 高品質
   if (score >= 90 && repeatScore < 15) {
     return {
-      displayLyrics:    singableLyrics,
+      displayLyrics,
       distributionLyrics: singableLyrics,
       mergedLyrics,
-      reviewRequired:   false,
+      reviewRequired:    false,
       distributionReady: true,
-      lyricsSource:     "singable",
-      lyricsGateResult: "pass",
+      lyricsSource,
+      lyricsGateResult:  "pass",
     };
   }
 
   // Case B: 軽微ずれ
   if (score >= 80) {
     return {
-      displayLyrics:    mergedLyrics,
+      displayLyrics,
       distributionLyrics: mergedLyrics,
       mergedLyrics,
-      reviewRequired:   false,
+      reviewRequired:    false,
       distributionReady: true,
-      lyricsSource:     "asr_merged",
-      lyricsGateResult: "review",
+      lyricsSource,
+      lyricsGateResult:  "review",
     };
   }
 
   // Case C: 中程度ずれ
   if (score >= 65 && repeatScore < 35) {
     return {
-      displayLyrics:    mergedLyrics,
+      displayLyrics,
       distributionLyrics: "",
       mergedLyrics,
-      reviewRequired:   true,
+      reviewRequired:    true,
       distributionReady: false,
-      lyricsSource:     "asr_merged",
-      lyricsGateResult: "review",
+      lyricsSource,
+      lyricsGateResult:  "review",
     };
   }
 
   // Case D: 重度ずれ / 強反復
   return {
-    displayLyrics:    singableLyrics,
+    displayLyrics,
     distributionLyrics: "",
     mergedLyrics,
-    reviewRequired:   true,
+    reviewRequired:    true,
     distributionReady: false,
-    lyricsSource:     "singable",
-    lyricsGateResult: "reject",
+    lyricsSource,
+    lyricsGateResult:  "reject",
   };
 }
 
