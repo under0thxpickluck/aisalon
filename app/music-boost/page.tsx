@@ -4,6 +4,38 @@ import Link from "next/link";
 
 const ADMIN_PASSWORD = "nagoya01@";
 
+// ── チュートリアル ────────────────────────────────────────────────────────────
+
+const BOOST_TUTORIAL_KEY = "musicboost_tutorial_seen";
+
+const BOOST_TUTORIAL_SLIDES = [
+  {
+    icon: "🚀",
+    title: 'あなたの楽曲を「空間」に届ける Music Boost',
+    body: `Music Boostは、あなたの楽曲を企業向け音楽配信サービスに掲載できる機能です。\n\n店舗・オフィス・施設などで実際に流れることで、自然な形で認知が広がります。\n\n💡 ポイント\nこれは「広告・露出」の仕組みです\n再生数を増やすためのツールではありません`,
+  },
+  {
+    icon: "🏪",
+    title: "どこで流れるの？",
+    body: `あなたの楽曲は、LIFAIの配信ネットワークを通じて企業や店舗のBGMとして使用されます。\n\n例👇\n・カフェ\n・美容室\n・オフィス\n・ショップ\n\n日常の中で自然に再生されるため、リスナーに違和感なく届きます。`,
+  },
+  {
+    icon: "✨",
+    title: "Music Boostで得られるもの",
+    body: `Music Boostの価値は「数字」だけではありません👇\n\n✔ 認知の拡大\n→ 多くの人に存在を知ってもらえる\n\n✔ ブランド価値の向上\n→ プロっぽさ・信頼感が上がる\n\n✔ 新しいファンとの接点\n→ 偶然の出会いが生まれる\n\n✔ 露出経路の増加\n→ SNS以外の導線ができる`,
+  },
+  {
+    icon: "⚠️",
+    title: "重要：これは再生数を増やすツールではありません",
+    body: `Music Boostは、意図的に再生数を増やす仕組みではありません。\n\nあくまで👇\n\n「自然な環境で楽曲に触れてもらう」\n\nことを目的としています。\n\n💡 イメージ\n広告 × 音楽配信 × 空間演出\n\n無理に再生されるのではなく、環境の一部として届けられます。`,
+  },
+  {
+    icon: "📋",
+    title: "使い方はとてもシンプル",
+    body: `① プランを選択\n② 楽曲を登録\n③ 自動で配信開始\n\nブースト率が高いほど、優先的に採用されやすくなります。\n\n💡 ポイント\n空き枠には上限があります\n早めの利用がおすすめです`,
+  },
+] as const;
+
 const PLANS = [
   { id: "starter",  label: "Starter",  percent: 2,  price: 9,    slots: 10,  color: "from-gray-600 to-gray-500"     },
   { id: "light",    label: "Light",    percent: 5,  price: 29,   slots: 25,  color: "from-blue-700 to-blue-500"     },
@@ -28,20 +60,29 @@ type BoostStatus = {
 };
 
 export default function MusicBoostPage() {
-  const [userId, setUserId]     = useState("");
-  const [status, setStatus]     = useState<BoostStatus | null>(null);
-  const [busy, setBusy]         = useState(false);
-  const [msg, setMsg]           = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [authed, setAuthed]     = useState(false);
-  const [pwInput, setPwInput]   = useState("");
-  const [pwError, setPwError]   = useState(false);
+  const [userId, setUserId]         = useState("");
+  const [status, setStatus]         = useState<BoostStatus | null>(null);
+  const [busy, setBusy]             = useState(false);
+  const [msg, setMsg]               = useState("");
+  const [selected, setSelected]     = useState<string | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [authed, setAuthed]         = useState(false);
+  const [pwInput, setPwInput]       = useState("");
+  const [pwError, setPwError]       = useState(false);
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
 
   useEffect(() => {
     const ok = sessionStorage.getItem("music_boost_authed");
     if (ok === "1") setAuthed(true);
   }, []);
+
+  // 認証後にチュートリアル初回表示チェック
+  useEffect(() => {
+    if (!authed) return;
+    if (!localStorage.getItem(BOOST_TUTORIAL_KEY)) {
+      setTutorialStep(0);
+    }
+  }, [authed]);
 
   useEffect(() => {
     try {
@@ -137,7 +178,14 @@ export default function MusicBoostPage() {
       <div className="flex items-center justify-between mb-6">
         <Link href="/top" className="text-white/40 text-sm">← Back</Link>
         <h1 className="font-bold text-lg">🚀 Music Boost</h1>
-        <div className="w-16" />
+        <button
+          type="button"
+          onClick={() => setTutorialStep(0)}
+          title="使い方を見る"
+          className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs font-bold text-white/50 hover:border-purple-400 hover:bg-purple-500/20 hover:text-purple-300 transition"
+        >
+          ?
+        </button>
       </div>
 
       {/* 説明 */}
@@ -245,6 +293,96 @@ export default function MusicBoostPage() {
         <p>• 不正利用が確認された場合はアカウントを停止します</p>
         <p>• 運営判断で報酬・優先度の調整を行うことがあります</p>
       </div>
+
+      {/* ── チュートリアルオーバーレイ ──────────────────────────────────── */}
+      {tutorialStep !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          onClick={() => {
+            localStorage.setItem(BOOST_TUTORIAL_KEY, "true");
+            setTutorialStep(null);
+          }}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-2xl bg-[#18181b] border border-white/10 p-7 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 進捗 */}
+            <p className="text-center text-xs font-semibold text-white/30 mb-4">
+              {tutorialStep + 1} / {BOOST_TUTORIAL_SLIDES.length}
+            </p>
+
+            {/* スライドインジケーター */}
+            <div className="flex justify-center gap-1.5 mb-6">
+              {BOOST_TUTORIAL_SLIDES.map((_, i) => (
+                <div
+                  key={i}
+                  className={[
+                    "h-1.5 rounded-full transition-all",
+                    i === tutorialStep ? "w-6 bg-purple-500" : "w-1.5 bg-white/15",
+                  ].join(" ")}
+                />
+              ))}
+            </div>
+
+            {/* コンテンツ */}
+            <div className="text-center">
+              <div className="text-4xl mb-3">{BOOST_TUTORIAL_SLIDES[tutorialStep].icon}</div>
+              <h2 className="text-base font-extrabold text-white mb-3 leading-snug">
+                {BOOST_TUTORIAL_SLIDES[tutorialStep].title}
+              </h2>
+              <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line text-left">
+                {BOOST_TUTORIAL_SLIDES[tutorialStep].body}
+              </p>
+            </div>
+
+            {/* ナビゲーション */}
+            <div className="mt-7 flex items-center gap-2">
+              {tutorialStep > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTutorialStep(tutorialStep - 1)}
+                  className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white/60 hover:bg-white/5 transition"
+                >
+                  ← 戻る
+                </button>
+              )}
+              {tutorialStep < BOOST_TUTORIAL_SLIDES.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setTutorialStep(tutorialStep + 1)}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-2.5 text-sm font-bold text-white hover:opacity-90 transition"
+                >
+                  次へ →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem(BOOST_TUTORIAL_KEY, "true");
+                    setTutorialStep(null);
+                  }}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-2.5 text-sm font-bold text-white hover:opacity-90 transition"
+                >
+                  Music Boostを始める
+                </button>
+              )}
+            </div>
+
+            {/* スキップ */}
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem(BOOST_TUTORIAL_KEY, "true");
+                setTutorialStep(null);
+              }}
+              className="mt-3 w-full text-center text-xs text-white/25 hover:text-white/50 transition"
+            >
+              スキップ
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
