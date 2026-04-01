@@ -13,14 +13,12 @@ function unauthorized() {
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  // ✅ /admin, /api/admin, /note-generator, /api/note をガード
+  // ✅ /admin, /api/admin をガード（/note-generator は BP 課金に移行）
   const isProtected =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin") ||
     pathname.startsWith("/5000/admin") ||
-    pathname.startsWith("/api/5000/admin") ||
-    pathname.startsWith("/note-generator") ||
-    pathname.startsWith("/api/note");
+    pathname.startsWith("/api/5000/admin");
   if (!isProtected) return NextResponse.next();
 
   const user = process.env.ADMIN_USER || "";
@@ -45,8 +43,5 @@ export const config = {
     "/5000/admin/:path*",
     "/5000/admin",
     "/api/5000/admin/:path*",
-    "/note-generator/:path*",
-    "/note-generator",
-    "/api/note/:path*",
   ],
 };

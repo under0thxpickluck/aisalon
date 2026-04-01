@@ -226,7 +226,7 @@ export default function InputPanel({ step, planData, loading, onGeneratePlan, on
         disabled={loading}
         className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-sm disabled:opacity-40"
       >
-        {loading ? "企画生成中…" : "企画を生成する（8BP）"}
+        {loading ? "企画生成中…" : "企画を生成する（150BP）"}
       </button>
     </form>
   );

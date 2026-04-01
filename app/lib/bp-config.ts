@@ -9,7 +9,7 @@ export const BP_COSTS = {
   note_title:        3,  // タイトル生成
   note_structure:    5,  // 構成生成
   note_body:        15,  // 本文生成
-  note_full:        20,  // フル生成
+  note_full:       150,  // フル生成（企画〜本文 一括）
 
   // ワークフロー生成
   workflow_template: 20, // テンプレ生成

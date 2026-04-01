@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import InputPanel from "./components/InputPanel";
 import PreviewPanel from "./components/PreviewPanel";
+import { getAuth, getAuthSecret } from "@/app/lib/auth";
 
 // ── チュートリアル ────────────────────────────────────────────────────────────
 
@@ -62,20 +64,30 @@ type ArticleData = {
 };
 
 export default function NoteGeneratorPage() {
+  const router = useRouter();
   const [step, setStep] = useState<"input" | "plan" | "article">("input");
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [articleData, setArticleData] = useState<ArticleData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginId, setLoginId] = useState<string>("");
 
   // チュートリアル (null=非表示, 0〜5=スライド番号)
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
 
   useEffect(() => {
+    const auth = getAuth();
+    if (!auth) {
+      router.replace("/login");
+      return;
+    }
+    const id = (auth as any)?.id || (auth as any)?.loginId || "";
+    setLoginId(id);
+
     if (!localStorage.getItem(NOTE_TUTORIAL_KEY)) {
       setTutorialStep(0);
     }
-  }, []);
+  }, [router]);
 
   async function handleGeneratePlan(formValues: Record<string, unknown>) {
     setLoading(true);
@@ -84,12 +96,14 @@ export default function NoteGeneratorPage() {
       const res = await fetch("/api/note/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formValues),
+        body: JSON.stringify({ ...formValues, loginId }),
       });
       const json = await res.json();
       if (json.ok) {
         setPlanData(json);
         setStep("plan");
+      } else if (json.error === "insufficient_bp") {
+        setError(`BPが不足しています（必要: 150BP、残高: ${json.bp_balance ?? "?"}BP）`);
       } else {
         setError(json.error || "企画生成に失敗しました");
       }
