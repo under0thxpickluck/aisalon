@@ -40,6 +40,33 @@ type StructureData = {
   title: string;
 };
 
+// ── チュートリアル ────────────────────────────────────────────────────────────
+
+const TUTORIAL_KEY = "lifai_music2_tutorial_v1";
+
+const TUTORIAL_SLIDES = [
+  {
+    icon: "✏️",
+    title: "テーマ・ジャンル・雰囲気を入力",
+    body: "作りたい曲のイメージをテーマに書いてください。ジャンルと雰囲気（複数可）も選ぶと、AIがより好みに合った曲を作ります。",
+  },
+  {
+    icon: "📋",
+    title: "AIが構成案を提案します",
+    body: "BPM・キー・セクション構成・サビのポイントをAIが考えます。気に入らなければ「作り直す」で再提案できます。",
+  },
+  {
+    icon: "⏳",
+    title: "曲の生成が始まります",
+    body: "生成には2〜3分かかります。ページを開いたままお待ちください。進捗バーで状況を確認できます。",
+  },
+  {
+    icon: "🎵",
+    title: "完成！聴いて・ダウンロードしよう",
+    body: "再生プレイヤーで試聴し、MP3ダウンロードもできます。表示用歌詞・配信用歌詞もここから確認できます。",
+  },
+];
+
 // ── 履歴 ─────────────────────────────────────────────────────────────────────
 
 const HISTORY_KEY = "lifai_music2_history_v1";
@@ -138,6 +165,9 @@ export default function Music2Page() {
   const [history, setHistory] = useState<MusicHistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
+  // チュートリアル (null=非表示, 0〜3=スライド番号)
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+
   // Pro 追加入力
   const [bpmHint, setBpmHint] = useState<number | null>(null);
   const [vocalStyle, setVocalStyle] = useState<string>("");
@@ -154,6 +184,11 @@ export default function Music2Page() {
       return;
     }
     setHistory(loadHistory());
+
+    // チュートリアル: 未表示なら自動表示
+    if (!localStorage.getItem(TUTORIAL_KEY)) {
+      setTutorialStep(0);
+    }
 
     const id   = (auth as any)?.id || (auth as any)?.loginId || "";
     const code = getAuthSecret() || (auth as any)?.token || "";
@@ -569,7 +604,7 @@ export default function Music2Page() {
             )}
             {/* ステップインジケーター */}
             {step > 0 && (
-              <div className="ml-auto flex items-center gap-1">
+              <div className="flex items-center gap-1">
                 {([1, 2, 3] as const).map((s) => (
                   <div
                     key={s}
@@ -581,6 +616,15 @@ export default function Music2Page() {
                 ))}
               </div>
             )}
+            {/* チュートリアルボタン */}
+            <button
+              type="button"
+              onClick={() => setTutorialStep(0)}
+              title="使い方を見る"
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-500 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition"
+            >
+              ?
+            </button>
           </div>
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
@@ -993,6 +1037,91 @@ export default function Music2Page() {
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
     </div>
+
+    {/* ── チュートリアルオーバーレイ ─────────────────────────────────────── */}
+    {tutorialStep !== null && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        onClick={() => {
+          localStorage.setItem(TUTORIAL_KEY, "1");
+          setTutorialStep(null);
+        }}
+      >
+        <div
+          className="relative w-full max-w-sm rounded-[24px] bg-white p-7 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* スライドインジケーター */}
+          <div className="flex justify-center gap-1.5 mb-5">
+            {TUTORIAL_SLIDES.map((_, i) => (
+              <div
+                key={i}
+                className={[
+                  "h-1.5 rounded-full transition-all",
+                  i === tutorialStep ? "w-6 bg-indigo-500" : "w-1.5 bg-slate-200",
+                ].join(" ")}
+              />
+            ))}
+          </div>
+
+          {/* コンテンツ */}
+          <div className="text-center">
+            <div className="text-4xl mb-3">{TUTORIAL_SLIDES[tutorialStep].icon}</div>
+            <h2 className="text-base font-extrabold text-slate-900 mb-2">
+              {TUTORIAL_SLIDES[tutorialStep].title}
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {TUTORIAL_SLIDES[tutorialStep].body}
+            </p>
+          </div>
+
+          {/* ナビゲーション */}
+          <div className="mt-7 flex items-center gap-2">
+            {tutorialStep > 0 && (
+              <button
+                type="button"
+                onClick={() => setTutorialStep(tutorialStep - 1)}
+                className="flex-1 rounded-2xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+              >
+                ← 戻る
+              </button>
+            )}
+            {tutorialStep < TUTORIAL_SLIDES.length - 1 ? (
+              <button
+                type="button"
+                onClick={() => setTutorialStep(tutorialStep + 1)}
+                className="flex-1 rounded-2xl bg-indigo-600 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition"
+              >
+                次へ →
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem(TUTORIAL_KEY, "1");
+                  setTutorialStep(null);
+                }}
+                className="flex-1 rounded-2xl bg-indigo-600 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition"
+              >
+                はじめる
+              </button>
+            )}
+          </div>
+
+          {/* スキップ */}
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem(TUTORIAL_KEY, "1");
+              setTutorialStep(null);
+            }}
+            className="mt-3 w-full text-center text-xs text-slate-400 hover:text-slate-600 transition"
+          >
+            スキップ
+          </button>
+        </div>
+      </div>
+    )}
     </main>
   );
 }
