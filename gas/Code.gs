@@ -8125,3 +8125,79 @@ function handleGift_(key, body) {
 
   return json_({ ok: false, error: "bad_gift_action" });
 }
+
+// ==============================
+// GiftEP 失効バッチ（time-based triggerから呼び出す）
+// ==============================
+
+function expireGiftEP() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = getOrCreateSheet_(); // applies
+  const values = getValuesSafe_(sheet);
+  if (values.length < 2) return;
+
+  const header = values[0];
+  ensureCols_(sheet, header, ["gift_ep_balance", "gift_ep_expiry_map"]);
+  const idx = indexMap_(getValuesSafe_(sheet)[0]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = getValuesSafe_(sheet).slice(1);
+
+  for (var i = 0; i < rows.length; i++) {
+    const rawMap = sheet.getRange(i + 2, idx["gift_ep_expiry_map"] + 1).getValue();
+    if (!rawMap) continue;
+    let expiryMap = {};
+    try { expiryMap = JSON.parse(String(rawMap)); } catch(e) { continue; }
+
+    let changed = false;
+    let expiredTotal = 0;
+    const keys = Object.keys(expiryMap);
+    for (var j = 0; j < keys.length; j++) {
+      const d = keys[j];
+      if (d < today) { // 今日より前は失効
+        expiredTotal += expiryMap[d];
+        delete expiryMap[d];
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      const loginId = str_(rows[i][idx["login_id"]]);
+      const curBalance = num_(sheet.getRange(i + 2, idx["gift_ep_balance"] + 1).getValue());
+      const newBalance = Math.max(0, curBalance - expiredTotal);
+      sheet.getRange(i + 2, idx["gift_ep_balance"] + 1).setValue(newBalance);
+      sheet.getRange(i + 2, idx["gift_ep_expiry_map"] + 1).setValue(JSON.stringify(expiryMap));
+      Logger.log("expireGiftEP: " + loginId + " expired " + expiredTotal + " GiftEP");
+    }
+  }
+
+  // gift_transactionsのstatusをexpiredに更新
+  const txSheet = giftGetSheet_(ss, "gift_transactions");
+  const txValues = getValuesSafe_(txSheet);
+  if (txValues.length >= 2) {
+    const tHeader = txValues[0];
+    const tIdx = indexMap_(tHeader);
+    txValues.slice(1).forEach(function(row, ri) {
+      if (str_(row[tIdx["expiry_date"]]) < today &&
+          str_(row[tIdx["status"]]) === "completed") {
+        txSheet.getRange(ri + 2, tIdx["status"] + 1).setValue("expired");
+      }
+    });
+  }
+}
+
+// 一度だけ手動実行してtriggerを登録する
+function setupGiftExpireTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "expireGiftEP") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger("expireGiftEP")
+    .timeBased()
+    .everyDays(1)
+    .atHour(2) // AM2時（JST）
+    .create();
+  Logger.log("expireGiftEP trigger set: daily at 2AM");
+}
