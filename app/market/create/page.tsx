@@ -202,8 +202,25 @@ export default function MarketCreatePage() {
             出品フォーム
           </h1>
           <p style={{ marginTop: 4, fontSize: 12, color: "rgba(234,240,255,0.45)" }}>
-            1日5件まで。価格は通貨単位で50以上。
+            1日5件まで。価格は通貨単位で50以上。売上から5.5%の手数料が差し引かれます。
           </p>
+          {/* 利用規約・注意事項 */}
+          <div style={{
+            marginTop: 16,
+            borderRadius: 14,
+            border: "1px solid rgba(167,139,250,0.2)",
+            background: "rgba(124,58,237,0.06)",
+            padding: "12px 14px",
+            fontSize: 10,
+            color: "rgba(167,139,250,0.75)",
+            lineHeight: 1.8,
+          }}>
+            <p style={{ fontWeight: 700, marginBottom: 4, color: "rgba(167,139,250,0.9)" }}>⚠ 出品ルール・禁止事項</p>
+            <p>・EP/BPは現金化・外部移転・ユーザー間直接送金はできません</p>
+            <p>・著作権を侵害するコンテンツの出品は禁止です</p>
+            <p>・外部でのポイント売買・換金行為は永久BAN対象です</p>
+            <p>・初回出品は審査が入る場合があります</p>
+          </div>
 
           {success ? (
             <div style={{

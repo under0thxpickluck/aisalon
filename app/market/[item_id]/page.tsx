@@ -446,11 +446,31 @@ export default function ItemDetailPage() {
             <p style={{ marginTop: 14, fontSize: 12, color: "rgba(234,240,255,0.4)" }}>
               出品者: {item.seller_name || item.seller_id}
             </p>
+            {isOwnItem && (
+              <p style={{ marginTop: 6, fontSize: 10, color: "rgba(167,139,250,0.6)" }}>
+                ℹ 売上から5.5%の手数料が差し引かれます
+              </p>
+            )}
           </div>
 
           {/* 購入セクション */}
           <div style={{ marginTop: 28, ...subCardStyle, padding: 20 }}>
             <p style={{ fontSize: 11, fontWeight: 800, color: "rgba(234,240,255,0.7)", marginBottom: 12 }}>購入</p>
+
+            {/* 利用規約・注意 */}
+            <div style={{
+              marginBottom: 12,
+              borderRadius: 12,
+              border: "1px solid rgba(167,139,250,0.15)",
+              background: "rgba(124,58,237,0.05)",
+              padding: "8px 12px",
+              fontSize: 10,
+              color: "rgba(167,139,250,0.7)",
+              lineHeight: 1.75,
+            }}>
+              <span>⚠ EP/BPは換金できません　</span>
+              <span>⚠ 外部売買は禁止されています</span>
+            </div>
 
             {confirmDone ? (
               <div style={{
@@ -508,6 +528,9 @@ export default function ItemDetailPage() {
                 <p style={{ fontSize: 12, color: "rgba(234,240,255,0.55)", lineHeight: 1.6 }}>
                   {item.currency} {item.price.toLocaleString()} が残高から引き落とされます。
                   代金は受領確定後に出品者へ支払われます。
+                </p>
+                <p style={{ fontSize: 10, color: "rgba(234,240,255,0.35)", lineHeight: 1.6 }}>
+                  ※ 購入後7日間、受領確定がない場合は自動確定されます。返金申請・通報中は自動確定が停止します。
                 </p>
                 {buyError && <p style={{ fontSize: 12, color: "#FCA5A5" }}>{buyError}</p>}
                 <button

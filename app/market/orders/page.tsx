@@ -84,6 +84,7 @@ export default function OrdersPage() {
   const [myCode, setMyCode]     = useState("");
   const [confirmingId, setConfirmingId] = useState("");
   const [confirmErrors, setConfirmErrors] = useState<Record<string, string>>({});
+  const [ordersSource, setOrdersSource] = useState<"gas" | "local">("local");
 
   // 出品中アイテム
   const [myListings, setMyListings]     = useState<MyListing[]>([]);
@@ -101,10 +102,45 @@ export default function OrdersPage() {
     const code = getAuthSecret() || (auth as any)?.token || "";
     setMyId(id);
     setMyCode(code);
+
+    // まずlocalStorageで初期表示
     setOrders(getLocalOrders());
 
-    // 自分の出品一覧を取得
-    if (id) {
+    if (id && code) {
+      // GASから購入履歴を取得（優先）
+      fetch("/api/market/my-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, code }),
+        cache: "no-store",
+      })
+        .then(r => r.json())
+        .catch(() => ({ ok: false }))
+        .then((data: any) => {
+          if (data.ok && Array.isArray(data.orders) && data.orders.length > 0) {
+            // GAS取得成功 → マージ（GASを優先しつつlocalStorageの未登録分を補完）
+            const gasOrders: LocalOrder[] = data.orders.map((o: any) => ({
+              order_id: o.order_id,
+              item_id: o.item_id,
+              item_title: o.item_title || "",
+              item_type: o.item_type || "",
+              price: o.price || 0,
+              currency: o.currency || "EP",
+              status: o.status as LocalOrder["status"],
+              created_at: o.paid_at || new Date().toISOString(),
+            }));
+            const localOrders = getLocalOrders();
+            const gasOrderIds = new Set(gasOrders.map(o => o.order_id));
+            const localOnly = localOrders.filter(o => !gasOrderIds.has(o.order_id));
+            const merged = [...gasOrders, ...localOnly].sort(
+              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            setOrders(merged);
+            setOrdersSource("gas");
+          }
+        });
+
+      // 自分の出品一覧を取得
       setListingsLoading(true);
       fetch(`/api/market/list?seller_id=${encodeURIComponent(id)}&status=active`, { cache: "no-store" })
         .then(r => r.json())
@@ -197,7 +233,9 @@ export default function OrdersPage() {
           </div>
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">購入履歴</h1>
-          <p className="mt-1 text-sm text-slate-500">このデバイスでの購入履歴です。</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {ordersSource === "gas" ? "サーバーから取得した購入履歴です。" : "このデバイスでの購入履歴です。"}
+          </p>
 
           {/* ── 出品中アイテム（売却申請） ── */}
           <div className="mt-8">

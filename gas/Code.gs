@@ -4923,7 +4923,197 @@ function handleMarket_(key, body) {
     return json_({ ok: true, report_id: reportId });
   }
 
+  // =========================================================
+  // market_my_orders（購入履歴取得：buyer_id で自分の注文一覧）
+  // =========================================================
+  if (action === "market_my_orders") {
+    const id = str_(body.id);
+    const code = str_(body.code);
+    if (!id || !code) return json_({ ok: false, error: "missing_auth" });
+
+    const user = mktAuth_(SECRET, id, code);
+    if (!user.ok) return json_({ ok: false, error: "auth_failed", reason: user.reason });
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const orderSheet = mktGetSheet_(ss, "market_orders");
+    const orderValues = getValuesSafe_(orderSheet);
+
+    if (orderValues.length < 2) return json_({ ok: true, orders: [] });
+
+    const oHeader = orderValues[0];
+    const oIdx = indexMap_(oHeader);
+    const oRows = orderValues.slice(1);
+
+    // item_idからタイトルを引くためにmarket_itemsを読む
+    const itemSheet = mktGetSheet_(ss, "market_items");
+    const itemValues = getValuesSafe_(itemSheet);
+    const itemTitleMap = {};
+    const itemTypeMap = {};
+    if (itemValues.length >= 2) {
+      const iHeader = itemValues[0];
+      const iIdx = indexMap_(iHeader);
+      itemValues.slice(1).forEach(function(row) {
+        const iid = str_(row[iIdx["item_id"]]);
+        itemTitleMap[iid] = str_(row[iIdx["title"]]);
+        itemTypeMap[iid] = str_(row[iIdx["item_type"]]);
+      });
+    }
+
+    const orders = [];
+    for (var i = 0; i < oRows.length; i++) {
+      const row = oRows[i];
+      if (str_(row[oIdx["buyer_id"]]) !== user.login_id) continue;
+      const itemId = str_(row[oIdx["item_id"]]);
+      orders.push({
+        order_id:   str_(row[oIdx["order_id"]]),
+        item_id:    itemId,
+        item_title: itemTitleMap[itemId] || "",
+        item_type:  itemTypeMap[itemId] || "",
+        currency:   str_(row[oIdx["currency"]]),
+        price:      num_(row[oIdx["price"]]),
+        status:     str_(row[oIdx["status"]]),
+        paid_at:    str_(row[oIdx["paid_at"]]),
+        confirmed_at: str_(row[oIdx["confirmed_at"]]),
+        refunded_at:  str_(row[oIdx["refunded_at"]]),
+      });
+    }
+
+    // 新しい順に並べ直し
+    orders.sort(function(a, b) {
+      return new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime();
+    });
+
+    return json_({ ok: true, orders: orders });
+  }
+
   return json_({ ok: false, error: "bad_action" });
+}
+
+// ==============================
+// 7日自動確定（time-based trigger から呼び出す）
+// ==============================
+
+/**
+ * GASのtime-based triggerに登録する関数。
+ * 1日1回程度実行する。
+ * 条件：status=paid かつ paid_at から7日以上経過
+ *        かつ refund_requested フラグなし（現状ordersシートに列がなければスキップ）
+ *        かつ reported_flag なし（同上）
+ */
+function marketAutoConfirm() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const orderSheet = mktGetSheet_(ss, "market_orders");
+  const orderValues = getValuesSafe_(orderSheet);
+  if (orderValues.length < 2) return;
+
+  const oHeader = orderValues[0];
+  const oIdx = indexMap_(oHeader);
+  const oRows = orderValues.slice(1);
+
+  const now = new Date();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  for (var i = 0; i < oRows.length; i++) {
+    const row = oRows[i];
+    const status = str_(row[oIdx["status"]]);
+    if (status !== "paid") continue;
+
+    const paidAt = new Date(str_(row[oIdx["paid_at"]]));
+    if (isNaN(paidAt.getTime())) continue;
+    if ((now.getTime() - paidAt.getTime()) < sevenDaysMs) continue;
+
+    // refund_requested / reported_flag 列があればチェック
+    if (oIdx["refund_requested"] !== undefined && str_(row[oIdx["refund_requested"]]) === "true") continue;
+    if (oIdx["reported_flag"] !== undefined && str_(row[oIdx["reported_flag"]]) === "true") continue;
+
+    const orderId = str_(row[oIdx["order_id"]]);
+    const rowNum = i + 2; // 1-indexed, +1 for header
+
+    try {
+      // market_confirm と同等の処理
+      const currency   = str_(row[oIdx["currency"]]);
+      const price      = num_(row[oIdx["price"]]);
+      const feeAmount  = num_(row[oIdx["fee_amount"]]);
+      const sellerNet  = num_(row[oIdx["seller_net"]]);
+      const sellerId   = str_(row[oIdx["seller_id"]]);
+
+      // ordersシートのステータスを confirmed に更新
+      orderSheet.getRange(rowNum, oIdx["status"] + 1).setValue("confirmed");
+      orderSheet.getRange(rowNum, oIdx["confirmed_at"] + 1).setValue(now);
+      orderSheet.getRange(rowNum, oIdx["updated_at"] + 1).setValue(now);
+
+      // エスクロー解放
+      const escrowSheet = mktGetSheet_(ss, "market_escrow");
+      const escrowValues = getValuesSafe_(escrowSheet);
+      if (escrowValues.length >= 2) {
+        const eHeader = escrowValues[0];
+        const eIdx = indexMap_(eHeader);
+        const eRows = escrowValues.slice(1);
+        for (var j = 0; j < eRows.length; j++) {
+          if (str_(eRows[j][eIdx["order_id"]]) === orderId &&
+              str_(eRows[j][eIdx["state"]]) === "held") {
+            escrowSheet.getRange(j + 2, eIdx["state"] + 1).setValue("released");
+            escrowSheet.getRange(j + 2, eIdx["updated_at"] + 1).setValue(now);
+            break;
+          }
+        }
+      }
+
+      // 出品者へ報酬付与
+      mktAdjustEp_(sellerId, "", sellerNet, "market_auto_confirm",
+        "order=" + orderId + " auto_7days");
+
+      // market_itemsのstock_sold更新
+      const itemId = str_(row[oIdx["item_id"]]);
+      const itemSheet = mktGetSheet_(ss, "market_items");
+      const itemValues = getValuesSafe_(itemSheet);
+      if (itemValues.length >= 2) {
+        const iHeader = itemValues[0];
+        const iIdx = indexMap_(iHeader);
+        const iRows = itemValues.slice(1);
+        for (var k = 0; k < iRows.length; k++) {
+          if (str_(iRows[k][iIdx["item_id"]]) === itemId) {
+            const newSold = num_(iRows[k][iIdx["stock_sold"]]) + 1;
+            const newReserved = Math.max(0, num_(iRows[k][iIdx["stock_reserved"]]) - 1);
+            itemSheet.getRange(k + 2, iIdx["stock_sold"] + 1).setValue(newSold);
+            itemSheet.getRange(k + 2, iIdx["stock_reserved"] + 1).setValue(newReserved);
+            itemSheet.getRange(k + 2, iIdx["updated_at"] + 1).setValue(now);
+            break;
+          }
+        }
+      }
+
+      Logger.log("marketAutoConfirm: confirmed order " + orderId);
+    } catch(e) {
+      Logger.log("marketAutoConfirm ERROR for order " + orderId + ": " + e.toString());
+    }
+  }
+}
+
+// ==============================
+// marketAutoConfirm trigger セットアップ
+// ==============================
+
+/**
+ * この関数を一度だけ手動実行すると、
+ * marketAutoConfirm が毎日AM3時に自動実行されるtriggerが登録される。
+ * 二重登録を防ぐため、既存のtriggerがあれば削除してから再登録する。
+ */
+function setupMarketAutoConfirmTrigger() {
+  // 既存のmarketAutoConfirmトリガーを削除
+  const triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "marketAutoConfirm") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  // 毎日AM3時（JST）に実行
+  ScriptApp.newTrigger("marketAutoConfirm")
+    .timeBased()
+    .everyDays(1)
+    .atHour(3)
+    .create();
+  Logger.log("marketAutoConfirm trigger set: daily at 3AM");
 }
 
 // ==============================

@@ -505,12 +505,53 @@ export default function MarketPage() {
             </div>
           </div>
 
-          <h1 style={{ marginTop: 24, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em", color: "#EAF0FF" }}>
-            LIFAIマーケット
-          </h1>
+          <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 10 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em", color: "#EAF0FF" }}>
+              LIFAIマーケット
+            </h1>
+            <button
+              onClick={() => setShowTutorial(true)}
+              title="使い方を見る"
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(234,240,255,0.55)",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              ?
+            </button>
+          </div>
           <p style={{ marginTop: 4, fontSize: 12, color: "rgba(234,240,255,0.5)" }}>
             メンバー同士でコンテンツをやりとりできます。画像は100枚〜 / 音楽は10曲〜 / 最低価格50から
           </p>
+          {/* UI警告バー */}
+          <div style={{
+            marginTop: 12,
+            borderRadius: 12,
+            border: "1px solid rgba(167,139,250,0.2)",
+            background: "rgba(124,58,237,0.06)",
+            padding: "8px 14px",
+            fontSize: 10,
+            fontWeight: 600,
+            color: "rgba(167,139,250,0.8)",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "4px 16px",
+          }}>
+            <span>⚠ EPは換金できません</span>
+            <span>⚠ 外部売買は禁止されています</span>
+            <span>⚠ 違反時はアカウント停止</span>
+          </div>
 
           {/* Filter bar */}
           <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -624,6 +665,56 @@ export default function MarketPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* FAQ */}
+        <div style={{
+          marginTop: 24,
+          background: "#0F1A2E",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 24,
+          padding: "20px 24px",
+          boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
+        }}>
+          <p style={{ fontSize: 13, fontWeight: 800, color: "#EAF0FF", marginBottom: 16 }}>よくある質問（FAQ）</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {[
+              { q: "EP・BPの違いは？", a: "EP（エナジーポイント）は課金ポイントです。BP（ボーナスポイント）はサービス内の活動で獲得できる消費・報酬ポイントです。どちらも現金化・外部移転はできません。" },
+              { q: "返金してもらえますか？", a: "納品URLが無効・商品が説明と大きく異なる・アセット不足（100枚/10曲未満）・著作権侵害の疑いがある場合に返金申請できます。単なる好みや使用後の返品は対応できません。" },
+              { q: "購入後の流れは？", a: "購入するとポイントがエスクロー（一時保留）に入ります。商品を受け取り確認後、「受領確定」を押すと出品者へ代金が支払われます。" },
+              { q: "納品はどうやって確認しますか？", a: "出品者が登録した納品URL・ダウンロードリンクは購入確定後にご確認いただけます。商品詳細ページまたは購入履歴から確認できます。" },
+              { q: "受領確定しないとどうなりますか？", a: "購入後7日間、返金申請や通報がない場合は自動で受領確定されます。出品者へ代金が支払われます。" },
+            ].map((item, i) => (
+              <details
+                key={i}
+                style={{
+                  borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  paddingBottom: 12,
+                  paddingTop: 12,
+                }}
+              >
+                <summary style={{
+                  cursor: "pointer",
+                  listStyle: "none",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "rgba(234,240,255,0.8)",
+                  userSelect: "none",
+                }}>
+                  Q. {item.q}
+                </summary>
+                <p style={{
+                  marginTop: 8,
+                  fontSize: 11,
+                  color: "rgba(234,240,255,0.5)",
+                  lineHeight: 1.75,
+                  paddingLeft: 8,
+                }}>
+                  {item.a}
+                </p>
+              </details>
+            ))}
           </div>
         </div>
 
