@@ -165,6 +165,7 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
  * - 失敗しても壊さない（UIで理由を出す）
  */
 function ReferralCard({ auth }: { auth: AuthState }) {
+  const [open, setOpen] = useState(false);
   const [refCode, setRefCode] = useState<string>("");
   const [refUrl, setRefUrl] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -278,78 +279,88 @@ function ReferralCard({ auth }: { auth: AuthState }) {
   };
 
   return (
-    <div className="mt-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-xs font-extrabold text-slate-700">あなたの紹介コード</p>
-          <p className="mt-1 text-xs text-slate-500">
-            お友達を紹介する際は下記コードをお使いください。詳しい内容は『紹介プログラムページ』まで。
-          </p>
-        </div>
+    <div className="mt-4 rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(2,6,23,.08)] overflow-hidden">
+      {/* プルタブ */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition"
+      >
+        <span className="text-xs font-extrabold text-slate-700">あなたの紹介コード</span>
+        <span className="text-[10px] text-slate-400">{open ? "▲ 閉じる" : "▼ 開く"}</span>
+      </button>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {loading ? (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-              読み込み中…
-            </span>
-          ) : refCode ? (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-900">
-              {refCode}
-            </span>
-          ) : (
-            <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-              取得できません
-            </span>
-          )}
+      {open && (
+        <div className="px-4 pb-4 border-t border-slate-100">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between pt-3">
+            <p className="text-xs text-slate-500">
+              お友達を紹介する際は下記コードをお使いください。詳しい内容は『紹介プログラムページ』まで。
+            </p>
 
-          <button
-            onClick={() => copy(refCode, "code")}
-            disabled={!refCode}
-            className={[
-              "rounded-2xl border px-4 py-2 text-xs font-semibold transition",
-              refCode
-                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed",
-            ].join(" ")}
-          >
-            {copied === "code" ? "コピーしました" : "コードをコピー"}
-          </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {loading ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                  読み込み中…
+                </span>
+              ) : refCode ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-900">
+                  {refCode}
+                </span>
+              ) : (
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                  取得できません
+                </span>
+              )}
 
-          <button
-            onClick={() => copy(refUrl, "url")}
-            disabled={!refUrl}
-            className={[
-              "rounded-2xl border px-4 py-2 text-xs font-semibold transition",
-              refUrl
-                ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed",
-            ].join(" ")}
-          >
-            {copied === "url" ? "コピーしました" : "リンクをコピー"}
-          </button>
-        </div>
-      </div>
+              <button
+                onClick={() => copy(refCode, "code")}
+                disabled={!refCode}
+                className={[
+                  "rounded-2xl border px-4 py-2 text-xs font-semibold transition",
+                  refCode
+                    ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed",
+                ].join(" ")}
+              >
+                {copied === "code" ? "コピーしました" : "コードをコピー"}
+              </button>
 
-      {refUrl ? (
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-[10px] font-bold text-slate-500">共有リンク</p>
-          <p className="mt-1 break-all text-xs font-semibold text-slate-700">{refUrl}</p>
-          <p className="mt-2 text-[11px] text-slate-500">
-            紹介コードは登録後に紐づけることはできません。
-          </p>
-        </div>
-      ) : null}
+              <button
+                onClick={() => copy(refUrl, "url")}
+                disabled={!refUrl}
+                className={[
+                  "rounded-2xl border px-4 py-2 text-xs font-semibold transition",
+                  refUrl
+                    ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed",
+                ].join(" ")}
+              >
+                {copied === "url" ? "コピーしました" : "リンクをコピー"}
+              </button>
+            </div>
+          </div>
 
-      {err ? (
-        <p className="mt-3 text-[11px] font-semibold text-rose-600">
-          エラー: {err}
-          {err === "no_code_in_auth" ? (
-            <span className="ml-2 text-slate-500">
-              （getAuth() が code を保持していない可能性。）
-            </span>
+          {refUrl ? (
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-[10px] font-bold text-slate-500">共有リンク</p>
+              <p className="mt-1 break-all text-xs font-semibold text-slate-700">{refUrl}</p>
+              <p className="mt-2 text-[11px] text-slate-500">
+                紹介コードは登録後に紐づけることはできません。
+              </p>
+            </div>
           ) : null}
-        </p>
-      ) : null}
+
+          {err ? (
+            <p className="mt-3 text-[11px] font-semibold text-rose-600">
+              エラー: {err}
+              {err === "no_code_in_auth" ? (
+                <span className="ml-2 text-slate-500">
+                  （getAuth() が code を保持していない可能性。）
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -656,16 +667,6 @@ export default function AppHomePage() {
             </div>
           </div>
 
-          {/* ✅ここ：ヘッダー直下、タイル一覧の直前 */}
-          <PresaleHeader
-            endAtISO="2026-05-01T23:59:59+09:00"
-            goal={10000}
-            currencyLabel="USDT"
-          />
-
-          {/* ✅ 追加：紹介コード表示（/api/me 経由で取得） */}
-          <ReferralCard auth={auth} />
-
           {/* ✅ アプリグリッド（LINEミニアプリ風 4列） */}
           <div className="mt-6">
             <p className="mb-3 text-xs font-extrabold text-slate-700">アプリ</p>
@@ -706,6 +707,16 @@ export default function AppHomePage() {
           <RadioCard
             loginId={loginId}
             onEpEarned={() => setBalanceTrigger((n) => n + 1)}
+          />
+
+          {/* 紹介コード（折りたたみ、デフォルト非表示） */}
+          <ReferralCard auth={auth} />
+
+          {/* プレセール終了カウントダウン */}
+          <PresaleHeader
+            endAtISO="2026-05-01T23:59:59+09:00"
+            goal={10000}
+            currencyLabel="USDT"
           />
 
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">

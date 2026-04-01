@@ -1,43 +1,7 @@
 "use client";
-import { useState } from "react";
 import Link from "next/link";
 
 export default function MiniGamesPage() {
-  const [unlocked, setUnlocked] = useState(false);
-  const [pwInput, setPwInput] = useState("");
-  const [error, setError] = useState(false);
-
-  if (!unlocked) return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0a] gap-4">
-      <div className="text-4xl mb-2">🎮</div>
-      <h1 className="text-white font-bold text-xl">LIFAI Arcade</h1>
-      <p className="text-white/40 text-sm">管理者パスワードを入力してください</p>
-      <input
-        type="password"
-        value={pwInput}
-        onChange={e => { setPwInput(e.target.value); setError(false); }}
-        onKeyDown={e => {
-          if (e.key === "Enter") {
-            if (pwInput === "nagoya01@") setUnlocked(true);
-            else setError(true);
-          }
-        }}
-        className="border border-white/20 bg-white/5 text-white rounded-xl px-4 py-2 text-sm w-64 text-center"
-        placeholder="パスワード"
-      />
-      {error && <p className="text-red-400 text-xs">パスワードが違います</p>}
-      <button
-        onClick={() => {
-          if (pwInput === "nagoya01@") setUnlocked(true);
-          else setError(true);
-        }}
-        className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold"
-      >
-        入室する
-      </button>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-10 max-w-2xl mx-auto">
       <div className="flex items-center gap-3 mb-8">

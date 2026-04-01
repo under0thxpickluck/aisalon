@@ -90,6 +90,7 @@ export default function RumblePage() {
   const [gachaResult, setGachaResult] = useState<GachaResult | null>(null);
   const [msg, setMsg]             = useState("");
   const [countdown, setCountdown] = useState("");
+  const [isAfter19Jst, setIsAfter19Jst] = useState(false);
   const [shards, setShards]       = useState(0);
   const [enhanceResult, setEnhanceResult] = useState<{result:string; after_level:number; shard_spent:number} | null>(null);
   const [rankContext, setRankContext] = useState<any>(null);
@@ -185,6 +186,7 @@ export default function RumblePage() {
       const jstMonth = jstParts.find(p => p.type === "month")!.value;
       const jstDay   = jstParts.find(p => p.type === "day")!.value;
       const jstHour  = parseInt(jstParts.find(p => p.type === "hour")!.value, 10);
+      setIsAfter19Jst(jstHour >= 19);
 
       // 目標日付の計算
       let targetDate = new Date(`${jstYear}-${jstMonth}-${jstDay}T19:00:00+09:00`);
@@ -231,7 +233,6 @@ export default function RumblePage() {
       spectatorData === null ||
       spectatorFetchedAt === null ||
       spectatorDate !== todayJst ||
-      spectatorData.status === "no_data" ||
       Date.now() - (spectatorFetchedAt ?? 0) > 30000;
     if (!needsFetch) return;
     setSpectatorLoading(true);
@@ -851,6 +852,8 @@ export default function RumblePage() {
                       </span>
                     ) : spectatorPhase === "result" ? (
                       <span className="text-xs font-black text-yellow-400">🏆 結果確定</span>
+                    ) : isAfter19Jst ? (
+                      <span className="text-xs text-white/40">本日の観戦データを準備中…</span>
                     ) : (
                       <span className="text-xs text-white/40">参加受付中</span>
                     )}
