@@ -28,6 +28,15 @@ type BatchResult = {
   error?:            string;
 };
 
+type MiningLog = {
+  id:       number;
+  taps:     number;
+  bp:       number;
+  ep:       number;
+  rare:     boolean;
+  time:     string;
+};
+
 export default function TapMiningPage() {
   // ── パスワードゲート ──
   const [tapAuthed,   setTapAuthed]   = useState(false);
@@ -60,6 +69,8 @@ export default function TapMiningPage() {
   const [feverTimer,          setFeverTimer]          = useState(0);
   const [tickerEvents,        setTickerEvents]        = useState<{ masked_name: string; reward: number; type: string }[]>([]);
   const [showHelp,            setShowHelp]            = useState(false);
+  const [miningLogs,          setMiningLogs]          = useState<MiningLog[]>([]);
+  const logIdRef = useRef(0);
 
   // ── バッチ用 Refs ──
   const pendingTapsRef      = useRef(0);
@@ -160,6 +171,18 @@ export default function TapMiningPage() {
         } : prev);
         // optimisticRemaining を実残数で補正（必須）
         if (data.tapsRemaining !== undefined) setOptimisticRemaining(data.tapsRemaining);
+
+        // マイニングログに追加
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+        setMiningLogs(prev => [{
+          id:   logIdRef.current++,
+          taps: data.processedTapCount ?? count,
+          bp:   data.bpReward ?? 0,
+          ep:   data.epReward ?? 0,
+          rare: (data.rareRewards?.length ?? 0) > 0,
+          time: timeStr,
+        }, ...prev].slice(0, 15));
 
         // レア報酬演出（サーバー確認後のみ）
         data.rareRewards?.forEach(r => {
@@ -316,7 +339,8 @@ export default function TapMiningPage() {
   );
 
   return (
-    <div className={`min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-md mx-auto relative overflow-hidden ${rareEffect ? "animate-pulse" : ""}`}>
+    <div className={`min-h-screen bg-[#0a0a0a] text-white${rareEffect ? " animate-pulse" : ""}`}>
+    {/* グリッド外：fixed要素（モーダル・ticker） */}
 
       {/* ルール説明モーダル */}
       {showHelp && (
@@ -371,6 +395,12 @@ export default function TapMiningPage() {
           </div>
         </div>
       )}
+
+    {/* 2カラムグリッド */}
+    <div className="lg:grid lg:grid-cols-[1fr_260px] lg:gap-6 lg:max-w-3xl lg:mx-auto lg:px-4 lg:py-8">
+
+    {/* ── 左カラム（メインコンテンツ） ── */}
+    <div className="px-4 py-8 max-w-md mx-auto lg:max-w-none lg:px-0 lg:py-0 relative overflow-hidden">
 
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
@@ -470,6 +500,56 @@ export default function TapMiningPage() {
       <div className="text-center text-xs text-white/20">
         総タップ数: {status?.total_taps ?? 0} / 最大コンボ: {status?.max_combo ?? 0}
       </div>
+
+      {/* モバイル：ログをインラインで表示 */}
+      {miningLogs.length > 0 && (
+        <div className="lg:hidden mt-4 bg-white/5 border border-white/10 rounded-xl p-3">
+          <h3 className="text-xs font-bold text-white/40 mb-2">⛏️ マイニングログ</h3>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {miningLogs.map(log => (
+              <div key={log.id} className={`flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0 ${log.rare ? "text-yellow-400" : "text-white/60"}`}>
+                <span className="text-white/30 w-16">{log.time}</span>
+                <span>{log.taps}tap</span>
+                {log.bp > 0 && <span className="text-purple-400">+{log.bp}BP</span>}
+                {log.ep > 0 && <span className="text-yellow-400">+{log.ep}EP {log.rare ? "✨" : ""}</span>}
+                {log.bp === 0 && log.ep === 0 && <span className="text-white/20">—</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </div>{/* 左カラム end */}
+
+    {/* ── 右カラム（デスクトップ専用ログパネル） ── */}
+    <div className="hidden lg:block py-0 sticky top-4 h-fit">
+      <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+        <h3 className="text-xs font-bold text-white/40 mb-3 flex items-center gap-1">
+          <span>⛏️</span> マイニングログ
+        </h3>
+        {miningLogs.length === 0 ? (
+          <p className="text-xs text-white/20 text-center py-8">タップするとここに<br/>結果が表示されます</p>
+        ) : (
+          <div className="space-y-1 max-h-[calc(100vh-160px)] overflow-y-auto">
+            {miningLogs.map(log => (
+              <div key={log.id} className={`rounded-lg px-2 py-1.5 text-xs ${log.rare ? "bg-yellow-400/10 border border-yellow-400/30" : "bg-white/5"}`}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-white/30">{log.time}</span>
+                  <span className="text-white/50">{log.taps}tap</span>
+                </div>
+                <div className="flex gap-2">
+                  {log.bp > 0 && <span className="text-purple-400 font-bold">+{log.bp}BP</span>}
+                  {log.ep > 0 && <span className={`font-bold ${log.rare ? "text-yellow-400" : "text-yellow-300/70"}`}>+{log.ep}EP{log.rare ? " ✨" : ""}</span>}
+                  {log.bp === 0 && log.ep === 0 && <span className="text-white/20">—</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
+
+    </div>{/* グリッド end */}
+    </div>{/* outer end */}
   );
 }
