@@ -201,8 +201,8 @@ export default function TapMiningPage() {
     const sendBatch = () => {
       const count = pendingTapsRef.current;
       if (count === 0 || !userIdRef.current) return;
-      pendingTapsRef.current = 0;
       const payload = buildPayload();
+      pendingTapsRef.current = 0;
       const blob    = new Blob([JSON.stringify(payload)], { type: "application/json" });
       if (navigator.sendBeacon) {
         navigator.sendBeacon("/api/minigames/tap/batch-play", blob);
