@@ -8882,3 +8882,38 @@ function setupGiftExpireTrigger() {
     .create();
   Logger.log("expireGiftEP trigger set: daily at 2AM");
 }
+
+// ============================================================
+// TRIGGER SETUP — run once manually in GAS editor
+// ============================================================
+
+/**
+ * Run this function ONCE in the GAS editor to install time triggers.
+ * Do NOT call from code — triggers persist across deploys.
+ */
+function setupRumbleTriggers_() {
+  // Remove existing rumble triggers to avoid duplicates
+  var triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(t) {
+    var name = t.getHandlerFunction();
+    if (name === "rumbleDailyLotteryTrigger_" || name === "rumbleWeeklyRewardTrigger_") {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  // Daily lottery: every day 19:00–20:00 JST
+  ScriptApp.newTrigger("rumbleDailyLotteryTrigger_")
+    .timeBased()
+    .everyDays(1)
+    .atHour(19) // GAS uses script timezone; set GAS timezone to Asia/Tokyo in Project Settings
+    .create();
+
+  // Weekly EP reward: every Friday 23:00–24:00 JST
+  ScriptApp.newTrigger("rumbleWeeklyRewardTrigger_")
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.FRIDAY)
+    .atHour(23)
+    .create();
+
+  Logger.log("Rumble triggers set up successfully.");
+}
