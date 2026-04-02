@@ -6931,6 +6931,15 @@ function rumbleRewardDistribute_(params) {
   ];
 
   var weekId    = params.weekId || getWeekId_();
+
+  // Idempotency check via ScriptProperties
+  var propKey = "RUMBLE_WEEK_DISTRIBUTED_" + weekId;
+  var props   = PropertiesService.getScriptProperties();
+  if (props.getProperty(propKey) && !params.force) {
+    Logger.log("[rumbleRewardDistribute_] Already distributed for " + weekId);
+    return json_({ ok: true, distributed: 0, week_id: weekId, skipped: "already_done" });
+  }
+
   var weekSheet = getRumbleWeekSheet_();
   ensureRumbleWeekCols_(weekSheet);
   var weekData = weekSheet.getDataRange().getValues();
@@ -6949,6 +6958,12 @@ function rumbleRewardDistribute_(params) {
   var aIdx         = {};
   aHeaders.forEach(function(h, i) { aIdx[h] = i; });
 
+  // Build email map
+  var emailMap = {};
+  for (var e = 1; e < appliesData.length; e++) {
+    emailMap[String(appliesData[e][aIdx["login_id"]])] = String(appliesData[e][aIdx["email"]] || "");
+  }
+
   var distributed = 0;
   rows.forEach(function(entry, i) {
     var rank = i + 1;
@@ -6966,12 +6981,33 @@ function rumbleRewardDistribute_(params) {
         var currentEp = Number(appliesData[k][aIdx["ep_balance"]] || 0);
         appliesSheet.getRange(k + 1, aIdx["ep_balance"] + 1).setValue(currentEp + ep);
         distributed++;
+
+        // Record to wallet_ledger
+        appendWalletLedger_({
+          kind:     "rumble_weekly_ep",
+          login_id: entry.user_id,
+          email:    emailMap[entry.user_id] || "",
+          amount:   ep,
+          memo:     weekId + " 週次EP報酬 " + rank + "位",
+        });
+
         break;
       }
     }
   });
 
+  // Mark week as distributed
+  props.setProperty(propKey, new Date().toISOString());
+
   return json_({ ok: true, distributed: distributed, week_id: weekId });
+}
+
+/** Called by GAS time trigger (金曜 23:00〜24:00 JST) */
+function rumbleWeeklyRewardTrigger_() {
+  var weekId = getWeekId_();
+  Logger.log("[rumbleWeeklyRewardTrigger_] Starting for " + weekId);
+  var result = rumbleRewardDistribute_({ weekId: weekId });
+  Logger.log("[rumbleWeeklyRewardTrigger_] " + JSON.stringify(result));
 }
 
 // ============================================================
