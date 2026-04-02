@@ -6285,10 +6285,10 @@ function tapBatchPlay_(params) {
     { type: "BP", amount: 0.1,   prob: 0.45     },
     { type: "BP", amount: 0.2,   prob: 0.25     },
     { type: "BP", amount: 0.5,   prob: 0.08     },
-    { type: "EP", amount: 1,     prob: 0.15     },
-    { type: "EP", amount: 3,     prob: 0.05     },
-    { type: "EP", amount: 10,    prob: 0.015    },
-    { type: "EP", amount: 100,   prob: 0.0009   },
+    { type: "EP", amount: 1,     prob: 0.12     },
+    { type: "EP", amount: 3,     prob: 0.04     },
+    { type: "EP", amount: 10,    prob: 0.012    },
+    { type: "EP", amount: 100,   prob: 0.0007   },
     { type: "EP", amount: 10000, prob: 0.000001 }
   ];
 

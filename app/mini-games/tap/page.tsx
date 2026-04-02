@@ -67,7 +67,8 @@ export default function TapMiningPage() {
   const [rareEffect,          setRareEffect]          = useState(false);
   const [fever,               setFever]               = useState(false);
   const [feverTimer,          setFeverTimer]          = useState(0);
-  const [tickerEvents,        setTickerEvents]        = useState<{ masked_name: string; reward: number; type: string }[]>([]);
+  const [ownRareEvents,       setOwnRareEvents]       = useState<{ id: number; amount: number; label: string }[]>([]);
+  const ownRareIdRef = useRef(0);
   const [showHelp,            setShowHelp]            = useState(false);
   const [miningLogs,          setMiningLogs]          = useState<MiningLog[]>([]);
   const logIdRef = useRef(0);
@@ -117,17 +118,6 @@ export default function TapMiningPage() {
     }
   }, [status, optimisticRemaining]);
 
-  useEffect(() => {
-    const fetchTicker = () => {
-      fetch("/api/minigames/tap/ticker")
-        .then(r => r.json())
-        .then(d => { if (d.ok && d.events) setTickerEvents(d.events); })
-        .catch(() => {});
-    };
-    fetchTicker();
-    const interval = setInterval(fetchTicker, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   // ── バッチ flush ──
   const flushTaps = useCallback(async () => {
@@ -183,6 +173,16 @@ export default function TapMiningPage() {
           rare: (data.rareRewards?.length ?? 0) > 0,
           time: timeStr,
         }, ...prev].slice(0, 15));
+
+        // 自分のレア獲得をティッカーに追加
+        data.rareRewards?.forEach(r => {
+          const label = r.amount >= 10000
+            ? `💥 +${r.amount}EP 大当たり!!!`
+            : r.amount >= 500
+              ? `🌟 +${r.amount}EP EPIC!!!`
+              : `✨ +${r.amount}EP RARE!`;
+          setOwnRareEvents(prev => [{ id: ownRareIdRef.current++, amount: r.amount, label }, ...prev].slice(0, 20));
+        });
 
         // レア報酬演出（サーバー確認後のみ）
         data.rareRewards?.forEach(r => {
@@ -383,14 +383,12 @@ export default function TapMiningPage() {
         </div>
       )}
 
-      {/* Ticker */}
-      {tickerEvents.length > 0 && (
+      {/* 自分のレア獲得ティッカー */}
+      {ownRareEvents.length > 0 && (
         <div className="fixed top-0 left-0 right-0 bg-black/80 text-yellow-400 text-xs py-1 px-4 z-40 overflow-hidden">
           <div className="animate-marquee whitespace-nowrap">
-            {tickerEvents.map((e, i) => (
-              <span key={i} className="mr-8">
-                🎉 {e.masked_name} が {e.reward}EP を獲得！
-              </span>
+            {ownRareEvents.map(e => (
+              <span key={e.id} className="mr-10">{e.label}</span>
             ))}
           </div>
         </div>
