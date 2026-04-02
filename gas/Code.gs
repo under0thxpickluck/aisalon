@@ -5467,6 +5467,7 @@ function doPost(e) {
     if (action === 'rumble_set_display_name')  return rumbleSetDisplayName_(body);
     if (action === 'rumble_spectator')         return rumbleSpectator_(body);
     if (action === 'rumble_daily_lottery')     return rumbleDailyLottery_(body);
+    if (action === 'rumble_daily_result')      return rumbleDailyResult_(body);
     if (action === 'rumble_force_entry')       return rumbleForceEntry_(body);
     if (action === 'rumble_force_start')       return rumbleForceStart_(body);
     if (action === 'music_boost_status')     return musicBoostStatus_(body);
@@ -7171,6 +7172,109 @@ function rumbleDailyLottery_(params) {
 /** Called by GAS time trigger (毎日 19:00〜20:00 JST) */
 function rumbleDailyLotteryTrigger_() {
   rumbleDailyLottery_({ date: getTodayJst_() });
+}
+
+// ============================================================
+// action: rumble_daily_result（日次抽選結果を返す。Next.js APIから呼ばれる）
+// ============================================================
+function rumbleDailyResult_(params) {
+  var dateStr  = String(params.date || getTodayJst_());
+  var todayStr = getTodayJst_();
+  var isToday  = dateStr === todayStr;
+  // Deadline same as lottery filter
+  var deadline = dateStr + "T19:00:00.000Z";
+
+  // --- Participants (filtered by deadline) ---
+  var entrySheet = getRumbleEntrySheet_();
+  ensureRumbleEntryCols_(entrySheet);
+  var entryData = entrySheet.getDataRange().getValues();
+  var eHeaders  = entryData[0];
+  var eIdx      = {};
+  eHeaders.forEach(function(h, i) { eIdx[h] = i; });
+
+  var rawParticipants = [];
+  for (var i = 1; i < entryData.length; i++) {
+    var row = entryData[i];
+    if (String(row[eIdx["date"]]) !== dateStr) continue;
+    var createdAt = String(row[eIdx["created_at"]] || "");
+    if (createdAt && createdAt > deadline) continue;
+    rawParticipants.push({
+      user_id:    String(row[eIdx["user_id"]]),
+      created_at: createdAt,
+    });
+  }
+  var participantCount    = rawParticipants.length;
+  var expectedWinnerCount = Math.min(5, participantCount);
+
+  // --- Display names ---
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+  var displayNameMap = {};
+  for (var j = 1; j < appliesData.length; j++) {
+    var uid = String(appliesData[j][aIdx["login_id"]]);
+    displayNameMap[uid] = String(appliesData[j][aIdx["rumble_display_name"]] || uid);
+  }
+
+  // --- Lottery results ---
+  var resultSheet = getRumbleDailyResultSheet_();
+  ensureRumbleDailyResultCols_(resultSheet);
+  var resultData = resultSheet.getDataRange().getValues();
+  var rHeaders   = resultData[0];
+  var rIdx       = {};
+  rHeaders.forEach(function(h, i) { rIdx[h] = i; });
+
+  var winners = [];
+  for (var i = 1; i < resultData.length; i++) {
+    if (String(resultData[i][rIdx["date"]]) !== dateStr) continue;
+    if (String(resultData[i][rIdx["distributed"]]) !== "true") continue;
+    var rank = Number(resultData[i][rIdx["rank"]]);
+    winners.push({
+      rank:         rank,
+      user_id:      String(resultData[i][rIdx["user_id"]]),
+      display_name: String(resultData[i][rIdx["display_name"]]),
+      bp_amount:    Number(resultData[i][rIdx["bp_amount"]]),
+      // rp and weight intentionally omitted from response
+    });
+  }
+  winners.sort(function(a, b) { return a.rank - b.rank; });
+
+  // --- Status: ready only if all expected ranks are distributed ---
+  var isReady = expectedWinnerCount > 0 &&
+    winners.length === expectedWinnerCount &&
+    winners.every(function(w) { return w.rank >= 1 && w.rank <= expectedWinnerCount; });
+
+  if (isReady) {
+    return json_({
+      ok:               true,
+      status:           "ready",
+      date:             dateStr,
+      participant_count: participantCount,
+      winnerCount:      expectedWinnerCount,
+      isToday:          isToday,
+      replay_seed:      computeSeed_(dateStr), // sha256 hex only, SALT never exposed
+      winners:          winners,
+    });
+  }
+
+  // --- Pending: return participants list (display_name only, created_at order) ---
+  var participants = rawParticipants.map(function(p) {
+    return {
+      user_id:      p.user_id,
+      display_name: displayNameMap[p.user_id] || p.user_id,
+    };
+  });
+  return json_({
+    ok:               true,
+    status:           "pending",
+    date:             dateStr,
+    participant_count: participantCount,
+    winnerCount:      expectedWinnerCount,
+    isToday:          isToday,
+    participants:     participants,
+  });
 }
 
 // ============================================================
