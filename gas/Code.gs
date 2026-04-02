@@ -6427,6 +6427,79 @@ function getTodayJst_() {
   return now.toISOString().slice(0, 10);
 }
 
+// ============================================================
+// RUMBLE DAILY LOTTERY — helpers
+// ============================================================
+
+function getRumbleDailyResultSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("rumble_daily_result");
+  if (!sheet) sheet = ss.insertSheet("rumble_daily_result");
+  return sheet;
+}
+
+function ensureRumbleDailyResultCols_(sheet) {
+  if (sheet.getLastRow() > 0) return;
+  sheet.appendRow([
+    "date","seed","rank","user_id","display_name",
+    "rp","weight","bp_amount","distributed","participant_count","created_at"
+  ]);
+}
+
+/**
+ * sha256(dateStr + RUMBLE_SALT) → hex string
+ * RUMBLE_SALT is stored in ScriptProperties. Falls back to "rumble_default_salt".
+ */
+function computeSeed_(dateStr) {
+  var props = PropertiesService.getScriptProperties();
+  var salt  = props.getProperty("RUMBLE_SALT") || "rumble_default_salt";
+  var input = dateStr + salt;
+  var bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256, input, Utilities.Charset.UTF_8
+  );
+  return bytes.map(function(b) {
+    return ("0" + (b & 0xff).toString(16)).slice(-2);
+  }).join("");
+}
+
+/**
+ * Convert first 8 hex chars of sha256 to uint32. Never returns 0.
+ */
+function seedToInt_(hexStr) {
+  var n = parseInt(hexStr.slice(0, 8), 16) >>> 0;
+  return n || 1;
+}
+
+/**
+ * Returns a seeded xorshift RNG function for the given date string.
+ * Same dateStr → same sequence every time.
+ */
+function rumbleDailyRng_(dateStr) {
+  var x = seedToInt_(computeSeed_(dateStr));
+  return function() {
+    x = (x ^ (x << 13)) >>> 0;
+    x = (x ^ (x >> 17)) >>> 0;
+    x = (x ^ (x << 5))  >>> 0;
+    return (x >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Weighted selection from pool array (each element has a .weight property).
+ * Calls rng() exactly once. Returns the selected index.
+ */
+function weightedSelect_(pool, rng) {
+  var total = 0;
+  for (var i = 0; i < pool.length; i++) total += pool[i].weight;
+  var r = rng() * total;
+  var cum = 0;
+  for (var i = 0; i < pool.length; i++) {
+    cum += pool[i].weight;
+    if (r < cum) return i;
+  }
+  return pool.length - 1;
+}
+
 function getUserEquipmentBonus_(userId) {
   var sheet = getEquipmentSheet_();
   ensureEquipmentCols_(sheet);
