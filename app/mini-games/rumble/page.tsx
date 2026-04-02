@@ -669,21 +669,21 @@ export default function RumblePage() {
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 mb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-black text-2xl text-purple-400">{rankContext.my_rank}位</span>
-                <span className="text-white font-bold">{rankContext.my_rp} RP</span>
+                <span className="text-white font-bold">{Number(Number(rankContext.my_rp).toFixed(2))} RP</span>
               </div>
               <p className="text-xs text-white/60 mb-3">現在の報酬帯: <span className="text-yellow-400">{rankContext.current_tier?.label} ({rankContext.current_tier?.ep?.toLocaleString()}EP)</span></p>
               {rankContext.next_better_tier && (
-                <p className="text-xs text-green-400">▲ {rankContext.next_better_tier.label}まであと {rankContext.next_better_tier.rp_needed} RP</p>
+                <p className="text-xs text-green-400">▲ {rankContext.next_better_tier.label}まであと {Number(Number(rankContext.next_better_tier.rp_needed).toFixed(2))} RP</p>
               )}
               {rankContext.next_worse_tier && (
-                <p className="text-xs text-red-400/70">▼ {rankContext.next_worse_tier.label}まで余裕 {rankContext.next_worse_tier.rp_buffer} RP</p>
+                <p className="text-xs text-red-400/70">▼ {rankContext.next_worse_tier.label}まで余裕 {Number(Number(rankContext.next_worse_tier.rp_buffer).toFixed(2))} RP</p>
               )}
               {rankContext.surrounding && (
                 <div className="mt-3 space-y-1">
                   {rankContext.surrounding.map((r: any) => (
                     <div key={r.rank} className={`flex justify-between text-xs py-1 px-2 rounded ${r.is_me ? "bg-purple-500/20 text-white font-bold" : "text-white/40"}`}>
                       <span>{r.rank}位 {r.is_me ? "👤 " : ""}{r.display_name || r.user_id}</span>
-                      <span>{r.total_rp} RP</span>
+                      <span>{Number(Number(r.total_rp).toFixed(2))} RP</span>
                     </div>
                   ))}
                 </div>
