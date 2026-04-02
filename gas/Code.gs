@@ -5466,6 +5466,7 @@ function doPost(e) {
     if (action === 'rumble_shard_status')      return rumbleShardStatus_(body);
     if (action === 'rumble_set_display_name')  return rumbleSetDisplayName_(body);
     if (action === 'rumble_spectator')         return rumbleSpectator_(body);
+    if (action === 'rumble_daily_lottery')     return rumbleDailyLottery_(body);
     if (action === 'rumble_force_entry')       return rumbleForceEntry_(body);
     if (action === 'rumble_force_start')       return rumbleForceStart_(body);
     if (action === 'music_boost_status')     return musicBoostStatus_(body);
@@ -6970,6 +6971,194 @@ function rumbleRewardDistribute_(params) {
   });
 
   return json_({ ok: true, distributed: distributed, week_id: weekId });
+}
+
+// ============================================================
+// action: rumble_daily_lottery（日次BP抽選・GASタイムトリガーから呼ばれる）
+// ============================================================
+
+var RUMBLE_DAILY_BP_REWARDS_ = [1000, 700, 400, 250, 200];
+
+function rumbleDailyLottery_(params) {
+  var dateStr  = String(params.date || getTodayJst_());
+  // created_at in rumble_entry is stored as fake-JST ISO (Date.now()+9h).
+  // 19:00 JST stored in that format = "YYYY-MM-DDT19:00:00.000Z"
+  var deadline = dateStr + "T19:00:00.000Z";
+
+  // 1. Get participants filtered by deadline
+  var entrySheet = getRumbleEntrySheet_();
+  ensureRumbleEntryCols_(entrySheet);
+  var entryData = entrySheet.getDataRange().getValues();
+  var eHeaders  = entryData[0];
+  var eIdx      = {};
+  eHeaders.forEach(function(h, i) { eIdx[h] = i; });
+
+  var participants = [];
+  for (var i = 1; i < entryData.length; i++) {
+    var row = entryData[i];
+    if (String(row[eIdx["date"]]) !== dateStr) continue;
+    var createdAt = String(row[eIdx["created_at"]] || "");
+    if (createdAt && createdAt > deadline) continue;
+    participants.push({
+      user_id: String(row[eIdx["user_id"]]),
+      rp:      Number(row[eIdx["rp"]] || 0),
+    });
+  }
+
+  if (participants.length === 0) {
+    Logger.log("[rumbleDailyLottery_] No participants for " + dateStr);
+    return json_({ ok: true, distributed: 0, date: dateStr, skipped: "no_participants" });
+  }
+
+  // 2. Idempotency: if all winnerCount ranks are distributed=true, skip
+  var winnerCount  = Math.min(5, participants.length);
+  var resultSheet  = getRumbleDailyResultSheet_();
+  ensureRumbleDailyResultCols_(resultSheet);
+  var resultData   = resultSheet.getDataRange().getValues();
+  var rHeaders     = resultData[0];
+  var rIdx         = {};
+  rHeaders.forEach(function(h, i) { rIdx[h] = i; });
+
+  var existingRows = [];
+  for (var i = 1; i < resultData.length; i++) {
+    if (String(resultData[i][rIdx["date"]]) !== dateStr) continue;
+    existingRows.push({
+      rowNum:      i + 1,
+      rank:        Number(resultData[i][rIdx["rank"]]),
+      user_id:     String(resultData[i][rIdx["user_id"]]),
+      distributed: String(resultData[i][rIdx["distributed"]]) === "true",
+    });
+  }
+
+  var doneCount = existingRows.filter(function(r) {
+    return r.rank >= 1 && r.rank <= winnerCount && r.distributed;
+  }).length;
+  if (doneCount === winnerCount) {
+    Logger.log("[rumbleDailyLottery_] Already complete for " + dateStr);
+    return json_({ ok: true, distributed: 0, date: dateStr, skipped: "already_done" });
+  }
+
+  // 3. Seed + RNG (deterministic: same dateStr → same sequence)
+  var seedHex = computeSeed_(dateStr);
+  var rng     = rumbleDailyRng_(dateStr);
+
+  // 4. Build weighted pool
+  var pool = participants.map(function(p) {
+    return {
+      user_id: p.user_id,
+      rp:      p.rp,
+      weight:  Math.floor(Math.sqrt(p.rp) * 1000),
+    };
+  });
+
+  // 5. Load applies data (BP grant + display names)
+  var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  var appliesData  = appliesSheet.getDataRange().getValues();
+  var aHeaders     = appliesData[0];
+  var aIdx         = {};
+  aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+
+  var displayNameMap = {};
+  var emailMap       = {};
+  for (var j = 1; j < appliesData.length; j++) {
+    var uid = String(appliesData[j][aIdx["login_id"]]);
+    displayNameMap[uid] = String(appliesData[j][aIdx["rumble_display_name"]] || uid);
+    emailMap[uid]       = String(appliesData[j][aIdx["email"]] || "");
+  }
+
+  var nowJst      = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  var distributed = 0;
+
+  // 6. Lottery: rank 1 to winnerCount, one winner at a time
+  for (var rank = 1; rank <= winnerCount; rank++) {
+    // Always run RNG in sequence (deterministic replay for recovery)
+    var idx    = weightedSelect_(pool, rng); // consumes exactly 1 rng() call
+    var winner = pool[idx];
+    pool.splice(idx, 1); // remove from pool for next round
+
+    // If this rank is already distributed=true, skip grant (same seed = same winner)
+    var alreadyDone = existingRows.some(function(r) {
+      return r.rank === rank && r.distributed;
+    });
+    if (alreadyDone) {
+      Logger.log("[rumbleDailyLottery_] rank=" + rank + " already distributed, skipping");
+      continue;
+    }
+
+    var bpAmount    = RUMBLE_DAILY_BP_REWARDS_[rank - 1];
+    var displayName = displayNameMap[winner.user_id] || winner.user_id;
+    var email       = emailMap[winner.user_id] || "";
+
+    // a. Write row to rumble_daily_result (distributed=false)
+    var rowData = [
+      dateStr, seedHex, rank, winner.user_id, displayName,
+      winner.rp, winner.weight, bpAmount, false, participants.length, nowJst
+    ];
+    var existingRowNum = -1;
+    for (var ei = 0; ei < existingRows.length; ei++) {
+      if (existingRows[ei].rank === rank) { existingRowNum = existingRows[ei].rowNum; break; }
+    }
+    if (existingRowNum === -1) {
+      resultSheet.appendRow(rowData);
+    } else {
+      resultSheet.getRange(existingRowNum, 1, 1, rowData.length).setValues([rowData]);
+    }
+    SpreadsheetApp.flush();
+
+    // b. Grant BP to winner
+    for (var k = 1; k < appliesData.length; k++) {
+      if (String(appliesData[k][aIdx["login_id"]]) === winner.user_id) {
+        var currentBp = Number(appliesData[k][aIdx["bp_balance"]] || 0);
+        var newBp     = Math.round((currentBp + bpAmount) * 100) / 100;
+        appliesSheet.getRange(k + 1, aIdx["bp_balance"] + 1).setValue(newBp);
+        appliesData[k][aIdx["bp_balance"]] = newBp; // update local cache
+        break;
+      }
+    }
+    SpreadsheetApp.flush();
+
+    // c. Record to wallet_ledger
+    appendWalletLedger_({
+      kind:     "rumble_daily_bp",
+      login_id: winner.user_id,
+      email:    email,
+      amount:   bpAmount,
+      memo:     dateStr + " 日次BP抽選 " + rank + "位",
+    });
+
+    // d. Mark distributed=true
+    // Re-read sheet to find final row number after potential appendRow
+    var rData2 = resultSheet.getDataRange().getValues();
+    var rH2    = rData2[0];
+    var rI2    = {};
+    rH2.forEach(function(h, i) { rI2[h] = i; });
+    for (var ri = 1; ri < rData2.length; ri++) {
+      if (String(rData2[ri][rI2["date"]]) === dateStr &&
+          Number(rData2[ri][rI2["rank"]]) === rank) {
+        resultSheet.getRange(ri + 1, rI2["distributed"] + 1).setValue(true);
+        break;
+      }
+    }
+    SpreadsheetApp.flush();
+
+    distributed++;
+    Logger.log("[rumbleDailyLottery_] rank=" + rank +
+      " user_id=" + winner.user_id +
+      " rp=" + winner.rp +
+      " weight=" + winner.weight +
+      " bp=" + bpAmount);
+  }
+
+  Logger.log("[rumbleDailyLottery_] date=" + dateStr +
+    " participant_count=" + participants.length +
+    " winnerCount=" + winnerCount +
+    " distributed=" + distributed);
+  return json_({ ok: true, distributed: distributed, date: dateStr, participant_count: participants.length });
+}
+
+/** Called by GAS time trigger (毎日 19:00〜20:00 JST) */
+function rumbleDailyLotteryTrigger_() {
+  rumbleDailyLottery_({ date: getTodayJst_() });
 }
 
 // ============================================================
