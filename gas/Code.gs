@@ -6273,7 +6273,7 @@ function tapBatchPlay_(params) {
   }
   if (!userRow) return json_({ ok: false, error: "user_not_found" });
 
-  var BP_PER_TAP = 3;
+  var BP_PER_TAP = 2;
   var currentBp = Number(userRow[aIdx["bp_balance"]] || 0);
   var affordable = Math.min(processCount, Math.floor(currentBp / BP_PER_TAP));
   if (affordable <= 0) return json_({ ok: false, error: "insufficient_bp", bp: currentBp });

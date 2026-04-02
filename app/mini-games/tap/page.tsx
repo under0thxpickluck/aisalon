@@ -38,24 +38,6 @@ type MiningLog = {
 };
 
 export default function TapMiningPage() {
-  // ── パスワードゲート ──
-  const [tapAuthed,   setTapAuthed]   = useState(false);
-  const [tapPw,       setTapPw]       = useState("");
-  const [tapPwError,  setTapPwError]  = useState(false);
-
-  useEffect(() => {
-    if (sessionStorage.getItem("tap_authed") === "1") setTapAuthed(true);
-  }, []);
-
-  const tryAuth = () => {
-    if (tapPw === "nagoya01@") {
-      sessionStorage.setItem("tap_authed", "1");
-      setTapAuthed(true);
-    } else {
-      setTapPwError(true);
-    }
-  };
-
   // ── コア State ──
   const [userId,              setUserId]              = useState("");
   const [status,              setStatus]              = useState<TapStatus | null>(null);
@@ -313,31 +295,6 @@ export default function TapMiningPage() {
   const comboMultiplier    = combo >= 100 ? 1.5 : combo >= 50 ? 1.2 : combo >= 20 ? 1.1 : 1.0;
   const effectiveRemaining = optimisticRemaining ?? (status?.taps_remaining ?? 0);
 
-  // ── パスワードゲート（早期リターン） ──
-  if (!tapAuthed) return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0a] gap-4">
-      <div className="text-4xl mb-2">⛏️</div>
-      <h1 className="text-white font-bold text-xl">Tap Mining</h1>
-      <p className="text-white/40 text-sm">パスワードを入力してください</p>
-      <input
-        type="password"
-        value={tapPw}
-        onChange={e => { setTapPw(e.target.value); setTapPwError(false); }}
-        onKeyDown={e => { if (e.key === "Enter") tryAuth(); }}
-        className="border border-white/20 bg-white/5 text-white rounded-xl px-4 py-2 text-sm w-64 text-center"
-        placeholder="パスワード"
-        autoFocus
-      />
-      {tapPwError && <p className="text-red-400 text-xs">パスワードが違います</p>}
-      <button
-        onClick={tryAuth}
-        className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold"
-      >
-        入室する
-      </button>
-    </div>
-  );
-
   return (
     <div className={`min-h-screen bg-[#0a0a0a] text-white${rareEffect ? " animate-pulse" : ""}`}>
     {/* グリッド外：fixed要素（モーダル・ticker） */}
@@ -350,7 +307,7 @@ export default function TapMiningPage() {
             <div className="text-sm text-white/70 space-y-3">
               <div>
                 <p className="font-bold text-white mb-1">■ 基本ルール</p>
-                <p>・1タップ = 3BP消費</p>
+                <p>・1タップ = 2BP消費</p>
                 <p>・1日最大500回まで</p>
                 <p>・毎日リセット</p>
               </div>
