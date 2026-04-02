@@ -7242,9 +7242,15 @@ function rumbleDailyResult_(params) {
   winners.sort(function(a, b) { return a.rank - b.rank; });
 
   // --- Status: ready only if all expected ranks are distributed ---
+  var rankSet = {};
+  winners.forEach(function(w) { rankSet[w.rank] = true; });
+  var allRanksPresent = true;
+  for (var r = 1; r <= expectedWinnerCount; r++) {
+    if (!rankSet[r]) { allRanksPresent = false; break; }
+  }
   var isReady = expectedWinnerCount > 0 &&
     winners.length === expectedWinnerCount &&
-    winners.every(function(w) { return w.rank >= 1 && w.rank <= expectedWinnerCount; });
+    allRanksPresent;
 
   if (isReady) {
     return json_({
