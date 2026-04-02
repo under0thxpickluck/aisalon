@@ -350,7 +350,7 @@ export default function TapMiningPage() {
             <div className="text-sm text-white/70 space-y-3">
               <div>
                 <p className="font-bold text-white mb-1">■ 基本ルール</p>
-                <p>・1タップ = 1BP消費</p>
+                <p>・1タップ = 3BP消費</p>
                 <p>・1日最大500回まで</p>
                 <p>・毎日リセット</p>
               </div>

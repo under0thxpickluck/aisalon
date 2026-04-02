@@ -6273,12 +6273,13 @@ function tapBatchPlay_(params) {
   }
   if (!userRow) return json_({ ok: false, error: "user_not_found" });
 
+  var BP_PER_TAP = 3;
   var currentBp = Number(userRow[aIdx["bp_balance"]] || 0);
-  var affordable = Math.min(processCount, Math.floor(currentBp));
+  var affordable = Math.min(processCount, Math.floor(currentBp / BP_PER_TAP));
   if (affordable <= 0) return json_({ ok: false, error: "insufficient_bp", bp: currentBp });
   processCount = affordable;
 
-  var bpCost = processCount;
+  var bpCost = processCount * BP_PER_TAP;
   var afterBp = Math.round((currentBp - bpCost) * 100) / 100;
 
   var REWARD_TABLE = [
