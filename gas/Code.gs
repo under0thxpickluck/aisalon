@@ -8917,3 +8917,8 @@ function setupRumbleTriggers_() {
 
   Logger.log("Rumble triggers set up successfully.");
 }
+
+/** Public wrapper — run this from the GAS editor dropdown to install time triggers. */
+function setupRumbleTriggers() {
+  setupRumbleTriggers_();
+}
