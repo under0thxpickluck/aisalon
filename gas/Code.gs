@@ -7072,11 +7072,11 @@ function rumbleDailyLottery_(params) {
   // 6. Lottery: rank 1 to winnerCount, one winner at a time
   for (var rank = 1; rank <= winnerCount; rank++) {
     // Always run RNG in sequence (deterministic replay for recovery)
-    var idx    = weightedSelect_(pool, rng); // consumes exactly 1 rng() call
-    var winner = pool[idx];
-    pool.splice(idx, 1); // remove from pool for next round
+    var poolIdx = weightedSelect_(pool, rng); // consumes exactly 1 rng() call
+    var winner  = pool[poolIdx];
+    pool.splice(poolIdx, 1); // remove from pool for next round
 
-    // If this rank is already distributed=true, skip grant (same seed = same winner)
+    // If this rank is already distributed=true, skip entirely
     var alreadyDone = existingRows.some(function(r) {
       return r.rank === rank && r.distributed;
     });
@@ -7089,45 +7089,57 @@ function rumbleDailyLottery_(params) {
     var displayName = displayNameMap[winner.user_id] || winner.user_id;
     var email       = emailMap[winner.user_id] || "";
 
-    // a. Write row to rumble_daily_result (distributed=false)
-    var rowData = [
-      dateStr, seedHex, rank, winner.user_id, displayName,
-      winner.rp, winner.weight, bpAmount, false, participants.length, nowJst
-    ];
+    // Check if row already exists for this rank (distributed=false = crash recovery)
+    // Re-read sheet to get accurate row numbers (appendRow in prior ranks shifts rows)
+    var rDataCur = resultSheet.getDataRange().getValues();
+    var rHCur    = rDataCur[0];
+    var rICur    = {};
+    rHCur.forEach(function(h, i) { rICur[h] = i; });
     var existingRowNum = -1;
-    for (var ei = 0; ei < existingRows.length; ei++) {
-      if (existingRows[ei].rank === rank) { existingRowNum = existingRows[ei].rowNum; break; }
-    }
-    if (existingRowNum === -1) {
-      resultSheet.appendRow(rowData);
-    } else {
-      resultSheet.getRange(existingRowNum, 1, 1, rowData.length).setValues([rowData]);
-    }
-    SpreadsheetApp.flush();
-
-    // b. Grant BP to winner
-    for (var k = 1; k < appliesData.length; k++) {
-      if (String(appliesData[k][aIdx["login_id"]]) === winner.user_id) {
-        var currentBp = Number(appliesData[k][aIdx["bp_balance"]] || 0);
-        var newBp     = Math.round((currentBp + bpAmount) * 100) / 100;
-        appliesSheet.getRange(k + 1, aIdx["bp_balance"] + 1).setValue(newBp);
-        appliesData[k][aIdx["bp_balance"]] = newBp; // update local cache
+    for (var ri2 = 1; ri2 < rDataCur.length; ri2++) {
+      if (String(rDataCur[ri2][rICur["date"]]) === dateStr &&
+          Number(rDataCur[ri2][rICur["rank"]]) === rank) {
+        existingRowNum = ri2 + 1;
         break;
       }
     }
-    SpreadsheetApp.flush();
 
-    // c. Record to wallet_ledger
-    appendWalletLedger_({
-      kind:     "rumble_daily_bp",
-      login_id: winner.user_id,
-      email:    email,
-      amount:   bpAmount,
-      memo:     dateStr + " 日次BP抽選 " + rank + "位",
-    });
+    var rowAlreadyWritten = existingRowNum !== -1;
 
-    // d. Mark distributed=true
-    // Re-read sheet to find final row number after potential appendRow
+    if (!rowAlreadyWritten) {
+      // a. Write row to rumble_daily_result (distributed=false) — new row
+      var rowData = [
+        dateStr, seedHex, rank, winner.user_id, displayName,
+        winner.rp, winner.weight, bpAmount, false, participants.length, nowJst
+      ];
+      resultSheet.appendRow(rowData);
+      SpreadsheetApp.flush();
+
+      // b. Grant BP to winner (only if row was freshly written)
+      for (var k = 1; k < appliesData.length; k++) {
+        if (String(appliesData[k][aIdx["login_id"]]) === winner.user_id) {
+          var currentBp = Number(appliesData[k][aIdx["bp_balance"]] || 0);
+          var newBp     = Math.round((currentBp + bpAmount) * 100) / 100;
+          appliesSheet.getRange(k + 1, aIdx["bp_balance"] + 1).setValue(newBp);
+          appliesData[k][aIdx["bp_balance"]] = newBp; // update local cache
+          break;
+        }
+      }
+      SpreadsheetApp.flush();
+
+      // c. Record to wallet_ledger
+      appendWalletLedger_({
+        kind:     "rumble_daily_bp",
+        login_id: winner.user_id,
+        email:    email,
+        amount:   bpAmount,
+        memo:     dateStr + " 日次BP抽選 " + rank + "位",
+      });
+    } else {
+      Logger.log("[rumbleDailyLottery_] rank=" + rank + " row exists (distributed=false), resuming from distributed=true step");
+    }
+
+    // d. Mark distributed=true (re-read sheet to get fresh row number)
     var rData2 = resultSheet.getDataRange().getValues();
     var rH2    = rData2[0];
     var rI2    = {};
