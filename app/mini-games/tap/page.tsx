@@ -519,7 +519,7 @@ export default function TapMiningPage() {
         </div>
       )}
 
-    </div>{/* 左カラム end */}
+    </div>
 
     {/* ── 右カラム（デスクトップ専用ログパネル） ── */}
     <div className="hidden lg:block py-0 sticky top-4 h-fit">
@@ -549,7 +549,7 @@ export default function TapMiningPage() {
       </div>
     </div>
 
-    </div>{/* グリッド end */}
-    </div>{/* outer end */}
+    </div>
+    </div>
   );
 }
