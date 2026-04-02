@@ -1,3 +1,5 @@
+// @deprecated: Use /api/minigames/tap/batch-play instead.
+// Kept for debug/fallback/rollback only. Do NOT call from production frontend.
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
