@@ -6417,7 +6417,7 @@ function ensureEquipmentCols_(sheet) {
 }
 
 function getWeekId_() {
-  var now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var now = new Date(); // GASタイムゾーンがAsia/Tokyo(JST)のため、手動オフセット不要
   var year = now.getFullYear();
   var startOfYear = new Date(year, 0, 1);
   var weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);

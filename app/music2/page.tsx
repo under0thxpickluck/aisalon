@@ -450,17 +450,22 @@ export default function Music2Page() {
       const data = await res.json();
 
       if (!data.ok) {
-        setErrorMsg(`エラー: ${data.error ?? "unknown"}`);
+        setErrorMsg(`エラー: ${data.error ?? "unknown"}${data.status ? ` (status: ${data.status})` : ""}`);
         setLoading(false);
         return;
       }
 
+      // すでにパイプライン進行中（二重クリック等）→ そのままポーリングへ
       setStep(2);
       pollRef.current = setTimeout(() => {}, 0);
       pollUntilCompleted(jobId);
     } catch {
-      setErrorMsg("ネットワークエラーが発生しました。");
-      setLoading(false);
+      // ネットワークエラーが発生してもサーバー側でパイプラインが継続している可能性があるため、
+      // jobId があればポーリングを継続して完了を検知する（履歴への保存を確実にする）
+      setInfoMsg("接続が一時的に途切れました。生成は継続中です...");
+      setStep(2);
+      pollRef.current = setTimeout(() => {}, 0);
+      pollUntilCompleted(jobId);
     }
   }
 
@@ -848,7 +853,7 @@ export default function Music2Page() {
 
               {/* ボタン群 */}
               <div className="mt-5 flex flex-col gap-2">
-                <button onClick={handleApproveStructure} className={btnPrimary}>
+                <button onClick={handleApproveStructure} disabled={loading} className={btnPrimary}>
                   これで曲を作る →
                 </button>
                 <p className="text-xs text-orange-400 text-center mt-2">

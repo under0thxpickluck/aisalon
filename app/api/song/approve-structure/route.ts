@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import os from "os";
 import path from "path";
 import fs from "fs";
-import { getJob, updateJob, type SongJob } from "../_jobStore";
+import { getJob, updateJob, type SongJob, type JobStatus } from "../_jobStore";
 import { BP_COSTS } from "@/app/lib/bp-config";
 import {
   ElevenLabsProvider,
@@ -462,6 +462,15 @@ export async function POST(req: Request) {
   const job = await getJob(String(jobId));
   if (!job) return NextResponse.json({ ok: false, error: "job_not_found" }, { status: 404 });
   if (job.status !== "structure_ready") {
+    // すでにパイプライン進行中 or 完了済みの場合は冪等処理（二重クリック対策）
+    const IN_PROGRESS_STATUSES: JobStatus[] = [
+      "generating_audio", "postprocessing", "uploading_result",
+      "transcribing_lyrics", "merging_lyrics", "quality_checking",
+      "regenerating_audio", "completed", "review_required",
+    ];
+    if (IN_PROGRESS_STATUSES.includes(job.status as JobStatus)) {
+      return NextResponse.json({ ok: true, status: job.status, alreadyInProgress: true });
+    }
     return NextResponse.json({ ok: false, error: "invalid_status", status: job.status }, { status: 400 });
   }
 
