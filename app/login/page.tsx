@@ -15,6 +15,54 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // パスワード忘れ
+  const [showForgotPw, setShowForgotPw] = useState(false);
+  const [forgotPwId, setForgotPwId] = useState("");
+  const [forgotPwLoading, setForgotPwLoading] = useState(false);
+  const [forgotPwMsg, setForgotPwMsg] = useState<string | null>(null);
+
+  // ID忘れ
+  const [showForgotId, setShowForgotId] = useState(false);
+  const [forgotIdEmail, setForgotIdEmail] = useState("");
+  const [forgotIdLoading, setForgotIdLoading] = useState(false);
+  const [forgotIdMsg, setForgotIdMsg] = useState<string | null>(null);
+
+  const onForgotPwSubmit = async () => {
+    setForgotPwMsg(null);
+    if (!forgotPwId.trim()) return;
+    setForgotPwLoading(true);
+    try {
+      await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: forgotPwId.trim() }),
+      });
+      setForgotPwMsg("登録済みのIDであれば、メールアドレスにパスワード再設定リンクを送信しました。");
+    } catch {
+      setForgotPwMsg("エラーが発生しました。しばらく待ってから再度お試しください。");
+    } finally {
+      setForgotPwLoading(false);
+    }
+  };
+
+  const onForgotIdSubmit = async () => {
+    setForgotIdMsg(null);
+    if (!forgotIdEmail.trim()) return;
+    setForgotIdLoading(true);
+    try {
+      await fetch("/api/auth/forgot-id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotIdEmail.trim() }),
+      });
+      setForgotIdMsg("登録済みのメールアドレスであれば、ログインIDを送信しました。");
+    } catch {
+      setForgotIdMsg("エラーが発生しました。しばらく待ってから再度お試しください。");
+    } finally {
+      setForgotIdLoading(false);
+    }
+  };
+
   const onSubmit = async () => {
     setErr(null);
     setLoading(true);
@@ -135,6 +183,93 @@ export default function LoginPage() {
             >
               {loading ? "確認中..." : "ログイン"}
             </button>
+
+            <div className="flex justify-center gap-4 text-xs text-slate-400">
+              <button
+                type="button"
+                onClick={() => { setShowForgotPw(!showForgotPw); setShowForgotId(false); }}
+                className="underline hover:text-slate-600"
+              >
+                パスワードを忘れた方
+              </button>
+              <span>|</span>
+              <button
+                type="button"
+                onClick={() => { setShowForgotId(!showForgotId); setShowForgotPw(false); }}
+                className="underline hover:text-slate-600"
+              >
+                IDを忘れた方
+              </button>
+            </div>
+
+            {/* パスワード再設定フォーム */}
+            {showForgotPw && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 grid gap-3">
+                <div className="text-xs font-semibold text-slate-600">パスワードの再設定</div>
+                <p className="text-xs text-slate-500">
+                  ログインIDまたはメールアドレスを入力してください。<br />
+                  登録済みの場合、パスワード再設定リンクをメールで送ります。
+                </p>
+                <input
+                  value={forgotPwId}
+                  onChange={(e) => setForgotPwId(e.target.value)}
+                  placeholder="ログインID またはメールアドレス"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                />
+                {forgotPwMsg && (
+                  <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs text-indigo-700">
+                    {forgotPwMsg}
+                  </div>
+                )}
+                <button
+                  onClick={onForgotPwSubmit}
+                  disabled={forgotPwLoading || !forgotPwId.trim()}
+                  className={[
+                    "w-full rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                    forgotPwLoading || !forgotPwId.trim()
+                      ? "bg-slate-200 text-slate-400"
+                      : "bg-indigo-600 text-white hover:opacity-95",
+                  ].join(" ")}
+                >
+                  {forgotPwLoading ? "送信中..." : "再設定メールを送る"}
+                </button>
+              </div>
+            )}
+
+            {/* ID再送フォーム */}
+            {showForgotId && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 grid gap-3">
+                <div className="text-xs font-semibold text-slate-600">ログインIDの確認</div>
+                <p className="text-xs text-slate-500">
+                  登録したメールアドレスを入力してください。<br />
+                  登録済みの場合、ログインIDをメールで送ります。
+                </p>
+                <input
+                  type="email"
+                  value={forgotIdEmail}
+                  onChange={(e) => setForgotIdEmail(e.target.value)}
+                  placeholder="登録したメールアドレス"
+                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                />
+                {forgotIdMsg && (
+                  <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs text-indigo-700">
+                    {forgotIdMsg}
+                  </div>
+                )}
+                <button
+                  onClick={onForgotIdSubmit}
+                  disabled={forgotIdLoading || !forgotIdEmail.trim()}
+                  className={[
+                    "w-full rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                    forgotIdLoading || !forgotIdEmail.trim()
+                      ? "bg-slate-200 text-slate-400"
+                      : "bg-indigo-600 text-white hover:opacity-95",
+                  ].join(" ")}
+                >
+                  {forgotIdLoading ? "送信中..." : "IDをメールで受け取る"}
+                </button>
+              </div>
+            )}
 
             <div className="text-center text-xs text-slate-400">
               不明な場合は代理店様へお問い合わせください。

@@ -2618,6 +2618,110 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // ✅ user_reset_request（ユーザー自身：パスワード再設定メールを送る）
+  // - loginId または email を受け取り、approved ユーザーならリセットメールを送信
+  // - adminKey 不要（ユーザー自身が呼ぶ）
+  // - ユーザーが存在しない場合もエラー内容を返さない（列挙攻撃対策）
+  // =========================================================
+  if (action === "user_reset_request") {
+    const inputId = str_(body.id);      // loginId or email
+    if (!inputId) return json_({ ok: false, error: "missing_id" });
+
+    let values = sheet.getDataRange().getValues();
+    let header = values[0];
+
+    ensureCols_(sheet, header, [
+      "email", "status", "login_id",
+      "reset_token", "reset_expires", "reset_used_at", "reset_sent_at",
+    ]);
+
+    values = sheet.getDataRange().getValues();
+    header = values[0];
+    const idx = indexMap_(header);
+    const rows = values.slice(1);
+
+    let hitRowIndex = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const loginId = str_(r[idx["login_id"]]);
+      const email   = str_(r[idx["email"]]);
+      if (inputId === loginId || inputId === email) {
+        hitRowIndex = i + 2;
+        break;
+      }
+    }
+
+    // 存在しない・未承認でも同じレスポンスを返す（列挙対策）
+    if (!hitRowIndex) return json_({ ok: true });
+    const status = str_(sheet.getRange(hitRowIndex, idx["status"] + 1).getValue());
+    if (status !== "approved") return json_({ ok: true });
+
+    const loginId2 = str_(sheet.getRange(hitRowIndex, idx["login_id"] + 1).getValue());
+    const email2   = str_(sheet.getRange(hitRowIndex, idx["email"] + 1).getValue());
+    if (!loginId2 || !email2) return json_({ ok: true });
+
+    const token   = genResetToken_();
+    const expires = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    sheet.getRange(hitRowIndex, idx["reset_token"]   + 1).setValue(token);
+    sheet.getRange(hitRowIndex, idx["reset_expires"]  + 1).setValue(expires);
+    sheet.getRange(hitRowIndex, idx["reset_used_at"]  + 1).setValue("");
+
+    sendResetMail_(email2, loginId2, token);
+    sheet.getRange(hitRowIndex, idx["reset_sent_at"] + 1).setValue(new Date());
+
+    return json_({ ok: true });
+  }
+
+  // =========================================================
+  // ✅ user_id_remind（ユーザー自身：loginID をメールで再送）
+  // - メールアドレスを受け取り、approved ユーザーなら loginId をメールで送信
+  // - adminKey 不要（ユーザー自身が呼ぶ）
+  // - ユーザーが存在しない場合もエラー内容を返さない（列挙攻撃対策）
+  // =========================================================
+  if (action === "user_id_remind") {
+    const emailIn = str_(body.email);
+    if (!emailIn) return json_({ ok: false, error: "missing_email" });
+
+    let values = sheet.getDataRange().getValues();
+    let header = values[0];
+
+    ensureCols_(sheet, header, ["email", "status", "login_id"]);
+
+    values = sheet.getDataRange().getValues();
+    header = values[0];
+    const idx = indexMap_(header);
+    const rows = values.slice(1);
+
+    let hitLoginId = "";
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const email  = str_(r[idx["email"]]);
+      const status = str_(r[idx["status"]]);
+      if (emailIn === email && status === "approved") {
+        hitLoginId = str_(r[idx["login_id"]]);
+        break;
+      }
+    }
+
+    // 存在しない場合も同じレスポンス（列挙対策）
+    if (hitLoginId) {
+      const subject = "【LIFAI】ログインID のご案内";
+      const mailBody =
+        "ご登録のメールアドレスへ、ログインIDをお送りします。\n\n" +
+        "ログインID：\n" +
+        hitLoginId +
+        "\n\n" +
+        "ログイン画面はこちら：\n" +
+        "https://lifai.vercel.app/login\n\n" +
+        "LIFAI公式";
+      MailApp.sendEmail({ to: emailIn, subject: subject, body: mailBody, name: "LIFAI公式" });
+    }
+
+    return json_({ ok: true });
+  }
+
+  // =========================================================
   // ✅ reset_resend（管理：初回パスワード設定メールの再送）
   // - 期限切れ/見逃し対応のための再送アクション（壊さない）
   // - adminKey 必須（安全）
@@ -3832,6 +3936,8 @@ function sendResetMail_(to, loginId, token) {
     loginId +
     "\n\n" +
     "このURLは1回のみ利用できます。\n\n" +
+    "パスワード設定後はこちらからログインできます：\n" +
+    "https://lifai.vercel.app/login\n\n" +
     "もしパスワードの設定がうまくできなかった場合は、公式LINEにてお名前とメールアドレスを添えてご連絡ください。\n" +
     "対応いたします。\n" +
     "https://lin.ee/VPo2xOn\n\n" +
