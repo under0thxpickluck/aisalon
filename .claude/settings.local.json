@@ -32,7 +32,11 @@
       "Bash(python -m json.tool)",
       "Read(//c/Users/unite/aisalon/**)",
       "Bash(winget install:*)",
-      "Bash(taskkill /PID 1202 /F)"
+      "Bash(taskkill /PID 1202 /F)",
+      "Bash(find /c/Users/unite/aisalon -name bp-config* -type f)",
+      "Bash(npm run:*)",
+      "Bash(claude --version)",
+      "Bash(claude plugins:*)"
     ]
   }
 }
