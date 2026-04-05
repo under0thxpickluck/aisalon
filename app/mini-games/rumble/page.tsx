@@ -61,6 +61,18 @@ type SpectatorData = {
   date?: string;
 };
 
+type DailyResultData = {
+  ok: boolean;
+  status: "pending" | "ready";
+  date: string;
+  participant_count: number;
+  winnerCount: number;
+  isToday: boolean;
+  participants?: Array<{ user_id: string; display_name: string }>;
+  replay_seed?: string;
+  winners?: Array<{ rank: number; user_id: string; display_name: string; bp_amount: number }>;
+};
+
 const RARITY_COLOR: Record<string, string> = {
   common:    "text-gray-400",
   rare:      "text-blue-400",
@@ -114,6 +126,9 @@ export default function RumblePage() {
   const [logCounter,         setLogCounter]         = useState(0);
   const [spectatorFetchedAt, setSpectatorFetchedAt] = useState<number | null>(null);
   const [spectatorDate,      setSpectatorDate]      = useState<string | null>(null);
+  const [dailyResult,        setDailyResult]        = useState<DailyResultData | null>(null);
+  const [dailyResultLoading, setDailyResultLoading] = useState(false);
+  const [showWinners,        setShowWinners]         = useState(false);
 
   useEffect(() => {
     const seen = localStorage.getItem("rumble_help_seen");
@@ -253,6 +268,18 @@ export default function RumblePage() {
       .finally(() => setSpectatorLoading(false));
   }, [tab, userId, spectatorData, spectatorFetchedAt, spectatorDate]);
 
+  // 日次抽選結果を取得（観戦タブ表示のたびにリフレッシュ）
+  useEffect(() => {
+    if (tab !== "観戦") return;
+    setDailyResultLoading(true);
+    setShowWinners(false);
+    fetch("/api/minigames/rumble/daily-result")
+      .then(r => r.json())
+      .then((d: DailyResultData) => { if (d.ok) setDailyResult(d); })
+      .catch(() => {})
+      .finally(() => setDailyResultLoading(false));
+  }, [tab]);
+
   const handleSetName = async () => {
     const trimmed = nameInput.trim();
     if (!userId || nameBusy) return;
@@ -312,6 +339,7 @@ export default function RumblePage() {
       } else if (event.type === "result") {
         addLog(event.text ?? "バトル終了！", "text-yellow-300");
         setSpectatorPhase("result");
+        setShowWinners(true);
       }
     }
     setIsPlaying(false);
@@ -823,23 +851,65 @@ export default function RumblePage() {
       {tab === "観戦" && (
         <div className="space-y-4">
 
-          {spectatorLoading && (
+          {/* ローディング */}
+          {(spectatorLoading || dailyResultLoading) && (
             <div className="text-center text-white/40 text-sm py-12">読み込み中...</div>
           )}
 
-          {!spectatorLoading && spectatorData?.status === "no_data" && (
-            <div className="bg-white/5 rounded-2xl p-8 text-center space-y-3">
-              <p className="text-4xl">⚔️</p>
-              <p className="font-bold text-white/60">本日のバトルデータがありません</p>
-              <p className="text-xs text-white/30">バトル参加後 または 19:00以降に確認できます</p>
-              <div className="bg-white/5 rounded-xl p-3 mt-4">
-                <p className="text-xs text-white/40 mb-1">次のランブルまで</p>
-                <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
+          {/* 抽選前（pending）：参加者一覧 */}
+          {!spectatorLoading && !dailyResultLoading && dailyResult?.status === "pending" && (
+            <div className="space-y-4">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-white/60">本日の参加者</p>
+                  <p className="text-xs text-white/40">{dailyResult.participant_count}人</p>
+                </div>
+                {dailyResult.participant_count === 0 ? (
+                  <p className="text-white/30 text-sm text-center py-4">まだ参加者がいません</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {(dailyResult.participants ?? []).map(p => (
+                      <span
+                        key={p.user_id}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                          p.user_id === userId
+                            ? "bg-gradient-to-r from-purple-600/40 to-blue-600/40 text-white border border-purple-500/50"
+                            : "bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {p.display_name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
+              <div className="bg-white/5 rounded-2xl p-4 text-center">
+                <p className="text-xs text-white/40">⏰ 抽選は19:00以降に実施されます</p>
+                <div className="mt-2">
+                  <p className="text-xs text-white/30 mb-1">次のランブルまで</p>
+                  <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setDailyResult(null);
+                  setDailyResultLoading(true);
+                  fetch("/api/minigames/rumble/daily-result")
+                    .then(r => r.json())
+                    .then((d: DailyResultData) => { if (d.ok) setDailyResult(d); })
+                    .catch(() => {})
+                    .finally(() => setDailyResultLoading(false));
+                }}
+                disabled={dailyResultLoading}
+                className="w-full py-2 rounded-xl font-bold text-xs bg-white/5 hover:bg-white/10 transition text-white/50 disabled:opacity-40"
+              >
+                {dailyResultLoading ? "取得中..." : "🔃 最新を取得"}
+              </button>
             </div>
           )}
 
-          {!spectatorLoading && spectatorData?.status === "ready" && (
+          {/* 抽選後（ready）：バトル演出 + 当選者発表 */}
+          {!spectatorLoading && !dailyResultLoading && dailyResult?.status === "ready" && (
             <>
               {/* 観戦ステータスカード */}
               <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
@@ -852,44 +922,44 @@ export default function RumblePage() {
                       </span>
                     ) : spectatorPhase === "result" ? (
                       <span className="text-xs font-black text-yellow-400">🏆 結果確定</span>
-                    ) : isAfter19Jst ? (
-                      <span className="text-xs text-white/40">本日の観戦データを準備中…</span>
                     ) : (
-                      <span className="text-xs text-white/40">参加受付中</span>
+                      <span className="text-xs text-white/40">本日の観戦データを準備中…</span>
                     )}
                   </div>
-                  <span className="text-xs text-white/40">参加者 {spectatorData.total}人</span>
+                  <span className="text-xs text-white/40">参加者 {dailyResult.participant_count}人</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <p className="text-xs text-white/40">生存中</p>
-                    <p className="text-xl font-black text-purple-400">
-                      {spectatorPlayers.filter(p => p.status !== "eliminated").length}
-                    </p>
+                {spectatorData?.status === "ready" && (
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-xs text-white/40">生存中</p>
+                      <p className="text-xl font-black text-purple-400">
+                        {spectatorPlayers.filter(p => p.status !== "eliminated").length}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-white/40">脱落</p>
+                      <p className="text-xl font-black text-red-400/70">
+                        {spectatorPlayers.filter(p => p.status === "eliminated").length}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-white/40">あなた</p>
+                      <p className={`text-sm font-black ${
+                        spectatorData.self
+                          ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
+                            ? "text-red-400"
+                            : "text-green-400"
+                          : "text-white/30"
+                      }`}>
+                        {spectatorData.self
+                          ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
+                            ? "脱落"
+                            : "生存中"
+                          : "未参加"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-white/40">脱落</p>
-                    <p className="text-xl font-black text-red-400/70">
-                      {spectatorPlayers.filter(p => p.status === "eliminated").length}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-white/40">あなた</p>
-                    <p className={`text-sm font-black ${
-                      spectatorData.self
-                        ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
-                          ? "text-red-400"
-                          : "text-green-400"
-                        : "text-white/30"
-                    }`}>
-                      {spectatorData.self
-                        ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
-                          ? "脱落"
-                          : "生存中"
-                        : "未参加"}
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* バトルログカード */}
@@ -914,7 +984,7 @@ export default function RumblePage() {
 
               {/* 再生ボタン群 */}
               <div className="flex flex-col gap-2">
-                {!isPlaying && spectatorPhase !== "result" && (
+                {!isPlaying && spectatorPhase !== "result" && spectatorData?.status === "ready" && (
                   <button
                     onClick={handleSpectatorPlay}
                     className="w-full py-4 rounded-xl font-black text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition"
@@ -922,10 +992,11 @@ export default function RumblePage() {
                     ⚔️ 観戦スタート
                   </button>
                 )}
-                {!isPlaying && spectatorPhase === "result" && (
+                {!isPlaying && spectatorPhase === "result" && spectatorData?.status === "ready" && (
                   <button
                     onClick={() => {
                       setBattleLogs([]);
+                      setShowWinners(false);
                       setSpectatorPlayers(spectatorData.players.map(p => ({ ...p, status: "alive" as const })));
                       handleSpectatorPlay();
                     }}
@@ -944,37 +1015,65 @@ export default function RumblePage() {
               </div>
 
               {/* 生存者一覧カード */}
-              <div className="bg-white/5 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-bold text-white/60">生存者</p>
-                  <p className="text-xs text-white/30">
-                    {spectatorPlayers.filter(p => p.status !== "eliminated").length} / {spectatorData.total}
-                  </p>
+              {spectatorData?.status === "ready" && (
+                <div className="bg-white/5 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold text-white/60">生存者</p>
+                    <p className="text-xs text-white/30">
+                      {spectatorPlayers.filter(p => p.status !== "eliminated").length} / {dailyResult.participant_count}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {spectatorPlayers.map(p => (
+                      <span
+                        key={p.id}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold transition-all duration-500 ${
+                          p.is_self
+                            ? p.status === "eliminated"
+                              ? "bg-red-900/40 text-red-400/60 line-through border border-red-500/20"
+                              : "bg-gradient-to-r from-purple-600/40 to-blue-600/40 text-white border border-purple-500/50"
+                            : p.status === "eliminated"
+                              ? "bg-white/3 text-white/20 line-through"
+                              : p.rank <= 10
+                                ? "bg-yellow-500/10 text-yellow-400/80 border border-yellow-500/20"
+                                : "bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {p.display_name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {spectatorPlayers.map(p => (
-                    <span
-                      key={p.id}
-                      className={`px-2 py-1 rounded-lg text-xs font-bold transition-all duration-500 ${
-                        p.is_self
-                          ? p.status === "eliminated"
-                            ? "bg-red-900/40 text-red-400/60 line-through border border-red-500/20"
-                            : "bg-gradient-to-r from-purple-600/40 to-blue-600/40 text-white border border-purple-500/50"
-                          : p.status === "eliminated"
-                            ? "bg-white/3 text-white/20 line-through"
-                            : p.rank <= 10
-                              ? "bg-yellow-500/10 text-yellow-400/80 border border-yellow-500/20"
-                              : "bg-white/10 text-white/60"
-                      }`}
-                    >
-                      {p.display_name}
-                    </span>
-                  ))}
+              )}
+
+              {/* 日次BP当選者発表（バトル演出後に表示） */}
+              {showWinners && dailyResult.winners && dailyResult.winners.length > 0 && (
+                <div className="bg-gradient-to-b from-yellow-500/10 to-transparent border border-yellow-500/30 rounded-2xl p-5">
+                  <p className="text-xs font-bold text-yellow-400/80 mb-4 tracking-widest text-center">🎰 日次BP抽選結果</p>
+                  <div className="space-y-2">
+                    {dailyResult.winners.map(w => (
+                      <div
+                        key={w.rank}
+                        className={`flex items-center justify-between px-3 py-2 rounded-xl ${
+                          w.rank === 1 ? "bg-yellow-500/20 border border-yellow-500/40" :
+                          w.rank === 2 ? "bg-slate-400/10 border border-slate-400/30" :
+                          w.rank === 3 ? "bg-amber-700/10 border border-amber-700/30" :
+                          "bg-white/5"
+                        }`}
+                      >
+                        <span className="text-sm font-bold text-white/80">
+                          {w.rank === 1 ? "🏆" : w.rank === 2 ? "🥈" : w.rank === 3 ? "🥉" : `${w.rank}位`}{" "}
+                          <span className={w.user_id === userId ? "text-purple-300" : ""}>{w.display_name}</span>
+                        </span>
+                        <span className="text-sm font-black text-yellow-400">+{w.bp_amount.toLocaleString()} BP</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 今週のランキング簡易 */}
-              {spectatorData.ranking.length > 0 && (
+              {spectatorData?.ranking && spectatorData.ranking.length > 0 && (
                 <div className="bg-white/5 rounded-2xl p-4">
                   <p className="text-xs font-bold text-white/60 mb-3">📊 今週ランキング TOP5</p>
                   <div className="space-y-1">

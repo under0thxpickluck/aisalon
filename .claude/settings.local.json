@@ -36,7 +36,8 @@
       "Bash(find /c/Users/unite/aisalon -name bp-config* -type f)",
       "Bash(npm run:*)",
       "Bash(claude --version)",
-      "Bash(claude plugins:*)"
+      "Bash(claude plugins:*)",
+      "Bash(grep -r \"import.*from.*components\" /c/Users/unitu/aisalon/app/music*.tsx /c/Users/unitu/aisalon/app/music/page.tsx)"
     ]
   }
 }
