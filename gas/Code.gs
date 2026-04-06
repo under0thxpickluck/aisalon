@@ -5580,6 +5580,49 @@ function doPost(e) {
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
     if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
     if (action === 'music_boost_admin_list') return musicBoostAdminList_(body);
+  // =========================================================
+  // narasu代理申請 submit
+  // =========================================================
+  if (action === "narasu_agency_submit") {
+    try {
+      var narasuSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("narasu_agency");
+      if (!narasuSheet) {
+        narasuSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("narasu_agency");
+        narasuSheet.appendRow([
+          "request_id", "created_at", "status",
+          "narasu_login_id", "narasu_password",
+          "audio_urls", "lyrics_text",
+          "jacket_image_url", "jacket_note",
+          "artist_name", "note",
+          "agreed_terms_version", "agreed_at",
+          "admin_memo"
+        ]);
+      }
+      var requestId = "NA-" + Date.now();
+      var now = new Date().toISOString();
+      narasuSheet.appendRow([
+        requestId,
+        now,
+        "submitted",
+        str_(body.narasu_login_id),
+        str_(body.narasu_password),
+        str_(body.audio_urls),
+        str_(body.lyrics_text),
+        str_(body.jacket_image_url),
+        str_(body.jacket_note),
+        str_(body.artist_name),
+        str_(body.note),
+        str_(body.agreed_terms_version),
+        str_(body.agreed_at),
+        ""
+      ]);
+      Logger.log("[narasu_agency_submit] saved: " + requestId);
+      return json_({ ok: true, requestId: requestId });
+    } catch (e) {
+      Logger.log("[narasu_agency_submit] error: " + String(e));
+      return json_({ ok: false, error: String(e) });
+    }
+  }
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
