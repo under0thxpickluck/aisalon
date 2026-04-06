@@ -3,9 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isGatePassed } from "@/lib/narasu-agency/storage";
+import { isGatePassed, saveDraft, loadDraft } from "@/lib/narasu-agency/storage";
 import { NARASU_TERMS_VERSION } from "@/lib/narasu-agency/constants";
-import { saveDraft, loadDraft } from "@/lib/narasu-agency/storage";
 
 const TERMS_TEXT = `
 narasu代理申請サービス 確認事項（${NARASU_TERMS_VERSION}）

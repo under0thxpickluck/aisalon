@@ -2,16 +2,23 @@
 import { NARASU_STORAGE_KEY, NARASU_GATE_KEY } from "./constants";
 import type { NarasuAgencyDraft } from "./types";
 
+const NARASU_PASSWORD_KEY = "lifai_narasu_pw_v1";
+
 export function saveDraft(draft: NarasuAgencyDraft): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(NARASU_STORAGE_KEY, JSON.stringify(draft));
+  const { narasuPassword, ...rest } = draft;
+  localStorage.setItem(NARASU_STORAGE_KEY, JSON.stringify(rest));
+  sessionStorage.setItem(NARASU_PASSWORD_KEY, narasuPassword);
 }
 
 export function loadDraft(): NarasuAgencyDraft | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(NARASU_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const rest = JSON.parse(raw);
+    const narasuPassword = sessionStorage.getItem(NARASU_PASSWORD_KEY) ?? "";
+    return { ...rest, narasuPassword };
   } catch {
     return null;
   }
@@ -20,6 +27,7 @@ export function loadDraft(): NarasuAgencyDraft | null {
 export function clearDraft(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(NARASU_STORAGE_KEY);
+  sessionStorage.removeItem(NARASU_PASSWORD_KEY);
 }
 
 export function setGatePassed(): void {

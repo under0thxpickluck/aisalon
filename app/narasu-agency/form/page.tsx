@@ -23,7 +23,7 @@ function emptyDraft(): NarasuAgencyDraft {
     artistName: "",
     note: "",
     agreedTermsVersion: NARASU_TERMS_VERSION,
-    agreedAt: new Date().toISOString(),
+    agreedAt: "",
   };
 }
 
