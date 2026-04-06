@@ -798,6 +798,12 @@ export default function Music2Page() {
                     💰 売却申請はこちら
                   </Link>
                 </div>
+                <Link
+                  href="/narasu-agency"
+                  className="mt-1.5 block w-full rounded-xl border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
+                >
+                  📋 narasu配信代理申請（代行サービス）
+                </Link>
               </div>
 
               {/* 生成ボタン */}
@@ -1005,6 +1011,12 @@ export default function Music2Page() {
                     💰 売却申請
                   </Link>
                 </div>
+                <Link
+                  href="/narasu-agency"
+                  className="mt-2 block w-full rounded-2xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
+                >
+                  📋 narasu配信代理申請（代行サービス）
+                </Link>
 
                 {/* 歌詞ダウンロード */}
                 {displayLyrics && (
