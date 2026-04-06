@@ -1523,6 +1523,67 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // deduct_ep（EP減算：narasu代理申請等の有料サービス利用時）
+  // - adminKey 認証必須（GAS_ADMIN_KEY）
+  // - loginId でユーザーを特定し ep_balance を減算
+  // - wallet_ledger に記録
+  // =========================================================
+  if (action === "deduct_ep") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const loginId = str_(body.loginId);
+    const amount  = Number(body.amount);
+
+    if (!loginId) return json_({ ok: false, error: "loginId_required" });
+    if (!Number.isFinite(amount) || amount <= 0) return json_({ ok: false, error: "invalid_amount" });
+
+    let values = sheet.getDataRange().getValues();
+    let header = values[0];
+
+    ensureCols_(sheet, header, ["login_id", "email", "ep_balance"]);
+
+    values = sheet.getDataRange().getValues();
+    header = values[0];
+
+    const idx = indexMap_(header);
+    const rows = values.slice(1);
+
+    let hitRowIndex = 0;
+    let hitEmail    = "";
+
+    for (let i = 0; i < rows.length; i++) {
+      if (str_(rows[i][idx["login_id"]]) === loginId) {
+        hitRowIndex = i + 2;
+        hitEmail    = str_(rows[i][idx["email"]]);
+        break;
+      }
+    }
+
+    if (!hitRowIndex) return json_({ ok: false, error: "not_found" });
+
+    const currentEp = Number(sheet.getRange(hitRowIndex, idx["ep_balance"] + 1).getValue() || 0);
+
+    if (currentEp < amount) {
+      return json_({ ok: false, error: "insufficient_ep", ep_balance: currentEp });
+    }
+
+    const newEp = currentEp - amount;
+    sheet.getRange(hitRowIndex, idx["ep_balance"] + 1).setValue(newEp);
+
+    appendWalletLedger_({
+      kind:     "deduct_ep",
+      login_id: loginId,
+      email:    hitEmail,
+      amount:   -amount,
+      memo:     "narasu代理申請EPポイント払い",
+    });
+
+    return json_({ ok: true, ep_balance: newEp });
+  }
+
+  // =========================================================
   // daily_login_bonus（ログインボーナス付与：1日1回）
   // - adminKey 認証必須（GAS_ADMIN_KEY）
   // - 連続ログイン日数に応じてBPを付与

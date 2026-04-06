@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getAuth } from "@/app/lib/auth";
 
-type PayState = "select" | "bp_processing" | "bp_done" | "bp_error";
+type PayState = "select" | "ep_processing" | "ep_done" | "ep_error";
 
 export default function NarasuCompletePage() {
   const [payState, setPayState] = useState<PayState>("select");
-  const [bpError, setBpError] = useState("");
+  const [epError, setEpError] = useState("");
   const [loginId, setLoginId] = useState("");
 
   useEffect(() => {
@@ -22,16 +22,16 @@ export default function NarasuCompletePage() {
     setLoginId(id);
   }, []);
 
-  async function handleBpPay() {
+  async function handleEpPay() {
     if (!loginId) {
-      setBpError("ログイン情報が取得できませんでした。再ログインしてください。");
-      setPayState("bp_error");
+      setEpError("ログイン情報が取得できませんでした。再ログインしてください。");
+      setPayState("ep_error");
       return;
     }
-    setPayState("bp_processing");
-    setBpError("");
+    setPayState("ep_processing");
+    setEpError("");
     try {
-      const res = await fetch("/api/narasu-agency/pay-bp", {
+      const res = await fetch("/api/narasu-agency/pay-ep", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ loginId }),
@@ -39,17 +39,17 @@ export default function NarasuCompletePage() {
       const data = await res.json();
       if (!data.ok) {
         const msg =
-          data.error === "insufficient_bp"
-            ? `BPが不足しています（現在 ${data.bp_balance ?? 0} BP）`
+          data.error === "insufficient_ep"
+            ? `EPが不足しています（現在 ${data.ep_balance ?? 0} EP）`
             : (data.error ?? "支払いに失敗しました");
-        setBpError(msg);
-        setPayState("bp_error");
+        setEpError(msg);
+        setPayState("ep_error");
       } else {
-        setPayState("bp_done");
+        setPayState("ep_done");
       }
     } catch {
-      setBpError("通信エラーが発生しました。再度お試しください。");
-      setPayState("bp_error");
+      setEpError("通信エラーが発生しました。再度お試しください。");
+      setPayState("ep_error");
     }
   }
 
@@ -64,16 +64,16 @@ export default function NarasuCompletePage() {
             続けて代行費用のお支払いをお選びください。
           </p>
 
-          {/* BP支払い完了 */}
-          {payState === "bp_done" && (
+          {/* EP支払い完了 */}
+          {payState === "ep_done" && (
             <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-              <p className="text-sm font-bold text-emerald-700">300BP の支払いが完了しました！</p>
+              <p className="text-sm font-bold text-emerald-700">300EP の支払いが完了しました！</p>
               <p className="mt-1 text-xs text-emerald-600">代理申請の手続きを進めます。完了次第ご連絡いたします。</p>
             </div>
           )}
 
           {/* 支払い選択 */}
-          {(payState === "select" || payState === "bp_error") && (
+          {(payState === "select" || payState === "ep_error") && (
             <div className="mt-6 space-y-3">
               <p className="text-xs font-bold text-slate-500">お支払い方法を選択してください</p>
 
@@ -85,30 +85,30 @@ export default function NarasuCompletePage() {
                 className="block w-full rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4 text-left transition hover:bg-sky-100"
               >
                 <p className="text-sm font-extrabold text-sky-800">💳 クレジットカード払い</p>
-                <p className="mt-0.5 text-xs text-sky-600">1,280円 — 公式LINEにてお支払い手続きをご案内します</p>
+                <p className="mt-0.5 text-xs text-sky-600">1,280円（税込）— 公式LINEにてお支払い手続きをご案内します</p>
               </a>
 
-              {/* BP */}
+              {/* EP */}
               <button
-                onClick={handleBpPay}
+                onClick={handleEpPay}
                 className="block w-full rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 text-left transition hover:bg-violet-100"
               >
-                <p className="text-sm font-extrabold text-violet-800">💎 BPポイント払い</p>
-                <p className="mt-0.5 text-xs text-violet-600">300BP消費 — 即時完了</p>
+                <p className="text-sm font-extrabold text-violet-800">💎 EPポイント払い</p>
+                <p className="mt-0.5 text-xs text-violet-600">300EP消費 — 即時完了</p>
               </button>
 
-              {bpError && (
+              {epError && (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                  <p className="text-xs text-rose-700">{bpError}</p>
+                  <p className="text-xs text-rose-700">{epError}</p>
                 </div>
               )}
             </div>
           )}
 
           {/* 処理中 */}
-          {payState === "bp_processing" && (
+          {payState === "ep_processing" && (
             <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4">
-              <p className="text-sm text-violet-700">BP支払い処理中…</p>
+              <p className="text-sm text-violet-700">EP支払い処理中…</p>
             </div>
           )}
 
