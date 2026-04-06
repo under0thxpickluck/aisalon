@@ -781,8 +781,27 @@ export default function Music2Page() {
               {/* ローディング中のプログレス */}
               {loading && <ProgressBar label="楽曲構成を生成しています…" />}
 
+              {/* リリース・申請案内 */}
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[11px] font-bold text-slate-500 mb-2">📋 作った曲はリリース・売却できます</p>
+                <div className="flex flex-col gap-1.5 sm:flex-row">
+                  <Link
+                    href="/music-release-guide"
+                    className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-100"
+                  >
+                    🎵 リリース申請方法を見る
+                  </Link>
+                  <Link
+                    href="/apply-sell"
+                    className="flex-1 rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
+                  >
+                    💰 売却申請はこちら
+                  </Link>
+                </div>
+              </div>
+
               {/* 生成ボタン */}
-              <div className="mt-6">
+              <div className="mt-4">
                 <button
                   onClick={handleStart}
                   disabled={!canStart}
