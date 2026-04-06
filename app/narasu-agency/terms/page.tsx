@@ -7,7 +7,7 @@ import { isGatePassed, saveDraft, loadDraft } from "@/lib/narasu-agency/storage"
 import { NARASU_TERMS_VERSION } from "@/lib/narasu-agency/constants";
 
 const TERMS_TEXT = `
-narasu代理申請サービス 確認事項（${NARASU_TERMS_VERSION}）
+narasu代理申請サービス 確認事項
 
 ■ サービス概要
 
