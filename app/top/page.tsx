@@ -501,7 +501,6 @@ export default function AppHomePage() {
       { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
       { id: "minigames", label: "LIFAI Arcade", icon: "🎮", color: "from-pink-500 to-purple-600",   href: "/mini-games", desc: "ミニゲームで報酬をゲット",                 badge: "New" },
       { id: "gift",      label: "GiftEP",       icon: "🎁", color: "from-emerald-400 to-teal-500",  href: "/gift",       desc: "EP贈与 · LIFAI内限定ギフトクレジット" },
-      { id: "narasu-agency",  label: "代理申請フォーム", icon: "📋", color: "from-teal-500 to-cyan-600",    href: "/narasu-agency",  desc: "narasu楽曲配信の代理申請サービス", badge: "New" },
     ],
     []
   );
