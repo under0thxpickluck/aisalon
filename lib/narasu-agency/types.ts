@@ -1,0 +1,25 @@
+// lib/narasu-agency/types.ts
+export type NarasuAgencyStatus =
+  | "draft"
+  | "submitted"
+  | "under_review"
+  | "completed"
+  | "rejected";
+
+export type AudioUrlEntry = {
+  id: string;
+  url: string;
+};
+
+export type NarasuAgencyDraft = {
+  narasuLoginId: string;
+  narasuPassword: string;
+  audioUrls: AudioUrlEntry[];
+  lyricsText: string;
+  jacketImageUrl: string;
+  jacketNote: string;
+  artistName: string;
+  note: string;
+  agreedTermsVersion: string;
+  agreedAt: string;
+};
