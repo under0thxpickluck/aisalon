@@ -91,8 +91,7 @@ export default function NarasuCompletePage() {
               {/* BP */}
               <button
                 onClick={handleBpPay}
-                disabled={payState === "bp_processing"}
-                className="block w-full rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 text-left transition hover:bg-violet-100 disabled:opacity-60"
+                className="block w-full rounded-2xl border border-violet-200 bg-violet-50 px-4 py-4 text-left transition hover:bg-violet-100"
               >
                 <p className="text-sm font-extrabold text-violet-800">💎 BPポイント払い</p>
                 <p className="mt-0.5 text-xs text-violet-600">300BP消費 — 即時完了</p>
