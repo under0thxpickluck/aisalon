@@ -21,6 +21,11 @@ function emptyDraft(): NarasuAgencyDraft {
     jacketImageUrl: "",
     jacketNote: "",
     artistName: "",
+    artistNameKana: "",
+    artistNameAlpha: "",
+    albumName: "",
+    albumNameKana: "",
+    albumNameAlpha: "",
     note: "",
     agreedTermsVersion: NARASU_TERMS_VERSION,
     agreedAt: "",
@@ -93,7 +98,17 @@ export default function NarasuFormPage() {
           <div className="mt-6 space-y-5">
             {/* narasuアカウント情報 */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-bold text-slate-500 mb-3">narasuアカウント情報（必須）</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold text-slate-500">narasuアカウント情報（必須）</p>
+                <a
+                  href="https://narasu.jp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-semibold text-indigo-600 hover:underline"
+                >
+                  まだ持っていない方はこちら →
+                </a>
+              </div>
               <div className="space-y-3">
                 <div>
                   <label className={labelCls}>ログインID（メールアドレス）<span className="text-rose-500"> *</span></label>
@@ -205,15 +220,73 @@ export default function NarasuFormPage() {
             </div>
 
             {/* アーティスト名 */}
-            <div>
-              <label className={labelCls}>アーティスト名 <span className="text-slate-400 font-normal">（任意）</span></label>
-              <input
-                type="text"
-                value={draft.artistName}
-                onChange={(e) => update("artistName", e.target.value)}
-                className={inputCls}
-                placeholder="例: LIFAI Studio"
-              />
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-500">申請アーティスト名 <span className="text-slate-400 font-normal">（任意）</span></p>
+              <div>
+                <label className={labelCls}>アーティスト名</label>
+                <input
+                  type="text"
+                  value={draft.artistName}
+                  onChange={(e) => update("artistName", e.target.value)}
+                  className={inputCls}
+                  placeholder="例: LIFAI Studio"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>アーティスト名（仮名）</label>
+                <input
+                  type="text"
+                  value={draft.artistNameKana}
+                  onChange={(e) => update("artistNameKana", e.target.value)}
+                  className={inputCls}
+                  placeholder="例: ライファイスタジオ"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>アーティスト名（アルファベット）</label>
+                <input
+                  type="text"
+                  value={draft.artistNameAlpha}
+                  onChange={(e) => update("artistNameAlpha", e.target.value)}
+                  className={inputCls}
+                  placeholder="例: LIFAI Studio"
+                />
+              </div>
+            </div>
+
+            {/* アルバム情報 */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-500">アルバム名 <span className="text-slate-400 font-normal">（任意）</span></p>
+              <div>
+                <label className={labelCls}>アルバム名</label>
+                <input
+                  type="text"
+                  value={draft.albumName}
+                  onChange={(e) => update("albumName", e.target.value)}
+                  className={inputCls}
+                  placeholder="例: First Light"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>アルバム名（仮名）</label>
+                <input
+                  type="text"
+                  value={draft.albumNameKana}
+                  onChange={(e) => update("albumNameKana", e.target.value)}
+                  className={inputCls}
+                  placeholder="例: ファーストライト"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>アルバム名（アルファベット）</label>
+                <input
+                  type="text"
+                  value={draft.albumNameAlpha}
+                  onChange={(e) => update("albumNameAlpha", e.target.value)}
+                  className={inputCls}
+                  placeholder="例: First Light"
+                />
+              </div>
             </div>
 
             {/* 補足事項 */}

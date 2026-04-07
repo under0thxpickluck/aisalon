@@ -93,6 +93,36 @@ export default function NarasuConfirmPage() {
                 <p className={valueCls}>{draft.artistName}</p>
               </div>
             )}
+            {draft.artistNameKana && (
+              <div className={rowCls}>
+                <p className={labelCls}>アーティスト名（仮名）</p>
+                <p className={valueCls}>{draft.artistNameKana}</p>
+              </div>
+            )}
+            {draft.artistNameAlpha && (
+              <div className={rowCls}>
+                <p className={labelCls}>アーティスト名（アルファベット）</p>
+                <p className={valueCls}>{draft.artistNameAlpha}</p>
+              </div>
+            )}
+            {draft.albumName && (
+              <div className={rowCls}>
+                <p className={labelCls}>アルバム名</p>
+                <p className={valueCls}>{draft.albumName}</p>
+              </div>
+            )}
+            {draft.albumNameKana && (
+              <div className={rowCls}>
+                <p className={labelCls}>アルバム名（仮名）</p>
+                <p className={valueCls}>{draft.albumNameKana}</p>
+              </div>
+            )}
+            {draft.albumNameAlpha && (
+              <div className={rowCls}>
+                <p className={labelCls}>アルバム名（アルファベット）</p>
+                <p className={valueCls}>{draft.albumNameAlpha}</p>
+              </div>
+            )}
             {draft.note && (
               <div className={rowCls}>
                 <p className={labelCls}>補足事項</p>
