@@ -69,12 +69,6 @@ export default function NarasuConfirmPage() {
                 <p key={e.id} className={valueCls}>{i + 1}. {e.url}</p>
               ))}
             </div>
-            {draft.lyricsText && (
-              <div className={rowCls}>
-                <p className={labelCls}>歌詞データ</p>
-                <p className={valueCls + " whitespace-pre-wrap text-xs"}>{draft.lyricsText}</p>
-              </div>
-            )}
             {draft.jacketImageUrl && (
               <div className={rowCls}>
                 <p className={labelCls}>ジャケット画像URL</p>

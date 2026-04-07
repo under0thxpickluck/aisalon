@@ -183,17 +183,6 @@ export default function NarasuFormPage() {
               {errors.audioUrls_items && <p className={errorCls}>{errors.audioUrls_items}</p>}
             </div>
 
-            {/* 歌詞 */}
-            <div>
-              <label className={labelCls}>歌詞データ <span className="text-slate-400 font-normal">（任意）</span></label>
-              <textarea
-                value={draft.lyricsText}
-                onChange={(e) => update("lyricsText", e.target.value)}
-                className={inputCls + " h-32 resize-none"}
-                placeholder="歌詞がない場合は空欄のままで構いません"
-              />
-            </div>
-
             {/* ジャケット情報 */}
             <div className="space-y-3">
               <div>
