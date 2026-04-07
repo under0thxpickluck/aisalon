@@ -183,31 +183,6 @@ export default function NarasuFormPage() {
               {errors.audioUrls_items && <p className={errorCls}>{errors.audioUrls_items}</p>}
             </div>
 
-            {/* ジャケット情報 */}
-            <div className="space-y-3">
-              <div>
-                <label className={labelCls}>ジャケット画像URL <span className="text-slate-400 font-normal">（任意）</span></label>
-                <input
-                  type="url"
-                  value={draft.jacketImageUrl}
-                  onChange={(e) => update("jacketImageUrl", e.target.value)}
-                  className={inputCls}
-                  placeholder="https://..."
-                />
-                {errors.jacketImageUrl && <p className={errorCls}>{errors.jacketImageUrl}</p>}
-              </div>
-              <div>
-                <label className={labelCls}>ジャケット補足メモ <span className="text-slate-400 font-normal">（任意）</span></label>
-                <input
-                  type="text"
-                  value={draft.jacketNote}
-                  onChange={(e) => update("jacketNote", e.target.value)}
-                  className={inputCls}
-                  placeholder="例: 白背景でシンプルなデザインにしてほしい"
-                />
-              </div>
-            </div>
-
             {/* アーティスト名 */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
               <p className="text-xs font-bold text-slate-500">申請アーティスト名 <span className="text-slate-400 font-normal">（任意）</span></p>

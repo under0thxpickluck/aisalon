@@ -69,18 +69,6 @@ export default function NarasuConfirmPage() {
                 <p key={e.id} className={valueCls}>{i + 1}. {e.url}</p>
               ))}
             </div>
-            {draft.jacketImageUrl && (
-              <div className={rowCls}>
-                <p className={labelCls}>ジャケット画像URL</p>
-                <p className={valueCls}>{draft.jacketImageUrl}</p>
-              </div>
-            )}
-            {draft.jacketNote && (
-              <div className={rowCls}>
-                <p className={labelCls}>ジャケット補足メモ</p>
-                <p className={valueCls}>{draft.jacketNote}</p>
-              </div>
-            )}
             {draft.artistName && (
               <div className={rowCls}>
                 <p className={labelCls}>アーティスト名</p>
