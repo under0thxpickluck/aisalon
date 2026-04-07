@@ -37,16 +37,16 @@ const BOOST_TUTORIAL_SLIDES = [
 ] as const;
 
 const PLANS = [
-  { id: "starter",  label: "Starter",  percent: 2,  price: 9,    slots: 10,  color: "from-gray-600 to-gray-500"     },
-  { id: "light",    label: "Light",    percent: 5,  price: 29,   slots: 25,  color: "from-blue-700 to-blue-500"     },
-  { id: "basic",    label: "Basic",    percent: 10, price: 59,   slots: 50,  color: "from-green-700 to-green-500"   },
-  { id: "growth",   label: "Growth",   percent: 15, price: 99,   slots: 75,  color: "from-teal-700 to-teal-500"     },
-  { id: "pro",      label: "Pro",      percent: 20, price: 149,  slots: 100, color: "from-purple-700 to-purple-500" },
-  { id: "advanced", label: "Advanced", percent: 25, price: 199,  slots: 125, color: "from-indigo-700 to-indigo-500" },
-  { id: "premium",  label: "Premium",  percent: 30, price: 299,  slots: 150, color: "from-pink-700 to-pink-500"     },
-  { id: "elite",    label: "Elite",    percent: 35, price: 499,  slots: 175, color: "from-orange-700 to-orange-500" },
-  { id: "master",   label: "Master",   percent: 40, price: 699,  slots: 200, color: "from-red-700 to-red-500"       },
-  { id: "legend",   label: "Legend",   percent: 45, price: 1000, slots: 225, color: "from-yellow-600 to-yellow-400" },
+  { id: "starter",  label: "Starter",  percent: 2,  price: 9,    slots: 10,  color: "from-gray-600 to-gray-500",     recommend: "推奨：8曲以上配信済みの方"   },
+  { id: "light",    label: "Light",    percent: 5,  price: 29,   slots: 25,  color: "from-blue-700 to-blue-500",     recommend: "推奨：16曲以上配信済みの方"  },
+  { id: "basic",    label: "Basic",    percent: 10, price: 59,   slots: 50,  color: "from-green-700 to-green-500",   recommend: "推奨：30曲以上配信済みの方"  },
+  { id: "growth",   label: "Growth",   percent: 15, price: 99,   slots: 75,  color: "from-teal-700 to-teal-500",     recommend: "推奨：50曲以上配信済みの方"  },
+  { id: "pro",      label: "Pro",      percent: 20, price: 149,  slots: 100, color: "from-purple-700 to-purple-500", recommend: "推奨：75曲以上配信済みの方"  },
+  { id: "advanced", label: "Advanced", percent: 25, price: 199,  slots: 125, color: "from-indigo-700 to-indigo-500", recommend: "推奨：100曲以上配信済みの方" },
+  { id: "premium",  label: "Premium",  percent: 30, price: 299,  slots: 150, color: "from-pink-700 to-pink-500",     recommend: "推奨：150曲以上配信済みの方" },
+  { id: "elite",    label: "Elite",    percent: 35, price: 499,  slots: 175, color: "from-orange-700 to-orange-500", recommend: "推奨：200曲以上配信済みの方" },
+  { id: "master",   label: "Master",   percent: 40, price: 699,  slots: 200, color: "from-red-700 to-red-500",       recommend: "推奨：300曲以上配信済みの方" },
+  { id: "legend",   label: "Legend",   percent: 45, price: 1000, slots: 225, color: "from-yellow-600 to-yellow-400", recommend: "推奨：500曲以上配信済みの方" },
 ];
 
 type BoostStatus = {
@@ -259,6 +259,7 @@ export default function MusicBoostPage() {
                   <div>
                     <p className="font-bold">{plan.label}</p>
                     <p className="text-xs text-white/40">{plan.slots}枠使用</p>
+                    <p className="text-[10px] text-purple-300/70 mt-0.5">{plan.recommend}</p>
                   </div>
                 </div>
                 <div className="text-right">
