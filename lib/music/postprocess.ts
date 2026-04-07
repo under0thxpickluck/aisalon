@@ -82,15 +82,14 @@ export async function runPostprocess(params: {
   const filterChain = buildFilterChain(p);
 
   // 出力パスを /tmp に生成
-  const outputPath = path.join(os.tmpdir(), `${jobId}_final.mp3`);
+  const outputPath = path.join(os.tmpdir(), `${jobId}_final.wav`);
 
   const ffmpegPath = getFfmpegPath();
   const args = [
     "-y",            // overwrite if exists
     "-i", inputPath,
     "-af", filterChain,
-    "-c:a", "libmp3lame",
-    "-q:a", "2",     // ~190kbps VBR
+    "-c:a", "pcm_s16le",
     "-ar", "44100",
     outputPath,
   ];

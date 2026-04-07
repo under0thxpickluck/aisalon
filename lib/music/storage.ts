@@ -79,8 +79,8 @@ export async function uploadRawAudio(
   audioBuffer: ArrayBuffer,
   jobId: string
 ): Promise<string | null> {
-  const key = `songs/${jobId}/raw.mp3`;
-  return uploadBuffer(Buffer.from(audioBuffer), key, "audio/mpeg");
+  const key = `songs/${jobId}/raw.wav`;
+  return uploadBuffer(Buffer.from(audioBuffer), key, "audio/wav");
 }
 
 /** final 音源（ファイルパス）を R2 に保存 */
@@ -88,8 +88,8 @@ export async function uploadFinalAudio(
   filePath: string,
   jobId: string
 ): Promise<string | null> {
-  const key = `songs/${jobId}/final.mp3`;
-  return uploadFile(filePath, key, "audio/mpeg");
+  const key = `songs/${jobId}/final.wav`;
+  return uploadFile(filePath, key, "audio/wav");
 }
 
 /** analysis JSON を R2 に保存 */

@@ -191,7 +191,7 @@ export class ElevenLabsProvider implements MusicProvider {
       vocalMode: input.vocalMode,
     })
 
-    const res = await fetch("https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128", {
+    const res = await fetch("https://api.elevenlabs.io/v1/music?output_format=pcm_44100", {
       method: "POST",
       headers: {
         "xi-api-key":   this.apiKey,
@@ -250,12 +250,12 @@ export async function uploadToR2(
       credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
     })
 
-    const key = `music/${userId}/${jobId}/final.mp3`
+    const key = `music/${userId}/${jobId}/final.wav`
     await s3.send(new PutObjectCommand({
       Bucket:      bucket,
       Key:         key,
       Body:        Buffer.from(audioBuffer),
-      ContentType: "audio/mpeg",
+      ContentType: "audio/wav",
     }))
 
     console.log(`[R2] Uploaded: ${key}`)

@@ -53,8 +53,8 @@ async function generateAudioAttempt(
   const { attemptNum = 1, maxChorusRepeats = 2 } = opts;
   const isPro = !!prompt.isPro;
 
-  const rawTempPath   = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_raw.mp3`);
-  const finalTempPath = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_final.mp3`);
+  const rawTempPath   = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_raw.wav`);
+  const finalTempPath = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_final.wav`);
 
   // anchorWords / hookLines を取得
   let anchorWords: string[] = [];
