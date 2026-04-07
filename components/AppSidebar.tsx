@@ -4,36 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getAuth } from "@/app/lib/auth";
 
-type MusicHistoryEntry = {
-  jobId: string;
-  title: string;
-  audioUrl: string;
-  downloadUrl: string;
-  lyrics: string;
-  createdAt: string;
-};
-
 type Props = {
-  musicHistory?: MusicHistoryEntry[];
   activePage?: string;
 };
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  } catch { return ""; }
-}
-
-function downloadFile(url: string, filename: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.target = "_blank";
-  a.click();
-}
-
-export function AppSidebar({ musicHistory = [], activePage }: Props) {
+export function AppSidebar({ activePage }: Props) {
   const [bp, setBp] = useState<number | null>(null);
   const [ep, setEp] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
@@ -116,46 +91,6 @@ export function AppSidebar({ musicHistory = [], activePage }: Props) {
         </nav>
       </div>
 
-      {/* 最近の曲履歴 */}
-      {musicHistory.length > 0 && (
-        <div className="rounded-[18px] border border-slate-200 bg-white p-3 shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2 px-1">最近の曲</p>
-          <div className="flex flex-col gap-2">
-            {musicHistory.map((entry) => (
-              <div key={entry.jobId} className="rounded-xl border border-slate-100 bg-slate-50 p-2.5">
-                <p className="text-[11px] font-bold text-slate-800 truncate" title={entry.title}>
-                  {entry.title || "無題"}
-                </p>
-                <p className="mt-0.5 text-[10px] text-slate-400">{formatDate(entry.createdAt)}</p>
-                <audio controls src={entry.audioUrl} className="mt-1.5 w-full" style={{ height: "28px" }} />
-                <div className="mt-1.5 flex gap-1">
-                  <button
-                    onClick={() => downloadFile(entry.downloadUrl, `${entry.title || "song"}.mp3`)}
-                    className="flex-1 rounded-lg border border-indigo-200 bg-white py-1 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50"
-                  >
-                    MP3
-                  </button>
-                  {entry.lyrics && (
-                    <button
-                      onClick={() => {
-                        const blob = new Blob([`${entry.title}\n\n${entry.lyrics}`], { type: "text/plain;charset=utf-8" });
-                        const a = document.createElement("a");
-                        a.href = URL.createObjectURL(blob);
-                        a.download = `${entry.title || "lyrics"}_lyrics.txt`;
-                        a.click();
-                        URL.revokeObjectURL(a.href);
-                      }}
-                      className="flex-1 rounded-lg border border-slate-200 bg-white py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
-                    >
-                      歌詞
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </aside>
   );
 }

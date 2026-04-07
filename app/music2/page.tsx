@@ -70,7 +70,8 @@ const TUTORIAL_SLIDES = [
 // ── 履歴 ─────────────────────────────────────────────────────────────────────
 
 const HISTORY_KEY = "lifai_music2_history_v1";
-const HISTORY_MAX = 5;
+const HISTORY_MAX = 50;
+const HISTORY_EXPIRE_DAYS = 31;
 
 type MusicHistoryEntry = {
   jobId: string;
@@ -79,20 +80,29 @@ type MusicHistoryEntry = {
   downloadUrl: string;
   lyrics: string;
   createdAt: string; // ISO string
+  expiresAt?: string; // ISO string (31日後)
 };
 
 function loadHistory(): MusicHistoryEntry[] {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const all: MusicHistoryEntry[] = raw ? JSON.parse(raw) : [];
+    const now = Date.now();
+    return all.filter((e) =>
+      !e.expiresAt || new Date(e.expiresAt).getTime() > now
+    );
   } catch {
     return [];
   }
 }
 
 function saveToHistory(entry: MusicHistoryEntry): MusicHistoryEntry[] {
-  const prev = loadHistory().filter((e) => e.jobId !== entry.jobId);
-  const next = [entry, ...prev].slice(0, HISTORY_MAX);
+  const expiresAt = new Date(
+    Date.now() + HISTORY_EXPIRE_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const withExpiry = { ...entry, expiresAt };
+  const prev = loadHistory().filter((e) => e.jobId !== withExpiry.jobId);
+  const next = [withExpiry, ...prev].slice(0, HISTORY_MAX);
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
   } catch {}
@@ -113,7 +123,7 @@ function formatDate(iso: string): string {
 function downloadAudio(url: string, title: string) {
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${title || "lifai_song"}_${Date.now()}.mp3`;
+  a.download = `${title || "lifai_song"}_${Date.now()}.wav`;
   a.target = "_blank";
   a.click();
 }
@@ -163,7 +173,7 @@ export default function Music2Page() {
 
   // 履歴
   const [history, setHistory] = useState<MusicHistoryEntry[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
 
   // チュートリアル (null=非表示, 0〜3=スライド番号)
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
@@ -567,22 +577,7 @@ export default function Music2Page() {
       <div className="mx-auto max-w-[1100px] px-4 py-10 lg:flex lg:gap-5 lg:items-start">
         {/* 左サイドバー（共通） */}
         <div className="hidden lg:block">
-          <AppSidebar musicHistory={history} activePage="/music2" />
-        </div>
-        {/* モバイル用折りたたみ履歴ボタン */}
-        <div className="lg:hidden mb-3">
-          <button
-            onClick={() => setHistoryOpen((v) => !v)}
-            className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-          >
-            <span>🎵 最近の曲 ({history.length})</span>
-            <span>{historyOpen ? "▲" : "▼"}</span>
-          </button>
-          {historyOpen && (
-            <div className="mt-2">
-              <AppSidebar musicHistory={history} activePage="/music2" />
-            </div>
-          )}
+          <AppSidebar activePage="/music2" />
         </div>
 
         {/* メインカード */}
@@ -985,7 +980,7 @@ export default function Music2Page() {
                       onClick={() => downloadAudio(downloadUrl, resultTitle)}
                       className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
                     >
-                      MP3をダウンロード
+                      WAVをダウンロード
                     </button>
                   )}
                   <button
@@ -1069,6 +1064,68 @@ export default function Music2Page() {
             </>
           )}
         </div>
+
+        {/* ── 生成ログ ────────────────────────────────────────────── */}
+        {history.length > 0 && (
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-extrabold text-slate-700">🎵 生成ログ（{history.length}件）</h2>
+              <p className="text-[11px] text-slate-400">ログは31日後に自動的に削除されます</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {history.map((entry) => (
+                <div key={entry.jobId} className="rounded-[18px] border border-slate-200 bg-white p-3.5 shadow-sm">
+                  <p className="text-[12px] font-bold text-slate-800 truncate" title={entry.title}>
+                    {entry.title || "無題"}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">{formatDate(entry.createdAt)}</p>
+                  <audio controls src={entry.audioUrl} className="mt-2 w-full" style={{ height: "32px" }} />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => downloadAudio(entry.downloadUrl, entry.title)}
+                      className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50 transition"
+                    >
+                      WAV
+                    </button>
+                    {entry.lyrics && (
+                      <button
+                        onClick={() => {
+                          const blob = new Blob(
+                            [`${entry.title}\n\n${entry.lyrics}`],
+                            { type: "text/plain;charset=utf-8" }
+                          );
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `${entry.title || "lyrics"}_lyrics.txt`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                        }}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50 transition"
+                      >
+                        歌詞
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(entry.downloadUrl).then(() => {
+                          setCopiedJobId(entry.jobId);
+                          setTimeout(() => setCopiedJobId(null), 2000);
+                        });
+                      }}
+                      className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition ${
+                        copiedJobId === entry.jobId
+                          ? "border-green-300 bg-green-50 text-green-600"
+                          : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      {copiedJobId === entry.jobId ? "コピー済み✓" : "URLコピー"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
