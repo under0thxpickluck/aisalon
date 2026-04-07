@@ -2728,7 +2728,8 @@ function handle_(key, body) {
     sheet.getRange(hitRowIndex, idx["reset_expires"]  + 1).setValue(expires);
     sheet.getRange(hitRowIndex, idx["reset_used_at"]  + 1).setValue("");
 
-    sendResetMail_(email2, loginId2, token);
+    const myRefCode2 = idx["my_ref_code"] !== undefined ? str_(sheet.getRange(hitRowIndex, idx["my_ref_code"] + 1).getValue()) : "";
+    sendResetMail_(email2, loginId2, token, myRefCode2);
     sheet.getRange(hitRowIndex, idx["reset_sent_at"] + 1).setValue(new Date());
 
     return json_({ ok: true });
@@ -2861,7 +2862,8 @@ function handle_(key, body) {
     sheet.getRange(hitRowIndex, idx["reset_expires"] + 1).setValue(expires);
     sheet.getRange(hitRowIndex, idx["reset_used_at"] + 1).setValue("");
 
-    sendResetMail_(email2, loginId2, token);
+    const myRefCodeResend = idx["my_ref_code"] !== undefined ? str_(sheet.getRange(hitRowIndex, idx["my_ref_code"] + 1).getValue()) : "";
+    sendResetMail_(email2, loginId2, token, myRefCodeResend);
     sheet.getRange(hitRowIndex, idx["reset_sent_at"] + 1).setValue(new Date());
 
     return json_({ ok: true });
@@ -3404,7 +3406,7 @@ function approveRowCore5000_(ss5000, applySheet, header, idx, rowIndex, reason) 
   let resetSent5000 = false;
   if (!sentAt5000) {
     try {
-      sendResetMail_(email5000, loginId5000, token5000);
+      sendResetMail_(email5000, loginId5000, token5000, myRefCode5000);
       applySheet.getRange(rowIndex, idx["reset_sent_at"] + 1).setValue(new Date());
       if (idx["mail_error"] !== undefined) {
         applySheet.getRange(rowIndex, idx["mail_error"] + 1).setValue("");
@@ -3561,7 +3563,7 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
         sheet.getRange(rowIndex, idx["reset_used_at"] + 1).setValue("");
         Logger.log("[approveRowCore_/already_approved] resending mail: to=" + email + " loginId=" + existingLoginId);
         // MailApp エラーはここで throw → outer catch で { ok: false, error } が返る
-        sendResetMail_(email, existingLoginId, newToken);
+        sendResetMail_(email, existingLoginId, newToken, existingMyRefCode);
         sheet.getRange(rowIndex, idx["reset_sent_at"] + 1).setValue(new Date());
         if (idx["mail_error"] !== undefined) sheet.getRange(rowIndex, idx["mail_error"] + 1).setValue("");
         Logger.log("[approveRowCore_/already_approved] mail sent OK: to=" + email);
@@ -3721,7 +3723,7 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
     if (!sentAt) {
       Logger.log("[approveRowCore_] sending mail: to=" + email + " loginId=" + loginId + " note=" + note);
       try {
-        sendResetMail_(email, loginId, token);
+        sendResetMail_(email, loginId, token, myRefCode);
         sheet.getRange(rowIndex, idx["reset_sent_at"] + 1).setValue(new Date());
         if (idx["mail_error"] !== undefined) sheet.getRange(rowIndex, idx["mail_error"] + 1).setValue("");
         resetSent = true;
@@ -3999,7 +4001,7 @@ function parseMoneyLike_(v) {
 // RESET MAIL
 // ==============================
 
-function sendResetMail_(to, loginId, token) {
+function sendResetMail_(to, loginId, token, myRefCode) {
   // ✅ デバッグログ（GAS実行ログで確認可能）
   Logger.log("[sendResetMail_] called: to=" + to + " loginId=" + loginId + " tokenLen=" + (token ? token.length : 0));
 
@@ -4046,7 +4048,8 @@ function sendResetMail_(to, loginId, token) {
     "もしパスワードの設定がうまくできなかった場合は、公式LINEにてお名前とメールアドレスを添えてご連絡ください。\n" +
     "対応いたします。\n" +
     "https://lin.ee/VPo2xOn\n\n" +
-    "LIFAI公式";
+    "LIFAI公式" +
+    (myRefCode ? "\n\n--------------------\nあなたの紹介コード：" + myRefCode + "\n友人をLIFAIに紹介する際にお使いください。\n--------------------" : "");
 
   Logger.log('[sendMail] to=' + to);
   try {
