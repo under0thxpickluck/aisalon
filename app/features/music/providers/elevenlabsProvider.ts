@@ -173,6 +173,31 @@ export function buildElevenLabsProPrompt(input: MusicGenerateInput): string {
   return parts.filter(Boolean).join(", ")
 }
 
+/** ElevenLabs の pcm_44100 出力（生PCM）を RIFF/WAV コンテナにラップする */
+function pcmToWav(pcmData: ArrayBuffer, sampleRate = 44100, numChannels = 2, bitsPerSample = 16): ArrayBuffer {
+  const dataSize   = pcmData.byteLength
+  const byteRate   = sampleRate * numChannels * (bitsPerSample / 8)
+  const blockAlign = numChannels * (bitsPerSample / 8)
+  const header     = Buffer.alloc(44)
+
+  header.write("RIFF",  0, "ascii")
+  header.writeUInt32LE(36 + dataSize, 4)
+  header.write("WAVE",  8, "ascii")
+  header.write("fmt ", 12, "ascii")
+  header.writeUInt32LE(16,           16)  // fmt chunk size
+  header.writeUInt16LE(1,            20)  // PCM format
+  header.writeUInt16LE(numChannels,  22)
+  header.writeUInt32LE(sampleRate,   24)
+  header.writeUInt32LE(byteRate,     28)
+  header.writeUInt16LE(blockAlign,   32)
+  header.writeUInt16LE(bitsPerSample,34)
+  header.write("data", 36, "ascii")
+  header.writeUInt32LE(dataSize,     40)
+
+  const out = Buffer.concat([header, Buffer.from(pcmData)])
+  return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)
+}
+
 export class ElevenLabsProvider implements MusicProvider {
   name = "elevenlabs"
   private apiKey: string
@@ -212,17 +237,20 @@ export class ElevenLabsProvider implements MusicProvider {
       throw new Error(`elevenlabs_api_error: ${res.status} ${errText}`)
     }
 
-    const audioBuffer = await res.arrayBuffer()
-    if (!audioBuffer || audioBuffer.byteLength === 0) {
+    const pcmBuffer = await res.arrayBuffer()
+    if (!pcmBuffer || pcmBuffer.byteLength === 0) {
       throw new Error("elevenlabs_empty_response")
     }
 
-    console.log(`[ElevenLabs] Generation succeeded`, { audioBytes: audioBuffer.byteLength })
+    // pcm_44100 はヘッダなし生PCM（stereo, 16-bit, 44100 Hz）のため WAV コンテナにラップ
+    const audioBuffer = pcmToWav(pcmBuffer)
+
+    console.log(`[ElevenLabs] Generation succeeded`, { pcmBytes: pcmBuffer.byteLength, wavBytes: audioBuffer.byteLength })
 
     return {
       provider:    "elevenlabs",
       audioBuffer,
-      rawResponse: { bytes: audioBuffer.byteLength },
+      rawResponse: { bytes: pcmBuffer.byteLength },
     }
   }
 }
