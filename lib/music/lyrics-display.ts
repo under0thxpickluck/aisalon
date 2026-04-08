@@ -184,7 +184,7 @@ const SRC_CORRECT_THRESH = 0.70; // 元歌詞を採用する類似度の閾値
 // 捨てる audio_event（歌・ボーカルを示すもの）
 const DISCARD_EVENT = /^\[(歌|song|music|vocal|speech)\]$/i;
 // 保持する audio_event（間奏・インスト）
-const KEEP_EVENT    = /^\[(間奏|instrumental|interlude)\]$/i;
+const KEEP_EVENT    = /^\[(間奏|ギターソロ|ソロ|instrumental|interlude)\]$/i;
 
 /**
  * lyrics_timestamps_json から displayLyrics を再構築する。
