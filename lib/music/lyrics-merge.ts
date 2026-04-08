@@ -1,6 +1,6 @@
 // lib/music/lyrics-merge.ts
 
-import { finalizeDisplayLyrics } from "./lyrics-display";
+import { finalizeDisplayLyrics, buildDisplayLyricsFromTimestamps } from "./lyrics-display";
 
 export type MergeResult = {
   displayLyrics: string;
@@ -35,14 +35,36 @@ export function mergeLyricsForDisplay(params: {
   anchorWords?: string[];
   hookLines?: string[];
   jobId?: string;
+  timestampsJson?: string;
 }): MergeResult {
-  const { singableLyrics, asrLyrics, score, repeatScore = 0, jobId } = params;
+  const { singableLyrics, asrLyrics, score, repeatScore = 0, jobId, timestampsJson } = params;
 
   // merged の生成: singable と asr を行単位でブレンド
   const mergedLyrics = buildMergedLyrics(singableLyrics, asrLyrics, score);
 
-  // displayLyrics / lyricsSource は新ロジックで一意に決定する
-  const { displayLyrics, lyricsSource } = finalizeDisplayLyrics(singableLyrics, asrLyrics, jobId);
+  // displayLyrics: timestamps ベース再構築を優先し、失敗時は既存ロジックへフォールバック
+  const tag = jobId ? `[merge][jobId=${jobId}]` : "[merge]";
+  let displayLyrics: string;
+  let lyricsSource: "singable" | "asr_merged" | "manual";
+
+  if (timestampsJson) {
+    const tsDisplay = buildDisplayLyricsFromTimestamps(timestampsJson, singableLyrics);
+    if (tsDisplay && tsDisplay.trim().length > 0) {
+      displayLyrics = tsDisplay;
+      lyricsSource  = "asr_merged";
+      console.log(`${tag} displayLyrics=timestamps len=${tsDisplay.length}`);
+    } else {
+      const fallback = finalizeDisplayLyrics(singableLyrics, asrLyrics, jobId);
+      displayLyrics  = fallback.displayLyrics;
+      lyricsSource   = fallback.lyricsSource;
+      console.log(`${tag} displayLyrics=fallback(textMerge) reason=timestamps_empty`);
+    }
+  } else {
+    const fallback = finalizeDisplayLyrics(singableLyrics, asrLyrics, jobId);
+    displayLyrics  = fallback.displayLyrics;
+    lyricsSource   = fallback.lyricsSource;
+    console.log(`${tag} displayLyrics=fallback(textMerge) reason=no_timestamps`);
+  }
 
   // Case A: 高品質
   if (score >= 90 && repeatScore < 15) {

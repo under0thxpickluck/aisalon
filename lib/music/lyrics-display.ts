@@ -167,6 +167,111 @@ export function mergeSingableWithAsr(
   };
 }
 
+// ── タイムスタンプから displayLyrics を再構築 ─────────────────────────────────
+
+type TimestampWord = {
+  type: "word" | "spacing" | "audio_event";
+  text: string;
+  start?: number;
+  end?: number;
+  logprob?: number;
+};
+
+const GAP_THRESHOLD_SEC  = 1.4;  // この秒数以上の無音で改行
+const MIN_LOGPROB        = -3.0; // これ未満の確信度は除外
+const SRC_CORRECT_THRESH = 0.70; // 元歌詞を採用する類似度の閾値
+
+// 捨てる audio_event（歌・ボーカルを示すもの）
+const DISCARD_EVENT = /^\[(歌|song|music|vocal|speech)\]$/i;
+// 保持する audio_event（間奏・インスト）
+const KEEP_EVENT    = /^\[(間奏|instrumental|interlude)\]$/i;
+
+/**
+ * lyrics_timestamps_json から displayLyrics を再構築する。
+ * 失敗時は null を返す（呼び出し側でフォールバック）。
+ */
+export function buildDisplayLyricsFromTimestamps(
+  timestampsJson: string,
+  sourceLyrics?: string
+): string | null {
+  let tokens: TimestampWord[];
+  try {
+    const parsed = JSON.parse(timestampsJson);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    tokens = parsed as TimestampWord[];
+  } catch {
+    return null;
+  }
+
+  const lines: string[] = [];
+  let currentWords: string[] = [];
+  let prevEnd: number | null = null;
+
+  const flushLine = () => {
+    const line = currentWords.join("").trim();
+    if (line.length > 1 && !/^[\s\W]+$/.test(line)) lines.push(line);
+    currentWords = [];
+  };
+
+  for (const token of tokens) {
+    if (token.type === "spacing") continue;
+
+    if (token.type === "audio_event") {
+      const t = (token.text ?? "").trim();
+      if (KEEP_EVENT.test(t)) {
+        flushLine();
+        lines.push("[間奏]");
+      }
+      // DISCARD_EVENT もその他の audio_event も無視
+      prevEnd = token.end ?? prevEnd;
+      continue;
+    }
+
+    if (token.type === "word") {
+      // logprob フィルタ（極端に低い確信度のみ除外）
+      if (typeof token.logprob === "number" && token.logprob < MIN_LOGPROB) {
+        prevEnd = token.end ?? prevEnd;
+        continue;
+      }
+      // 長い無音で改行
+      if (prevEnd !== null && token.start != null && token.start - prevEnd >= GAP_THRESHOLD_SEC) {
+        flushLine();
+      }
+      currentWords.push(token.text);
+      prevEnd = token.end ?? prevEnd;
+    }
+  }
+  flushLine();
+
+  if (lines.length === 0) return null;
+
+  // sourceLyrics がなければ timestamps 結果をそのまま返す
+  if (!sourceLyrics || sourceLyrics.trim().length === 0) return lines.join("\n");
+
+  return applySourceCorrection(lines, sourceLyrics);
+}
+
+/** timestamps 由来の各行を元歌詞と近傍照合し、高信頼時のみ元歌詞表記を採用する */
+function applySourceCorrection(tsLines: string[], sourceLyrics: string): string {
+  const srcLines = sourceLyrics
+    .split("\n")
+    .map(l => l.trim())
+    .filter(l => l.length > 0 && !/^\[.*\]$/.test(l)); // セクションタグ除外
+
+  return tsLines.map(tsLine => {
+    if (/^\[.*\]$/.test(tsLine)) return tsLine; // [間奏] 等はそのまま
+
+    let bestSim = 0;
+    let bestSrc = tsLine;
+    for (const src of srcLines) {
+      const sim = bigramJaccardLine(tsLine, src);
+      if (sim > bestSim) { bestSim = sim; bestSrc = src; }
+    }
+    // 高信頼: 元歌詞の表記を採用 / 低信頼: timestamps 由来をそのまま使う
+    return bestSim >= SRC_CORRECT_THRESH ? bestSrc : tsLine;
+  }).join("\n");
+}
+
 // ── top-level: displayLyrics 確定（フォールバック込み）────────────────────────
 
 export function finalizeDisplayLyrics(

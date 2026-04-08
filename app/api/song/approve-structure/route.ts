@@ -246,6 +246,7 @@ async function runAsrAndQuality(
       anchorWords,
       hookLines,
       jobId,
+      timestampsJson: asrResult.timestampsJson,
     });
     const qualityResult = computeLyricsQuality({
       singableLyrics:   singable,
