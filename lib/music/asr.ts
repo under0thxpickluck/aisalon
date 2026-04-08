@@ -46,12 +46,16 @@ export async function transcribeSongLyrics(params: {
       throw new Error(`ElevenLabs API error: ${response.status} ${text}`);
     }
 
-    const data = await response.json() as { text: string; words?: unknown[] };
+    const data = await response.json() as { text?: string; transcript?: string; words?: unknown[] };
+
+    const text = typeof data.text === "string" ? data.text
+               : typeof data.transcript === "string" ? data.transcript
+               : "";
 
     const words = data.words ?? [];
     const trimmedWords = words.length > 1000 ? (words as unknown[]).slice(0, 1000) : words;
     return {
-      text: data.text,
+      text,
       timestampsJson: JSON.stringify(trimmedWords),
       words: trimmedWords,
     };
