@@ -192,20 +192,35 @@ const KEEP_EVENT    = /^\[(間奏|ギターソロ|ソロ|instrumental|interlude)
  */
 export function buildDisplayLyricsFromTimestamps(
   timestampsJson: string,
-  sourceLyrics?: string
+  sourceLyrics?: string,
+  jobId?: string
 ): string | null {
+  const tag = jobId ? `[timestamps][jobId=${jobId}]` : "[timestamps]";
+
   let tokens: TimestampWord[];
   try {
     const parsed = JSON.parse(timestampsJson);
-    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      console.log(`${tag} parse_failed_or_empty parsed=${JSON.stringify(parsed)?.slice(0, 80)}`);
+      return null;
+    }
     tokens = parsed as TimestampWord[];
-  } catch {
+  } catch (e) {
+    console.log(`${tag} parse_error err=${String(e).slice(0, 80)}`);
     return null;
   }
+
+  // ── 1. token 件数 ──────────────────────────────────────────────────────────
+  const wordCount    = tokens.filter(t => t?.type === "word").length;
+  const spacingCount = tokens.filter(t => t?.type === "spacing").length;
+  const eventCount   = tokens.filter(t => t?.type === "audio_event").length;
+  console.log(`${tag} parsed tokens=${tokens.length} word=${wordCount} spacing=${spacingCount} event=${eventCount}`);
 
   const lines: string[] = [];
   let currentWords: string[] = [];
   let prevEnd: number | null = null;
+  let removedLowLogprobCount = 0;
+  let keptWordCount = 0;
 
   const flushLine = () => {
     const line = currentWords.join("").trim();
@@ -230,6 +245,7 @@ export function buildDisplayLyricsFromTimestamps(
     if (token.type === "word") {
       // logprob フィルタ（極端に低い確信度のみ除外）
       if (typeof token.logprob === "number" && token.logprob < MIN_LOGPROB) {
+        removedLowLogprobCount++;
         prevEnd = token.end ?? prevEnd;
         continue;
       }
@@ -238,17 +254,37 @@ export function buildDisplayLyricsFromTimestamps(
         flushLine();
       }
       currentWords.push(token.text);
+      keptWordCount++;
       prevEnd = token.end ?? prevEnd;
     }
   }
   flushLine();
 
-  if (lines.length === 0) return null;
+  // ── 2. low logprob 除外件数 ────────────────────────────────────────────────
+  console.log(`${tag} low_logprob_removed=${removedLowLogprobCount} kept_words=${keptWordCount}`);
 
-  // sourceLyrics がなければ timestamps 結果をそのまま返す
-  if (!sourceLyrics || sourceLyrics.trim().length === 0) return lines.join("\n");
+  // ── 3. 行組み立て結果（cleanup前 = cleanup後 = lines） ──────────────────────
+  console.log(`${tag} before_cleanup lines=${lines.length} preview=${lines.slice(0, 8).join(" | ")}`);
 
-  return applySourceCorrection(lines, sourceLyrics);
+  if (lines.length === 0) {
+    console.log(`${tag} lines_empty → return null`);
+    return null;
+  }
+
+  // ── 4. sourceLyrics 補正 ───────────────────────────────────────────────────
+  if (!sourceLyrics || sourceLyrics.trim().length === 0) {
+    const result = lines.join("\n");
+    console.log(`${tag} no_source_lyrics final_join len=${result.length} preview=${result.slice(0, 160)}`);
+    return result;
+  }
+
+  console.log(`${tag} before_source_correct lines=${lines.length} preview=${lines.slice(0, 8).join(" | ")}`);
+  const corrected = applySourceCorrection(lines, sourceLyrics);
+  const correctedLines = corrected.split("\n");
+  console.log(`${tag} after_source_correct lines=${correctedLines.length} preview=${correctedLines.slice(0, 8).join(" | ")}`);
+
+  console.log(`${tag} final_join len=${corrected.length} preview=${corrected.slice(0, 160)}`);
+  return corrected;
 }
 
 /** timestamps 由来の各行を元歌詞と近傍照合し、高信頼時のみ元歌詞表記を採用する */

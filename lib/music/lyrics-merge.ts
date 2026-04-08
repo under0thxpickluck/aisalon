@@ -48,7 +48,7 @@ export function mergeLyricsForDisplay(params: {
   let lyricsSource: "singable" | "asr_merged" | "manual";
 
   if (timestampsJson) {
-    const tsDisplay = buildDisplayLyricsFromTimestamps(timestampsJson, singableLyrics);
+    const tsDisplay = buildDisplayLyricsFromTimestamps(timestampsJson, singableLyrics, jobId);
     if (tsDisplay && tsDisplay.trim().length > 0) {
       displayLyrics = tsDisplay;
       lyricsSource  = "asr_merged";
