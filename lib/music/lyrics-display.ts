@@ -223,9 +223,27 @@ export function buildDisplayLyricsFromTimestamps(
   let keptWordCount = 0;
 
   const flushLine = () => {
-    const line = currentWords.join("").trim();
-    if (line.length > 1 && !/^[\s\W]+$/.test(line)) lines.push(line);
+    const raw        = currentWords.join("");
+    const normalized = raw.trim();
+    console.log(`${tag} flush_enter type=array raw_len=${raw.length} normalized_len=${normalized.length} preview="${normalized.slice(0, 40)}"`);
+
+    if (normalized.length === 0) {
+      console.log(`${tag} flush_skip reason=empty`);
+      currentWords = [];
+      console.log(`${tag} flush_exit currentLine_reset=true`);
+      return;
+    }
+    if (/^[\s\W]+$/.test(normalized)) {
+      console.log(`${tag} flush_skip reason=symbols_only`);
+      currentWords = [];
+      console.log(`${tag} flush_exit currentLine_reset=true`);
+      return;
+    }
+
+    lines.push(normalized);
+    console.log(`${tag} flush_push pushed_len=${normalized.length} lines_now=${lines.length}`);
     currentWords = [];
+    console.log(`${tag} flush_exit currentLine_reset=true`);
   };
 
   // ── loop_start ────────────────────────────────────────────────────────────
