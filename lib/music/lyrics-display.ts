@@ -228,16 +228,23 @@ export function buildDisplayLyricsFromTimestamps(
     currentWords = [];
   };
 
+  // ── loop_start ────────────────────────────────────────────────────────────
+  console.log(`${tag} loop_start words=${wordCount}`);
+  let wordLogCount = 0;
+
   for (const token of tokens) {
     if (token.type === "spacing") continue;
 
     if (token.type === "audio_event") {
       const t = (token.text ?? "").trim();
+      const currentPreview = currentWords.join("").slice(0, 40);
       if (KEEP_EVENT.test(t)) {
         flushLine();
         lines.push("[間奏]");
+        console.log(`${tag} on_audio_event text="${t}" action=flush+push currentLine_preview="${currentPreview}" lines_now=${lines.length}`);
+      } else {
+        console.log(`${tag} on_audio_event text="${t}" action=discard currentLine_preview="${currentPreview}"`);
       }
-      // DISCARD_EVENT もその他の audio_event も無視
       prevEnd = token.end ?? prevEnd;
       continue;
     }
@@ -251,14 +258,28 @@ export function buildDisplayLyricsFromTimestamps(
       }
       // 長い無音で改行
       if (prevEnd !== null && token.start != null && token.start - prevEnd >= GAP_THRESHOLD_SEC) {
+        const gapSec = (token.start - prevEnd).toFixed(2);
+        const linePreview = currentWords.join("").slice(0, 40);
+        const lineLenBefore = currentWords.length;
         flushLine();
+        console.log(`${tag} on_gap_break gapSec=${gapSec} currentLine_preview="${linePreview}" currentLine_len_before=${lineLenBefore} lines_now=${lines.length}`);
+      }
+      // each_word: 最初の5件のみ
+      if (wordLogCount < 5) {
+        console.log(`${tag} each_word[${wordLogCount}] text="${token.text}" start=${token.start} end=${token.end} type=${token.type} currentLine_len_before=${currentWords.length} currentLine_len_after=${currentWords.length + 1}`);
       }
       currentWords.push(token.text);
       keptWordCount++;
+      wordLogCount++;
       prevEnd = token.end ?? prevEnd;
     }
   }
+
+  // ── after_loop_before_flush ───────────────────────────────────────────────
+  console.log(`${tag} after_loop_before_flush currentLine_len=${currentWords.length} currentLine_preview="${currentWords.join("").slice(0, 60)}"`);
   flushLine();
+  // ── after_final_flush ─────────────────────────────────────────────────────
+  console.log(`${tag} after_final_flush lines=${lines.length} preview=${lines.slice(0, 8).join(" | ")}`);
 
   // ── 2. low logprob 除外件数 ────────────────────────────────────────────────
   console.log(`${tag} low_logprob_removed=${removedLowLogprobCount} kept_words=${keptWordCount}`);
