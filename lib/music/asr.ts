@@ -22,7 +22,7 @@ export async function transcribeSongLyrics(params: {
   const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
   const formData = new FormData();
   formData.append("file", blob, "audio.mp3");
-  formData.append("model_id", "scribe_v1");
+  formData.append("model_id", "scribe_v2");
   formData.append("timestamps_granularity", "word");
   formData.append("language_code", params.languageHint ?? "ja");
 

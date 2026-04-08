@@ -451,6 +451,13 @@ export default function Music2Page() {
     setErrorMsg(null);
     setProgress(5);
 
+    // approve-structure は完了まで数分かかるため、待機中も進捗を少しずつ進める
+    let fakeP = 5;
+    const fakeTimer = setInterval(() => {
+      fakeP = Math.min(45, fakeP + 0.4);
+      setProgress(fakeP);
+    }, 2000);
+
     try {
       const res  = await fetch("/api/song/approve-structure", {
         method:  "POST",
@@ -476,6 +483,8 @@ export default function Music2Page() {
       setStep(2);
       pollRef.current = setTimeout(() => {}, 0);
       pollUntilCompleted(jobId);
+    } finally {
+      clearInterval(fakeTimer);
     }
   }
 
