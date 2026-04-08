@@ -261,6 +261,8 @@ async function runAsrAndQuality(
       repeatScore:        repeatResult.repeatScore,
     });
 
+    console.log(`[merge][jobId=${jobId}] final_display source=${mergeResult.lyricsSource} len=${mergeResult.displayLyrics.length} preview=${mergeResult.displayLyrics.slice(0, 120)}`);
+
     await updateJob(jobId, {
       lyricsMatchScore:     compareResult.score,
       lyricsDiffJson:       compareResult.diffJson,

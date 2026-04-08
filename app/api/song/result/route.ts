@@ -39,6 +39,8 @@ export async function GET(req: Request) {
   const displayLyrics      = job.displayLyrics      ?? job.singableLyrics ?? job.masterLyrics ?? "";
   const distributionLyrics = job.distributionLyrics ?? job.singableLyrics ?? job.masterLyrics ?? "";
 
+  console.log(`[result][jobId=${jobId}] return_display len=${displayLyrics.length} preview=${displayLyrics.slice(0, 120)}`);
+
   // anchorWords / hookLines を JSON からパース
   let anchorWords: string[] | undefined;
   let hookLines: string[] | undefined;

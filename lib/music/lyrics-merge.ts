@@ -52,18 +52,18 @@ export function mergeLyricsForDisplay(params: {
     if (tsDisplay && tsDisplay.trim().length > 0) {
       displayLyrics = tsDisplay;
       lyricsSource  = "asr_merged";
-      console.log(`${tag} displayLyrics=timestamps len=${tsDisplay.length}`);
+      console.log(`${tag} timestamps_display len=${tsDisplay.length} preview=${tsDisplay.slice(0, 120)}`);
     } else {
       const fallback = finalizeDisplayLyrics(singableLyrics, asrLyrics, jobId);
       displayLyrics  = fallback.displayLyrics;
       lyricsSource   = fallback.lyricsSource;
-      console.log(`${tag} displayLyrics=fallback(textMerge) reason=timestamps_empty`);
+      console.log(`${tag} fallback_display len=${fallback.displayLyrics.length} preview=${fallback.displayLyrics.slice(0, 120)} reason=timestamps_empty`);
     }
   } else {
     const fallback = finalizeDisplayLyrics(singableLyrics, asrLyrics, jobId);
     displayLyrics  = fallback.displayLyrics;
     lyricsSource   = fallback.lyricsSource;
-    console.log(`${tag} displayLyrics=fallback(textMerge) reason=no_timestamps`);
+    console.log(`${tag} fallback_display len=${fallback.displayLyrics.length} preview=${fallback.displayLyrics.slice(0, 120)} reason=no_timestamps`);
   }
 
   // Case A: 高品質
