@@ -213,7 +213,7 @@ async function runAsrAndQuality(
     const { transcribeSongLyrics } = await import("@/lib/music/asr");
     const asrResult = await transcribeSongLyrics({
       audioUrl,
-      languageHint: job.prompt.language ?? "ja",
+      // languageHint を渡さず自動検出（UI と同条件）
       apiKey,
     });
 
@@ -316,6 +316,8 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
   let quality1: QualityCheckResult = { gate: null, lyricsQualityScore: 0, repeatScore: 0, qualityUnavailable: true };
 
   if (audioForAsr1) {
+    const asrUrlType = attempt1.finalUrl ? "final" : "raw";
+    console.log(`[Job ${jobId}] ASR input: type=${asrUrlType} url=${audioForAsr1}`);
     quality1 = await runAsrAndQuality(job, apiKey, audioForAsr1);
   } else {
     console.warn(`[Job ${jobId}] ASR skipped — no audio URL available (qualityUnavailable=true)`);
