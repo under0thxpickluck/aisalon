@@ -1,6 +1,6 @@
 // lib/music/lyrics-merge.ts
 
-import { finalizeDisplayLyrics, buildDisplayLyricsFromTimestamps } from "./lyrics-display";
+import { finalizeDisplayLyrics, buildDisplayLyricsFromTimestamps, displayLyricsFromTimestampsRaw } from "./lyrics-display";
 
 export type MergeResult = {
   displayLyrics: string;
@@ -48,11 +48,11 @@ export function mergeLyricsForDisplay(params: {
   let lyricsSource: "singable" | "asr_merged" | "manual";
 
   if (timestampsJson) {
-    const tsDisplay = buildDisplayLyricsFromTimestamps(timestampsJson, singableLyrics, jobId);
-    if (tsDisplay && tsDisplay.trim().length > 0) {
-      displayLyrics = tsDisplay;
+    const rawDisplay = displayLyricsFromTimestampsRaw(timestampsJson);
+    if (rawDisplay.trim().length > 0) {
+      displayLyrics = rawDisplay;
       lyricsSource  = "asr_merged";
-      console.log(`${tag} timestamps_display len=${tsDisplay.length} preview=${tsDisplay.slice(0, 120)}`);
+      console.log(`${tag} timestamps_display(raw) len=${rawDisplay.length} preview=${rawDisplay.slice(0, 120)}`);
     } else {
       const fallback = finalizeDisplayLyrics(singableLyrics, asrLyrics, jobId);
       displayLyrics  = fallback.displayLyrics;

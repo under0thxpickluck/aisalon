@@ -347,6 +347,40 @@ function applySourceCorrection(tsLines: string[], sourceLyrics: string): string 
   }).join("\n");
 }
 
+// ── シンプル直列変換（デバッグ用最短ルート）─────────────────────────────────────
+// word を順番に連結するだけ。フィルタ・補正・ギャップ改行なし。
+// "間奏" を含む audio_event のみ "\n[間奏]\n" を挿入する。
+
+export function displayLyricsFromTimestampsRaw(timestampsJson: string): string {
+  let tokens: Array<{ type?: string; text?: string }>;
+  try {
+    const parsed = JSON.parse(timestampsJson);
+    if (!Array.isArray(parsed)) return "";
+    tokens = parsed;
+  } catch {
+    return "";
+  }
+
+  let result = "";
+  for (const token of tokens) {
+    const type = String(token?.type ?? "");
+    const text = String(token?.text ?? "");
+
+    if (type === "spacing") continue;
+
+    if (type === "audio_event") {
+      if (text.includes("間奏")) result += "\n[間奏]\n";
+      continue;
+    }
+
+    if (type === "word") {
+      result += text;
+    }
+  }
+
+  return result.trim();
+}
+
 // ── top-level: displayLyrics 確定（フォールバック込み）────────────────────────
 
 export function finalizeDisplayLyrics(
