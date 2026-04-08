@@ -3,10 +3,10 @@
 // 「比較用正規化」と「表示向け正規化」は明確に分離している。
 // normalizeAsrLineForDisplay は表示向け軽整形のみで情報を削りすぎない。
 
-const SIMILARITY_THRESHOLD_DEFAULT = 0.45;
-const SIMILARITY_THRESHOLD_SHORT   = 0.65; // singable 行が 4 文字以内の場合
+const SIMILARITY_THRESHOLD_DEFAULT = 0.68;
+const SIMILARITY_THRESHOLD_SHORT   = 0.82; // singable 行が 4 文字以内の場合
 const SHORT_LINE_MAX_LEN           = 4;
-const WINDOW_HALF                  = 2;
+const WINDOW_HALF                  = 3;
 const DEDUP_MAX_CONSECUTIVE        = 2;
 
 // ── バイグラム Jaccard（行レベル）────────────────────────────────────────────
@@ -42,7 +42,7 @@ export function bigramJaccardLine(a: string, b: string): number {
 
 export function isNoiseLine(line: string): boolean {
   const t = line.trim();
-  if (t.length < 3)        return true; // 極端に短い
+  if (t.length < 4)        return true; // 極端に短い
   if (/^[\s\W]+$/.test(t)) return true; // 記号・空白のみ
   if (/^\[/.test(t))       return true; // セクションタグ
   return false;
@@ -138,10 +138,15 @@ export function mergeSingableWithAsr(
       ? SIMILARITY_THRESHOLD_SHORT
       : SIMILARITY_THRESHOLD_DEFAULT;
 
+    // ASR行が元行の35%未満の長さなら切り捨て（短すぎるASR結果が置き換わるのを防ぐ）
+    const lengthRatioOk =
+      bestIdx >= 0 && asrLines[bestIdx].length >= trimmed.length * 0.35;
+
     const shouldAdopt =
       bestIdx >= 0 &&
       bestSim >= threshold &&
-      !isNoiseLine(asrLines[bestIdx]);
+      !isNoiseLine(asrLines[bestIdx]) &&
+      lengthRatioOk;
 
     if (shouldAdopt) {
       result.push(asrLines[bestIdx]);
