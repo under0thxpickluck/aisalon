@@ -35,9 +35,10 @@ export async function GET(req: Request) {
   const usedFallback      = !processedAudioUrl && !!rawAudioUrl;
   const audioUrl          = processedAudioUrl ?? rawAudioUrl ?? job.audioUrl ?? null;
 
-  // 歌詞の優先順位: display_lyrics > singable_lyrics > master_lyrics
-  const displayLyrics      = job.displayLyrics      ?? job.singableLyrics ?? job.masterLyrics ?? "";
-  const distributionLyrics = job.distributionLyrics ?? job.singableLyrics ?? job.masterLyrics ?? "";
+  // 歌詞の優先順位（表示用）: display_lyrics > asr_lyrics > singable_lyrics > master_lyrics
+  const displayLyrics      = job.displayLyrics      ?? job.asrLyrics      ?? job.singableLyrics ?? job.masterLyrics ?? "";
+  // 歌詞の優先順位（配信用）: distribution_lyrics > display_lyrics > asr_lyrics > singable_lyrics > master_lyrics
+  const distributionLyrics = job.distributionLyrics ?? job.displayLyrics  ?? job.asrLyrics      ?? job.singableLyrics ?? job.masterLyrics ?? "";
 
   console.log(`[result][jobId=${jobId}] return_display len=${displayLyrics.length} preview=${displayLyrics.slice(0, 120)}`);
 
