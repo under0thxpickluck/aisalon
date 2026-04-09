@@ -7017,11 +7017,11 @@ function rumbleGacha_(params) {
   };
   var SLOTS     = ["head", "body", "hand", "leg"];
   var NAMES     = {
-    common:    ["Iron Helm","Cloth Armor","Leather Gloves","Worn Boots"],
-    rare:      ["Steel Helm","Chain Armor","Iron Gauntlets","Swift Boots"],
-    epic:      ["Dragon Helm","Mithril Armor","Shadow Gloves","Storm Boots"],
-    legendary: ["Crown of Kings","Aegis Armor","Thunder Gauntlets","Void Boots"],
-    mythic:    ["Cosmic Crown","Infinity Armor","Galaxy Gloves","Eternity Boots"],
+    common:    ["鉄の兜","布の鎧","革の手袋","擦り切れたブーツ"],
+    rare:      ["鋼の兜","鎖帷子","鉄の籠手","疾風のブーツ"],
+    epic:      ["竜鱗の兜","ミスリル鎧","影の手袋","嵐のブーツ"],
+    legendary: ["王者の冠","盾神の鎧","雷霆の籠手","虚空のブーツ"],
+    mythic:    ["宇宙の冠","無限の鎧","銀河の手袋","永劫のブーツ"],
   };
 
   // BP残高確認
