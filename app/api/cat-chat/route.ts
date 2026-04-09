@@ -7,10 +7,43 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const SYSTEM_PROMPT = `あなたは「リファ猫」というAIサロン「LIFAI」のマスコットキャラクターです。
 フレンドリーで親しみやすいトーンで、何でも日本語で答えてください。
 AI・副業・プログラミング・日常の悩みなど、幅広い質問に対応します。
-LIFAIの機能（団子占い・BGM生成・マーケット・ガチャ・ミッション・ステーキング・ノート生成）についても詳しいです。
-回答は簡潔にまとめつつ、必要なら詳しく説明してください。`;
+LIFAIの機能（団子占い・BGM生成・マーケット・ガチャ・ミッション・ステーキング・ノート生成・ランブル・タップマイニング・紹介制度）についても詳しいです。
+回答は簡潔にまとめつつ、必要なら詳しく説明してください。
+ページ文脈が与えられた場合は、そのページに関連した回答を優先してください。`;
 
 const replyCache = new Map<string, string>();
+
+// シンプルなインメモリFAQキャッシュ（GASから取得して5分間保持）
+let faqCache: { items: { question_pattern: string; answer: string }[]; fetchedAt: number } | null = null;
+const FAQ_TTL_MS = 5 * 60 * 1000;
+
+async function fetchFaqs(gasUrl: string, gasKey: string) {
+  if (faqCache && Date.now() - faqCache.fetchedAt < FAQ_TTL_MS) return faqCache.items;
+  try {
+    const url = `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`;
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ action: "cat_faq_list", key: gasKey }),
+    });
+    const data = await r.json().catch(() => ({ ok: false }));
+    if (data.ok && Array.isArray(data.items)) {
+      faqCache = { items: data.items, fetchedAt: Date.now() };
+      return data.items as { question_pattern: string; answer: string }[];
+    }
+  } catch { /* ignore */ }
+  return [];
+}
+
+function matchFaq(message: string, faqs: { question_pattern: string; answer: string }[]): string | null {
+  const lower = message.toLowerCase();
+  for (const faq of faqs) {
+    const patterns = faq.question_pattern.split(/[,，|｜]/).map(p => p.trim().toLowerCase());
+    if (patterns.some(p => p && lower.includes(p))) return faq.answer;
+  }
+  return null;
+}
 
 async function callGasBalance(id: string, gasUrl: string, gasKey: string): Promise<number> {
   const url = `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`;
@@ -37,19 +70,60 @@ async function deductBp(id: string, amount: number, gasUrl: string, gasKey: stri
   if (!data.ok) throw new Error(data.error || "deduct_bp_failed");
 }
 
+// fire-and-forget: GASにログ保存（レスポンスをブロックしない）
+function saveLog(params: {
+  logId: string; userId: string; sessionId: string; pagePath: string;
+  widgetMode: string; userMessage: string; assistantMessage: string;
+  sourceType: string; confidence: number; gasUrl: string; gasKey: string;
+}) {
+  const url = `${params.gasUrl}${params.gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(params.gasKey)}`;
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      action: "cat_log_create",
+      key: params.gasKey,
+      log_id: params.logId,
+      user_id: params.userId,
+      session_id: params.sessionId,
+      page_path: params.pagePath,
+      widget_mode: params.widgetMode,
+      user_message: params.userMessage,
+      assistant_message: params.assistantMessage,
+      source_type: params.sourceType,
+      confidence: params.confidence,
+    }),
+  }).catch(() => {});
+}
+
+// fire-and-forget: unknown質問を記録
+function saveUnknown(userMessage: string, pagePath: string, gasUrl: string, gasKey: string) {
+  const url = `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`;
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ action: "cat_unknown_upsert", key: gasKey, user_message: userMessage, page_path: pagePath }),
+  }).catch(() => {});
+}
+
 export async function POST(req: Request) {
   try {
-    const { message, history, images, id } = await req.json();
-    // images: string[] | undefined — base64 data URLs (e.g. "data:image/jpeg;base64,...")
+    const {
+      message, history, images, id,
+      pagePath = "", widgetMode = "popup", sessionId = "",
+    } = await req.json();
 
     if (!message?.trim()) {
       return NextResponse.json({ ok: false, error: "empty message" }, { status: 400 });
     }
 
-    // BP 残高チェック & 消化（id/code がある場合のみ）
     const gasUrl = process.env.GAS_WEBAPP_URL;
     const gasKey = process.env.GAS_API_KEY;
     const gasAdminKey = process.env.GAS_ADMIN_KEY;
+
+    // BP 残高チェック & 消化（id がある場合のみ）
     if (id && gasUrl && gasKey && gasAdminKey) {
       let bp: number;
       try {
@@ -67,18 +141,42 @@ export async function POST(req: Request) {
       }
     }
 
-    // Normalize: ensure images is a valid string array of data URLs
     const safeImages = Array.isArray(images)
       ? (images as string[]).filter((img) => typeof img === "string" && img.startsWith("data:image/"))
       : undefined;
 
-    const cacheKey = message.trim().toLowerCase();
-    if (!history?.length && !safeImages?.length && replyCache.has(cacheKey)) {
-      return NextResponse.json({ ok: true, reply: replyCache.get(cacheKey), cached: true });
+    const logId = `CL-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    let sourceType = "ai";
+    let confidence = 0.8;
+    let reply: string;
+
+    // FAQ参照（GASが設定済みの場合）
+    if (gasUrl && gasKey && !safeImages?.length) {
+      const faqs = await fetchFaqs(gasUrl, gasKey);
+      const faqAnswer = matchFaq(message, faqs);
+      if (faqAnswer) {
+        reply = faqAnswer;
+        sourceType = "faq";
+        confidence = 1.0;
+        if (gasUrl && gasKey) {
+          saveLog({ logId, userId: String(id || ""), sessionId, pagePath, widgetMode, userMessage: message, assistantMessage: reply, sourceType, confidence, gasUrl, gasKey });
+        }
+        return NextResponse.json({ ok: true, reply, sourceType, confidence, logId, cached: false });
+      }
     }
 
-    // 画像あり: content配列形式（vision対応）
-    // 画像なし: 従来通り文字列
+    // キャッシュ（履歴なし・画像なしの場合のみ）
+    const cacheKey = `${pagePath}::${message.trim().toLowerCase()}`;
+    if (!history?.length && !safeImages?.length && replyCache.has(cacheKey)) {
+      const cached = replyCache.get(cacheKey)!;
+      return NextResponse.json({ ok: true, reply: cached, sourceType: "ai", confidence: 0.8, logId, cached: true });
+    }
+
+    // ページ文脈をsystem promptに追加
+    const contextHint = pagePath
+      ? `\n現在ユーザーがいるページ: ${pagePath}。このページに関連した回答を優先してください。`
+      : "";
+
     let userMessageContent: string | OpenAI.Chat.ChatCompletionContentPart[];
     if (safeImages?.length) {
       const parts: OpenAI.Chat.ChatCompletionContentPart[] = [];
@@ -92,7 +190,7 @@ export async function POST(req: Request) {
     }
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT + contextHint },
       ...((history ?? []).slice(-10).map((h: { role: string; content: string }) => ({
         role: h.role === "user" ? "user" as const : "assistant" as const,
         content: h.content || "",
@@ -107,8 +205,9 @@ export async function POST(req: Request) {
       temperature: 0.7,
     });
 
-    const reply = completion.choices[0]?.message?.content ?? "ごめんね、うまく答えられなかったよ🙀";
+    reply = completion.choices[0]?.message?.content ?? "ごめんね、うまく答えられなかったよ🙀";
 
+    // キャッシュ保存
     if (!history?.length && !safeImages?.length) {
       if (replyCache.size >= 200) {
         const firstKey = replyCache.keys().next().value;
@@ -117,10 +216,26 @@ export async function POST(req: Request) {
       replyCache.set(cacheKey, reply);
     }
 
-    return NextResponse.json({ ok: true, reply, cached: false });
+    // GASログ保存（fire-and-forget）
+    if (gasUrl && gasKey) {
+      saveLog({ logId, userId: String(id || ""), sessionId, pagePath, widgetMode, userMessage: message, assistantMessage: reply, sourceType, confidence, gasUrl, gasKey });
+    }
+
+    return NextResponse.json({ ok: true, reply, sourceType, confidence, logId, cached: false });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("cat-chat error:", err);
+
+    // unknown登録（fire-and-forget）
+    try {
+      const body = await (err as any)?.request?.json?.().catch?.(() => null);
+      const gasUrl = process.env.GAS_WEBAPP_URL;
+      const gasKey = process.env.GAS_API_KEY;
+      if (gasUrl && gasKey && body?.message) {
+        saveUnknown(body.message, body.pagePath || "", gasUrl, gasKey);
+      }
+    } catch { /* ignore */ }
+
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

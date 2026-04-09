@@ -5688,6 +5688,10 @@ function doPost(e) {
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
     if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
     if (action === 'music_boost_admin_list') return musicBoostAdminList_(body);
+    if (action === 'cat_log_create')     return catLogCreate_(body);
+    if (action === 'cat_log_feedback')   return catLogFeedback_(body);
+    if (action === 'cat_faq_list')       return catFaqList_(body);
+    if (action === 'cat_unknown_upsert') return catUnknownUpsert_(body);
   // =========================================================
   // narasu代理申請 submit
   // =========================================================
@@ -9178,4 +9182,142 @@ function setupRumbleTriggers_() {
 /** Public wrapper — run this from the GAS editor dropdown to install time triggers. */
 function setupRumbleTriggers() {
   setupRumbleTriggers_();
+}
+
+// ─── りふぁねこ チャットログ / FAQ / unknown ────────────────────────────────
+
+function getCatSheet_(name, headers) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
+// action: cat_log_create
+// body: { log_id, user_id, session_id, page_path, widget_mode, user_message, assistant_message, source_type, confidence }
+function catLogCreate_(body) {
+  try {
+    var sheet = getCatSheet_("cat_chat_logs", [
+      "log_id","user_id","session_id","page_path","widget_mode",
+      "user_message","assistant_message","source_type","confidence","resolved","created_at"
+    ]);
+    var now = new Date().toISOString();
+    sheet.appendRow([
+      str_(body.log_id),
+      str_(body.user_id),
+      str_(body.session_id),
+      str_(body.page_path),
+      str_(body.widget_mode) || "popup",
+      str_(body.user_message),
+      str_(body.assistant_message),
+      str_(body.source_type) || "ai",
+      body.confidence !== undefined ? Number(body.confidence) : 1,
+      "false",
+      now
+    ]);
+    return json_({ ok: true, log_id: str_(body.log_id) });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: cat_log_feedback
+// body: { log_id, rating, comment }
+function catLogFeedback_(body) {
+  try {
+    var sheet = getCatSheet_("cat_feedback", [
+      "feedback_id","log_id","rating","comment","created_at"
+    ]);
+    var now = new Date().toISOString();
+    var feedbackId = "CF-" + Utilities.getUuid().replace(/-/g,"").substring(0,12);
+    sheet.appendRow([feedbackId, str_(body.log_id), str_(body.rating), str_(body.comment || ""), now]);
+
+    // bad評価は unknown にも積む
+    if (str_(body.rating) === "bad" && str_(body.user_message)) {
+      catUnknownUpsert_({ user_message: str_(body.user_message), page_path: str_(body.page_path || "") });
+    }
+
+    // resolved フラグ更新
+    if (str_(body.rating) === "good") {
+      var logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("cat_chat_logs");
+      if (logSheet) {
+        var vals = logSheet.getDataRange().getValues();
+        var hdr = vals[0];
+        var idx = {}; hdr.forEach(function(h,i){ idx[h]=i; });
+        for (var i = 1; i < vals.length; i++) {
+          if (str_(vals[i][idx["log_id"]]) === str_(body.log_id)) {
+            logSheet.getRange(i+1, idx["resolved"]+1).setValue("true");
+            break;
+          }
+        }
+      }
+    }
+    return json_({ ok: true });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: cat_faq_list
+// body: { category? }
+function catFaqList_(body) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("cat_faq");
+    if (!sheet) return json_({ ok: true, items: [] });
+    var vals = sheet.getDataRange().getValues();
+    if (vals.length < 2) return json_({ ok: true, items: [] });
+    var hdr = vals[0];
+    var idx = {}; hdr.forEach(function(h,i){ idx[h]=i; });
+    var items = [];
+    for (var i = 1; i < vals.length; i++) {
+      var r = vals[i];
+      if (str_(r[idx["enabled"]]) === "false") continue;
+      if (body.category && str_(r[idx["category"]]) !== str_(body.category)) continue;
+      items.push({
+        faq_id:           str_(r[idx["faq_id"]]),
+        category:         str_(r[idx["category"]]),
+        question_pattern: str_(r[idx["question_pattern"]]),
+        answer:           str_(r[idx["answer"]]),
+        tags:             str_(r[idx["tags"]]),
+        priority:         Number(r[idx["priority"]] || 0),
+      });
+    }
+    items.sort(function(a,b){ return b.priority - a.priority; });
+    return json_({ ok: true, items: items });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: cat_unknown_upsert
+// body: { user_message, page_path }
+function catUnknownUpsert_(body) {
+  try {
+    var sheet = getCatSheet_("cat_unknown_questions", [
+      "unknown_id","user_message","normalized_message","page_path","count","first_seen_at","last_seen_at","status","admin_answer"
+    ]);
+    var msg = str_(body.user_message).trim();
+    if (!msg) return json_({ ok: false, error: "empty_message" });
+    var normalized = msg.toLowerCase().replace(/[　\s]+/g," ").substring(0, 200);
+    var vals = sheet.getDataRange().getValues();
+    var hdr = vals[0];
+    var idx = {}; hdr.forEach(function(h,i){ idx[h]=i; });
+    var now = new Date().toISOString();
+    for (var i = 1; i < vals.length; i++) {
+      if (str_(vals[i][idx["normalized_message"]]) === normalized) {
+        var count = Number(vals[i][idx["count"]] || 0) + 1;
+        sheet.getRange(i+1, idx["count"]+1).setValue(count);
+        sheet.getRange(i+1, idx["last_seen_at"]+1).setValue(now);
+        return json_({ ok: true, unknown_id: str_(vals[i][idx["unknown_id"]]) });
+      }
+    }
+    var uid = "UQ-" + Utilities.getUuid().replace(/-/g,"").substring(0,12);
+    sheet.appendRow([uid, msg, normalized, str_(body.page_path||""), 1, now, now, "open", ""]);
+    return json_({ ok: true, unknown_id: uid });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
 }

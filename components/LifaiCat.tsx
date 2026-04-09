@@ -8,11 +8,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
-// ─── Rules (AIBot/rules.ts から統合) ─────────────────────────────────────────
+// ─── Rules ───────────────────────────────────────────────────────────────────
 type Cat = 'normal' | 'confused';
 
 type CTADef = {
@@ -119,7 +119,6 @@ type LifaiCatContextType = {
 
 const LifaiCatContext = createContext<LifaiCatContextType | null>(null);
 
-// localStorage key — AIBot から引き継ぐため同一キー
 const SEEN_KEY = 'lifai_aibot_seen_v1';
 const COOLDOWN_MS = 60_000;
 const BUBBLE_DURATION_MS = 8_000;
@@ -242,6 +241,10 @@ export function useLifaiCat(): LifaiCatContextType {
   return ctx;
 }
 
+// ─── 小窓チャット型 ───────────────────────────────────────────────────────────
+type MiniMessage = { id: string; role: 'user' | 'assistant'; content: string };
+type FeedbackState = { logId: string; userMessage: string } | null;
+
 // ─── LifaiCat Widget Props ────────────────────────────────────────────────────
 interface LifaiCatProps {
   loginId?: string;
@@ -273,11 +276,11 @@ function hasPropsBadge(props: LifaiCatProps): boolean {
   return false;
 }
 
-
 // ─── LifaiCat Widget ──────────────────────────────────────────────────────────
 export default function LifaiCat(props: LifaiCatProps) {
-  const { bp, ep, missions, radioToday } = props;
+  const { bp, ep, missions, radioToday, loginId } = props;
   const router = useRouter();
+  const pathname = usePathname();
 
   const {
     currentMessage,
@@ -289,7 +292,35 @@ export default function LifaiCat(props: LifaiCatProps) {
     dismissBubble,
   } = useLifaiCat();
 
-  // Props-based auto-bubble（trackEvent メッセージがない時に表示）
+  // ── 小窓チャット state ───────────────────────────────────────────────────
+  const [chatMode, setChatMode] = useState(false);
+  const [miniMessages, setMiniMessages] = useState<MiniMessage[]>([]);
+  const [miniInput, setMiniInput] = useState('');
+  const [miniLoading, setMiniLoading] = useState(false);
+  const [feedbackPending, setFeedbackPending] = useState<FeedbackState>(null);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [recs, setRecs] = useState<{ label: string; href: string; icon?: string }[]>([]);
+  const miniBottomRef = useRef<HTMLDivElement>(null);
+  const sessionId = useRef(`sess-${Date.now()}`);
+
+  // ページ切り替えでチャットモードをリセット
+  useEffect(() => { setChatMode(false); }, [pathname]);
+
+  // パネルが開いたらおすすめを取得
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch(`/api/cat-recommendation?pagePath=${encodeURIComponent(pathname || '/')}`)
+      .then(r => r.json())
+      .then(d => { if (d.ok) setRecs(d.items); })
+      .catch(() => {});
+  }, [isOpen, pathname]);
+
+  // 小窓チャット末尾スクロール
+  useEffect(() => {
+    if (chatMode) miniBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [miniMessages, chatMode]);
+
+  // Props-based auto-bubble
   const [showPropsBubble, setShowPropsBubble] = useState(false);
   const currentMessageRef = useRef(currentMessage);
   currentMessageRef.current = currentMessage;
@@ -315,6 +346,71 @@ export default function LifaiCat(props: LifaiCatProps) {
     };
   }, []);
 
+  // ── 小窓チャット送信 ─────────────────────────────────────────────────────
+  async function handleMiniSend() {
+    const text = miniInput.trim();
+    if (!text || miniLoading) return;
+    setMiniInput('');
+    setFeedbackPending(null);
+    setFeedbackSent(false);
+
+    const userMsg: MiniMessage = { id: `u${Date.now()}`, role: 'user', content: text };
+    const updated = [...miniMessages, userMsg];
+    setMiniMessages(updated);
+    setMiniLoading(true);
+
+    try {
+      const res = await fetch('/api/cat-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: updated.slice(-8).map(m => ({ role: m.role, content: m.content })),
+          id: loginId,
+          pagePath: pathname,
+          widgetMode: 'popup',
+          sessionId: sessionId.current,
+        }),
+      });
+      const data = await res.json();
+      const reply = data.ok ? data.reply : 'ごめんね、うまく答えられなかったよ🙀';
+      const logId: string = data.logId || '';
+
+      setMiniMessages(prev => [...prev, { id: `a${Date.now()}`, role: 'assistant', content: reply }]);
+      if (logId) setFeedbackPending({ logId, userMessage: text });
+    } catch {
+      setMiniMessages(prev => [...prev, { id: `a${Date.now()}`, role: 'assistant', content: 'ごめんね、通信エラーが起きたよ🙀' }]);
+    } finally {
+      setMiniLoading(false);
+    }
+  }
+
+  // ── フィードバック送信 ────────────────────────────────────────────────────
+  async function sendFeedback(rating: 'good' | 'bad') {
+    if (!feedbackPending) return;
+    setFeedbackSent(true);
+    setFeedbackPending(null);
+
+    if (rating === 'bad') {
+      setMiniMessages(prev => [...prev, {
+        id: `sys${Date.now()}`,
+        role: 'assistant',
+        content: 'まだうまく答えきれなかったから、運営確認用に記録しておくね🐱',
+      }]);
+    }
+
+    await fetch('/api/cat-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        logId: feedbackPending.logId,
+        rating,
+        userMessage: feedbackPending.userMessage,
+        pagePath: pathname,
+      }),
+    }).catch(() => {});
+  }
+
   const catSrc =
     currentMessage?.cat === 'confused'
       ? '/aibot/cat_confused.png'
@@ -323,7 +419,6 @@ export default function LifaiCat(props: LifaiCatProps) {
   const serif = getSerif(props);
   const badge = hasUnread || hasPropsBadge(props);
 
-  // 表示するバブル: trackEvent メッセージ優先、なければ props ベース
   const showTrackBubble = bubbleVisible && !!currentMessage && !isOpen;
   const showSelfBubble  = showPropsBubble && !currentMessage && !isOpen;
 
@@ -359,7 +454,7 @@ export default function LifaiCat(props: LifaiCatProps) {
 
   return (
     <>
-      {/* ── Layer2: 吹き出し (trackEvent) ───────────────────────────────── */}
+      {/* ── 吹き出し (trackEvent) ────────────────────────────────────────── */}
       {showTrackBubble && (
         <div className="fixed bottom-[88px] right-0 z-[9998] w-56 pr-5">
           <div
@@ -397,7 +492,7 @@ export default function LifaiCat(props: LifaiCatProps) {
         </div>
       )}
 
-      {/* ── Layer2: 吹き出し (props-based serif) ────────────────────────── */}
+      {/* ── 吹き出し (props-based serif) ─────────────────────────────────── */}
       {showSelfBubble && (
         <div className="fixed bottom-[88px] right-0 z-[9998] w-52 pr-5">
           <div className="relative bg-zinc-800 rounded-2xl p-3 text-sm text-white shadow-lg">
@@ -413,50 +508,62 @@ export default function LifaiCat(props: LifaiCatProps) {
         </div>
       )}
 
-      {/* ── Layer3: ミニパネル ───────────────────────────────────────────── */}
+      {/* ── ミニパネル ───────────────────────────────────────────────────── */}
       {isOpen && (
-        <div className="fixed bottom-20 right-5 z-[9998] w-64 bg-zinc-900 border border-zinc-700 rounded-2xl p-4 shadow-xl">
+        <div className="fixed bottom-20 right-5 z-[9998] w-72 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-xl flex flex-col"
+          style={{ maxHeight: chatMode ? 480 : 'auto' }}>
+
           {/* ヘッダー */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 flex-shrink-0">
             <div className="flex items-center gap-2">
+              {chatMode && (
+                <button
+                  onClick={() => { setChatMode(false); setFeedbackPending(null); setFeedbackSent(false); }}
+                  className="text-zinc-400 hover:text-white text-xs mr-1"
+                  aria-label="戻る"
+                >←</button>
+              )}
               <Image src={catSrc} alt="LIFAI CAT" width={24} height={24} className="rounded-full" />
-              <span className="font-bold text-white text-sm">🐱 リファ猫</span>
+              <span className="font-bold text-white text-sm">
+                {chatMode ? '🐱 リファ猫に相談' : '🐱 リファ猫'}
+              </span>
             </div>
             <button
               className="text-zinc-400 hover:text-white text-base leading-none"
-              onClick={() => setIsOpen(false)}
+              onClick={() => { setIsOpen(false); if (chatMode) setChatMode(false); }}
               aria-label="閉じる"
             >×</button>
           </div>
 
-          {/* trackEvent メッセージ */}
-          {currentMessage && (
-            <>
-              <p className="text-xs mb-2" style={{ color: 'rgba(234,240,255,0.85)', lineHeight: 1.65 }}>
-                {currentMessage.message}
-              </p>
-              <div className="flex flex-col gap-1.5 mb-3">
-                {currentMessage.cta.map((btn, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleCTA(btn.action, btn.target)}
-                    className="text-left text-xs px-3 py-2 rounded-lg w-full"
-                    style={{
-                      background: i === 0
-                        ? 'linear-gradient(90deg,#6366F1,#A78BFA)'
-                        : 'rgba(255,255,255,0.04)',
-                      color: i === 0 ? '#fff' : 'rgba(234,240,255,0.7)',
-                      border: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                    }}
-                  >{btn.label}</button>
-                ))}
-              </div>
-              <div className="border-t border-zinc-700 mb-3" />
-            </>
-          )}
+          {/* ── 通常モード ────────────────────────────────────────────────── */}
+          {!chatMode && (
+            <div className="p-4">
+              {/* trackEvent メッセージ */}
+              {currentMessage && (
+                <>
+                  <p className="text-xs mb-2" style={{ color: 'rgba(234,240,255,0.85)', lineHeight: 1.65 }}>
+                    {currentMessage.message}
+                  </p>
+                  <div className="flex flex-col gap-1.5 mb-3">
+                    {currentMessage.cta.map((btn, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleCTA(btn.action, btn.target)}
+                        className="text-left text-xs px-3 py-2 rounded-lg w-full"
+                        style={{
+                          background: i === 0
+                            ? 'linear-gradient(90deg,#6366F1,#A78BFA)'
+                            : 'rgba(255,255,255,0.04)',
+                          color: i === 0 ? '#fff' : 'rgba(234,240,255,0.7)',
+                          border: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                        }}
+                      >{btn.label}</button>
+                    ))}
+                  </div>
+                  <div className="border-t border-zinc-700 mb-3" />
+                </>
+              )}
 
-          {/* ── 通常画面 ─────────────────────────────────────── */}
-            <>
               {/* 今日のおすすめ */}
               <p className="text-xs text-zinc-500 mb-2">今日のおすすめ</p>
               {allDone ? (
@@ -473,34 +580,150 @@ export default function LifaiCat(props: LifaiCatProps) {
                     </li>
                   ))}
                 </ul>
+              ) : recs.length > 0 ? (
+                <ul className="flex flex-col gap-2 mb-3">
+                  {recs.slice(0, 3).map(r => (
+                    <li key={r.href + r.label}>
+                      <Link
+                        href={r.href}
+                        className="flex items-center gap-2 text-xs text-zinc-300 hover:text-white transition-colors"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {r.icon && <span>{r.icon}</span>}
+                        <span>{r.label}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <p className="text-xs text-zinc-400 mb-3">今日はなにから進める？</p>
               )}
 
-              <div className="border-t border-zinc-700 my-3" />
-
               {(bp !== undefined || ep !== undefined) && (
-                <p className="text-xs text-zinc-300 mb-3">
-                  {bp !== undefined && <span>💰 BP: {bp}</span>}
-                  {bp !== undefined && ep !== undefined && <span>　</span>}
-                  {ep !== undefined && <span>⚡ EP: {ep}</span>}
-                </p>
+                <>
+                  <div className="border-t border-zinc-700 my-3" />
+                  <p className="text-xs text-zinc-300 mb-3">
+                    {bp !== undefined && <span>💰 BP: {bp}</span>}
+                    {bp !== undefined && ep !== undefined && <span>　</span>}
+                    {ep !== undefined && <span>⚡ EP: {ep}</span>}
+                  </p>
+                </>
               )}
+
+              <div className="border-t border-zinc-700 mt-2 mb-3" />
+
+              {/* ボタン群 */}
+              <button
+                className="w-full text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-2 mb-2 transition-colors font-bold"
+                onClick={() => { setChatMode(true); setMiniMessages([]); setFeedbackPending(null); setFeedbackSent(false); }}
+              >💬 相談する（小窓）</button>
 
               <button
                 className="w-full text-sm bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl py-2 mb-2 transition-colors"
                 onClick={() => { setIsOpen(false); router.push('/chat'); }}
-              >💬 相談する</button>
+              >🖥 チャットページで開く</button>
 
               <button
                 className="w-full text-xs text-zinc-400 hover:text-white border border-zinc-700 rounded-lg py-1.5 transition-colors"
                 onClick={() => setIsOpen(false)}
               >閉じる</button>
+            </div>
+          )}
+
+          {/* ── チャットモード ────────────────────────────────────────────── */}
+          {chatMode && (
+            <>
+              {/* メッセージエリア */}
+              <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-2"
+                style={{ minHeight: 200, maxHeight: 300 }}>
+                {miniMessages.length === 0 && (
+                  <p className="text-xs text-zinc-500 text-center mt-4">何でも聞いてね🐱</p>
+                )}
+                {miniMessages.map(msg => (
+                  <div
+                    key={msg.id}
+                    className={`flex gap-2 items-end ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {msg.role === 'assistant' && (
+                      <Image src="/aibot/cat_normal.png" alt="猫" width={20} height={20} className="rounded-full flex-shrink-0 mb-0.5" />
+                    )}
+                    <div
+                      className="rounded-2xl px-3 py-2 text-xs leading-relaxed max-w-[85%]"
+                      style={{
+                        background: msg.role === 'user'
+                          ? 'linear-gradient(135deg, #4f46e5, #6366f1)'
+                          : 'rgba(255,255,255,0.08)',
+                        color: '#fff',
+                        borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >{msg.content}</div>
+                  </div>
+                ))}
+                {miniLoading && (
+                  <div className="flex gap-2 items-end justify-start">
+                    <Image src="/aibot/cat_normal.png" alt="猫" width={20} height={20} className="rounded-full flex-shrink-0" />
+                    <div className="rounded-2xl px-3 py-2 text-xs" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                      <span className="inline-flex gap-0.5">
+                        <span className="animate-bounce" style={{ animationDelay: '0ms' }}>●</span>
+                        <span className="animate-bounce" style={{ animationDelay: '150ms' }}>●</span>
+                        <span className="animate-bounce" style={{ animationDelay: '300ms' }}>●</span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div ref={miniBottomRef} />
+              </div>
+
+              {/* フィードバックボタン */}
+              {feedbackPending && !feedbackSent && (
+                <div className="flex gap-2 px-3 pb-1 flex-shrink-0">
+                  <button
+                    onClick={() => sendFeedback('good')}
+                    className="flex-1 text-xs py-1.5 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-600/30"
+                  >👍 解決した</button>
+                  <button
+                    onClick={() => sendFeedback('bad')}
+                    className="flex-1 text-xs py-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-600/30"
+                  >👎 うまくいかなかった</button>
+                </div>
+              )}
+
+              {/* 入力エリア */}
+              <div className="flex gap-2 items-center px-3 py-2 border-t border-zinc-800 flex-shrink-0">
+                <input
+                  type="text"
+                  value={miniInput}
+                  onChange={e => setMiniInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleMiniSend(); } }}
+                  placeholder="質問を入力…"
+                  className="flex-1 bg-zinc-800 rounded-xl px-3 py-2 text-xs text-white outline-none placeholder-zinc-500 border border-zinc-700 focus:border-indigo-500"
+                  disabled={miniLoading}
+                />
+                <button
+                  onClick={handleMiniSend}
+                  disabled={miniLoading || !miniInput.trim()}
+                  className="rounded-xl px-3 py-2 text-xs font-bold text-white transition-opacity"
+                  style={{
+                    background: 'linear-gradient(135deg,#4f46e5,#6366f1)',
+                    opacity: miniLoading || !miniInput.trim() ? 0.4 : 1,
+                  }}
+                >送信</button>
+              </div>
+
+              {/* フッター */}
+              <div className="flex items-center justify-center px-3 pb-2 flex-shrink-0">
+                <button
+                  onClick={() => { setIsOpen(false); router.push('/chat'); }}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >🖥 フル画面で開く →</button>
+              </div>
             </>
+          )}
         </div>
       )}
 
-      {/* ── Layer1: 常駐アイコン ─────────────────────────────────────────── */}
+      {/* ── 常駐アイコン ─────────────────────────────────────────────────── */}
       <div className="fixed bottom-5 right-5 z-[9999]">
         <button
           onClick={() => {
