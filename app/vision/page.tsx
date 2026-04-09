@@ -368,44 +368,6 @@ export default function VisionPage() {
 
           </div>
 
-          <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-6">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/arere.png"
-                alt="LIFAI mascot"
-                width={48}
-                height={48}
-                className="rounded-2xl ring-1 ring-zinc-200"
-              />
-              <div>
-                <div className="text-sm font-semibold">今の到達点</div>
-                <div className="text-xs text-zinc-500">“今どこまでできてる？”が一目でわかる</div>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              <div className="flex items-end justify-between">
-                <div>
-                  <div className="text-xs text-zinc-500">次の目標</div>
-                  <div className="text-base font-semibold">${formatUSD(growth.nextGoalUSD)}（GPU追加）</div>
-                </div>
-                <div className="text-xs text-zinc-500">あと ${formatUSD(remaining)}</div>
-              </div>
-
-              <ProgressBar valuePct={pctToNext} />
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <StatCard
-                  label="インフラ基金"
-                  value={`$${formatUSD(growth.fundUSD)}`}
-                  sub={`進捗 ${Math.floor(clamp(pctToNext, 0, 100))}%`}
-                />
-                <StatCard label="参加人数" value={`${growth.members}人`} sub="（公開値・暫定）" />
-                <StatCard label="GPU台数" value={`${growth.gpuUnits}台`} />
-                <StatCard label="VPS稼働" value={`${growth.vpsActive}件`} />
-              </div>
-            </div>
-          </div>
         </section>
         {/* vision block (inserted) */}
         {/* 🔥 Vision Image Block */}

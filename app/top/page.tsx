@@ -712,14 +712,7 @@ export default function AppHomePage() {
           {/* 紹介コード（折りたたみ、デフォルト非表示） */}
           <ReferralCard auth={auth} />
 
-          {/* プレセール終了カウントダウン */}
-          <PresaleHeader
-            endAtISO="2026-05-01T23:59:59+09:00"
-            goal={10000}
-            currencyLabel="USDT"
-          />
-
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+<div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             問い合わせはTOPページにございます。
           </div>
         </div>
