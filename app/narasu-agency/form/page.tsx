@@ -91,6 +91,14 @@ export default function NarasuFormPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
       <div className="mx-auto max-w-xl">
+        <div className="mb-4">
+          <button
+            onClick={() => router.push("/top")}
+            className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
+          >
+            ← TOPに戻る
+          </button>
+        </div>
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-extrabold text-slate-900">narasu代理申請フォーム</h1>
           <p className="mt-1 text-sm text-slate-600">必要事項を入力してください。音源URLは複数追加できます。</p>
