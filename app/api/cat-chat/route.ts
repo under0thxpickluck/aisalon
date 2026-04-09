@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { BP_COSTS } from "@/app/lib/bp-config";
+import { isDateTimeQuestion, buildDateTimeAnswer, getNowInJST } from "@/lib/cat/datetime";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SYSTEM_PROMPT = `あなたは「リファ猫」というAIサロン「LIFAI」のマスコットキャラクターです。
+const BASE_SYSTEM_PROMPT = `あなたは「リファ猫」というAIサロン「LIFAI」のマスコットキャラクターです。
 フレンドリーで親しみやすいトーンで、何でも日本語で答えてください。
 AI・副業・プログラミング・日常の悩みなど、幅広い質問に対応します。
 LIFAIの機能（団子占い・BGM生成・マーケット・ガチャ・ミッション・ステーキング・ノート生成・ランブル・タップマイニング・紹介制度）についても詳しいです。
 回答は簡潔にまとめつつ、必要なら詳しく説明してください。
-ページ文脈が与えられた場合は、そのページに関連した回答を優先してください。`;
+ページ文脈が与えられた場合は、そのページに関連した回答を優先してください。
+日付・曜日・時刻に関する質問では、必ずsystem promptで与えられた現在時刻情報を優先してください。現在時刻を推測で答えてはいけません。`;
 
 const replyCache = new Map<string, string>();
 
@@ -150,7 +152,18 @@ export async function POST(req: Request) {
     let confidence = 0.8;
     let reply: string;
 
-    // FAQ参照（GASが設定済みの場合）
+    // 1. datetime系ルール判定（最優先・OpenAIへ流さない）
+    if (isDateTimeQuestion(message)) {
+      reply = buildDateTimeAnswer(message);
+      sourceType = "rule_datetime";
+      confidence = 1.0;
+      if (gasUrl && gasKey) {
+        saveLog({ logId, userId: String(id || ""), sessionId, pagePath, widgetMode, userMessage: message, assistantMessage: reply, sourceType, confidence, gasUrl, gasKey });
+      }
+      return NextResponse.json({ ok: true, reply, sourceType, confidence, logId, cached: false });
+    }
+
+    // 2. FAQ参照（GASが設定済みの場合）
     if (gasUrl && gasKey && !safeImages?.length) {
       const faqs = await fetchFaqs(gasUrl, gasKey);
       const faqAnswer = matchFaq(message, faqs);
@@ -172,10 +185,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, reply: cached, sourceType: "ai", confidence: 0.8, logId, cached: true });
     }
 
-    // ページ文脈をsystem promptに追加
+    // ページ文脈 + 現在日時をsystem promptに追加
+    const nowJst = getNowInJST();
+    const datetimeHint = `\n現在の日本時間は ${nowJst.full} です。`;
     const contextHint = pagePath
       ? `\n現在ユーザーがいるページ: ${pagePath}。このページに関連した回答を優先してください。`
       : "";
+    const SYSTEM_PROMPT = BASE_SYSTEM_PROMPT + datetimeHint + contextHint;
 
     let userMessageContent: string | OpenAI.Chat.ChatCompletionContentPart[];
     if (safeImages?.length) {
