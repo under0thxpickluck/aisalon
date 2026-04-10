@@ -366,20 +366,20 @@ export default function AdminPage() {
     }
   };
 
-  // ── Rumble: 今の参加者で強制バトル開始 ───────────────────
-  const handleForceStart = async () => {
-    if (forceStartBusy) return;
-    if (!confirm("現在の参加者でバトルを強制開始します。よろしいですか？")) return;
-    setForceStartBusy(true); setForceStartMsg(null);
+  // ── Rumble: 今の参加者で即時バトル ──────────────────────
+  const handleRunNow = async () => {
+    if (runNowBusy) return;
+    if (!confirm("現在のエントリー済み参加者のみでバトルを即時開始します。よろしいですか？")) return;
+    setRunNowBusy(true); setRunNowMsg(null);
     try {
-      const res  = await fetch("/api/admin/rumble-force-start", { method: "POST" });
+      const res  = await fetch("/api/admin/rumble-run-now", { method: "POST" });
       const json = await res.json();
-      if (json?.ok) setForceStartMsg(`完了：${json.forced}人を強制参加 (${json.today})`);
-      else setForceStartMsg(`エラー：${json?.error ?? "unknown"}`);
+      if (json?.ok) setRunNowMsg(`完了：バトル実行 (${json.date ?? json.today ?? ""})`);
+      else setRunNowMsg(`エラー：${json?.error ?? "unknown"}`);
     } catch (e: any) {
-      setForceStartMsg(`エラー：${e?.message}`);
+      setRunNowMsg(`エラー：${e?.message}`);
     } finally {
-      setForceStartBusy(false);
+      setRunNowBusy(false);
     }
   };
 
@@ -433,8 +433,8 @@ export default function AdminPage() {
   const [rewardWeekId,     setRewardWeekId]      = useState("");
   const [rewardBusy,       setRewardBusy]        = useState(false);
   const [rewardMsg,        setRewardMsg]         = useState<string | null>(null);
-  const [forceStartBusy,   setForceStartBusy]   = useState(false);
-  const [forceStartMsg,    setForceStartMsg]     = useState<string | null>(null);
+  const [runNowBusy,       setRunNowBusy]       = useState(false);
+  const [runNowMsg,        setRunNowMsg]         = useState<string | null>(null);
 
   // ── ページネーション ──────────────────────────────────────
   const totalPages = Math.ceil(membersTotal / PAGE_SIZE);
@@ -764,25 +764,25 @@ export default function AdminPage() {
         <section className="mt-6 rounded-2xl bg-zinc-900 p-5">
           <p className="mb-4 text-lg font-semibold text-zinc-200">⚔️ Rumble League 管理</p>
 
-          {/* 強制バトル開始 */}
-          <div className="mb-4 rounded-xl border border-red-900 bg-red-950/40 p-4">
-            <p className="mb-3 text-sm font-bold text-red-300">⚡ 今の参加者で強制バトル開始</p>
-            <p className="mb-3 text-xs text-zinc-400">承認済みで未参加のユーザー全員を強制エントリーし、バトルを開始します。</p>
+          {/* 今の参加者で即時バトル */}
+          <div className="mb-4 rounded-xl border border-orange-900 bg-orange-950/30 p-4">
+            <p className="mb-3 text-sm font-bold text-orange-300">⚡ 今の参加者で即時バトル</p>
+            <p className="mb-3 text-xs text-zinc-400">現在エントリー済みの参加者のみでバトルを即時実行します（強制エントリーなし）。</p>
             <button
-              onClick={handleForceStart}
-              disabled={forceStartBusy}
+              onClick={handleRunNow}
+              disabled={runNowBusy}
               className={clsx(
                 "rounded-lg px-4 py-2 text-sm font-bold transition",
-                forceStartBusy
+                runNowBusy
                   ? "cursor-not-allowed bg-zinc-700 text-zinc-500"
-                  : "bg-red-600 text-white hover:bg-red-700"
+                  : "bg-orange-600 text-white hover:bg-orange-700"
               )}
             >
-              {forceStartBusy ? "処理中…" : "強制バトル開始"}
+              {runNowBusy ? "処理中…" : "即時バトル開始"}
             </button>
-            {forceStartMsg && (
-              <p className={clsx("mt-2 text-xs", forceStartMsg.startsWith("エラー") ? "text-red-400" : "text-emerald-400")}>
-                {forceStartMsg}
+            {runNowMsg && (
+              <p className={clsx("mt-2 text-xs", runNowMsg.startsWith("エラー") ? "text-red-400" : "text-emerald-400")}>
+                {runNowMsg}
               </p>
             )}
           </div>

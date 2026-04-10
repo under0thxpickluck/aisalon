@@ -922,8 +922,12 @@ export default function RumblePage() {
                       </span>
                     ) : spectatorPhase === "result" ? (
                       <span className="text-xs font-black text-yellow-400">🏆 結果確定</span>
+                    ) : spectatorData?.status === "no_data" ? (
+                      <span className="text-xs text-red-400/70">バトルデータが見つかりません</span>
+                    ) : spectatorLoading ? (
+                      <span className="text-xs text-white/40">取得中…</span>
                     ) : (
-                      <span className="text-xs text-white/40">本日の観戦データを準備中…</span>
+                      <span className="text-xs text-white/40">観戦データを読み込み中…</span>
                     )}
                   </div>
                   <span className="text-xs text-white/40">参加者 {dailyResult.participant_count}人</span>
