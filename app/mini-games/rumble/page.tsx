@@ -26,7 +26,23 @@ type Equipment = {
 type GachaResult = {
   item: { id: string; slot: string; rarity: string; name: string; bonus: number };
   bp: number;
+  auto_discarded?: number;
+  auto_shard_gained?: number;
 };
+
+// 強化コストテーブル（GASのENHANCE_TABLEと同期）
+const ENHANCE_TABLE = [
+  { cost: 5,   rate: 100 },
+  { cost: 8,   rate: 100 },
+  { cost: 12,  rate: 100 },
+  { cost: 18,  rate: 95  },
+  { cost: 25,  rate: 90  },
+  { cost: 35,  rate: 80  },
+  { cost: 50,  rate: 70  },
+  { cost: 70,  rate: 55  },
+  { cost: 95,  rate: 40  },
+  { cost: 130, rate: 25  },
+];
 
 // 観戦モード用型定義
 type SpectatorPlayer = {
@@ -319,6 +335,19 @@ export default function RumblePage() {
     })();
   }, [tab, dailyResult?.status, userId]);
 
+  // 観戦タブがpendingかつ当日の場合、30秒ごとにdaily-resultを自動ポーリング
+  useEffect(() => {
+    if (tab !== "観戦") return;
+    if (dailyResult?.status !== "pending" || !dailyResult?.isToday) return;
+    const interval = setInterval(() => {
+      fetch("/api/minigames/rumble/daily-result")
+        .then(r => r.json())
+        .then((d: DailyResultData) => { if (d.ok) setDailyResult(d); })
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [tab, dailyResult?.status, dailyResult?.isToday]);
+
   const handleSetName = async () => {
     const trimmed = nameInput.trim();
     if (!userId || nameBusy) return;
@@ -462,8 +491,12 @@ export default function RumblePage() {
     try {
       const res  = await fetch("/api/minigames/rumble/gacha", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
       const data = await res.json();
-      if (data.ok) { setGachaResult(data); }
-      else {
+      if (data.ok) {
+        setGachaResult(data);
+        if ((data.auto_shard_gained ?? 0) > 0) {
+          setShards(prev => prev + (data.auto_shard_gained ?? 0));
+        }
+      } else {
         if (data.error === "insufficient_bp") setMsg(`BP不足です（残高: ${data.bp}BP）`);
         else setMsg("エラーが発生しました");
       }
@@ -495,7 +528,7 @@ export default function RumblePage() {
       if (data.ok) {
         setShards(data.remaining_shard);
         setEquipment(prev => prev.filter(e => e.id !== itemId));
-        setMsg(`🔨 分解完了！ +${data.gained_shard} shard`);
+        setMsg(`🔨 分解完了！ +${data.gained_shard} 力のかけら`);
       } else { setMsg(data.error === "item_locked" ? "ロック中は分解できません" : "エラーが発生しました"); }
     } catch { setMsg("通信エラー"); } finally { setBusy(false); }
   };
@@ -512,7 +545,7 @@ export default function RumblePage() {
         if (data.result === "success") {
           setEquipment(prev => prev.map(e => e.id === itemId ? { ...e, bonus: data.updated.bonus, luck: data.updated.luck, stability: data.updated.stability, enhance_level: data.after_level } : e));
         }
-      } else { setMsg(data.error === "insufficient_shard" ? `Shard不足（残高: ${data.shards}）` : "エラー"); }
+      } else { setMsg(data.error === "insufficient_shard" ? `力のかけら不足（残高: ${data.shards}）` : "エラー"); }
     } catch { setMsg("通信エラー"); } finally { setBusy(false); }
   };
 
@@ -573,11 +606,11 @@ export default function RumblePage() {
               <div>
                 <p className="font-bold text-white mb-1">■ 強化</p>
                 <p>・装備は強化してさらに強くできます</p>
-                <p>・強化には素材（upgrade_shard）が必要です</p>
+                <p>・強化には力のかけらが必要です</p>
               </div>
               <div>
                 <p className="font-bold text-white mb-1">■ 分解</p>
-                <p>・不要な装備は素材に変換できます</p>
+                <p>・不要な装備は力のかけらに変換できます</p>
               </div>
               <div>
                 <p className="font-bold text-white mb-1">■ ポイント</p>
@@ -814,13 +847,13 @@ export default function RumblePage() {
         <div className="space-y-3">
           {/* シャード残高 */}
           <div className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
-            <span className="text-sm text-white/60">🔧 upgrade_shard</span>
+            <span className="text-sm text-white/60">⚙️ 力のかけら</span>
             <span className="font-bold text-orange-400">{shards}</span>
           </div>
 
           {enhanceResult && (
             <div className={`rounded-xl p-3 text-sm text-center ${enhanceResult.result === "success" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
-              {enhanceResult.result === "success" ? `✨ 強化成功！ +${enhanceResult.after_level}` : `💨 強化失敗... (${enhanceResult.shard_spent} shard消費)`}
+              {enhanceResult.result === "success" ? `✨ 強化成功！ +${enhanceResult.after_level}` : `💨 強化失敗... (${enhanceResult.shard_spent} 力のかけら消費)`}
             </div>
           )}
 
@@ -847,17 +880,28 @@ export default function RumblePage() {
                       </div>
                       {((item.luck ?? 0) > 0 || (item.stability ?? 0) > 0) && (
                         <div className="flex gap-3 text-xs text-white/40 mb-2">
-                          {(item.luck ?? 0) > 0 && <span>🍀 Luck {item.luck}%</span>}
-                          {(item.stability ?? 0) > 0 && <span>🛡 Stab {item.stability}%</span>}
+                          {(item.luck ?? 0) > 0 && <span>🍀 運 {item.luck}%</span>}
+                          {(item.stability ?? 0) > 0 && <span>🛡 安定 {item.stability}%</span>}
                         </div>
                       )}
+                      {(() => {
+                        const lvl = item.enhance_level ?? 0;
+                        const next = lvl < 10 ? ENHANCE_TABLE[lvl] : null;
+                        return next ? (
+                          <p className="text-[10px] text-orange-400/70 mb-1.5">
+                            次の強化：{next.cost} 力のかけら（成功率 {next.rate}%）
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-yellow-400/70 mb-1.5">最大強化済み</p>
+                        );
+                      })()}
                       <div className="flex gap-2">
                         <button onClick={() => handleEquip(item.id)} disabled={item.equipped || busy}
                           className={`flex-1 text-xs py-1 rounded ${item.equipped ? "bg-green-500/20 text-green-400" : "bg-purple-600 text-white"}`}>
                           {item.equipped ? "装備中" : "装備"}
                         </button>
-                        <button onClick={() => handleEnhance(item.id)} disabled={busy}
-                          className="text-xs px-2 py-1 rounded bg-orange-600/80 text-white">
+                        <button onClick={() => handleEnhance(item.id)} disabled={busy || (item.enhance_level ?? 0) >= 10}
+                          className="text-xs px-2 py-1 rounded bg-orange-600/80 text-white disabled:opacity-40">
                           強化
                         </button>
                         <button onClick={() => handleDismantle(item.id)} disabled={item.equipped || busy}
@@ -893,10 +937,21 @@ export default function RumblePage() {
               <p className={`text-xs font-bold uppercase mb-1 ${RARITY_COLOR[gachaResult.item.rarity]}`}>{gachaResult.item.rarity}</p>
               <p className="text-2xl font-black mb-1">{gachaResult.item.name}</p>
               <p className="text-sm text-white/60">{gachaResult.item.slot} / +{gachaResult.item.bonus}ボーナス</p>
+              {(gachaResult.auto_discarded ?? 0) > 0 && (
+                <p className="mt-2 text-xs text-orange-400/80">
+                  ⚠️ 上限超過のため古い装備{gachaResult.auto_discarded}個を分解しました（+{gachaResult.auto_shard_gained} 力のかけら）
+                </p>
+              )}
             </div>
           )}
 
           {msg && <div className="bg-red-500/10 text-red-400 rounded-xl p-3 text-sm text-center">{msg}</div>}
+
+          {/* 注意書き */}
+          <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">
+            <p className="text-xs text-orange-300/80 font-bold mb-1">⚠️ ストック上限について</p>
+            <p className="text-xs text-white/40">各部位（頭・胴・手・足）につき10個まで保持できます。超えた場合、最も古い未装備・未ロックの装備が自動的に力のかけらに変換されます。</p>
+          </div>
 
           {/* 排出率 */}
           <div className="bg-white/5 rounded-xl p-4">
@@ -954,9 +1009,9 @@ export default function RumblePage() {
                 )}
               </div>
               <div className="bg-white/5 rounded-2xl p-4 text-center">
-                <p className="text-xs text-white/40">⏰ 抽選は19:00以降に実施されます</p>
+                <p className="text-xs text-white/40">⏰ バトル実行後に下の「最新を取得」を押してください</p>
                 <div className="mt-2">
-                  <p className="text-xs text-white/30 mb-1">次のランブルまで</p>
+                  <p className="text-xs text-white/30 mb-1">次のバトルまで</p>
                   <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
                 </div>
               </div>
@@ -971,15 +1026,13 @@ export default function RumblePage() {
                     .finally(() => setDailyResultLoading(false));
                 }}
                 disabled={dailyResultLoading}
-                className="w-full py-2 rounded-xl font-bold text-xs bg-white/5 hover:bg-white/10 transition text-white/50 disabled:opacity-40"
+                className="w-full py-3 rounded-xl font-bold text-sm bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/30 transition text-purple-300 disabled:opacity-40"
               >
-                {dailyResultLoading ? "取得中..." : "🔃 最新を取得"}
+                {dailyResultLoading ? "取得中..." : "🔃 最新を取得（バトル後にタップ）"}
               </button>
 
               {/* 前回バトルリプレイ */}
-              {prevLoading && (
-                <div className="text-center text-white/30 text-xs py-4">前回バトルを確認中...</div>
-              )}
+              {/* prevLoading中は静かに待つ（ユーザーに混乱を与えないよう非表示） */}
               {!prevLoading && prevSpectatorData?.status === "ready" && prevBattleDate && (
                 <div className="mt-2 space-y-3">
                   <div className="flex items-center gap-2">

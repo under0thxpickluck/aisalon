@@ -7102,6 +7102,7 @@ function rumbleGacha_(params) {
   // equipment保存（新カラム対応）
   var eqSheet = getEquipmentSheet_();
   ensureEquipmentCols_(eqSheet);
+  ensureEquipmentNewCols_(eqSheet);
   eqSheet.appendRow([
     eqId, userId, slot, rarity, name,
     bonus, bonus, quality,   // base_bonus / bonus（強化前は同値）/ quality
@@ -7109,11 +7110,74 @@ function rumbleGacha_(params) {
     luckVal, stabilityVal,   // luck / stability
     "false", "false", nowJst
   ]);
+  SpreadsheetApp.flush();
+
+  // 各スロット10個上限チェック：超えたら最古の非装備・非ロックアイテムを自動分解
+  var SLOT_LIMIT = 10;
+  var SHARD_BASE_GACHA = { common: 1, rare: 3, epic: 10, legendary: 40, mythic: 300 };
+  var autoGainedShard = 0;
+  var autoDiscarded   = [];
+
+  var eqData2   = eqSheet.getDataRange().getValues();
+  var eqHeaders = eqData2[0];
+  var eqIdx2    = {};
+  eqHeaders.forEach(function(h, i) { eqIdx2[h] = i; });
+
+  // 対象スロットのアイテムを created_at 昇順で取得
+  var slotItems = [];
+  for (var si = 1; si < eqData2.length; si++) {
+    if (String(eqData2[si][eqIdx2["user_id"]]) !== userId) continue;
+    if (String(eqData2[si][eqIdx2["slot"]]) !== slot) continue;
+    slotItems.push({
+      rowNum:       si + 1,
+      id:           String(eqData2[si][eqIdx2["id"]]),
+      rarity:       String(eqData2[si][eqIdx2["rarity"]]),
+      enhance_level: Number(eqData2[si][eqIdx2["enhance_level"]] || 0),
+      quality:      Number(eqData2[si][eqIdx2["quality"]] || 100),
+      equipped:     String(eqData2[si][eqIdx2["equipped"]]) === "true",
+      locked:       String(eqData2[si][eqIdx2["locked"]]) === "true",
+      created_at:   String(eqData2[si][eqIdx2["created_at"]] || ""),
+    });
+  }
+  // created_at 昇順
+  slotItems.sort(function(a, b) { return a.created_at < b.created_at ? -1 : 1; });
+
+  // 超過分を古い順に自動分解（装備中・ロック中はスキップ）
+  if (slotItems.length > SLOT_LIMIT) {
+    var userData2 = getUserShards_(userId);
+    var currentShards = userData2 ? userData2.shards : 0;
+    var sheetForShards = userData2 ? userData2.sheet : null;
+    var rowForShards   = userData2 ? userData2.rowNum : -1;
+    var idxForShards   = userData2 ? userData2.idx : null;
+
+    var toDelete = []; // rowNum を逆順削除用
+    for (var di = 0; di < slotItems.length && slotItems.length - toDelete.length > SLOT_LIMIT; di++) {
+      var item = slotItems[di];
+      if (item.equipped || item.locked) continue;
+      var base   = SHARD_BASE_GACHA[item.rarity] || 1;
+      var bonus2 = item.enhance_level;
+      if (item.quality >= 115) bonus2 += 8;
+      else if (item.quality >= 110) bonus2 += 3;
+      var gained = base + bonus2;
+      currentShards += gained;
+      autoGainedShard += gained;
+      autoDiscarded.push({ id: item.id, rarity: item.rarity });
+      toDelete.push(item.rowNum);
+    }
+    // 行削除（大きい行番号から削除してズレを防ぐ）
+    toDelete.sort(function(a, b) { return b - a; });
+    toDelete.forEach(function(r) { eqSheet.deleteRow(r); });
+    if (sheetForShards && rowForShards > 0) {
+      setUserShards_(sheetForShards, rowForShards, idxForShards, currentShards);
+    }
+  }
 
   return json_({
     ok:     true,
     item:   { id: eqId, slot: slot, rarity: rarity, name: name, bonus: bonus },
     bp:     newBp,
+    auto_discarded:   autoDiscarded.length,
+    auto_shard_gained: autoGainedShard,
   });
 }
 
