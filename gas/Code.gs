@@ -5684,6 +5684,7 @@ function doPost(e) {
     if (action === 'rumble_daily_result')      return rumbleDailyResult_(body);
     if (action === 'rumble_force_entry')       return rumbleForceEntry_(body);
     if (action === 'rumble_force_start')       return rumbleForceStart_(body);
+    if (action === 'rumble_run_now')           return rumbleRunNow_(body);
     if (action === 'music_boost_status')     return musicBoostStatus_(body);
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
     if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
@@ -7281,7 +7282,8 @@ function rumbleDailyLottery_(params) {
   var dateStr  = String(params.date || getTodayJst_());
   // created_at in rumble_entry is stored as fake-JST ISO (Date.now()+9h).
   // 19:00 JST stored in that format = "YYYY-MM-DDT19:00:00.000Z"
-  var deadline = dateStr + "T19:00:00.000Z";
+  // deadlineOverride を渡すと任意の締め切りで実行可能（rumble_run_now から使用）
+  var deadline = params.deadlineOverride || (dateStr + "T19:00:00.000Z");
 
   // 1. Get participants filtered by deadline
   var entrySheet = getRumbleEntrySheet_();
@@ -7481,7 +7483,7 @@ function rumbleDailyResult_(params) {
   // Deadline same as lottery filter
   var deadline = dateStr + "T19:00:00.000Z";
 
-  // --- Participants (filtered by deadline) ---
+  // --- Participants ---
   var entrySheet = getRumbleEntrySheet_();
   ensureRumbleEntryCols_(entrySheet);
   var entryData = entrySheet.getDataRange().getValues();
@@ -7489,19 +7491,24 @@ function rumbleDailyResult_(params) {
   var eIdx      = {};
   eHeaders.forEach(function(h, i) { eIdx[h] = i; });
 
+  // 表示用：deadline フィルターなし（当日エントリー全員を見せる）
   var rawParticipants = [];
+  // lottery 判定用：deadline フィルターあり（抽選対象者数で isReady を判断）
+  var lotteryParticipants = [];
   for (var i = 1; i < entryData.length; i++) {
     var row = entryData[i];
     if (String(row[eIdx["date"]]) !== dateStr) continue;
     var createdAt = String(row[eIdx["created_at"]] || "");
-    if (createdAt && createdAt > deadline) continue;
     rawParticipants.push({
       user_id:    String(row[eIdx["user_id"]]),
       created_at: createdAt,
     });
+    if (!createdAt || createdAt <= deadline) {
+      lotteryParticipants.push({ user_id: String(row[eIdx["user_id"]]) });
+    }
   }
   var participantCount    = rawParticipants.length;
-  var expectedWinnerCount = Math.min(5, participantCount);
+  var expectedWinnerCount = Math.min(5, lotteryParticipants.length);
 
   // --- Display names ---
   var appliesSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
@@ -8280,6 +8287,20 @@ function rumbleForceStart_(params) {
   }
 
   return json_({ ok: true, forced: forced, week_id: weekId, today: today });
+}
+
+// action: rumble_run_now（管理者用：現在のエントリー済み参加者のみで即時バトル実行）
+function rumbleRunNow_(params) {
+  var secrets = getSecrets_();
+  if (String(params.adminKey || "") !== secrets.ADMIN_SECRET) {
+    return json_({ ok: false, error: "admin_unauthorized" });
+  }
+  var today  = getTodayJst_();
+  // 現在時刻を deadline として渡す → 今日エントリー済みの全員が対象
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  var result = rumbleDailyLottery_({ date: today, deadlineOverride: nowJst });
+  var parsed = (typeof result === "string") ? JSON.parse(result) : result;
+  return json_({ ok: parsed.ok !== false, date: today, distributed: parsed.distributed, error: parsed.error });
 }
 
 // action: rumble_set_display_name
