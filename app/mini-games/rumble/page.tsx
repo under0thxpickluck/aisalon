@@ -537,10 +537,16 @@ export default function RumblePage() {
     } catch { setMsg("通信エラー"); } finally { setBusy(false); }
   };
 
-  // 強化ボタン押下 → モーダルを開くだけ
-  const handleEnhance = (itemId: string) => {
+  // 強化ボタン押下 → サーバーからかけら残高を再取得してからモーダルを開く
+  const handleEnhance = async (itemId: string) => {
     const item = equipment.find(e => e.id === itemId);
-    if (!item) return;
+    if (!item || !userId) return;
+    // サーバーの最新値を取得してstateを更新してからモーダルを開く
+    try {
+      const res = await fetch(`/api/minigames/rumble/shard-status?userId=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      if (data.ok) setShards(data.shards);
+    } catch {}
     setEnhanceModal({ itemId, itemName: item.name, currentLevel: item.enhance_level ?? 0 });
     setEnhanceModalMsg("");
     setEnhanceResult(null);
@@ -563,13 +569,19 @@ export default function RumblePage() {
           ));
           setEnhanceModal(prev => prev ? { ...prev, currentLevel: data.after_level } : null);
         }
-        setEnhanceModalMsg(data.result === "success"
+        const msg = data.result === "success"
           ? `✨ 強化成功！ Lv${data.after_level}（${data.shard_spent} 力のかけら消費）`
-          : `💨 強化失敗... （${data.shard_spent} 力のかけら消費）`);
+          : `💨 強化失敗... （${data.shard_spent} 力のかけら消費）`;
+        setEnhanceModalMsg(msg);
+        // 結果表示後にモーダルを自動で閉じる
+        setTimeout(() => { setEnhanceModal(null); setEnhanceModalMsg(""); }, 1800);
       } else {
-        setEnhanceModalMsg(data.error === "insufficient_shard"
-          ? `力のかけらが不足しています（残高: ${data.shards} / 必要: ${ENHANCE_TABLE[enhanceModal.currentLevel]?.cost ?? "?"}）`
-          : "エラーが発生しました");
+        if (data.error === "insufficient_shard") {
+          setShards(data.shards ?? shards);
+          setEnhanceModalMsg(`力のかけらが不足しています（残高: ${data.shards} / 必要: ${ENHANCE_TABLE[enhanceModal.currentLevel]?.cost ?? "?"}）`);
+        } else {
+          setEnhanceModalMsg("エラーが発生しました");
+        }
       }
     } catch { setEnhanceModalMsg("通信エラーが発生しました"); }
     finally { setEnhancing(false); }
@@ -970,11 +982,14 @@ export default function RumblePage() {
                 </p>
                 <div className="space-y-2">
                   {slotItems.map(item => (
-                    <div key={item.id} className={`p-3 rounded-lg border ${RARITY_BG[item.rarity]} bg-white/3`}>
+                    <div key={item.id} className={`p-3 rounded-lg border ${item.equipped ? "border-green-500/60 bg-green-500/5 shadow-[0_0_8px_rgba(34,197,94,0.15)]" : `${RARITY_BG[item.rarity]} bg-white/3`}`}>
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-xs font-bold ${RARITY_COLOR[item.rarity]}`}>
                           {item.name}{(item.enhance_level ?? 0) > 0 ? ` [+${item.enhance_level}]` : ""} (+{item.bonus})
                         </span>
+                        {item.equipped && (
+                          <span className="text-[9px] font-black text-green-400 bg-green-500/20 px-1.5 py-0.5 rounded-full">✓ 装備中</span>
+                        )}
                       </div>
                       {((item.luck ?? 0) > 0 || (item.stability ?? 0) > 0) && (
                         <div className="flex gap-3 text-xs text-white/40 mb-2">
@@ -982,17 +997,6 @@ export default function RumblePage() {
                           {(item.stability ?? 0) > 0 && <span>🛡 安定 {item.stability}%</span>}
                         </div>
                       )}
-                      {(() => {
-                        const lvl = item.enhance_level ?? 0;
-                        const next = lvl < 10 ? ENHANCE_TABLE[lvl] : null;
-                        return next ? (
-                          <p className="text-[10px] text-orange-400/70 mb-1.5">
-                            次の強化：{next.cost} 力のかけら（成功率 {next.rate}%）
-                          </p>
-                        ) : (
-                          <p className="text-[10px] text-yellow-400/70 mb-1.5">最大強化済み</p>
-                        );
-                      })()}
                       <div className="flex gap-2">
                         <button onClick={() => handleEquip(item.id)} disabled={item.equipped || busy}
                           className={`flex-1 text-xs py-1 rounded ${item.equipped ? "bg-green-500/20 text-green-400" : "bg-purple-600 text-white"}`}>
