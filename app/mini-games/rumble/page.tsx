@@ -121,6 +121,10 @@ export default function RumblePage() {
   const [isAfter19Jst, setIsAfter19Jst] = useState(false);
   const [shards, setShards]       = useState(0);
   const [enhanceResult, setEnhanceResult] = useState<{result:string; after_level:number; shard_spent:number} | null>(null);
+  // 強化モーダル
+  const [enhanceModal, setEnhanceModal] = useState<{ itemId: string; itemName: string; currentLevel: number } | null>(null);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceModalMsg, setEnhanceModalMsg] = useState("");
   const [rankContext, setRankContext] = useState<any>(null);
   const [showHelp, setShowHelp]         = useState(false);
   const [showEquipHelp, setShowEquipHelp] = useState(false);
@@ -533,20 +537,42 @@ export default function RumblePage() {
     } catch { setMsg("通信エラー"); } finally { setBusy(false); }
   };
 
-  const handleEnhance = async (itemId: string) => {
-    if (!userId || busy) return;
-    setBusy(true); setEnhanceResult(null);
+  // 強化ボタン押下 → モーダルを開くだけ
+  const handleEnhance = (itemId: string) => {
+    const item = equipment.find(e => e.id === itemId);
+    if (!item) return;
+    setEnhanceModal({ itemId, itemName: item.name, currentLevel: item.enhance_level ?? 0 });
+    setEnhanceModalMsg("");
+    setEnhanceResult(null);
+  };
+
+  // モーダル内「強化する」ボタン → 実際にAPI呼び出し
+  const handleEnhanceConfirm = async () => {
+    if (!enhanceModal || !userId || enhancing) return;
+    setEnhancing(true); setEnhanceModalMsg("");
     try {
-      const res  = await fetch("/api/minigames/rumble/enhance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, itemId }) });
+      const res  = await fetch("/api/minigames/rumble/enhance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, itemId: enhanceModal.itemId }) });
       const data = await res.json();
       if (data.ok) {
         setShards(data.remaining_shard);
         setEnhanceResult({ result: data.result, after_level: data.after_level, shard_spent: data.shard_spent });
         if (data.result === "success") {
-          setEquipment(prev => prev.map(e => e.id === itemId ? { ...e, bonus: data.updated.bonus, luck: data.updated.luck, stability: data.updated.stability, enhance_level: data.after_level } : e));
+          setEquipment(prev => prev.map(e => e.id === enhanceModal.itemId
+            ? { ...e, bonus: data.updated.bonus, luck: data.updated.luck, stability: data.updated.stability, enhance_level: data.after_level }
+            : e
+          ));
+          setEnhanceModal(prev => prev ? { ...prev, currentLevel: data.after_level } : null);
         }
-      } else { setMsg(data.error === "insufficient_shard" ? `力のかけら不足（残高: ${data.shards}）` : "エラー"); }
-    } catch { setMsg("通信エラー"); } finally { setBusy(false); }
+        setEnhanceModalMsg(data.result === "success"
+          ? `✨ 強化成功！ Lv${data.after_level}（${data.shard_spent} 力のかけら消費）`
+          : `💨 強化失敗... （${data.shard_spent} 力のかけら消費）`);
+      } else {
+        setEnhanceModalMsg(data.error === "insufficient_shard"
+          ? `力のかけらが不足しています（残高: ${data.shards} / 必要: ${ENHANCE_TABLE[enhanceModal.currentLevel]?.cost ?? "?"}）`
+          : "エラーが発生しました");
+      }
+    } catch { setEnhanceModalMsg("通信エラーが発生しました"); }
+    finally { setEnhancing(false); }
   };
 
   return (
@@ -675,6 +701,86 @@ export default function RumblePage() {
           </div>
         </div>
       )}
+
+      {/* 強化モーダル */}
+      {enhanceModal && (() => {
+        const lvl  = enhanceModal.currentLevel;
+        const next = lvl < 10 ? ENHANCE_TABLE[lvl] : null;
+        const canEnhance = next !== null && shards >= (next?.cost ?? 0);
+        return (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-4">
+            <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+              <h2 className="text-lg font-black mb-1 text-center">⚙️ 装備を強化</h2>
+              <p className="text-xs text-white/40 text-center mb-5">{enhanceModal.itemName}</p>
+
+              {next ? (
+                <div className="space-y-3 mb-5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/5 rounded-xl p-3 text-center">
+                      <p className="text-xs text-white/40 mb-1">現在Lv</p>
+                      <p className="text-xl font-black text-white">{lvl}</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-3 text-center">
+                      <p className="text-xs text-white/40 mb-1">強化後Lv</p>
+                      <p className="text-xl font-black text-purple-400">{lvl + 1}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-white/40 mb-1">必要かけら</p>
+                      <p className={`text-xl font-black ${shards >= next.cost ? "text-orange-400" : "text-red-400"}`}>{next.cost}</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-3 text-center">
+                      <p className="text-xs text-white/40 mb-1">成功率</p>
+                      <p className={`text-xl font-black ${next.rate === 100 ? "text-green-400" : next.rate >= 70 ? "text-yellow-400" : "text-red-400"}`}>{next.rate}%</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs px-1">
+                    <span className="text-white/40">所持かけら</span>
+                    <span className={shards >= next.cost ? "text-orange-400 font-bold" : "text-red-400 font-bold"}>{shards} 個</span>
+                  </div>
+                  {!canEnhance && (
+                    <p className="text-xs text-red-400 text-center bg-red-500/10 rounded-xl py-2">
+                      力のかけらが不足しています（あと {next.cost - shards} 個必要）
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-center text-yellow-400 font-bold mb-5">最大強化済みです</p>
+              )}
+
+              {enhanceModalMsg && (
+                <p className={`text-sm text-center mb-4 rounded-xl py-2 ${
+                  enhanceModalMsg.includes("成功") ? "bg-green-500/10 text-green-400" :
+                  enhanceModalMsg.includes("失敗") ? "bg-red-500/10 text-red-400" :
+                  "bg-red-500/10 text-red-400"
+                }`}>
+                  {enhanceModalMsg}
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setEnhanceModal(null); setEnhanceModalMsg(""); }}
+                  disabled={enhancing}
+                  className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-bold disabled:opacity-40"
+                >
+                  閉じる
+                </button>
+                {next && (
+                  <button
+                    onClick={handleEnhanceConfirm}
+                    disabled={enhancing || !canEnhance}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-yellow-600 text-sm font-bold disabled:opacity-40"
+                  >
+                    {enhancing ? "強化中..." : "強化する"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
@@ -851,14 +957,6 @@ export default function RumblePage() {
             <span className="font-bold text-orange-400">{shards}</span>
           </div>
 
-          {enhanceResult && (
-            <div className={`rounded-xl p-3 text-sm text-center ${enhanceResult.result === "success" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
-              {enhanceResult.result === "success" ? `✨ 強化成功！ +${enhanceResult.after_level}` : `💨 強化失敗... (${enhanceResult.shard_spent} 力のかけら消費)`}
-            </div>
-          )}
-
-          {msg && <div className="bg-blue-500/10 text-blue-400 rounded-xl p-3 text-sm text-center">{msg}</div>}
-
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-white/40">装備してスコアを強化しよう</p>
             <button onClick={() => setShowEquipHelp(true)} className="text-white/30 text-xs">？ 装備とは</button>
@@ -900,7 +998,7 @@ export default function RumblePage() {
                           className={`flex-1 text-xs py-1 rounded ${item.equipped ? "bg-green-500/20 text-green-400" : "bg-purple-600 text-white"}`}>
                           {item.equipped ? "装備中" : "装備"}
                         </button>
-                        <button onClick={() => handleEnhance(item.id)} disabled={busy || (item.enhance_level ?? 0) >= 10}
+                        <button onClick={() => handleEnhance(item.id)} disabled={(item.enhance_level ?? 0) >= 10}
                           className="text-xs px-2 py-1 rounded bg-orange-600/80 text-white disabled:opacity-40">
                           強化
                         </button>
