@@ -7546,14 +7546,17 @@ function rumbleDailyResult_(params) {
   winners.sort(function(a, b) { return a.rank - b.rank; });
 
   // --- Status: ready only if all expected ranks are distributed ---
+  // winners.length > 0 の場合はlotteryが実行済み → 実際の当選者数を使う
+  // （19:00以降エントリーでlotteryParticipantsが0でも正しくreadyになる）
+  var effectiveWinnerCount = winners.length > 0 ? winners.length : expectedWinnerCount;
   var rankSet = {};
   winners.forEach(function(w) { rankSet[w.rank] = true; });
   var allRanksPresent = true;
-  for (var r = 1; r <= expectedWinnerCount; r++) {
+  for (var r = 1; r <= effectiveWinnerCount; r++) {
     if (!rankSet[r]) { allRanksPresent = false; break; }
   }
-  var isReady = expectedWinnerCount > 0 &&
-    winners.length === expectedWinnerCount &&
+  var isReady = effectiveWinnerCount > 0 &&
+    winners.length === effectiveWinnerCount &&
     allRanksPresent;
 
   if (isReady) {
@@ -7562,7 +7565,7 @@ function rumbleDailyResult_(params) {
       status:           "ready",
       date:             dateStr,
       participant_count: participantCount,
-      winnerCount:      expectedWinnerCount,
+      winnerCount:      effectiveWinnerCount,
       isToday:          isToday,
       replay_seed:      computeSeed_(dateStr), // sha256 hex only, SALT never exposed
       winners:          winners,

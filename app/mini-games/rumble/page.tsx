@@ -129,6 +129,15 @@ export default function RumblePage() {
   const [dailyResult,        setDailyResult]        = useState<DailyResultData | null>(null);
   const [dailyResultLoading, setDailyResultLoading] = useState(false);
   const [showWinners,        setShowWinners]         = useState(false);
+  // 前回バトル（pendingのとき直近の完了バトルを表示）
+  const [prevBattleDate,     setPrevBattleDate]     = useState<string | null>(null);
+  const [prevDailyResult,    setPrevDailyResult]    = useState<DailyResultData | null>(null);
+  const [prevSpectatorData,  setPrevSpectatorData]  = useState<SpectatorData | null>(null);
+  const [prevLoading,        setPrevLoading]        = useState(false);
+  const [prevBattleLogs,     setPrevBattleLogs]     = useState<{ text: string; color: string; id: number }[]>([]);
+  const [prevPhase,          setPrevPhase]          = useState<"waiting" | "live" | "result">("waiting");
+  const [prevIsPlaying,      setPrevIsPlaying]      = useState(false);
+  const [prevLogCounter,     setPrevLogCounter]     = useState(0);
 
   useEffect(() => {
     const seen = localStorage.getItem("rumble_help_seen");
@@ -280,6 +289,36 @@ export default function RumblePage() {
       .finally(() => setDailyResultLoading(false));
   }, [tab]);
 
+  // 前回バトル取得（今日がpendingのとき直近の完了バトルを自動取得）
+  useEffect(() => {
+    if (tab !== "観戦") return;
+    if (dailyResult?.status !== "pending") return;
+    if (prevDailyResult || prevLoading) return;
+    setPrevLoading(true);
+    (async () => {
+      try {
+        for (let i = 1; i <= 10; i++) {
+          const d = new Date(Date.now() - i * 86400000);
+          const dateStr = new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const res = await fetch(`/api/minigames/rumble/daily-result?date=${dateStr}`);
+          const data: DailyResultData = await res.json();
+          if (data.ok && data.status === "ready") {
+            setPrevDailyResult(data);
+            setPrevBattleDate(dateStr);
+            const sRes = await fetch(`/api/minigames/rumble/spectator?userId=${encodeURIComponent(userId)}&date=${dateStr}`);
+            const sData: SpectatorData = await sRes.json();
+            if (sData.ok && sData.status === "ready") {
+              setPrevSpectatorData(sData);
+              setPrevPhase("waiting");
+            }
+            break;
+          }
+        }
+      } catch {}
+      finally { setPrevLoading(false); }
+    })();
+  }, [tab, dailyResult?.status, userId]);
+
   const handleSetName = async () => {
     const trimmed = nameInput.trim();
     if (!userId || nameBusy) return;
@@ -364,6 +403,37 @@ export default function RumblePage() {
       }
     } catch {}
     finally { setSpectatorLoading(false); }
+  };
+
+  const handlePrevPlay = async () => {
+    if (!prevSpectatorData || prevIsPlaying || prevSpectatorData.status !== "ready") return;
+    setPrevIsPlaying(true);
+    setPrevPhase("live");
+    setPrevBattleLogs([]);
+    let counter = 0;
+    const addLog = (text: string, color = "text-white") => {
+      counter++;
+      const id = counter;
+      setPrevBattleLogs(prev => [...prev, { text, color, id }].slice(-20));
+      setPrevLogCounter(id);
+    };
+    for (const event of prevSpectatorData.events) {
+      await new Promise(r => setTimeout(r, Math.min(event.delay > 0 ? event.delay : 800, 2000)));
+      if (event.type === "intro" || event.type === "log") {
+        addLog(event.text ?? "", "text-white/80");
+      } else if (event.type === "batch_eliminate") {
+        addLog(event.text ?? "", "text-red-400/80");
+      } else if (event.type === "battle") {
+        addLog(event.text ?? "", event.is_crit ? "text-yellow-400" : "text-purple-300");
+      } else if (event.type === "ranking") {
+        addLog("━━━━━━━━━━━━━━━━", "text-white/20");
+        addLog("🏆 順位が確定！", "text-yellow-400");
+      } else if (event.type === "result") {
+        addLog(event.text ?? "バトル終了！", "text-yellow-300");
+        setPrevPhase("result");
+      }
+    }
+    setPrevIsPlaying(false);
   };
 
   const handleEntry = async () => {
@@ -905,6 +975,66 @@ export default function RumblePage() {
               >
                 {dailyResultLoading ? "取得中..." : "🔃 最新を取得"}
               </button>
+
+              {/* 前回バトルリプレイ */}
+              {prevLoading && (
+                <div className="text-center text-white/30 text-xs py-4">前回バトルを確認中...</div>
+              )}
+              {!prevLoading && prevSpectatorData?.status === "ready" && prevBattleDate && (
+                <div className="mt-2 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-px flex-1 bg-white/10" />
+                    <span className="text-xs text-white/30">前回のバトル ({prevBattleDate})</span>
+                    <div className="h-px flex-1 bg-white/10" />
+                  </div>
+                  {/* 前回バトルログ */}
+                  <div className="bg-black/60 border border-purple-500/20 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-purple-400/40 mb-3 tracking-widest">PREV BATTLE LOG</p>
+                    <div className="min-h-[160px] space-y-2 font-mono">
+                      {prevBattleLogs.length === 0 && !prevIsPlaying && (
+                        <p className="text-white/20 text-sm text-center pt-6">▶ 前回バトルを観戦</p>
+                      )}
+                      {prevBattleLogs.map(log => (
+                        <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>{log.text}</p>
+                      ))}
+                      {prevIsPlaying && <p className="text-white/30 text-xs animate-pulse">▌</p>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {!prevIsPlaying && prevPhase !== "result" && (
+                      <button onClick={handlePrevPlay}
+                        className="flex-1 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600/60 to-blue-600/60 hover:opacity-80 transition">
+                        ⚔️ 前回バトルを観戦
+                      </button>
+                    )}
+                    {!prevIsPlaying && prevPhase === "result" && (
+                      <button onClick={() => { setPrevBattleLogs([]); setPrevPhase("waiting"); }}
+                        className="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition">
+                        🔄 もう一度見る
+                      </button>
+                    )}
+                  </div>
+                  {/* 前回バトル当選者 */}
+                  {prevPhase === "result" && prevDailyResult?.winners && prevDailyResult.winners.length > 0 && (
+                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
+                      <p className="text-xs font-bold text-yellow-400/60 mb-3 text-center">🎰 前回のBP抽選結果</p>
+                      <div className="space-y-1">
+                        {prevDailyResult.winners.map(w => (
+                          <div key={w.rank} className="flex justify-between text-xs px-2 py-1">
+                            <span className={`text-white/70 ${w.user_id === userId ? "text-purple-300 font-bold" : ""}`}>
+                              {w.rank}位 {w.display_name}
+                            </span>
+                            <span className="text-yellow-400">+{w.bp_amount.toLocaleString()} BP</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {!prevLoading && !prevSpectatorData && prevBattleDate === null && dailyResult?.participant_count === 0 && (
+                <p className="text-center text-white/20 text-xs py-2">前回のバトルデータが見つかりません</p>
+              )}
             </div>
           )}
 
