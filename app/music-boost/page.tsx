@@ -123,6 +123,8 @@ export default function MusicBoostPage() {
         setMsg(`✅ ${PLANS.find(p => p.id === planId)?.label}プランを契約しました！`);
         const s = await fetch(`/api/music-boost/status?userId=${encodeURIComponent(userId)}`).then(r => r.json());
         if (s.ok) setStatus(s);
+        const b = await fetch(`/api/wallet/balance?id=${encodeURIComponent(userId)}`).then(r => r.json()).catch(() => null);
+        if (b?.ok) setEpBalance(Number(b.ep ?? 0));
       } else {
         if (data.error === "no_slots_available") setMsg(`❌ 枠が不足しています（残り${data.available}枠、必要${data.needed}枠）`);
         else if (data.error === "insufficient_ep") setMsg(`❌ EPが不足しています（残り${data.balance} EP、必要${data.needed} EP）`);
