@@ -41,6 +41,8 @@ type MemberRow = {
   total_login_count: number;
   subscription_plan: string;
   last_login_at: string;
+  music_boost_plan?: string | null;
+  music_boost_expires_at?: string | null;
 };
 
 type Summary = {
@@ -151,6 +153,33 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
   return <td className={clsx("px-3 py-3 align-top text-sm text-zinc-200", className)}>{children}</td>;
 }
 
+function SortTh({
+  children, sortKey, currentSortKey, currentSortOrder, onSort, className,
+}: {
+  children: React.ReactNode;
+  sortKey: string;
+  currentSortKey: string;
+  currentSortOrder: "asc" | "desc";
+  onSort: (key: string) => void;
+  className?: string;
+}) {
+  const isActive = currentSortKey === sortKey;
+  return (
+    <th
+      className={clsx(
+        "whitespace-nowrap px-3 py-3 text-left text-xs font-bold text-zinc-400 cursor-pointer select-none hover:text-zinc-200 transition",
+        className,
+      )}
+      onClick={() => onSort(sortKey)}
+    >
+      {children}
+      <span className="ml-1 text-zinc-600">
+        {isActive ? (currentSortOrder === "asc" ? "▲" : "▼") : "⇅"}
+      </span>
+    </th>
+  );
+}
+
 function EmptyState({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-6">
@@ -186,6 +215,8 @@ export default function AdminPage() {
   const [membersTotal, setMembersTotal] = useState(0);
   const [membersPage,  setMembersPage]  = useState(0);
   const [membersLoading, setMembersLoading] = useState(true);
+  const [membersSortKey,   setMembersSortKey]   = useState<string>("created_at");
+  const [membersSortOrder, setMembersSortOrder] = useState<"asc" | "desc">("desc");
   const PAGE_SIZE = 20;
 
   // --- 新規: 音楽レビュー ---
@@ -240,10 +271,13 @@ export default function AdminPage() {
     }
   };
 
-  const loadMembers = async (page = 0) => {
+  const loadMembers = async (page = 0, sortKey = membersSortKey, sortOrder = membersSortOrder) => {
     setMembersLoading(true);
     try {
-      const res  = await fetch(`/api/admin/members?page=${page}&pageSize=${PAGE_SIZE}`, { credentials: "include", cache: "no-store" });
+      const res  = await fetch(
+        `/api/admin/members?page=${page}&pageSize=${PAGE_SIZE}&sortKey=${encodeURIComponent(sortKey)}&sortOrder=${encodeURIComponent(sortOrder)}`,
+        { credentials: "include", cache: "no-store" }
+      );
       const json = await res.json();
       if (json?.ok) {
         setMembers(json.members ?? []);
@@ -255,6 +289,13 @@ export default function AdminPage() {
     } finally {
       setMembersLoading(false);
     }
+  };
+
+  const handleMembersSort = (key: string) => {
+    const nextOrder = membersSortKey === key && membersSortOrder === "desc" ? "asc" : "desc";
+    setMembersSortKey(key);
+    setMembersSortOrder(nextOrder);
+    loadMembers(0, key, nextOrder);
   };
 
   const loadMusicReviews = async () => {
@@ -697,19 +738,20 @@ export default function AdminPage() {
           ) : (
             <>
               <div className="overflow-x-auto rounded-xl border border-zinc-800">
-                <table className="w-full min-w-[900px] text-left">
+                <table className="w-full min-w-[1100px] text-left">
                   <thead className="bg-zinc-800">
                     <tr>
                       <Th>ログインID</Th>
                       <Th>氏名</Th>
                       <Th>プラン</Th>
                       <Th>サブスク</Th>
-                      <Th>BP残高</Th>
-                      <Th>EP残高</Th>
-                      <Th>連続ログイン</Th>
-                      <Th>累計ログイン</Th>
-                      <Th>最終ログイン</Th>
+                      <SortTh sortKey="bp_balance"        currentSortKey={membersSortKey} currentSortOrder={membersSortOrder} onSort={handleMembersSort}>BP残高</SortTh>
+                      <SortTh sortKey="ep_balance"        currentSortKey={membersSortKey} currentSortOrder={membersSortOrder} onSort={handleMembersSort}>EP残高</SortTh>
+                      <SortTh sortKey="login_streak"      currentSortKey={membersSortKey} currentSortOrder={membersSortOrder} onSort={handleMembersSort}>連続ログイン</SortTh>
+                      <SortTh sortKey="total_login_count" currentSortKey={membersSortKey} currentSortOrder={membersSortOrder} onSort={handleMembersSort}>累計ログイン</SortTh>
+                      <SortTh sortKey="last_login_at"     currentSortKey={membersSortKey} currentSortOrder={membersSortOrder} onSort={handleMembersSort}>最終ログイン</SortTh>
                       <Th>ステータス</Th>
+                      <Th>Music Boost</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -728,6 +770,22 @@ export default function AdminPage() {
                           <span className="rounded-full bg-emerald-900/50 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
                             {m.status}
                           </span>
+                        </Td>
+                        <Td>
+                          {m.music_boost_plan ? (
+                            <span className="inline-flex flex-col gap-0.5">
+                              <span className="rounded-full bg-purple-900/50 px-2 py-0.5 text-[10px] font-semibold text-purple-300">
+                                {m.music_boost_plan}
+                              </span>
+                              {m.music_boost_expires_at && (
+                                <span className="text-[10px] text-zinc-500">
+                                  〜{new Date(m.music_boost_expires_at).toLocaleDateString("ja-JP", { month: "2-digit", day: "2-digit" })}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-600">—</span>
+                          )}
                         </Td>
                       </tr>
                     ))}
