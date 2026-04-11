@@ -8,6 +8,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page     = Number(searchParams.get("page")     ?? 0);
   const pageSize = Number(searchParams.get("pageSize") ?? 20);
+  const sortKey   = searchParams.get("sortKey")   ?? "created_at";
+  const sortOrder = searchParams.get("sortOrder") ?? "desc";
 
   const gasUrl      = process.env.GAS_WEBAPP_URL;
   const gasKey      = process.env.GAS_API_KEY;
@@ -23,7 +25,7 @@ export async function GET(req: Request) {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       cache:   "no-store",
-      body:    JSON.stringify({ action: "admin_get_members", adminKey: gasAdminKey, page, pageSize }),
+      body:    JSON.stringify({ action: "admin_get_members", adminKey: gasAdminKey, page, pageSize, sortKey, sortOrder }),
     });
 
     const data = await res.json().catch(() => ({ ok: false, error: "invalid_response" }));
