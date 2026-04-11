@@ -1055,6 +1055,29 @@ function handle_(key, body) {
     }
 
     const page     = Math.max(0, Number(body.page     || 0));
+
+    // ── Music Boost マップ構築（userId → {plan_id, expires_at}）──
+    var boostMap = {};
+    try {
+      var bSS    = SpreadsheetApp.getActiveSpreadsheet();
+      var bSheet = bSS.getSheetByName("music_boost");
+      if (bSheet) {
+        var bData = bSheet.getDataRange().getValues();
+        var bHdr  = bData[0];
+        var bIdx  = {};
+        bHdr.forEach(function(h, i) { bIdx[h] = i; });
+        for (var bi = 1; bi < bData.length; bi++) {
+          if (String(bData[bi][bIdx["status"]]) === "active") {
+            boostMap[String(bData[bi][bIdx["user_id"]])] = {
+              plan_id:    String(bData[bi][bIdx["plan_id"]]),
+              expires_at: String(bData[bi][bIdx["expires_at"]]),
+            };
+          }
+        }
+      }
+    } catch (e) { /* シートなければ空マップのまま */ }
+    // ─────────────────────────────────────────────────────────
+
     const pageSize = Math.min(100, Math.max(1, Number(body.pageSize || 20)));
 
     const values = sheet.getDataRange().getValues();
@@ -1079,13 +1102,32 @@ function handle_(key, body) {
         total_login_count: Number(r[idx["total_login_count"]] || 0),
         subscription_plan: str_(r[idx["subscription_plan"]]),
         last_login_at:     r[idx["last_login_at"]] ? new Date(r[idx["last_login_at"]]).toISOString() : "",
+        music_boost_plan:       boostMap[str_(r[idx["login_id"]])] ? boostMap[str_(r[idx["login_id"]])].plan_id    : null,
+        music_boost_expires_at: boostMap[str_(r[idx["login_id"]])] ? boostMap[str_(r[idx["login_id"]])].expires_at : null,
       });
     }
 
-    // created_at 降順ソート
+    // ── サーバーサイドソート ──────────────────────────────────
+    var ALLOWED_SORT_KEYS = ["created_at", "ep_balance", "bp_balance",
+                             "login_streak", "total_login_count", "last_login_at"];
+    var sortKey   = ALLOWED_SORT_KEYS.indexOf(str_(body.sortKey)) !== -1
+                    ? str_(body.sortKey) : "created_at";
+    var sortOrder = str_(body.sortOrder) === "asc" ? "asc" : "desc";
+
     approved.sort(function(a, b) {
-      return (b.created_at || "") < (a.created_at || "") ? -1 : 1;
+      var av = a[sortKey];
+      var bv = b[sortKey];
+      // 数値列は数値比較
+      if (typeof av === "number" && typeof bv === "number") {
+        return sortOrder === "asc" ? av - bv : bv - av;
+      }
+      // 文字列（日時含む）は文字列比較
+      var as = String(av || "");
+      var bs = String(bv || "");
+      if (sortOrder === "asc") return as < bs ? -1 : as > bs ? 1 : 0;
+      else                     return bs < as ? -1 : bs > as ? 1 : 0;
     });
+    // ─────────────────────────────────────────────────────────
 
     const start   = page * pageSize;
     const sliced  = approved.slice(start, start + pageSize);
