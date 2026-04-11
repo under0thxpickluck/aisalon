@@ -8499,6 +8499,7 @@ function musicBoostStatus_(params) {
 function musicBoostSubscribe_(params) {
   var userId = String(params.userId || "");
   var planId = String(params.planId || "");
+  var paymentMethod = String(params.paymentMethod || "ep");
   if (!userId || !planId) return json_({ ok: false, error: "params_required" });
 
   // プラン検索
@@ -8534,6 +8535,39 @@ function musicBoostSubscribe_(params) {
     return json_({ ok: false, error: "no_slots_available", available: availSlots, needed: deltaSlots });
   }
 
+  // ── EP決済処理 ────────────────────────────────────────────
+  if (paymentMethod === "ep") {
+    var epCost = plan.price * 100;
+
+    // applies シートからユーザーのEP残高を確認
+    var appliesSheet = getOrCreateSheet_();
+    var appliesData  = appliesSheet.getDataRange().getValues();
+    var appliesHdr   = appliesData[0];
+    var appliesIdx   = {};
+    appliesHdr.forEach(function(h, i) { appliesIdx[h] = i; });
+
+    var userEp    = 0;
+    var userEmail = "";
+    for (var ai = 1; ai < appliesData.length; ai++) {
+      if (String(appliesData[ai][appliesIdx["login_id"]]) === userId) {
+        userEp    = Number(appliesData[ai][appliesIdx["ep_balance"]] || 0);
+        userEmail = String(appliesData[ai][appliesIdx["email"]] || "");
+        break;
+      }
+    }
+
+    if (userEp < epCost) {
+      return json_({ ok: false, error: "insufficient_ep", balance: userEp, needed: epCost });
+    }
+
+    var epResult = mktAdjustEp_(userId, userEmail, -epCost, "music_boost_ep",
+                                "Music Boost " + planId + " EP支払い");
+    if (!epResult.ok) {
+      return json_({ ok: false, error: "ep_deduct_failed", detail: epResult.error });
+    }
+  }
+  // ── EP決済処理ここまで ────────────────────────────────────
+
   var nowJst    = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
   var expiresAt = new Date(Date.now() + 9 * 60 * 60 * 1000 + 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -8551,7 +8585,7 @@ function musicBoostSubscribe_(params) {
     plan.slots, "active", nowJst, expiresAt, "", nowJst
   ]);
 
-  return json_({
+  var returnPayload = {
     ok:         true,
     boost_id:   newId,
     plan_id:    planId,
@@ -8560,7 +8594,11 @@ function musicBoostSubscribe_(params) {
     slots_used: plan.slots,
     started_at: nowJst,
     expires_at: expiresAt,
-  });
+  };
+  if (paymentMethod === "ep") {
+    returnPayload.ep_cost = plan.price * 100;
+  }
+  return json_(returnPayload);
 }
 
 // action: music_boost_cancel（解約）
