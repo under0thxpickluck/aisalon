@@ -70,6 +70,8 @@ export default function MusicBoostPage() {
   const [pwInput, setPwInput]       = useState("");
   const [pwError, setPwError]       = useState(false);
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+  const [epBalance, setEpBalance]       = useState<number | null>(null);
+  const [confirmPlan, setConfirmPlan]   = useState<typeof PLANS[number] | null>(null);
 
   useEffect(() => {
     const ok = sessionStorage.getItem("music_boost_authed");
@@ -100,13 +102,21 @@ export default function MusicBoostPage() {
       .finally(() => setLoading(false));
   }, [userId]);
 
-  const handleSubscribe = async (planId: string) => {
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/wallet/balance?id=${encodeURIComponent(userId)}`)
+      .then(r => r.json())
+      .then(d => { if (d.ok) setEpBalance(Number(d.ep ?? 0)); })
+      .catch(() => {});
+  }, [userId]);
+
+  const handleSubscribe = async (planId: string, paymentMethod = "ep") => {
     if (!userId || busy) return;
     setBusy(true); setMsg("");
     try {
       const res  = await fetch("/api/music-boost/subscribe", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, planId })
+        body: JSON.stringify({ userId, planId, paymentMethod })
       });
       const data = await res.json();
       if (data.ok) {
@@ -115,6 +125,7 @@ export default function MusicBoostPage() {
         if (s.ok) setStatus(s);
       } else {
         if (data.error === "no_slots_available") setMsg(`❌ 枠が不足しています（残り${data.available}枠、必要${data.needed}枠）`);
+        else if (data.error === "insufficient_ep") setMsg(`❌ EPが不足しています（残り${data.balance} EP、必要${data.needed} EP）`);
         else setMsg("❌ エラーが発生しました: " + data.error);
       }
     } catch { setMsg("❌ 通信エラーが発生しました"); }
@@ -193,6 +204,11 @@ export default function MusicBoostPage() {
         <p>音楽ブーストは、企業案件や協力依頼時の優先度を高める月額オプションです。</p>
         <p className="mt-1">ブースト率が高いほど優先的に提案されやすくなります。</p>
         <p className="mt-1 text-white/30 text-xs">本機能は共有枠を使用するため、空きがない場合は新規契約・変更ができません。</p>
+        {epBalance !== null && (
+          <p className="mt-2 text-white/50 text-xs font-bold">
+            現在のEP残高: <span className="text-purple-300">{epBalance.toLocaleString()} EP</span>
+          </p>
+        )}
       </div>
 
       {/* 枠状況 */}
@@ -268,16 +284,41 @@ export default function MusicBoostPage() {
                 </div>
               </div>
               {selected === plan.id && !isCurrent && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleSubscribe(plan.id); }}
-                  disabled={busy || !canAfford}
-                  className={`w-full mt-3 py-2 rounded-lg text-sm font-bold transition ${
-                    canAfford
-                      ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"
-                      : "bg-white/10 text-white/30 cursor-not-allowed"
-                  }`}>
-                  {busy ? "処理中..." : canAfford ? `${plan.label}プランを契約` : "枠不足"}
-                </button>
+                <div className="mt-3 space-y-2" onClick={e => e.stopPropagation()}>
+                  {/* EP決済ボタン */}
+                  {(() => {
+                    const epCost      = plan.price * 100;
+                    const hasEnoughEp = epBalance !== null && epBalance >= epCost;
+                    const epDisabled  = busy || !canAfford || !hasEnoughEp;
+                    return (
+                      <button
+                        onClick={() => setConfirmPlan(plan)}
+                        disabled={epDisabled}
+                        className={`w-full py-2 rounded-lg text-sm font-bold transition ${
+                          !canAfford
+                            ? "bg-white/10 text-white/30 cursor-not-allowed"
+                            : !hasEnoughEp
+                            ? "bg-white/10 text-red-400/70 cursor-not-allowed"
+                            : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"
+                        }`}>
+                        {busy
+                          ? "処理中..."
+                          : !canAfford
+                          ? "枠不足"
+                          : !hasEnoughEp
+                          ? `EP不足（残り ${epBalance?.toLocaleString() ?? "?"} EP）`
+                          : `EPで支払う（${epCost.toLocaleString()} EP）`}
+                      </button>
+                    );
+                  })()}
+                  {/* クレジットカードボタン（準備中） */}
+                  <button
+                    disabled
+                    className="w-full py-2 rounded-lg text-sm font-bold bg-white/5 text-white/20 cursor-not-allowed border border-white/10 flex items-center justify-center gap-2">
+                    <span>💳 クレジットカード</span>
+                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">準備中</span>
+                  </button>
+                </div>
               )}
               {isCurrent && (
                 <p className="text-xs text-purple-400 mt-2">✓ 現在のプラン</p>
@@ -294,6 +335,69 @@ export default function MusicBoostPage() {
         <p>• 不正利用が確認された場合はアカウントを停止します</p>
         <p>• 運営判断で報酬・優先度の調整を行うことがあります</p>
       </div>
+
+      {/* ── EP決済確認モーダル ─────────────────────────────────────── */}
+      {confirmPlan !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          onClick={() => setConfirmPlan(null)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-2xl bg-[#18181b] border border-white/10 p-7 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-base font-extrabold text-white mb-5 text-center">ご確認ください</h2>
+
+            <div className="space-y-3 text-sm text-white/70">
+              <div className="flex justify-between">
+                <span>プラン</span>
+                <span className="font-bold text-white">{confirmPlan.label}（{confirmPlan.percent}%）</span>
+              </div>
+              <div className="flex justify-between">
+                <span>費用</span>
+                <span className="font-bold text-purple-300">{(confirmPlan.price * 100).toLocaleString()} EP</span>
+              </div>
+              <div className="flex justify-between">
+                <span>有効期間</span>
+                <span className="font-bold text-white">30日間</span>
+              </div>
+              <div className="flex justify-between">
+                <span>有効期限</span>
+                <span className="font-bold text-white">
+                  {(() => {
+                    const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+                    return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+                  })()}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-4 text-xs text-yellow-300/80 leading-relaxed">
+              ⚠️ 本機能は収益・利益を保証するものではありません。<br />
+              Music Boost は認知拡大を目的とした広告サービスです。<br />
+              期限到来後は自動更新されません。
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                onClick={() => setConfirmPlan(null)}
+                className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white/60 hover:bg-white/5 transition">
+                キャンセル
+              </button>
+              <button
+                onClick={() => {
+                  const plan = confirmPlan;
+                  setConfirmPlan(null);
+                  handleSubscribe(plan.id, "ep");
+                }}
+                disabled={busy}
+                className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-2.5 text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50">
+                確認して支払う
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── チュートリアルオーバーレイ ──────────────────────────────────── */}
       {tutorialStep !== null && (
