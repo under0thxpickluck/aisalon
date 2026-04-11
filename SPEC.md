@@ -71,6 +71,7 @@ aisalon/
 │   ├── market/page.tsx             # マーケットプレイス
 │   ├── music/page.tsx              # 音楽生成 (旧)
 │   ├── music2/page.tsx             # 音楽生成 (新)
+│   ├── music-boost/page.tsx        # Music Boost（EP決済）
 │   ├── 5000/page.tsx               # 特定プランLP
 │   ├── lib/
 │   │   └── auth.ts                 # 認証ヘルパー
@@ -89,7 +90,9 @@ aisalon/
 │       │   ├── list/route.ts       # 申請一覧
 │       │   ├── approve/route.ts    # 承認
 │       │   ├── grant-bp/route.ts   # BP付与
-│       │   └── sell-requests/route.ts # 売却申請一覧
+│       │   ├── sell-requests/route.ts # 売却申請一覧
+│       │   ├── members/route.ts    # 会員一覧（ページング・ソート）
+│       │   └── dashboard/route.ts  # ダッシュボード統計
 │       ├── market/
 │       │   ├── create/route.ts     # 商品出品
 │       │   ├── list/route.ts       # 商品一覧
@@ -99,6 +102,10 @@ aisalon/
 │       │   └── claim-bp/route.ts   # BP受取
 │       ├── wallet/
 │       │   └── balance/route.ts    # 残高確認
+│       ├── music-boost/
+│       │   ├── status/route.ts     # Music Boost状態取得
+│       │   ├── subscribe/route.ts  # Music Boost契約（EP決済）
+│       │   └── cancel/route.ts     # Music Boost解約
 │       ├── music/
 │       │   ├── generate/route.ts   # 音楽生成開始
 │       │   ├── status/route.ts     # 音楽生成状況
@@ -359,9 +366,49 @@ npm start      # 本番サーバー起動 (port 3000)
 
 ---
 
+### `app/music-boost/page.tsx` — Music Boost (`/music-boost`)
+
+**用途:** EP を消費して楽曲の配信優先度を高める月額ブーストサービス
+
+**認証:** ページ独自のパスワード認証（`sessionStorage` に `music_boost_authed=1`）
+
+**機能:**
+
+| 機能 | 詳細 |
+|---|---|
+| EP残高表示 | `GET /api/wallet/balance` から取得 |
+| ブースト状況 | `GET /api/music-boost/status?userId=...` |
+| プラン選択 | 10プラン（Starter〜Legend）、枠数チェックあり |
+| EP決済確認モーダル | プラン・費用・有効期限・免責事項を表示 |
+| EP決済ボタン | EP残高不足時は無効化 |
+| クレジットカードボタン | 準備中（常にdisabled） |
+| 解約 | `POST /api/music-boost/cancel` |
+| チュートリアル | `localStorage: musicboost_tutorial_seen`（初回のみ） |
+
+**プラン一覧（PLANS）:**
+
+| id | label | percent | price（USD） | slots |
+|---|---|---|---|---|
+| starter | Starter | 2% | $9 | 10 |
+| light | Light | 5% | $29 | 25 |
+| basic | Basic | 10% | $59 | 50 |
+| growth | Growth | 15% | $99 | 75 |
+| pro | Pro | 20% | $149 | 100 |
+| advanced | Advanced | 25% | $199 | 125 |
+| premium | Premium | 30% | $299 | 150 |
+| elite | Elite | 35% | $499 | 175 |
+| master | Master | 40% | $699 | 200 |
+| legend | Legend | 45% | $1000 | 225 |
+
+**EP換算:** `price_usd × 100 EP`（例: $9 → 900 EP）
+
+**自動更新:** GAS 時間ベーストリガー（毎日深夜0時）が期限切れブーストを自動更新。EP不足の場合は失効 + メール通知。
+
+---
+
 ### `app/admin/page.tsx` — 管理者ダッシュボード (`/admin`)
 
-**用途:** 申請一覧の表示・承認・BP付与
+**用途:** 申請一覧の表示・承認・BP付与・会員一覧・Music Boost管理
 
 **アクセス:** HTTP Basic Auth 必須
 
@@ -370,6 +417,10 @@ npm start      # 本番サーバー起動 (port 3000)
 - 申請承認: `POST /api/admin/approve`
 - 売却申請一覧: `GET /api/admin/sell-requests`
 - BP付与: `POST /api/admin/grant-bp`
+- ダッシュボード統計: `GET /api/admin/dashboard`
+- 会員一覧（ページング・サーバーサイドソート）: `GET /api/admin/members`
+- 会員一覧のソート可能列: `bp_balance` / `ep_balance` / `login_streak` / `total_login_count` / `last_login_at`
+- 会員一覧の Music Boost 列: 契約中プランと有効期限を表示
 
 ---
 
@@ -577,6 +628,82 @@ npm start      # 本番サーバー起動 (port 3000)
 |---|---|
 | GAS action | `get_sell_requests` |
 | 成功レスポンス | `{ ok: true, items: SellRequest[] }` |
+
+---
+
+#### `GET /api/admin/members`
+
+**ファイル:** `app/api/admin/members/route.ts`
+
+| 項目 | 内容 |
+|---|---|
+| クエリパラメータ | `page`, `pageSize`, `sortKey`, `sortOrder` |
+| GAS action | `admin_get_members` |
+| 成功レスポンス | `{ ok: true, members: MemberRow[], total, page, pageSize }` |
+
+**MemberRow 型:**
+
+```typescript
+{
+  login_id: string;
+  name: string;
+  email: string;
+  plan: string;
+  status: string;
+  created_at: string;
+  bp_balance: number;
+  ep_balance: number;
+  login_streak: number;
+  total_login_count: number;
+  subscription_plan: string;
+  last_login_at: string;
+  music_boost_plan?: string | null;       // アクティブな Music Boost プランID
+  music_boost_expires_at?: string | null; // Music Boost 有効期限
+}
+```
+
+**ソートキー（`ALLOWED_SORT_KEYS`）:** `created_at` / `ep_balance` / `bp_balance` / `login_streak` / `total_login_count` / `last_login_at`
+
+---
+
+### Music Boost
+
+#### `GET /api/music-boost/status`
+
+**ファイル:** `app/api/music-boost/status/route.ts`
+
+| 項目 | 内容 |
+|---|---|
+| クエリパラメータ | `userId: string` |
+| GAS action | `music_boost_status` |
+| 成功レスポンス | `{ ok: true, current_boost, total_slots, used_slots, available_slots, plans }` |
+
+---
+
+#### `POST /api/music-boost/subscribe`
+
+**ファイル:** `app/api/music-boost/subscribe/route.ts`
+
+| 項目 | 内容 |
+|---|---|
+| リクエスト | `{ userId, planId, paymentMethod?: "ep" }` |
+| GAS action | `music_boost_subscribe` |
+| 成功レスポンス | `{ ok: true, boost_id, plan_id, percent, price_usd, slots_used, started_at, expires_at, ep_cost? }` |
+| エラー | `no_slots_available` / `insufficient_ep` / `ep_deduct_failed` |
+
+**EP換算:** `paymentMethod="ep"` の場合、`price_usd × 100 EP` を差し引く。
+
+---
+
+#### `POST /api/music-boost/cancel`
+
+**ファイル:** `app/api/music-boost/cancel/route.ts`
+
+| 項目 | 内容 |
+|---|---|
+| リクエスト | `{ userId: string }` |
+| GAS action | `music_boost_cancel` |
+| 成功レスポンス | `{ ok: true, canceled_at }` |
 
 ---
 
@@ -1182,6 +1309,17 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | `grant_bp_for_sell` | POST | `/api/admin/grant-bp` | 売却申請へBP付与 |
 | `pending_bp` | GET | `/api/user/pending-bp` | 未受取BP確認 |
 | `claim_bp` | POST | `/api/user/claim-bp` | BP受取確定 |
+| `admin_get_members` | POST | `/api/admin/members` | 承認済み会員一覧（ページング・ソート・Music Boost結合） |
+| `music_boost_status` | GET | `/api/music-boost/status` | ユーザーの現在ブースト状況 |
+| `music_boost_subscribe` | POST | `/api/music-boost/subscribe` | Music Boost 新規契約・プラン変更（EP差引） |
+| `music_boost_cancel` | POST | `/api/music-boost/cancel` | Music Boost 解約 |
+| `music_boost_admin_list` | — | 管理者直呼び | 全ブースト一覧 |
+
+### GAS 自動実行
+
+| 関数名 | トリガー | 内容 |
+|---|---|---|
+| `musicBoostAutoRenew_` | 毎日深夜0時（時間ベース） | 期限切れ Music Boost を自動更新。EP不足時は `expired` に変更 + メール通知 |
 
 ### GAS Sheets 構造
 
@@ -1191,6 +1329,9 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | `ref_tree` | 紹介ツリー表示用（`ref_tree_build` で全消し→再生成） |
 | `ref_events` | 紹介紐づけの監査ログ |
 | `wallet_ledger` | 紹介配当などの金融取引履歴 |
+| `music_boost` | Music Boost 契約履歴（id, user_id, plan_id, percent, price_usd, slots_used, status, started_at, expires_at, canceled_at, updated_at） |
+
+**`music_boost.status` の値:** `active` / `canceled` / `expired`（EP不足自動更新失敗 or 期限到来）
 
 ### GAS 既知の仕様・注意事項
 
@@ -1245,6 +1386,18 @@ GET /api/market/list?page=1&limit=50&item_type=...&currency=...&q=...
 
 1. `GET /api/admin/sell-requests` で売却申請一覧取得
 2. `POST /api/admin/grant-bp { request_id, user_id, bp_amount }` でBP付与
+
+### 会員一覧
+
+1. `GET /api/admin/members?page=0&pageSize=20&sortKey=created_at&sortOrder=desc` で取得
+2. 1ページ20件・サーバーサイドソート対応
+3. ソート可能列: BP残高 / EP残高 / 連続ログイン / 累計ログイン / 最終ログイン
+4. Music Boost 列: 契約中プランIDと有効期限を表示（`music_boost` シートとJOIN）
+
+### Music Boost 管理
+
+- `music_boost_admin_list` GAS action で全ブースト一覧を確認可能
+- 自動更新は毎日深夜0時の GAS トリガーで実行（`musicBoostAutoRenew_`）
 
 ---
 
