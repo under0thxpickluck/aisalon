@@ -398,7 +398,7 @@ export default function Music2Page() {
       if (!data.ok) {
         const msg =
           data.error === "insufficient_bp"
-            ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: 100BP）`
+            ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: ${isProSettingsActive ? 250 : 100}BP）`
             : `エラーが発生しました（${data.error ?? "unknown"}）`;
         setErrorMsg(msg);
         setLoading(false);
@@ -858,9 +858,15 @@ export default function Music2Page() {
               {/* BP表示 */}
               <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <span className="text-xs font-bold text-indigo-700">必要BP</span>
-                <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">100 BP</span>
+                <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                  {isProSettingsActive ? "250 BP" : "100 BP"}
+                </span>
                 {isPro ? (
-                  <span className="ml-auto text-[11px] text-violet-600 font-semibold">🎛️ Proモード：高品質プロンプトで生成</span>
+                  isProSettingsActive ? (
+                    <span className="ml-auto text-[11px] text-violet-600 font-semibold">🎛️ Pro設定使用中（250BP）</span>
+                  ) : (
+                    <span className="ml-auto text-[11px] text-violet-500">Pro設定を使うと250BP</span>
+                  )
                 ) : (
                   <span className="ml-auto text-[11px] text-indigo-500">構成生成→音楽生成の2ステップ</span>
                 )}
