@@ -205,6 +205,10 @@ export default function Music2Page() {
   const isProSettingsActive =
     isPro && (!!bpmHint || !!vocalStyle || !!vocalMood || instruments.length > 0 || !!duration);
 
+  const proChipBase     = "rounded-full border px-3 py-1 text-xs font-semibold transition";
+  const proChipActive   = "border-violet-500 bg-violet-600 text-white";
+  const proChipInactive = "border-[#3730a3] bg-[#1e1b4b] text-indigo-300 hover:border-violet-500 hover:text-violet-300";
+
   // ── 認証チェック & プラン取得 ───────────────────────────────────────────
 
   useEffect(() => {
@@ -736,12 +740,19 @@ export default function Music2Page() {
 
               {/* Pro追加設定（isPro === true の場合のみ表示） */}
               {isPro && (
-                <div className="mt-5 rounded-[18px] border border-violet-200 bg-violet-50 p-4">
-                  <p className="text-xs font-bold text-violet-700 mb-3">🎛️ Pro設定（任意）</p>
+                <div className="mt-5 rounded-[18px] border border-violet-500/30 bg-[#0d0d1a] p-4 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
+                  {/* ヘッダー */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm">🎛️</span>
+                    <span className="text-[11px] font-black text-violet-400 tracking-widest">PRO SETTINGS</span>
+                    <span className="ml-auto rounded-full bg-gradient-to-r from-violet-600 to-indigo-500 px-2.5 py-0.5 text-[9px] font-bold text-white">
+                      PRO
+                    </span>
+                  </div>
 
                   {/* BPMヒント */}
-                  <div className="mb-3">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">BPM目安</label>
+                  <div className="mb-4">
+                    <label className="block text-[11px] font-bold text-violet-400 mb-1.5">BPM目安</label>
                     <div className="flex flex-wrap gap-1.5">
                       {BPM_OPTIONS.map((opt) => (
                         <button
@@ -749,7 +760,7 @@ export default function Music2Page() {
                           type="button"
                           disabled={loading}
                           onClick={() => setBpmHint(bpmHint === opt.value ? null : opt.value)}
-                          className={[chipBase, bpmHint === opt.value ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                          className={[proChipBase, bpmHint === opt.value ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
                         >
                           {opt.label}
                         </button>
@@ -758,8 +769,8 @@ export default function Music2Page() {
                   </div>
 
                   {/* ボーカルスタイル */}
-                  <div className="mb-3">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">ボーカルスタイル</label>
+                  <div className="mb-4">
+                    <label className="block text-[11px] font-bold text-violet-400 mb-1.5">ボーカルスタイル</label>
                     <div className="flex flex-wrap gap-1.5">
                       {VOCAL_STYLES.map((v) => (
                         <button
@@ -767,7 +778,7 @@ export default function Music2Page() {
                           type="button"
                           disabled={loading}
                           onClick={() => setVocalStyle(vocalStyle === v ? "" : v)}
-                          className={[chipBase, vocalStyle === v ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                          className={[proChipBase, vocalStyle === v ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
                         >
                           {v}
                         </button>
@@ -776,8 +787,8 @@ export default function Music2Page() {
                   </div>
 
                   {/* ボーカルムード */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">ボーカルムード</label>
+                  <div className="mb-4">
+                    <label className="block text-[11px] font-bold text-violet-400 mb-1.5">ボーカルムード</label>
                     <div className="flex flex-wrap gap-1.5">
                       {VOCAL_MOODS.map((v) => (
                         <button
@@ -785,9 +796,58 @@ export default function Music2Page() {
                           type="button"
                           disabled={loading}
                           onClick={() => setVocalMood(vocalMood === v ? "" : v)}
-                          className={[chipBase, vocalMood === v ? "border-violet-500 bg-violet-600 text-white" : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                          className={[proChipBase, vocalMood === v ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
                         >
                           {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 楽器（NEW） */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <label className="text-[11px] font-bold text-violet-400">楽器</label>
+                      <span className="rounded bg-[#312e81] px-1.5 py-0.5 text-[8px] font-bold text-[#a5b4fc]">NEW</span>
+                      <span className="text-[10px] text-violet-400/50">複数選択可</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {INSTRUMENTS.map((inst) => (
+                        <button
+                          key={inst.value}
+                          type="button"
+                          disabled={loading}
+                          onClick={() =>
+                            setInstruments((prev) =>
+                              prev.includes(inst.value)
+                                ? prev.filter((i) => i !== inst.value)
+                                : [...prev, inst.value]
+                            )
+                          }
+                          className={[proChipBase, instruments.includes(inst.value) ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {inst.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 曲の長さ（NEW） */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <label className="text-[11px] font-bold text-violet-400">曲の長さ</label>
+                      <span className="rounded bg-[#312e81] px-1.5 py-0.5 text-[8px] font-bold text-[#a5b4fc]">NEW</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DURATION_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setDuration(duration === opt.value ? null : opt.value)}
+                          className={[proChipBase, duration === opt.value ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {opt.label}
                         </button>
                       ))}
                     </div>
