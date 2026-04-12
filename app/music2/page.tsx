@@ -30,6 +30,21 @@ const BPM_OPTIONS = [
 const VOCAL_STYLES = ["女性ボーカル", "男性ボーカル", "混声", "ボーカルなし"];
 const VOCAL_MOODS  = ["甘い", "クール", "パワフル", "ウィスパー", "エモーショナル"];
 
+const INSTRUMENTS = [
+  { label: "🎹 ピアノ",      value: "ピアノ" },
+  { label: "🎸 ギター",      value: "ギター" },
+  { label: "🎻 ストリングス", value: "ストリングス" },
+  { label: "🎺 ブラス",      value: "ブラス" },
+  { label: "🎷 サックス",    value: "サックス" },
+];
+
+const DURATION_OPTIONS = [
+  { label: "30秒", value: 30 },
+  { label: "1分",  value: 60 },
+  { label: "2分",  value: 120 },
+  { label: "3分",  value: 180 },
+];
+
 type Step = 0 | 1 | 2 | 3;
 
 type StructureData = {
@@ -182,8 +197,13 @@ export default function Music2Page() {
   const [bpmHint, setBpmHint] = useState<number | null>(null);
   const [vocalStyle, setVocalStyle] = useState<string>("");
   const [vocalMood, setVocalMood] = useState<string>("");
+  const [instruments, setInstruments] = useState<string[]>([]);
+  const [duration,    setDuration]    = useState<number | null>(null);
 
   const isPro = plan !== null && PRO_PLANS.includes(plan);
+
+  const isProSettingsActive =
+    isPro && (!!bpmHint || !!vocalStyle || !!vocalMood || instruments.length > 0 || !!duration);
 
   // ── 認証チェック & プラン取得 ───────────────────────────────────────────
 
@@ -361,10 +381,12 @@ export default function Music2Page() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           id: (auth as any).id, code, theme: theme.trim(), genre, mood: moodStr, isPro,
-          bpmHint:    isPro && bpmHint    ? bpmHint    : undefined,
-          vocalStyle: isPro && vocalStyle ? vocalStyle : undefined,
-          vocalMood:  isPro && vocalMood  ? vocalMood  : undefined,
-          language:   "ja",
+          bpmHint:     isPro && bpmHint                 ? bpmHint     : undefined,
+          vocalStyle:  isPro && vocalStyle               ? vocalStyle  : undefined,
+          vocalMood:   isPro && vocalMood                ? vocalMood   : undefined,
+          instruments: isPro && instruments.length > 0  ? instruments : undefined,
+          duration:    isPro && duration                 ? duration    : undefined,
+          language:    "ja",
         }),
       });
       const data = await res.json();
@@ -514,6 +536,8 @@ export default function Music2Page() {
     setBpmHint(null);
     setVocalStyle("");
     setVocalMood("");
+    setInstruments([]);
+    setDuration(null);
   }
 
   // ── ムード切り替え ────────────────────────────────────────────────────────
