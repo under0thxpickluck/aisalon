@@ -45,6 +45,10 @@ const DURATION_OPTIONS = [
   { label: "3分",  value: 180 },
 ];
 
+const proChipBase     = "rounded-full border px-3 py-1 text-xs font-semibold transition";
+const proChipActive   = "border-violet-500 bg-violet-600 text-white";
+const proChipInactive = "border-[#3730a3] bg-[#1e1b4b] text-indigo-300 hover:border-violet-500 hover:text-violet-300";
+
 type Step = 0 | 1 | 2 | 3;
 
 type StructureData = {
@@ -204,10 +208,6 @@ export default function Music2Page() {
 
   const isProSettingsActive =
     isPro && (!!bpmHint || !!vocalStyle || !!vocalMood || instruments.length > 0 || !!duration);
-
-  const proChipBase     = "rounded-full border px-3 py-1 text-xs font-semibold transition";
-  const proChipActive   = "border-violet-500 bg-violet-600 text-white";
-  const proChipInactive = "border-[#3730a3] bg-[#1e1b4b] text-indigo-300 hover:border-violet-500 hover:text-violet-300";
 
   // ── 認証チェック & プラン取得 ───────────────────────────────────────────
 
