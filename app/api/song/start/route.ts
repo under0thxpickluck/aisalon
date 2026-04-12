@@ -139,6 +139,8 @@ export async function POST(req: Request) {
   }
 
   const { id, code, theme, genre, mood, isPro, bpmHint, vocalStyle, vocalMood, language } = body ?? {};
+  const instruments = Array.isArray(body.instruments) ? (body.instruments as string[]) : [];
+  const duration    = body.duration ? Number(body.duration) : undefined;
 
   if (!id || !code) {
     return NextResponse.json({ ok: false, error: "auth_required" }, { status: 401 });
@@ -160,7 +162,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "balance_check_failed" }, { status: 502 });
   }
 
-  if (bp < BP_COSTS.music_full) {
+  // Pro設定が1つでも使われているか判定
+  const isProSettingsUsed = !!(
+    body.bpmHint ||
+    body.vocalStyle ||
+    body.vocalMood ||
+    instruments.length > 0 ||
+    duration
+  );
+  const bpCost = isProSettingsUsed ? BP_COSTS.music_full_pro : BP_COSTS.music_full;
+
+  if (bp < bpCost) {
     return NextResponse.json({ ok: false, error: "insufficient_bp", bp }, { status: 400 });
   }
 
@@ -180,7 +192,7 @@ export async function POST(req: Request) {
           action:   "deduct_bp",
           adminKey: gasAdminKey,
           loginId:  String(id),
-          amount:   BP_COSTS.music_full,
+          amount:   bpCost,
         }),
       }
     );
@@ -200,16 +212,18 @@ export async function POST(req: Request) {
     jobId,
     String(id),
     {
-      theme:      String(theme),
-      genre:      String(genre),
-      mood:       String(mood),
-      isPro:      !!isPro,
-      bpmHint:    bpmHint ? Number(bpmHint) : undefined,
-      vocalStyle: vocalStyle ? String(vocalStyle) : undefined,
-      vocalMood:  vocalMood ? String(vocalMood) : undefined,
-      language:   language  ? String(language)  : "ja",
+      theme:       String(theme),
+      genre:       String(genre),
+      mood:        String(mood),
+      isPro:       !!isPro,
+      bpmHint:     bpmHint ? Number(bpmHint) : undefined,
+      vocalStyle:  vocalStyle ? String(vocalStyle) : undefined,
+      vocalMood:   vocalMood ? String(vocalMood) : undefined,
+      language:    language  ? String(language)  : "ja",
+      instruments: instruments.length > 0 ? instruments : undefined,
+      duration:    duration ?? undefined,
     },
-    BP_COSTS.music_full
+    bpCost
   );
 
   const openaiKey = process.env.OPENAI_API_KEY;

@@ -52,6 +52,8 @@ export type SongJob = {
     bpmHint?: number;       // Pro: BPMヒント
     vocalStyle?: string;    // Pro: ボーカルスタイル
     vocalMood?: string;     // Pro: ボーカルムード
+    instruments?: string[]; // Pro: 楽器指定
+    duration?: number;      // Pro: 曲の長さ（秒）
   };
   audioUrl?:      string;
   downloadUrl?:   string;
