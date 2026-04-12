@@ -163,7 +163,7 @@ export async function POST(req: Request) {
   }
 
   // Pro設定が1つでも使われているか判定
-  const isProSettingsUsed = !!(
+  const isProSettingsUsed = !!isPro && !!(
     body.bpmHint ||
     body.vocalStyle ||
     body.vocalMood ||
@@ -221,7 +221,7 @@ export async function POST(req: Request) {
       vocalMood:   vocalMood ? String(vocalMood) : undefined,
       language:    language  ? String(language)  : "ja",
       instruments: instruments.length > 0 ? instruments : undefined,
-      duration:    duration ?? undefined,
+      duration,
     },
     bpCost
   );
