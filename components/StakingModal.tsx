@@ -1,50 +1,28 @@
 "use client";
 
 // components/StakingModal.tsx
+// epbp.md 仕様: 日次プール分配型ステーキング（BP / EP）
+// IS_ENABLED = false の間はフォームを表示するが操作不可（調整中グレーアウト）
+
 import { useEffect, useState } from "react";
 
-type StakeItem = {
-  stake_id:    string;
-  staked_bp:   number;
-  rate:        number;
-  interest_bp: number;
-  total_bp:    number;
-  started_at:  string;
-  expires_at:  string;
-  status:      string;
-  claimed_at:  string;
-  claimable:   boolean;
-};
+// ★ここをtrueにすると機能が有効になる
+const IS_ENABLED = false;
 
-type Props = {
-  loginId:    string;
-  onClose:    () => void;
-  onBpChanged: () => void;
-};
-
-const STAKING_TUTORIAL_SLIDES = [
-  {
-    icon: "💎",
-    title: "ステーキングとは？",
-    body: "手持ちのBPを一定期間「預ける」と、満期後に利息付きで受け取れる仕組みです。銀行の定期預金のようなイメージ。預けたBPは満期まで引き出せないので、余裕のある分で運用しましょう。",
-  },
-  {
-    icon: "📅",
-    title: "3つのプランを選ぼう",
-    body: "30日で+10%、60日で+25%、90日で+50%。期間が長いほど受取額が大きくなります。最低100BPから預けられます。BP数を入力するとリターンの予測が表示されます。",
-  },
-  {
-    icon: "⚠️",
-    title: "ステーキング率は変動します",
-    body: "表示されているレート（+10% / +25% / +50%）は現在の基準値です。LIFAIのBP・EP流通率の状況によって今後変動する場合があります。あらかじめご了承のうえ、ご利用ください。",
-  },
-] as const;
+type AssetType = "BP" | "EP";
+type LockDays  = 30 | 60 | 90;
 
 const PLANS = [
-  { days: 30 as const, rate: 0.10, label: "30日", desc: "+10%" },
-  { days: 60 as const, rate: 0.25, label: "60日", desc: "+25%" },
-  { days: 90 as const, rate: 0.50, label: "90日", desc: "+50%" },
+  { days: 30 as LockDays, weight: 1.00, label: "30日", weightLabel: "×1.00" },
+  { days: 60 as LockDays, weight: 1.04, label: "60日", weightLabel: "×1.04" },
+  { days: 90 as LockDays, weight: 1.10, label: "90日", weightLabel: "×1.10" },
 ];
+
+// 仮のプール情報（実装後はAPIから取得）
+const MOCK_POOL: Record<AssetType, { dailyPool: number; totalEffective: number }> = {
+  BP: { dailyPool: 120,  totalEffective: 5000   },
+  EP: { dailyPool: 5000, totalEffective: 200000 },
+};
 
 function formatDate(isoStr: string): string {
   if (!isoStr) return "";
@@ -52,107 +30,58 @@ function formatDate(isoStr: string): string {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function expiresInDays(isoStr: string): number {
-  if (!isoStr) return 0;
-  return Math.ceil((new Date(isoStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-}
+type Props = {
+  loginId:     string;
+  onClose:     () => void;
+  onBpChanged: () => void;
+};
 
-export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
-  const [visible,       setVisible]       = useState(false);
-  const [amount,        setAmount]        = useState("");
-  const [selectedDays,  setSelectedDays]  = useState<30 | 60 | 90>(30);
-  const [stakes,        setStakes]        = useState<StakeItem[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [staking,       setStaking]       = useState(false);
-  const [claiming,      setClaiming]      = useState<string | null>(null);
-  const [errMsg,        setErrMsg]        = useState("");
-  const [showTutorial,  setShowTutorial]  = useState(false);
-  const [tutorialStep,  setTutorialStep]  = useState(0);
+export default function StakingModal({ loginId: _loginId, onClose, onBpChanged: _onBpChanged }: Props) {
+  const [visible,     setVisible]     = useState(false);
+  const [asset,       setAsset]       = useState<AssetType>("BP");
+
+  // BP / EP それぞれ独立したステート
+  const [bpAmount,    setBpAmount]    = useState("");
+  const [bpDays,      setBpDays]      = useState<LockDays>(30);
+  const [epAmount,    setEpAmount]    = useState("");
+  const [epDays,      setEpDays]      = useState<LockDays>(30);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 30);
     return () => clearTimeout(t);
   }, []);
 
-  const loadStakes = async () => {
-    if (!loginId) { setLoading(false); return; }
-    try {
-      const res  = await fetch(`/api/staking?loginId=${encodeURIComponent(loginId)}`, { cache: "no-store" });
-      const data = await res.json().catch(() => ({ ok: false }));
-      if (data.ok) setStakes(data.stakes ?? []);
-    } catch {
-      // サイレント失敗
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { loadStakes(); }, [loginId]);
-
   const handleClose = () => {
     setVisible(false);
     setTimeout(onClose, 300);
   };
 
-  const handleStake = async () => {
-    const bp = Number(amount);
-    if (!bp || bp < 100) { setErrMsg("100BP以上で入力してください"); return; }
-    setStaking(true);
-    setErrMsg("");
-    try {
-      const res  = await fetch("/api/staking", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ loginId, amount: bp, days: selectedDays }),
-      });
-      const data = await res.json().catch(() => ({ ok: false }));
-      if (!data.ok) {
-        const reason = data.reason || data.error || "failed";
-        setErrMsg(
-          reason === "insufficient_bp" ? "BPが不足しています" :
-          reason === "min_100"         ? "最低100BP必要です"  :
-          `エラー: ${reason}`
-        );
-        return;
-      }
-      setAmount("");
-      onBpChanged();
-      await loadStakes();
-    } catch {
-      setErrMsg("通信エラーが発生しました");
-    } finally {
-      setStaking(false);
-    }
-  };
+  // 現在選択中アセットの値
+  const amount      = asset === "BP" ? bpAmount    : epAmount;
+  const setAmount   = asset === "BP" ? setBpAmount : setEpAmount;
+  const selectedDays = asset === "BP" ? bpDays      : epDays;
+  const setDays      = asset === "BP" ? setBpDays   : setEpDays;
 
-  const handleClaim = async (stakeId: string) => {
-    setClaiming(stakeId);
-    try {
-      const res  = await fetch("/api/staking", {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ loginId, stake_id: stakeId }),
-      });
-      const data = await res.json().catch(() => ({ ok: false }));
-      if (data.ok) {
-        onBpChanged();
-        await loadStakes();
-      }
-    } catch {
-      // サイレント失敗
-    } finally {
-      setClaiming(null);
-    }
-  };
+  const pool        = MOCK_POOL[asset];
+  const plan        = PLANS.find((p) => p.days === selectedDays)!;
+  const amountNum   = Number(amount);
+  const hasPreview  = amountNum >= 1;
 
-  const selectedPlan = PLANS.find((p) => p.days === selectedDays)!;
-  const amountNum    = Number(amount);
-  const hasPreview   = amountNum >= 100;
-  const interestBp   = hasPreview ? Math.floor(amountNum * selectedPlan.rate) : 0;
-  const totalBp      = hasPreview ? amountNum + interestBp : 0;
-  const matureDate   = hasPreview
+  const effectiveAmount = hasPreview ? amountNum * plan.weight : 0;
+  const estimatedDaily  = hasPreview
+    ? (effectiveAmount / (pool.totalEffective + effectiveAmount)) * pool.dailyPool
+    : 0;
+  const estimatedYieldPct = pool.totalEffective > 0
+    ? (pool.dailyPool / pool.totalEffective) * 100
+    : 0;
+  const matureDate = hasPreview
     ? formatDate(new Date(Date.now() + selectedDays * 24 * 60 * 60 * 1000).toISOString())
     : "";
+
+  // グレーアウト用スタイル（タブ以外に適用）
+  const disabledStyle: React.CSSProperties = IS_ENABLED
+    ? {}
+    : { pointerEvents: "none", opacity: 0.45 };
 
   return (
     <div
@@ -164,7 +93,7 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         display:         "flex",
         alignItems:      "center",
         justifyContent:  "center",
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: "rgba(0,0,0,0.65)",
         opacity:         visible ? 1 : 0,
         transition:      "opacity 0.3s ease",
         cursor:          "pointer",
@@ -187,272 +116,212 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
           cursor:       "default",
         }}
       >
-        {/* ===== チュートリアル画面 ===== */}
-        {showTutorial ? (
-          <div style={{ textAlign: "center" }}>
-            {/* スライドインジケーター */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "6px", marginBottom: "20px" }}>
-              {STAKING_TUTORIAL_SLIDES.map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    height:       "6px",
-                    borderRadius: "999px",
-                    background:   i === tutorialStep ? "#f59e0b" : "rgba(255,255,255,0.12)",
-                    width:        i === tutorialStep ? "24px" : "6px",
-                    transition:   "width 0.2s ease, background 0.2s ease",
-                  }}
-                />
-              ))}
-            </div>
-
-            <div style={{ fontSize: "40px", marginBottom: "12px" }}>
-              {STAKING_TUTORIAL_SLIDES[tutorialStep].icon}
-            </div>
-            <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", marginBottom: "10px" }}>
-              {STAKING_TUTORIAL_SLIDES[tutorialStep].title}
-            </p>
-            <p style={{ fontSize: "13px", color: "#a1a1aa", lineHeight: 1.7, marginBottom: "24px", textAlign: "left" }}>
-              {STAKING_TUTORIAL_SLIDES[tutorialStep].body}
-            </p>
-
-            <div style={{ display: "flex", gap: "8px" }}>
-              {tutorialStep > 0 && (
-                <button
-                  onClick={() => setTutorialStep(tutorialStep - 1)}
-                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#a1a1aa", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
-                >
-                  ← 戻る
-                </button>
-              )}
-              {tutorialStep < STAKING_TUTORIAL_SLIDES.length - 1 ? (
-                <button
-                  onClick={() => setTutorialStep(tutorialStep + 1)}
-                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "#f59e0b", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
-                >
-                  次へ →
-                </button>
-              ) : (
-                <button
-                  onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
-                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "#f59e0b", color: "#000", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
-                >
-                  はじめる
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
-              style={{ marginTop: "10px", width: "100%", background: "none", border: "none", color: "#52525b", fontSize: "12px", cursor: "pointer" }}
-            >
-              スキップ
-            </button>
-          </div>
-        ) : (
-        <>
-        {/* ===== セクション1: 新規ステーク ===== */}
+        {/* ===== ヘッダー ===== */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", margin: 0 }}>
-            🔒 BPをステークする
-          </p>
-          <button
-            onClick={() => { setShowTutorial(true); setTutorialStep(0); }}
-            title="使い方を見る"
-            style={{ width: "26px", height: "26px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.06)", color: "#a1a1aa", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
-          >
-            ?
-          </button>
+          <div>
+            <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", margin: 0 }}>
+              💎 BP/EP ステーキング
+            </p>
+            <p style={{ fontSize: "11px", color: "#71717a", margin: "2px 0 0" }}>
+              預けた分だけ日次プールを分配
+            </p>
+          </div>
+          {!IS_ENABLED && (
+            <span style={{
+              background:   "rgba(245,158,11,0.15)",
+              border:       "1px solid rgba(245,158,11,0.4)",
+              borderRadius: "8px",
+              padding:      "4px 10px",
+              fontSize:     "11px",
+              fontWeight:   700,
+              color:        "#f59e0b",
+              flexShrink:   0,
+            }}>
+              🔧 調整中
+            </span>
+          )}
         </div>
 
-        {/* 期間選択 */}
-        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-          {PLANS.map((p) => (
+        {/* ===== 調整中バナー ===== */}
+        {!IS_ENABLED && (
+          <div style={{
+            background:   "rgba(245,158,11,0.08)",
+            border:       "1px solid rgba(245,158,11,0.25)",
+            borderRadius: "10px",
+            padding:      "10px 14px",
+            marginBottom: "18px",
+            fontSize:     "12px",
+            color:        "#fbbf24",
+            lineHeight:   1.6,
+          }}>
+            ⚠️ 現在このシステムは調整中です。<br />
+            まもなく公開予定ですので、少々お待ちください。
+          </div>
+        )}
+
+        {/* ===== BP / EP タブ（グレーアウト外 — 常にクリック可能） ===== */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>
+          {(["BP", "EP"] as AssetType[]).map((a) => (
             <button
-              key={p.days}
-              onClick={() => setSelectedDays(p.days)}
+              key={a}
+              onClick={() => setAsset(a)}
               style={{
                 flex:         1,
-                padding:      "8px 4px",
+                padding:      "9px",
                 borderRadius: "10px",
-                border:       selectedDays === p.days ? "2px solid #f59e0b" : "1px solid rgba(255,255,255,0.12)",
-                background:   selectedDays === p.days ? "rgba(245,158,11,0.15)" : "transparent",
-                color:        selectedDays === p.days ? "#f59e0b" : "#a1a1aa",
-                fontSize:     "12px",
+                border:       asset === a ? "2px solid #f59e0b" : "1px solid rgba(255,255,255,0.12)",
+                background:   asset === a ? "rgba(245,158,11,0.15)" : "transparent",
+                color:        asset === a ? "#f59e0b" : "#71717a",
+                fontSize:     "13px",
                 fontWeight:   700,
                 cursor:       "pointer",
-                textAlign:    "center",
+                transition:   "all 0.15s ease",
               }}
             >
-              <div>{p.label}</div>
-              <div style={{ fontSize: "11px", marginTop: "2px" }}>{p.desc}</div>
+              {a} ステーキング
             </button>
           ))}
         </div>
 
-        {/* BP入力 */}
-        <input
-          type="number"
-          min={100}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="ステークするBP数"
-          style={{
-            width:        "100%",
-            padding:      "10px 12px",
-            borderRadius: "10px",
-            border:       "1px solid rgba(255,255,255,0.12)",
-            background:   "#27272a",
-            color:        "#f4f4f5",
-            fontSize:     "14px",
-            outline:      "none",
-            boxSizing:    "border-box",
-            marginBottom: "4px",
-          }}
-        />
-        <p style={{ fontSize: "11px", color: "#71717a", marginBottom: "12px" }}>最低100BP〜</p>
+        {/* ===== フォーム本体（IS_ENABLED=false のときグレーアウト） ===== */}
+        <div style={disabledStyle}>
 
-        {/* 予想リターン */}
-        {hasPreview && (
-          <div
+          {/* プール情報 */}
+          <div style={{
+            background:          "#27272a",
+            borderRadius:        "10px",
+            padding:             "12px",
+            marginBottom:        "18px",
+            display:             "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap:                 "8px",
+            textAlign:           "center",
+          }}>
+            <div>
+              <p style={{ fontSize: "10px", color: "#71717a", margin: "0 0 2px" }}>日次プール</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "#f4f4f5", margin: 0 }}>
+                {pool.dailyPool.toLocaleString()} {asset}
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: "10px", color: "#71717a", margin: "0 0 2px" }}>総ステーク</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "#f4f4f5", margin: 0 }}>
+                {pool.totalEffective.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: "10px", color: "#71717a", margin: "0 0 2px" }}>推定利回り</p>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "#4ade80", margin: 0 }}>
+                〜{estimatedYieldPct.toFixed(1)}%/日
+              </p>
+            </div>
+          </div>
+
+          {/* ロック期間選択 */}
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "#71717a", marginBottom: "8px" }}>
+            ロック期間（重み）
+          </p>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            {PLANS.map((p) => (
+              <button
+                key={p.days}
+                onClick={() => setDays(p.days)}
+                style={{
+                  flex:         1,
+                  padding:      "8px 4px",
+                  borderRadius: "10px",
+                  border:       selectedDays === p.days ? "2px solid #f59e0b" : "1px solid rgba(255,255,255,0.12)",
+                  background:   selectedDays === p.days ? "rgba(245,158,11,0.15)" : "transparent",
+                  color:        selectedDays === p.days ? "#f59e0b" : "#a1a1aa",
+                  fontSize:     "12px",
+                  fontWeight:   700,
+                  cursor:       "pointer",
+                  textAlign:    "center",
+                }}
+              >
+                <div>{p.label}</div>
+                <div style={{ fontSize: "10px", marginTop: "3px", opacity: 0.8 }}>{p.weightLabel}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* 入力 */}
+          <input
+            type="number"
+            min={1}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={`預ける${asset}数`}
             style={{
+              width:        "100%",
+              padding:      "10px 12px",
+              borderRadius: "10px",
+              border:       "1px solid rgba(255,255,255,0.12)",
+              background:   "#27272a",
+              color:        "#f4f4f5",
+              fontSize:     "14px",
+              outline:      "none",
+              boxSizing:    "border-box",
+              marginBottom: "4px",
+            }}
+          />
+          <p style={{ fontSize: "11px", color: "#71717a", marginBottom: "12px" }}>
+            報酬はプール参加状況により毎日変動します
+          </p>
+
+          {/* 予想サマリー */}
+          {hasPreview && (
+            <div style={{
               background:   "#27272a",
               borderRadius: "10px",
               padding:      "12px",
               marginBottom: "12px",
               fontSize:     "12px",
               color:        "#a1a1aa",
+            }}>
+              <Row label="預入"           value={`${amountNum.toLocaleString()} ${asset}`} />
+              <Row label="実効量"         value={`${effectiveAmount.toFixed(2)} ${asset}（${plan.weightLabel}）`} />
+              <Row label="見込み日次報酬" value={`〜${estimatedDaily.toFixed(2)} ${asset}/日`} valueColor="#4ade80" />
+              <Row label="ロック満了"     value={`${plan.days}日後（${matureDate}）`} last />
+            </div>
+          )}
+
+          {/* ステークボタン */}
+          <button
+            disabled
+            style={{
+              width:        "100%",
+              padding:      "12px",
+              borderRadius: "10px",
+              border:       "none",
+              background:   "#f59e0b",
+              color:        "#000",
+              fontSize:     "14px",
+              fontWeight:   700,
+              cursor:       "not-allowed",
+              marginBottom: "20px",
+              opacity:      0.6,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-              <span>預入</span>
-              <span style={{ color: "#f4f4f5", fontWeight: 700 }}>{amountNum.toLocaleString()}BP</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-              <span>利息</span>
-              <span style={{ color: "#4ade80", fontWeight: 700 }}>+{interestBp.toLocaleString()}BP（{selectedPlan.desc}）</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-              <span>受取</span>
-              <span style={{ color: "#f59e0b", fontWeight: 700 }}>{totalBp.toLocaleString()}BP</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>満期</span>
-              <span style={{ color: "#f4f4f5" }}>{selectedDays}日後（{matureDate}）</span>
-            </div>
-          </div>
-        )}
+            {asset}をステークする
+          </button>
 
-        {errMsg && (
-          <p style={{ fontSize: "12px", color: "#f87171", marginBottom: "10px" }}>{errMsg}</p>
-        )}
-
-        <button
-          onClick={handleStake}
-          disabled={staking}
-          style={{
-            width:        "100%",
-            padding:      "12px",
-            borderRadius: "10px",
-            border:       "none",
-            background:   staking ? "#78350f" : "#f59e0b",
-            color:        "#000",
-            fontSize:     "14px",
-            fontWeight:   700,
-            cursor:       staking ? "not-allowed" : "pointer",
-            opacity:      staking ? 0.7 : 1,
-            marginBottom: "24px",
-          }}
-        >
-          {staking ? "処理中…" : "ステークする"}
-        </button>
-
-        {/* ===== セクション2: ステーク一覧 ===== */}
-        <p style={{ fontSize: "13px", fontWeight: 800, color: "#f4f4f5", marginBottom: "10px" }}>
-          📋 ステーク中
-        </p>
-
-        {loading ? (
-          <div style={{ height: "48px", background: "#27272a", borderRadius: "10px", animation: "pulse 1.5s infinite" }} />
-        ) : stakes.length === 0 ? (
-          <p style={{ fontSize: "12px", color: "#71717a", textAlign: "center", padding: "16px 0" }}>
+          {/* ポジション一覧 */}
+          <p style={{ fontSize: "13px", fontWeight: 800, color: "#f4f4f5", marginBottom: "10px" }}>
+            📋 ステーク中
+          </p>
+          <p style={{ fontSize: "12px", color: "#52525b", textAlign: "center", padding: "12px 0" }}>
             まだステークがありません
           </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {stakes.map((s) => (
-              <div
-                key={s.stake_id}
-                style={{
-                  background:   "#27272a",
-                  borderRadius: "10px",
-                  padding:      "12px",
-                  display:      "flex",
-                  justifyContent: "space-between",
-                  alignItems:   "center",
-                  gap:          "8px",
-                }}
-              >
-                <div>
-                  <p style={{ fontSize: "13px", fontWeight: 700, color: "#f4f4f5", margin: 0 }}>
-                    {s.staked_bp.toLocaleString()}BP → {s.total_bp.toLocaleString()}BP
-                    <span style={{ fontSize: "11px", color: "#a1a1aa", marginLeft: "6px" }}>
-                      (+{Math.round(s.rate * 100)}%)
-                    </span>
-                  </p>
-                  <p style={{ fontSize: "11px", color: "#71717a", margin: "2px 0 0" }}>
-                    満期: {formatDate(s.expires_at)}
-                    {s.status === "active" && !s.claimable && (
-                      <span style={{ marginLeft: "6px" }}>（あと{expiresInDays(s.expires_at)}日）</span>
-                    )}
-                  </p>
-                </div>
 
-                <div style={{ flexShrink: 0 }}>
-                  {s.claimable ? (
-                    <button
-                      onClick={() => handleClaim(s.stake_id)}
-                      disabled={claiming === s.stake_id}
-                      style={{
-                        padding:      "6px 12px",
-                        borderRadius: "8px",
-                        border:       "none",
-                        background:   claiming === s.stake_id ? "#14532d" : "#16a34a",
-                        color:        "#fff",
-                        fontSize:     "12px",
-                        fontWeight:   700,
-                        cursor:       claiming === s.stake_id ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {claiming === s.stake_id ? "処理中…" : "✅ 受け取る"}
-                    </button>
-                  ) : s.status === "claimed" ? (
-                    <span
-                      style={{
-                        padding:      "4px 10px",
-                        borderRadius: "8px",
-                        background:   "#3f3f46",
-                        color:        "#71717a",
-                        fontSize:     "11px",
-                        fontWeight:   600,
-                      }}
-                    >
-                      受取済み
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: "12px", color: "#71717a" }}>⏳ 満期待ち</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        </div>{/* /disabledStyle */}
 
-        {/* 閉じるボタン */}
+        {/* 閉じるボタン（常に有効） */}
         <button
           onClick={handleClose}
           style={{
             width:        "100%",
-            marginTop:    "16px",
+            marginTop:    "8px",
             padding:      "11px",
             borderRadius: "10px",
             border:       "1px solid rgba(255,255,255,0.12)",
@@ -465,9 +334,21 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         >
           閉じる
         </button>
-        </>
-        )}
       </div>
+    </div>
+  );
+}
+
+// ===== 内部ユーティリティ =====
+function Row({
+  label, value, valueColor, last,
+}: {
+  label: string; value: string; valueColor?: string; last?: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: last ? 0 : "4px" }}>
+      <span>{label}</span>
+      <span style={{ color: valueColor ?? "#f4f4f5", fontWeight: 700 }}>{value}</span>
     </div>
   );
 }
