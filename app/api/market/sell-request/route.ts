@@ -30,6 +30,10 @@ export async function POST(req: Request) {
     if (!item_id || !seller_id) {
       return NextResponse.json({ ok: false, error: "missing_params" }, { status: 400 });
     }
+    // Verify the requester is the actual seller
+    if (id !== seller_id) {
+      return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+    }
 
     const gas = await callGas(gasUrl, gasKey, {
       action: "sell_request",
