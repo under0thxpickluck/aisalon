@@ -23,10 +23,10 @@ const PLAN_DATA: Record<
     popular: boolean;
   }
 > = {
-  "500":  { amount: 500,  name: "Automation", bp: 1000,  epRate: "3EP = ¥1",   units: 0, pool: "none",   badge: null,          accent: "#94a3b8", popular: false },
-  "2000": { amount: 2000, name: "Core",        bp: 4000,  epRate: "¥2.5 / EP",  units: 2, pool: "credit", badge: null,          accent: "#6C63FF", popular: false },
-  "3000": { amount: 3000, name: "Core",        bp: 8000,  epRate: "¥2.5 / EP",  units: 3, pool: "credit", badge: "RECOMMENDED", accent: "#6C63FF", popular: false },
-  "5000": { amount: 5000, name: "Infra",       bp: 10000, epRate: "¥2 / EP",    units: 5, pool: "total",  badge: "MOST POPULAR",accent: "#00D4FF", popular: true  },
+  "500":  { amount: 500,  name: "Automation", bp: 1000,  epRate: "3EP = 1円 (¥0.333/EP)",   units: 0, pool: "none",   badge: null,          accent: "#94a3b8", popular: false },
+  "2000": { amount: 2000, name: "Core",        bp: 4000,  epRate: "2.5EP = 1円 (¥0.40/EP)", units: 2, pool: "credit", badge: null,          accent: "#6C63FF", popular: false },
+  "3000": { amount: 3000, name: "Core",        bp: 8000,  epRate: "2.5EP = 1円 (¥0.40/EP)", units: 3, pool: "credit", badge: "RECOMMENDED", accent: "#6C63FF", popular: false },
+  "5000": { amount: 5000, name: "Infra",       bp: 10000, epRate: "2EP = 1円 (¥0.50/EP)",   units: 5, pool: "total",  badge: "MOST POPULAR",accent: "#00D4FF", popular: true  },
 };
 
 const PLAN_IDS: PlanId[] = ["500", "2000", "3000", "5000"];
