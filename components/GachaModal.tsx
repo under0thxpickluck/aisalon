@@ -1,7 +1,7 @@
 "use client";
 
 // components/GachaModal.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type GachaResult = {
   prize_bp:    number;
@@ -68,6 +68,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
   const [result,        setResult]        = useState<GachaResult | null>(null);
   const [errMsg,        setErrMsg]        = useState<string>("");
   const [dailyUsed,     setDailyUsed]     = useState(false);
+  const dailyCalledRef = useRef(false);
   const [showTutorial,  setShowTutorial]  = useState(false);
   const [tutorialStep,  setTutorialStep]  = useState(0);
 
@@ -90,7 +91,8 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
   }, [loginId]);
 
   const handleDaily = async () => {
-    if (spinning || dailyUsed || !loginId) return;
+    if (spinning || dailyUsed || !loginId || dailyCalledRef.current) return;
+    dailyCalledRef.current = true;
     setSpinning(true);
     setErrMsg("");
     try {
@@ -107,6 +109,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
         } else {
           const reason = data.reason || data.error || "failed";
           setErrMsg(reason === "insufficient_bp" ? "BPが不足しています（80BP必要）" : `エラー: ${reason}`);
+          dailyCalledRef.current = false;
         }
         return;
       }
@@ -123,6 +126,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
       onBpEarned(data.prize_bp);
     } catch {
       setErrMsg("通信エラーが発生しました");
+      dailyCalledRef.current = false;
     } finally {
       setSpinning(false);
     }
