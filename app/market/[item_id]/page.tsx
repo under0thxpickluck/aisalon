@@ -21,6 +21,7 @@ type MarketItem = {
   stock_sold: number;
   stock_reserved: number;
   status: string;
+  preview_images?: string;
 };
 
 type LocalOrder = {
@@ -452,6 +453,37 @@ export default function ItemDetailPage() {
               </p>
             )}
           </div>
+
+          {/* プレビュー画像 */}
+          {item.preview_images && item.preview_images.trim() !== "" && (() => {
+            const imgs = item.preview_images!.split(",").map((u: string) => u.trim()).filter(Boolean);
+            if (imgs.length === 0) return null;
+            return (
+              <div style={{ marginTop: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(234,240,255,0.45)", marginBottom: 10 }}>
+                  プレビュー画像
+                </p>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+                  gap: 8,
+                }}>
+                  {imgs.map((url: string, i: number) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                      style={{ display: "block", borderRadius: 12, overflow: "hidden",
+                        border: "1px solid rgba(255,255,255,0.08)", aspectRatio: "1/1" }}>
+                      <img
+                        src={url}
+                        alt={`プレビュー ${i + 1}`}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 購入セクション */}
           <div style={{ marginTop: 28, ...subCardStyle, padding: 20 }}>

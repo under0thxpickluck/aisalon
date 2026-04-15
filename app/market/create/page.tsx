@@ -28,6 +28,18 @@ export default function MarketCreatePage() {
   const [stockTotal, setStockTotal]   = useState<number | "">(1);
   const [deliveryMode, setDeliveryMode] = useState("link");
   const [deliveryRef, setDeliveryRef] = useState("");
+  const [previewImages, setPreviewImages] = useState<string[]>([""]);
+
+  const addPreviewImage = () => {
+    if (previewImages.length >= 8) return;
+    setPreviewImages(prev => [...prev, ""]);
+  };
+  const removePreviewImage = (idx: number) => {
+    setPreviewImages(prev => prev.filter((_, i) => i !== idx));
+  };
+  const updatePreviewImage = (idx: number, val: string) => {
+    setPreviewImages(prev => prev.map((v, i) => i === idx ? val : v));
+  };
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState("");
@@ -108,6 +120,7 @@ export default function MarketCreatePage() {
           delivery_mode: deliveryMode,
           delivery_ref: deliveryRef.trim(),
           stock_total: Number(stockTotal),
+          preview_images: previewImages.filter(u => u.trim() !== ""),
         }),
       });
       const data = await res.json().catch(() => ({ ok: false }));
@@ -383,6 +396,62 @@ export default function MarketCreatePage() {
                 <p style={{ marginTop: 3, fontSize: 10, color: "rgba(252,211,77,0.7)", lineHeight: 1.5 }}>
                   ※ GigaFile便など期限付きURLの場合は購入者が早めにダウンロードするよう案内してください。
                 </p>
+              </div>
+
+              {/* プレビュー画像 */}
+              <div>
+                <label style={labelStyle}>プレビュー画像URL（任意・最大8枚）</label>
+                <p style={{ marginTop: 3, marginBottom: 8, fontSize: 10, color: "rgba(234,240,255,0.3)", lineHeight: 1.5 }}>
+                  ※ 購入者がコンテンツを確認するためのサンプル画像URLを入力してください。
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {previewImages.map((url, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: 8 }}>
+                      <input
+                        type="url"
+                        value={url}
+                        onChange={e => updatePreviewImage(idx, e.target.value)}
+                        placeholder={`画像URL ${idx + 1}`}
+                        style={{ ...inputStyle, flex: 1 }}
+                      />
+                      {previewImages.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removePreviewImage(idx)}
+                          style={{
+                            flexShrink: 0,
+                            borderRadius: 12,
+                            border: "1px solid rgba(239,68,68,0.3)",
+                            background: "rgba(239,68,68,0.08)",
+                            padding: "8px 12px",
+                            fontSize: 12,
+                            color: "#FCA5A5",
+                            cursor: "pointer",
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {previewImages.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={addPreviewImage}
+                      style={{
+                        borderRadius: 14,
+                        border: "1px dashed rgba(99,102,241,0.4)",
+                        background: "transparent",
+                        padding: "8px",
+                        fontSize: 12,
+                        color: "rgba(167,139,250,0.7)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ＋ 画像を追加（{previewImages.length}/8）
+                    </button>
+                  )}
+                </div>
               </div>
 
               {error && (

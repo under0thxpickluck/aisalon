@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const { id, code, title, desc, item_type, asset_count, currency, price,
-            delivery_mode, delivery_ref, stock_total } = body;
+            delivery_mode, delivery_ref, stock_total, preview_images } = body;
 
     if (!id || !code) {
       return NextResponse.json({ ok: false, error: "missing_auth" }, { status: 400 });
@@ -44,6 +44,12 @@ export async function POST(req: Request) {
       delivery_mode: delivery_mode ?? "",
       delivery_ref:  delivery_ref  ?? "",
       stock_total:   stock_total   ?? 1,
+      preview_images: Array.isArray(preview_images)
+        ? (preview_images as string[])
+            .slice(0, 8)
+            .filter((u: string) => /^https?:\/\//i.test(u.trim()))
+            .join(",")
+        : "",
     });
 
     return NextResponse.json(gas, { headers: { "Cache-Control": "no-store" } });
