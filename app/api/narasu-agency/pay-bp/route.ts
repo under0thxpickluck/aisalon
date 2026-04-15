@@ -1,7 +1,7 @@
 // app/api/narasu-agency/pay-bp/route.ts
 import { NextResponse } from "next/server";
 
-const NARASU_BP_COST = 2600;
+const NARASU_BP_COST = 3000;
 
 export async function POST(req: Request) {
   try {
