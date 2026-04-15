@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, Variants, useInView } from "framer-motion";
 import { loadDraft, saveDraft } from "@/components/storage";
@@ -77,7 +77,7 @@ function useCountUp(target: number, duration = 1.5) {
 }
 
 /* ===== Component ===== */
-export default function DaoMemberPage() {
+function DaoMemberPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [draft, setDraft] = useState<ReturnType<typeof loadDraft> | null>(null);
@@ -1087,5 +1087,13 @@ export default function DaoMemberPage() {
 
       </div>
     </main>
+  );
+}
+
+export default function DaoMemberPageWrapper() {
+  return (
+    <Suspense fallback={<main style={{ minHeight: "100vh", background: "#0A0A0A" }} />}>
+      <DaoMemberPage />
+    </Suspense>
   );
 }
