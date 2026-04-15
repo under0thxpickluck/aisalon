@@ -89,8 +89,9 @@ export default function ImagePage() {
       const data = await res.json();
       if (data.ok) {
         setMessages((prev) => [...prev, { role: "ai", text: data.reply }]);
-        if (data.stateUpdate) {
-          setState((prev) => mergeState(prev, { ...data.stateUpdate, turns: 1, textLength: text.length }));
+        const nextState = data.stateUpdate ?? data.state;
+        if (nextState) {
+          setState((prev) => mergeState(prev, nextState));
         }
       }
     } catch {

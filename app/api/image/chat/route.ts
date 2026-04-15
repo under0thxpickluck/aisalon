@@ -123,7 +123,13 @@ export async function POST(req: NextRequest) {
       ...updatedState,
     };
 
-    return NextResponse.json({ ok: true, reply, state: newState, suggestedNextField });
+    return NextResponse.json({
+      ok: true,
+      reply,
+      state: newState,
+      stateUpdate: newState,
+      suggestedNextField,
+    });
   } catch {
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }

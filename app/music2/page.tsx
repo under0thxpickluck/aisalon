@@ -177,6 +177,9 @@ export default function Music2Page() {
   const [distributionReady, setDistributionReady] = useState(false);
   const [lyricsGateResult, setLyricsGateResult] = useState<"pass" | "review" | "reject" | null>(null);
   const [lyricsReviewRequired, setLyricsReviewRequired] = useState(false);
+  const [jacketImageUrl, setJacketImageUrl] = useState<string | null>(null);
+  const [jacketLoading, setJacketLoading] = useState(false);
+  const [jacketError, setJacketError] = useState<string | null>(null);
 
   // UI状態
   const [loading, setLoading] = useState(false);
@@ -531,6 +534,9 @@ export default function Music2Page() {
     setDisplayLyrics("");
     setDistributionLyrics("");
     setDistributionReady(false);
+    setJacketImageUrl(null);
+    setJacketLoading(false);
+    setJacketError(null);
     setLoading(false);
     setProgress(0);
     setErrorMsg(null);
@@ -550,6 +556,52 @@ export default function Music2Page() {
     setSelectedMoods((prev) =>
       prev.includes(mood) ? prev.filter((m) => m !== mood) : [...prev, mood]
     );
+  }
+
+  async function handleGenerateJacket() {
+    const auth = getAuth();
+    const code = getAuthSecret() || (auth as any)?.token || "";
+    const id = (auth as any)?.id || (auth as any)?.loginId || "";
+
+    if (!auth || !id || !code || !jobId) {
+      router.replace("/login");
+      return;
+    }
+
+    setJacketLoading(true);
+    setJacketError(null);
+
+    try {
+      const res = await fetch("/api/image/jacket", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          code,
+          jobId,
+          theme,
+          genre,
+          mood: selectedMoods.join("・"),
+          title: resultTitle || structureData?.title || "LIFAI Song",
+        }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        setJacketImageUrl(data.imageUrl);
+        return;
+      }
+
+      setJacketError(
+        data.error === "insufficient_bp"
+          ? `BPが不足しています。必要BP: ${data.required ?? 100}BP`
+          : "ジャケット画像の生成に失敗しました。"
+      );
+    } catch {
+      setJacketError("通信エラーが発生しました。もう一度お試しください。");
+    } finally {
+      setJacketLoading(false);
+    }
   }
 
   const canStart = theme.trim().length > 0 && genre !== "" && selectedMoods.length > 0 && !loading && !planLoading;
@@ -1071,6 +1123,44 @@ export default function Music2Page() {
 
                 {/* オーディオプレイヤー */}
                 <audio controls src={audioUrl} className="mt-3 w-full" />
+
+                {/* ジャケット画像生成 */}
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:w-28 sm:shrink-0">
+                      {jacketImageUrl ? (
+                        <img
+                          src={jacketImageUrl}
+                          alt="生成されたジャケット画像"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-3xl text-slate-300">
+                          ♪
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
+                      <p className="text-xs font-extrabold text-slate-900">ジャケット画像</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                        曲のテーマ・ジャンル・雰囲気からアルバムカバーを生成します。
+                      </p>
+                      {jacketError && (
+                        <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-600">
+                          {jacketError}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleGenerateJacket}
+                        disabled={jacketLoading}
+                        className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-600 px-4 py-2.5 text-xs font-extrabold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {jacketLoading ? "ジャケット生成中..." : jacketImageUrl ? "ジャケットを再生成する（100BP）" : "ジャケットを生成する（100BP）"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
                 {/* ボタン */}
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
