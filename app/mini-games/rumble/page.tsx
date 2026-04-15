@@ -306,6 +306,7 @@ export default function RumblePage() {
           if (d.status === "ready") {
             setSpectatorPlayers(d.players.map(p => ({ ...p, status: "alive" as const })));
             setSpectatorPhase("waiting");
+            try { localStorage.setItem(`rumble_spectator_${d.date ?? todayJst}_${userId}`, JSON.stringify(d)); } catch {}
           }
         }
       })
@@ -320,7 +321,14 @@ export default function RumblePage() {
     setShowWinners(false);
     fetch("/api/minigames/rumble/daily-result")
       .then(r => r.json())
-      .then((d: DailyResultData) => { if (d.ok) setDailyResult(d); })
+      .then((d: DailyResultData) => {
+        if (d.ok) {
+          setDailyResult(d);
+          if (d.status === "ready") {
+            try { localStorage.setItem(`rumble_daily_result_${d.date}`, JSON.stringify(d)); } catch {}
+          }
+        }
+      })
       .catch(() => {})
       .finally(() => setDailyResultLoading(false));
   }, [tab]);
@@ -336,13 +344,38 @@ export default function RumblePage() {
         for (let i = 1; i <= 10; i++) {
           const d = new Date(Date.now() - i * 86400000);
           const dateStr = new Date(d.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-          const res = await fetch(`/api/minigames/rumble/daily-result?date=${dateStr}`);
-          const data: DailyResultData = await res.json();
+
+          // キャッシュ優先でdaily-resultを取得
+          let data: DailyResultData | null = null;
+          try {
+            const cached = localStorage.getItem(`rumble_daily_result_${dateStr}`);
+            if (cached) data = JSON.parse(cached) as DailyResultData;
+          } catch {}
+          if (!data) {
+            const res = await fetch(`/api/minigames/rumble/daily-result?date=${dateStr}`);
+            data = await res.json() as DailyResultData;
+            if (data.ok && data.status === "ready") {
+              try { localStorage.setItem(`rumble_daily_result_${dateStr}`, JSON.stringify(data)); } catch {}
+            }
+          }
+
           if (data.ok && data.status === "ready") {
             setPrevDailyResult(data);
             setPrevBattleDate(dateStr);
-            const sRes = await fetch(`/api/minigames/rumble/spectator?userId=${encodeURIComponent(userId)}&date=${dateStr}`);
-            const sData: SpectatorData = await sRes.json();
+
+            // キャッシュ優先でspectatorを取得
+            let sData: SpectatorData | null = null;
+            try {
+              const sCached = localStorage.getItem(`rumble_spectator_${dateStr}_${userId}`);
+              if (sCached) sData = JSON.parse(sCached) as SpectatorData;
+            } catch {}
+            if (!sData) {
+              const sRes = await fetch(`/api/minigames/rumble/spectator?userId=${encodeURIComponent(userId)}&date=${dateStr}`);
+              sData = await sRes.json() as SpectatorData;
+              if (sData.ok && sData.status === "ready") {
+                try { localStorage.setItem(`rumble_spectator_${dateStr}_${userId}`, JSON.stringify(sData)); } catch {}
+              }
+            }
             if (sData.ok && sData.status === "ready") {
               setPrevSpectatorData(sData);
               setPrevPhase("waiting");
@@ -1203,42 +1236,46 @@ export default function RumblePage() {
 
               {/* 前回バトルリプレイ */}
               {/* prevLoading中は静かに待つ（ユーザーに混乱を与えないよう非表示） */}
-              {!prevLoading && prevSpectatorData?.status === "ready" && prevBattleDate && (
+              {!prevLoading && prevDailyResult && prevBattleDate && (
                 <div className="mt-2 space-y-3">
                   <div className="flex items-center gap-2">
                     <div className="h-px flex-1 bg-white/10" />
                     <span className="text-xs text-white/30">前回のバトル ({prevBattleDate})</span>
                     <div className="h-px flex-1 bg-white/10" />
                   </div>
-                  {/* 前回バトルログ */}
-                  <div className="bg-black/60 border border-purple-500/20 rounded-2xl p-4">
-                    <p className="text-xs font-bold text-purple-400/40 mb-3 tracking-widest">PREV BATTLE LOG</p>
-                    <div className="min-h-[160px] space-y-2 font-mono">
-                      {prevBattleLogs.length === 0 && !prevIsPlaying && (
-                        <p className="text-white/20 text-sm text-center pt-6">▶ 前回バトルを観戦</p>
-                      )}
-                      {prevBattleLogs.map(log => (
-                        <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>{log.text}</p>
-                      ))}
-                      {prevIsPlaying && <p className="text-white/30 text-xs animate-pulse">▌</p>}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {!prevIsPlaying && prevPhase !== "result" && (
-                      <button onClick={handlePrevPlay}
-                        className="flex-1 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600/60 to-blue-600/60 hover:opacity-80 transition">
-                        ⚔️ 前回バトルを観戦
-                      </button>
-                    )}
-                    {!prevIsPlaying && prevPhase === "result" && (
-                      <button onClick={() => { setPrevBattleLogs([]); setPrevPhase("waiting"); }}
-                        className="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition">
-                        🔄 もう一度見る
-                      </button>
-                    )}
-                  </div>
-                  {/* 前回バトル当選者 */}
-                  {prevPhase === "result" && prevDailyResult?.winners && prevDailyResult.winners.length > 0 && (
+                  {/* 前回バトルログ（観戦データがある場合のみ） */}
+                  {prevSpectatorData?.status === "ready" && (
+                    <>
+                      <div className="bg-black/60 border border-purple-500/20 rounded-2xl p-4">
+                        <p className="text-xs font-bold text-purple-400/40 mb-3 tracking-widest">PREV BATTLE LOG</p>
+                        <div className="min-h-[160px] space-y-2 font-mono">
+                          {prevBattleLogs.length === 0 && !prevIsPlaying && (
+                            <p className="text-white/20 text-sm text-center pt-6">▶ 前回バトルを観戦</p>
+                          )}
+                          {prevBattleLogs.map(log => (
+                            <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>{log.text}</p>
+                          ))}
+                          {prevIsPlaying && <p className="text-white/30 text-xs animate-pulse">▌</p>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {!prevIsPlaying && prevPhase !== "result" && (
+                          <button onClick={handlePrevPlay}
+                            className="flex-1 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600/60 to-blue-600/60 hover:opacity-80 transition">
+                            ⚔️ 前回バトルを観戦
+                          </button>
+                        )}
+                        {!prevIsPlaying && prevPhase === "result" && (
+                          <button onClick={() => { setPrevBattleLogs([]); setPrevPhase("waiting"); }}
+                            className="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition">
+                            🔄 もう一度見る
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {/* 前回バトル当選者（観戦データ不要、すぐ表示） */}
+                  {prevDailyResult?.winners && prevDailyResult.winners.length > 0 && (
                     <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
                       <p className="text-xs font-bold text-yellow-400/60 mb-3 text-center">🎰 前回のBP抽選結果</p>
                       <div className="space-y-1">
