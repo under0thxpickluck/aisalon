@@ -375,6 +375,7 @@ type AppDef = {
   badge?: string;
   comingSoon?: boolean;
   onOpen?: () => void;
+  disabled?: boolean;
 };
 
 export default function AppHomePage() {
@@ -500,7 +501,8 @@ export default function AppHomePage() {
       { id: "note",      label: "ノート生成",    icon: "📝", color: "from-violet-400 to-purple-500", href: "/note-generator", desc: "構成→本文→見出し→導入文まで一括", badge: "New" },
       { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
       { id: "minigames", label: "LIFAI Arcade", icon: "🎮", color: "from-pink-500 to-purple-600",   href: "/mini-games", desc: "ミニゲームで報酬をゲット",                 badge: "New" },
-      { id: "gift",      label: "GiftEP",       icon: "🎁", color: "from-emerald-400 to-teal-500",  href: "/gift",       desc: "EP贈与 · LIFAI内限定ギフトクレジット" },
+      { id: "gift",          label: "GiftEP",   icon: "🎁", color: "from-emerald-400 to-teal-500",  href: "/gift",       desc: "EP贈与 · LIFAI内限定ギフトクレジット" },
+      { id: "gift-exchange", label: "Gift交換", icon: "🎀", color: "from-rose-400 to-pink-500",      href: "#",           desc: "ギフトポイントの交換・利用（近日公開）", badge: "準備中", disabled: true },
     ],
     []
   );
@@ -674,8 +676,9 @@ export default function AppHomePage() {
               {apps.map((app) => (
                 <button
                   key={app.id}
-                  onClick={() => setSelectedApp(app)}
+                  onClick={() => { if (app.disabled) return; setSelectedApp(app); }}
                   className="flex flex-col items-center gap-1 focus:outline-none"
+                  style={{ cursor: app.disabled ? "not-allowed" : "pointer", opacity: app.disabled ? 0.6 : 1 }}
                 >
                   <div className="relative">
                     <div
