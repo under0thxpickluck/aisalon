@@ -44,7 +44,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "loginId_required" }, { status: 400 });
   }
 
-  return postToGas({ action: "get_stakes", loginId });
+  const result = await postToGas({ action: "get_stakes", loginId });
+
+  // Fire-and-forget: notify user if any stakes have matured (GAS handles dedup/email)
+  postToGas({ action: "stake_notify_mature", loginId }).catch(() => {});
+
+  return result;
 }
 
 // POST: ステーク開始
