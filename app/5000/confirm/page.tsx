@@ -90,8 +90,8 @@ export default function Confirm5000Page() {
 
   useEffect(() => {
     const d = loadDraft5000();
-    // フォームが未入力のまま直接アクセスされた場合は戻す
-    if (!d.email || !d.name) {
+    // 必須項目が未入力のまま直接アクセスされた場合は戻す
+    if (!d.email || !d.name || !d.nameKana || !d.ageBand || !d.prefecture || !d.city || !d.job) {
       router.replace("/5000/apply");
       return;
     }

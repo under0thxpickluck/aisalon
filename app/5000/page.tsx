@@ -102,60 +102,6 @@ export default function DaoMemberPage() {
     setDraft(d);
   }, [searchParams]);
 
-  function ensureApplyId(planId: PlanId): string | null {
-    if (!draft) return null;
-    const key = `applyId_${planId}`;
-    if ((draft as any)[key]) return (draft as any)[key];
-    const applyId = `lifai_${planId}_${Date.now()}`;
-    const next = { ...(draft as any), [key]: applyId, plan: planId as any };
-    saveDraft(next);
-    setDraft(next);
-    return applyId;
-  }
-
-  async function handlePay(planId: PlanId) {
-    if (payBusy) return;
-    setPayBusy(true);
-    try {
-      const applyId = ensureApplyId(planId);
-      if (!applyId) return;
-      const createRes = await fetch("/api/apply/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: planId as any,
-          applyId,
-          refName: (draft as any)?.refName || "",
-          refId: (draft as any)?.refId || "",
-        }),
-      });
-      const createData = await createRes.json();
-      if (!createData.ok) {
-        alert(createData.error || "申請作成に失敗しました");
-        return;
-      }
-      const res = await fetch("/api/nowpayments/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: PLAN_DATA[planId].amount,
-          plan: planId as any,
-          applyId,
-        }),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        alert(data.error || "決済作成に失敗しました");
-        return;
-      }
-      window.location.href = data.invoice_url;
-    } catch {
-      alert("エラーが発生しました");
-    } finally {
-      setPayBusy(false);
-    }
-  }
-
   function handleCta() {
     if (typeof window !== "undefined") {
       sessionStorage.setItem("5000_plan", selectedPlan);
