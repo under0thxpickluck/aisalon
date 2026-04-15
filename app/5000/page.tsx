@@ -23,10 +23,10 @@ const PLAN_DATA: Record<
     popular: boolean;
   }
 > = {
-  "500":  { amount: 500,  name: "Automation", bp: 1000,  epRate: "3EP = 1円 (¥0.333/EP)",   units: 0, pool: "none",   badge: null,          accent: "#94a3b8", popular: false },
-  "2000": { amount: 2000, name: "Core",        bp: 4000,  epRate: "2.5EP = 1円 (¥0.40/EP)", units: 2, pool: "credit", badge: null,          accent: "#6C63FF", popular: false },
-  "3000": { amount: 3000, name: "Core",        bp: 8000,  epRate: "2.5EP = 1円 (¥0.40/EP)", units: 3, pool: "credit", badge: "RECOMMENDED", accent: "#6C63FF", popular: false },
-  "5000": { amount: 5000, name: "Infra",       bp: 10000, epRate: "2EP = 1円 (¥0.50/EP)",   units: 5, pool: "total",  badge: "MOST POPULAR",accent: "#00D4FF", popular: true  },
+  "500":  { amount: 500,  name: "Automation", bp: 1000,  epRate: "3EP = 1円",   units: 0, pool: "none",   badge: null,          accent: "#94a3b8", popular: false },
+  "2000": { amount: 2000, name: "Core",        bp: 4000,  epRate: "2.5EP = 1円", units: 2, pool: "credit", badge: null,          accent: "#6C63FF", popular: false },
+  "3000": { amount: 3000, name: "Core",        bp: 8000,  epRate: "2.5EP = 1円", units: 3, pool: "credit", badge: "RECOMMENDED", accent: "#6C63FF", popular: false },
+  "5000": { amount: 5000, name: "Infra",       bp: 10000, epRate: "2EP = 1円",   units: 5, pool: "total",  badge: "MOST POPULAR",accent: "#00D4FF", popular: true  },
 };
 
 const PLAN_IDS: PlanId[] = ["500", "2000", "3000", "5000"];
@@ -646,11 +646,12 @@ function DaoMemberPage() {
                     <th style={{ textAlign: "left", padding: "14px 16px" }}></th>
                     <th>
                       <div className="text-white/70 font-black text-sm">売上 ¥500万</div>
-                      <div className="text-white/30 text-[10px]">クレジット売上 ¥500万</div>
                     </th>
                     <th>
                       <div style={{ color: "#a5b4fc" }} className="font-black text-sm">売上 ¥1,000万</div>
-                      <div className="text-white/30 text-[10px]">クレジット売上 ¥1,000万</div>
+                    </th>
+                    <th>
+                      <div style={{ color: "#00D4FF" }} className="font-black text-sm">売上 ¥2,500万</div>
                     </th>
                   </tr>
                 </thead>
@@ -659,36 +660,43 @@ function DaoMemberPage() {
                     <td style={{ color: "#a5b4fc", fontWeight: 600 }}>Core 分配プール<br/><span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>クレジット売上 × 5%</span></td>
                     <td style={{ color: "#a5b4fc", fontWeight: 700 }}>¥250,000</td>
                     <td style={{ color: "#a5b4fc", fontWeight: 700 }}>¥500,000</td>
+                    <td style={{ color: "#a5b4fc", fontWeight: 700 }}>¥1,250,000</td>
                   </tr>
                   <tr>
                     <td style={{ color: "#67e8f9", fontWeight: 600 }}>Infra 分配プール<br/><span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>全体売上 × 5%</span></td>
                     <td style={{ color: "#67e8f9", fontWeight: 700 }}>¥250,000</td>
                     <td style={{ color: "#67e8f9", fontWeight: 700 }}>¥500,000</td>
+                    <td style={{ color: "#67e8f9", fontWeight: 700 }}>¥1,250,000</td>
                   </tr>
                   <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                     <td>Core 1口あたり<br/><span style={{ fontSize: 10 }}>（合計100口仮定）</span></td>
                     <td className="font-bold">¥2,500</td>
                     <td className="font-bold">¥5,000</td>
+                    <td className="font-bold">¥12,500</td>
                   </tr>
                   <tr>
                     <td>$2,000 Core（2口）</td>
                     <td style={{ color: "#a5b4fc", fontWeight: 600 }}>¥5,000 / 月</td>
                     <td style={{ color: "#a5b4fc", fontWeight: 600 }}>¥10,000 / 月</td>
+                    <td style={{ color: "#a5b4fc", fontWeight: 600 }}>¥25,000 / 月</td>
                   </tr>
                   <tr>
                     <td>$3,000 Core（3口）</td>
                     <td style={{ color: "#a5b4fc", fontWeight: 700 }}>¥7,500 / 月</td>
                     <td style={{ color: "#a5b4fc", fontWeight: 700 }}>¥15,000 / 月</td>
+                    <td style={{ color: "#a5b4fc", fontWeight: 700 }}>¥37,500 / 月</td>
                   </tr>
                   <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                     <td>Infra 1口あたり<br/><span style={{ fontSize: 10 }}>（合計25口仮定）</span></td>
                     <td className="font-bold">¥10,000</td>
                     <td className="font-bold">¥20,000</td>
+                    <td className="font-bold">¥50,000</td>
                   </tr>
                   <tr>
                     <td>$5,000 Infra（5口）</td>
                     <td style={{ color: "#67e8f9", fontWeight: 700 }}>¥50,000 / 月</td>
                     <td style={{ color: "#67e8f9", fontWeight: 700 }}>¥100,000 / 月</td>
+                    <td style={{ color: "#67e8f9", fontWeight: 700 }}>¥250,000 / 月</td>
                   </tr>
                 </tbody>
               </table>
