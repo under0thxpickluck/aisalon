@@ -89,6 +89,17 @@ type DailyResultData = {
   winners?: Array<{ rank: number; user_id: string; display_name: string; bp_amount: number }>;
 };
 
+const SLOT_NORMALIZE: Record<string, string> = {
+  head: "head", body: "body", hand: "hand", leg: "leg",
+  helmet: "head", chest: "body", armor: "body",
+  glove: "hand", gloves: "hand",
+  boot: "leg", boots: "leg", feet: "leg",
+};
+
+function normalizeSlot(slot: string): string {
+  return SLOT_NORMALIZE[slot?.toLowerCase()] ?? slot;
+}
+
 const RARITY_COLOR: Record<string, string> = {
   common:    "text-gray-400",
   rare:      "text-blue-400",
@@ -125,6 +136,9 @@ export default function RumblePage() {
   const [enhanceModal, setEnhanceModal] = useState<{ itemId: string; itemName: string; currentLevel: number } | null>(null);
   const [enhancing, setEnhancing] = useState(false);
   const [enhanceModalMsg, setEnhanceModalMsg] = useState("");
+  const [dismantleModal, setDismantleModal] = useState<{ itemId: string; itemName: string } | null>(null);
+  const [dismantling, setDismantling] = useState(false);
+  const [dismantleMsg, setDismantleMsg] = useState("");
   const [rankContext, setRankContext] = useState<any>(null);
   const [showHelp, setShowHelp]         = useState(false);
   const [showEquipHelp, setShowEquipHelp] = useState(false);
@@ -214,7 +228,9 @@ export default function RumblePage() {
   useEffect(() => {
     if (tab !== "装備") return;
     fetch(`/api/minigames/rumble/equipment?userId=${encodeURIComponent(userId)}`)
-      .then(r => r.json()).then(d => { if (d.ok) setEquipment(d.items); }).catch(() => {});
+      .then(r => r.json()).then(d => {
+        if (d.ok) setEquipment((d.items as Equipment[]).map(item => ({ ...item, slot: normalizeSlot(item.slot) })));
+      }).catch(() => {});
   }, [tab, userId]);
 
   useEffect(() => {
@@ -517,24 +533,42 @@ export default function RumblePage() {
       if (data.ok) {
         const eqRes  = await fetch(`/api/minigames/rumble/equipment?userId=${encodeURIComponent(userId)}`);
         const eqData = await eqRes.json();
-        if (eqData.ok) setEquipment(eqData.items);
+        if (eqData.ok) setEquipment((eqData.items as Equipment[]).map((item: Equipment) => ({ ...item, slot: normalizeSlot(item.slot) })));
       }
     } catch {} finally { setBusy(false); }
   };
 
-  const handleDismantle = async (itemId: string) => {
-    if (!userId || busy) return;
-    if (!confirm("本当に分解しますか？")) return;
-    setBusy(true);
+  const handleDismantle = (itemId: string) => {
+    const item = equipment.find(e => e.id === itemId);
+    if (!item || !userId || busy) return;
+    setDismantleModal({ itemId, itemName: item.name });
+    setDismantleMsg("");
+  };
+
+  const handleDismantleConfirm = async () => {
+    if (!dismantleModal || !userId || dismantling) return;
+    setDismantling(true);
+    setDismantleMsg("");
     try {
-      const res  = await fetch("/api/minigames/rumble/dismantle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, itemId }) });
+      const res = await fetch("/api/minigames/rumble/dismantle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, itemId: dismantleModal.itemId }),
+      });
       const data = await res.json();
       if (data.ok) {
         setShards(data.remaining_shard);
-        setEquipment(prev => prev.filter(e => e.id !== itemId));
+        setEquipment(prev => prev.filter(e => e.id !== dismantleModal.itemId));
         setMsg(`🔨 分解完了！ +${data.gained_shard} 力のかけら`);
-      } else { setMsg(data.error === "item_locked" ? "ロック中は分解できません" : "エラーが発生しました"); }
-    } catch { setMsg("通信エラー"); } finally { setBusy(false); }
+        setDismantleModal(null);
+      } else {
+        setDismantleMsg(data.error === "item_locked" ? "ロック中は分解できません" : "エラーが発生しました");
+      }
+    } catch {
+      setDismantleMsg("通信エラー");
+    } finally {
+      setDismantling(false);
+    }
   };
 
   // 強化ボタン押下 → サーバーからかけら残高を再取得してからモーダルを開く
@@ -794,6 +828,38 @@ export default function RumblePage() {
         );
       })()}
 
+      {/* 分解確認モーダル */}
+      {dismantleModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-base font-black mb-1 text-center">🔨 装備を分解しますか？</h2>
+            <p className="text-sm text-white/60 text-center mb-4">
+              「{dismantleModal.itemName}」を分解します。<br />
+              <span className="text-orange-400 font-bold">この操作は取り消せません。</span>
+            </p>
+            {dismantleMsg && (
+              <p className="text-xs text-red-400 text-center mb-3">{dismantleMsg}</p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDismantleModal(null); setDismantleMsg(""); }}
+                disabled={dismantling}
+                className="flex-1 py-2.5 rounded-xl border border-white/20 text-sm text-white/60 hover:bg-white/5 disabled:opacity-40"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDismantleConfirm}
+                disabled={dismantling}
+                className="flex-1 py-2.5 rounded-xl bg-orange-700/80 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-40"
+              >
+                {dismantling ? "分解中…" : "分解する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
@@ -1038,7 +1104,9 @@ export default function RumblePage() {
             <div className={`bg-white/5 border-2 ${RARITY_BG[gachaResult.item.rarity]} rounded-2xl p-6 text-center`}>
               <p className={`text-xs font-bold uppercase mb-1 ${RARITY_COLOR[gachaResult.item.rarity]}`}>{gachaResult.item.rarity}</p>
               <p className="text-2xl font-black mb-1">{gachaResult.item.name}</p>
-              <p className="text-sm text-white/60">{gachaResult.item.slot} / +{gachaResult.item.bonus}ボーナス</p>
+              <p className="text-sm text-white/60">
+                {(() => { const s = normalizeSlot(gachaResult.item.slot); return s === "head" ? "頭" : s === "body" ? "胴" : s === "hand" ? "手" : "足"; })()} / +{gachaResult.item.bonus}ボーナス
+              </p>
               {(gachaResult.auto_discarded ?? 0) > 0 && (
                 <p className="mt-2 text-xs text-orange-400/80">
                   ⚠️ 上限超過のため古い装備{gachaResult.auto_discarded}個を分解しました（+{gachaResult.auto_shard_gained} 力のかけら）
