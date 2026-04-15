@@ -32,6 +32,16 @@ export async function POST(req: Request) {
 
     const gas = await callGas(gasUrl, gasKey, { action: "market_buy", id, code, item_id });
 
+    // Fire-and-forget purchase notification (buyer gets delivery URL, seller gets purchase notice)
+    if (gas.ok && gas.order_id) {
+      callGas(gasUrl, gasKey, {
+        action: "market_notify_purchase",
+        order_id: gas.order_id,
+        buyer_id: id,
+        item_id,
+      }).catch(() => {});
+    }
+
     return NextResponse.json(gas, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
