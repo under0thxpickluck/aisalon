@@ -3118,7 +3118,7 @@ function handle_(key, body) {
     applySheet_rr5.getRange(targetRow_rr5, idx_rr5["reset_expires"] + 1).setValue(newExpires_rr5);
     applySheet_rr5.getRange(targetRow_rr5, idx_rr5["reset_used_at"] + 1).setValue("");
 
-    sendResetMail_(email_rr5, loginId_rr5, newToken_rr5);
+    sendResetMail_(email_rr5, loginId_rr5, newToken_rr5, "", "5000");
     applySheet_rr5.getRange(targetRow_rr5, idx_rr5["reset_sent_at"] + 1).setValue(new Date());
     if (idx_rr5["mail_error"] !== undefined) {
       applySheet_rr5.getRange(targetRow_rr5, idx_rr5["mail_error"] + 1).setValue("");
@@ -3448,7 +3448,7 @@ function approveRowCore5000_(ss5000, applySheet, header, idx, rowIndex, reason) 
   let resetSent5000 = false;
   if (!sentAt5000) {
     try {
-      sendResetMail_(email5000, loginId5000, token5000, myRefCode5000);
+      sendResetMail_(email5000, loginId5000, token5000, myRefCode5000, "5000");
       applySheet.getRange(rowIndex, idx["reset_sent_at"] + 1).setValue(new Date());
       if (idx["mail_error"] !== undefined) {
         applySheet.getRange(rowIndex, idx["mail_error"] + 1).setValue("");
@@ -4043,7 +4043,7 @@ function parseMoneyLike_(v) {
 // RESET MAIL
 // ==============================
 
-function sendResetMail_(to, loginId, token, myRefCode) {
+function sendResetMail_(to, loginId, token, myRefCode, plan) {
   // ✅ デバッグログ（GAS実行ログで確認可能）
   Logger.log("[sendResetMail_] called: to=" + to + " loginId=" + loginId + " tokenLen=" + (token ? token.length : 0));
 
@@ -4073,7 +4073,14 @@ function sendResetMail_(to, loginId, token, myRefCode) {
     throw quotaErr;
   }
 
-  const url = "https://lifai.vercel.app/reset?token=" + encodeURIComponent(token);
+  const is5000 = plan === "5000";
+  const resetPath = is5000
+    ? "https://lifai.vercel.app/reset?plan=5000&token=" + encodeURIComponent(token)
+    : "https://lifai.vercel.app/reset?token=" + encodeURIComponent(token);
+  const loginUrl = is5000
+    ? "https://lifai.vercel.app/5000/login"
+    : "https://lifai.vercel.app/login";
+  const url = resetPath;
   const subject = "【LIFAI】初回パスワード設定のご案内";
 
   const body =
@@ -4086,7 +4093,7 @@ function sendResetMail_(to, loginId, token, myRefCode) {
     "\n\n" +
     "このURLは1回のみ利用できます。\n\n" +
     "パスワード設定後はこちらからログインできます：\n" +
-    "https://lifai.vercel.app/login\n\n" +
+    loginUrl + "\n\n" +
     "もしパスワードの設定がうまくできなかった場合は、公式LINEにてお名前とメールアドレスを添えてご連絡ください。\n" +
     "対応いたします。\n" +
     "https://lin.ee/VPo2xOn\n\n" +

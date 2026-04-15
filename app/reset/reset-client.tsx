@@ -8,6 +8,7 @@ export default function ResetClient() {
   const router = useRouter();
 
   const token = useMemo(() => sp.get("token") ?? "", [sp]);
+  const plan  = useMemo(() => sp.get("plan") ?? "", [sp]);
 
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -31,7 +32,7 @@ export default function ResetClient() {
       if (!j?.ok) throw new Error(j?.error ?? "reset failed");
 
       setMsg("設定完了！ログイン画面へ移動します…");
-      setTimeout(() => router.push("/login"), 800);
+      setTimeout(() => router.push(plan === "5000" ? "/5000/login" : "/login"), 800);
     } catch (e: any) {
       setMsg(e?.message ?? "error");
     } finally {
