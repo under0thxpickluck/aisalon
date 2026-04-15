@@ -5742,6 +5742,11 @@ function doPost(e) {
     if (action === 'cat_log_feedback')   return catLogFeedback_(body);
     if (action === 'cat_faq_list')       return catFaqList_(body);
     if (action === 'cat_unknown_upsert') return catUnknownUpsert_(body);
+    if (action === 'bp_lock')        return imageBpLock_(body);
+    if (action === 'bp_commit')      return imageBpCommit_(body);
+    if (action === 'bp_refund')      return imageBpRefund_(body);
+    if (action === 'image_log')      return imageLog_(body);
+    if (action === 'image_history')  return imageHistory_(body);
   // =========================================================
   // narasu代理申請 submit
   // =========================================================
@@ -9594,5 +9599,192 @@ function catUnknownUpsert_(body) {
     return json_({ ok: true, unknown_id: uid });
   } catch(e) {
     return json_({ ok: false, error: String(e) });
+  }
+}
+
+// =====================================================
+// 画像生成 BP ロック / コミット / 返却
+// =====================================================
+
+// action: bp_lock
+// body: { id, amount, reason }
+function imageBpLock_(body) {
+  try {
+    var id     = str_(body.id);
+    var amount = num_(body.amount);
+    var reason = str_(body.reason || "image");
+    if (!id || amount <= 0) return json_({ ok: false, error: "invalid_params" });
+
+    var ss    = SpreadsheetApp.getActiveSpreadsheet();
+    var locks = ss.getSheetByName("image_bp_locks");
+    if (!locks) {
+      locks = ss.insertSheet("image_bp_locks");
+      locks.appendRow(["lock_id","user_id","amount","reason","status","created_at"]);
+    }
+
+    var lockId = "LK-" + Utilities.getUuid().replace(/-/g,"").substring(0,16);
+    var now    = new Date().toISOString();
+    locks.appendRow([lockId, id, amount, reason, "locked", now]);
+
+    return json_({ ok: true, lock_id: lockId });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: bp_commit
+// body: { id, lock_id }
+function imageBpCommit_(body) {
+  try {
+    var id     = str_(body.id);
+    var lockId = str_(body.lock_id);
+    if (!id || !lockId) return json_({ ok: false, error: "invalid_params" });
+
+    var ss    = SpreadsheetApp.getActiveSpreadsheet();
+    var locks = ss.getSheetByName("image_bp_locks");
+    if (!locks) return json_({ ok: false, error: "no_locks_sheet" });
+
+    var data   = locks.getDataRange().getValues();
+    var header = data[0];
+    var lidIdx = header.indexOf("lock_id");
+    var stIdx  = header.indexOf("status");
+    var amtIdx = header.indexOf("amount");
+    var uidIdx = header.indexOf("user_id");
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][lidIdx] === lockId && data[i][uidIdx] === id && data[i][stIdx] === "locked") {
+        locks.getRange(i + 1, stIdx + 1).setValue("committed");
+        var amount = num_(data[i][amtIdx]);
+        adjustImageBp_(id, -amount, "image_commit:" + lockId);
+        return json_({ ok: true });
+      }
+    }
+    return json_({ ok: false, error: "lock_not_found" });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: bp_refund
+// body: { id, lock_id }
+function imageBpRefund_(body) {
+  try {
+    var id     = str_(body.id);
+    var lockId = str_(body.lock_id);
+    if (!id || !lockId) return json_({ ok: false, error: "invalid_params" });
+
+    var ss    = SpreadsheetApp.getActiveSpreadsheet();
+    var locks = ss.getSheetByName("image_bp_locks");
+    if (!locks) return json_({ ok: false, error: "no_locks_sheet" });
+
+    var data   = locks.getDataRange().getValues();
+    var header = data[0];
+    var lidIdx = header.indexOf("lock_id");
+    var stIdx  = header.indexOf("status");
+    var uidIdx = header.indexOf("user_id");
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][lidIdx] === lockId && data[i][uidIdx] === id && data[i][stIdx] === "locked") {
+        locks.getRange(i + 1, stIdx + 1).setValue("refunded");
+        return json_({ ok: true });
+      }
+    }
+    return json_({ ok: false, error: "lock_not_found" });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// =====================================================
+// 画像ログ・履歴
+// =====================================================
+
+// action: image_log
+// body: { id, prompt, image_url, bp_used, type, meta_json }
+function imageLog_(body) {
+  try {
+    var id       = str_(body.id);
+    var prompt   = str_(body.prompt);
+    var imageUrl = str_(body.image_url);
+    var bpUsed   = num_(body.bp_used);
+    var type     = str_(body.type || "generate");
+    var metaJson = str_(body.meta_json || "{}");
+    if (!id || !imageUrl) return json_({ ok: false, error: "invalid_params" });
+
+    var ss   = SpreadsheetApp.getActiveSpreadsheet();
+    var logs = ss.getSheetByName("image_logs");
+    if (!logs) {
+      logs = ss.insertSheet("image_logs");
+      logs.appendRow(["id","user_id","prompt","image_url","bp_used","type","meta_json","created_at"]);
+    }
+
+    var uid = "IMG-" + Utilities.getUuid().replace(/-/g,"").substring(0,16);
+    var now = new Date().toISOString();
+    logs.appendRow([uid, id, prompt, imageUrl, bpUsed, type, metaJson, now]);
+
+    return json_({ ok: true, id: uid });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: image_history
+// body: { id, limit }
+function imageHistory_(body) {
+  try {
+    var id    = str_(body.id);
+    var limit = Math.min(num_(body.limit || 30), 100);
+    if (!id) return json_({ ok: false, error: "invalid_params" });
+
+    var ss   = SpreadsheetApp.getActiveSpreadsheet();
+    var logs = ss.getSheetByName("image_logs");
+    if (!logs) return json_({ ok: true, items: [] });
+
+    var data   = logs.getDataRange().getValues();
+    var header = data[0];
+    var uidIdx = header.indexOf("user_id");
+    var items  = [];
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][uidIdx] === id) {
+        items.push({
+          id:         str_(data[i][header.indexOf("id")]),
+          user_id:    id,
+          prompt:     str_(data[i][header.indexOf("prompt")]),
+          image_url:  str_(data[i][header.indexOf("image_url")]),
+          bp_used:    num_(data[i][header.indexOf("bp_used")]),
+          type:       str_(data[i][header.indexOf("type")]),
+          created_at: str_(data[i][header.indexOf("created_at")]),
+        });
+      }
+    }
+
+    items.sort(function(a, b) { return b.created_at.localeCompare(a.created_at); });
+    return json_({ ok: true, items: items.slice(0, limit) });
+  } catch(e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// 画像用 BP 増減ヘルパー（users シートの bp 列を直接操作）
+function adjustImageBp_(userId, delta, note) {
+  try {
+    var ss    = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("users");
+    if (!sheet) return;
+    var data   = sheet.getDataRange().getValues();
+    var header = data[0];
+    var idIdx  = header.indexOf("login_id");
+    var bpIdx  = header.indexOf("bp");
+    if (idIdx < 0 || bpIdx < 0) return;
+    for (var i = 1; i < data.length; i++) {
+      if (str_(data[i][idIdx]) === userId) {
+        var current = num_(data[i][bpIdx]);
+        sheet.getRange(i + 1, bpIdx + 1).setValue(Math.max(0, current + delta));
+        return;
+      }
+    }
+  } catch(e) {
+    // サイレント失敗
   }
 }
