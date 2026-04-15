@@ -209,11 +209,12 @@ function ReferralCard({ auth }: { auth: AuthState }) {
     const base =
       (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "";
 
-    // 共有先は purchase に refCode をつける（applyの refCode に入れる想定）
-    // 例：/purchase?refCode=R-lifai_xxxxxx
+    // group=5000 ユーザーは /5000、それ以外は /purchase に refCode をつける
+    const is5000 = (auth as any)?.group === "5000";
+    const purchasePath = is5000 ? "/5000" : "/purchase";
     const buildShare = (rc: string) => {
-      if (!base) return `/purchase?refCode=${encodeURIComponent(rc)}`;
-      return `${base}/purchase?refCode=${encodeURIComponent(rc)}`;
+      if (!base) return `${purchasePath}?refCode=${encodeURIComponent(rc)}`;
+      return `${base}${purchasePath}?refCode=${encodeURIComponent(rc)}`;
     };
 
     if (!id) {

@@ -231,6 +231,11 @@ export default function Apply5000Page() {
     if (!d.plan) {
       d.plan = sessionStorage.getItem("5000_plan") || "5000";
     }
+    // 紹介コードが未入力の場合、ランディングページで保存した値を補完
+    if (!d.refId) {
+      const storedRef = sessionStorage.getItem("5000_ref_code");
+      if (storedRef) d.refId = storedRef;
+    }
     saveDraft5000(d);
     setDraft(d);
   }, []);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, Variants, useInView } from "framer-motion";
 import { loadDraft, saveDraft } from "@/components/storage";
 
@@ -79,6 +79,7 @@ function useCountUp(target: number, duration = 1.5) {
 /* ===== Component ===== */
 export default function DaoMemberPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [draft, setDraft] = useState<ReturnType<typeof loadDraft> | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("5000");
   const [accordionOpen, setAccordionOpen] = useState(false);
@@ -91,8 +92,15 @@ export default function DaoMemberPage() {
 
   useEffect(() => {
     const d = loadDraft();
+    // URLに refCode がある場合、regular draft と sessionStorage に保存
+    const refCode = searchParams.get("refCode");
+    if (refCode && !d.refId) {
+      d.refId = refCode;
+      saveDraft({ refId: refCode });
+      try { sessionStorage.setItem("5000_ref_code", refCode); } catch {}
+    }
     setDraft(d);
-  }, []);
+  }, [searchParams]);
 
   function ensureApplyId(planId: PlanId): string | null {
     if (!draft) return null;
