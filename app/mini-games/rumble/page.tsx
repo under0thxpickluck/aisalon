@@ -130,6 +130,7 @@ export default function RumblePage() {
   const [msg, setMsg]             = useState("");
   const [countdown, setCountdown] = useState("");
   const [isAfter19Jst, setIsAfter19Jst] = useState(false);
+  const [isAfter1850Jst, setIsAfter1850Jst] = useState(false);
   const [shards, setShards]       = useState(0);
   const [enhanceResult, setEnhanceResult] = useState<{result:string; after_level:number; shard_spent:number} | null>(null);
   // 強化モーダル
@@ -246,7 +247,9 @@ export default function RumblePage() {
       const jstMonth = jstParts.find(p => p.type === "month")!.value;
       const jstDay   = jstParts.find(p => p.type === "day")!.value;
       const jstHour  = parseInt(jstParts.find(p => p.type === "hour")!.value, 10);
+      const jstMinute = parseInt(new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", minute: "2-digit" }).format(now), 10);
       setIsAfter19Jst(jstHour >= 19);
+      setIsAfter1850Jst(jstHour > 18 || (jstHour === 18 && jstMinute >= 50));
 
       // 目標日付の計算
       let targetDate = new Date(`${jstYear}-${jstMonth}-${jstDay}T19:00:00+09:00`);
@@ -388,7 +391,7 @@ export default function RumblePage() {
     })();
   }, [tab, dailyResult?.status, userId]);
 
-  // 観戦タブがpendingかつ当日の場合、30秒ごとにdaily-resultを自動ポーリング
+  // 観戦タブがpendingかつ当日の場合、5秒ごとにdaily-resultを自動ポーリング（参加者が増えるたびに即反映）
   useEffect(() => {
     if (tab !== "観戦") return;
     if (dailyResult?.status !== "pending" || !dailyResult?.isToday) return;
@@ -397,7 +400,7 @@ export default function RumblePage() {
         .then(r => r.json())
         .then((d: DailyResultData) => { if (d.ok) setDailyResult(d); })
         .catch(() => {});
-    }, 30000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [tab, dailyResult?.status, dailyResult?.isToday]);
 
@@ -528,7 +531,7 @@ export default function RumblePage() {
         localStorage.setItem(`rumble_entered_${userId}`, getTodayJst());
         setLocalEnteredToday(true);
         setStatus(prev => prev ? { ...prev, entered_today: true, today_score: data.score, today_rp: data.rp, week_rp: prev.week_rp + data.rp } : prev);
-        setMsg(`🎉 スコア: ${data.score} / RP: ${data.rp} 獲得！`);
+        setMsg("🎉 参加完了！スコアは18:50に公開されます");
       } else {
         if (data.error === "already_entered_today") setMsg("本日はすでに参加済みです");
         else if (data.error === "insufficient_bp")  setMsg(`BP不足です（残高: ${data.bp}BP）`);
@@ -948,7 +951,12 @@ export default function RumblePage() {
             </div>
             <div className="bg-white/5 rounded-xl p-4 text-center">
               <p className="text-xs text-white/40 mb-1">今日のスコア</p>
-              <p className="text-2xl font-black text-white">{status?.today_score ?? "-"}</p>
+              <p className="text-2xl font-black text-white">
+                {isAfter1850Jst ? (status?.today_score ?? "-") : (status?.entered_today || localEnteredToday ? "🔒" : "-")}
+              </p>
+              {!isAfter1850Jst && (status?.entered_today || localEnteredToday) && (
+                <p className="text-[10px] text-white/30 mt-1">18:50に公開</p>
+              )}
             </div>
           </div>
 
@@ -984,7 +992,11 @@ export default function RumblePage() {
               <div>
                 <div className="text-4xl mb-2">✅</div>
                 <p className="font-bold text-green-400">本日参加済み</p>
-                <p className="text-sm text-white/40 mt-1">スコア: {status?.today_score ?? "—"} / RP: {status?.today_rp ?? "—"}</p>
+                {isAfter1850Jst ? (
+                  <p className="text-sm text-white/40 mt-1">スコア: {status?.today_score ?? "—"} / RP: {status?.today_rp ?? "—"}</p>
+                ) : (
+                  <p className="text-sm text-white/40 mt-1">🔒 スコアは18:50に公開されます</p>
+                )}
               </div>
             ) : (
               <button onClick={handleEntry} disabled={busy || !status}
