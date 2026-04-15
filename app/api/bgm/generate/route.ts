@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BP_COSTS } from "@/app/lib/bp-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +47,19 @@ function buildBgmPrompt(params: {
   return parts.filter(Boolean).join(", ");
 }
 
+async function callGasBalance(id: string, gasUrl: string, gasKey: string): Promise<number> {
+  const url = `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ action: "get_balance", id }),
+  });
+  const data = await r.json().catch(() => ({ ok: false }));
+  if (!data.ok) throw new Error("balance_fetch_failed");
+  return Number(data.bp ?? 0);
+}
+
 export async function POST(req: NextRequest) {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
@@ -53,12 +67,37 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json() as {
+    id?: string;
     theme: string;
     genre: string;
     mood: string;
     duration?: number;
     bpm?: number;
   };
+
+  const id = String(body.id ?? "");
+  if (!id) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  const gasUrl = process.env.GAS_WEBAPP_URL;
+  const gasKey = process.env.GAS_API_KEY;
+  const gasAdminKey = process.env.GAS_ADMIN_KEY;
+  if (!gasUrl || !gasKey || !gasAdminKey) {
+    return NextResponse.json({ ok: false, error: "gas_env_missing" }, { status: 500 });
+  }
+
+  let bp: number;
+  try {
+    bp = await callGasBalance(id, gasUrl, gasKey);
+  } catch {
+    return NextResponse.json({ ok: false, error: "balance_check_failed" }, { status: 502 });
+  }
+
+  const bpCost = BP_COSTS.music_bgm;
+  if (bp < bpCost) {
+    return NextResponse.json({ ok: false, error: "insufficient_bp", bp, required: bpCost }, { status: 400 });
+  }
 
   const prompt = buildBgmPrompt({
     theme: body.theme ?? "",
@@ -97,5 +136,31 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true, predictionId: String(data.id) });
+  try {
+    const deductRes = await fetch(
+      `${gasUrl}${gasUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(gasKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          action: "deduct_bp",
+          adminKey: gasAdminKey,
+          loginId: id,
+          amount: bpCost,
+        }),
+      }
+    );
+    const deductData = await deductRes.json().catch(() => ({ ok: false }));
+    if (!deductData.ok) {
+      return NextResponse.json(
+        { ok: false, error: deductData.error || "deduct_bp_failed" },
+        { status: 400 }
+      );
+    }
+  } catch {
+    return NextResponse.json({ ok: false, error: "deduct_bp_request_failed" }, { status: 502 });
+  }
+
+  return NextResponse.json({ ok: true, predictionId: String(data.id), bpUsed: bpCost });
 }

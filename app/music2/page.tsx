@@ -50,6 +50,7 @@ const proChipActive   = "border-violet-500 bg-violet-600 text-white";
 const proChipInactive = "border-[#3730a3] bg-[#1e1b4b] text-indigo-300 hover:border-violet-500 hover:text-violet-300";
 
 type Step = 0 | 1 | 2 | 3;
+type GenerationMode = "song" | "bgm";
 
 type StructureData = {
   bpm: number;
@@ -153,6 +154,7 @@ export default function Music2Page() {
   const router = useRouter();
 
   // フォーム
+  const [generationMode, setGenerationMode] = useState<GenerationMode>("song");
   const [theme, setTheme] = useState("");
   const [genre, setGenre] = useState("");
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
@@ -211,6 +213,8 @@ export default function Music2Page() {
 
   const isProSettingsActive =
     isPro && (!!bpmHint || !!vocalStyle || !!vocalMood || instruments.length > 0 || !!duration);
+
+  const isBgmMode = generationMode === "bgm";
 
   // ── 認証チェック & プラン取得 ───────────────────────────────────────────
 
@@ -362,12 +366,88 @@ export default function Music2Page() {
     pollRef.current = setTimeout(poll, 3000);
   }, []);
 
+  const pollBgmUntilCompleted = useCallback((predictionId: string) => {
+    let ticks = 0;
+    const MAX_TICKS = 120;
+
+    const poll = async () => {
+      if (!pollRef.current) return;
+      ticks++;
+      setProgress(Math.min(94, 15 + ticks * 0.65));
+
+      try {
+        const res = await fetch(`/api/bgm/status?id=${encodeURIComponent(predictionId)}`, { cache: "no-store" });
+        const data = await res.json();
+
+        if (!data.ok) {
+          if (ticks >= MAX_TICKS) {
+            stopPoll();
+            setErrorMsg("BGM生成に失敗しました。もう一度お試しください。");
+          } else {
+            pollRef.current = setTimeout(poll, 2500);
+          }
+          return;
+        }
+
+        if (data.stage) setStageLabel(data.stage);
+        if (typeof data.progress === "number") setProgress(Math.round(data.progress * 100));
+
+        if (data.status === "succeeded" && data.outputUrl) {
+          stopPoll();
+          setProgress(100);
+          const title = theme.trim() || "BGM";
+          setResultTitle(title);
+          setAudioUrl(data.outputUrl);
+          setDownloadUrl(data.outputUrl);
+          setResultLyrics("");
+          setDisplayLyrics("");
+          setDistributionLyrics("");
+          setDistributionReady(false);
+          setLyricsGateResult(null);
+          setLyricsReviewRequired(false);
+          setInfoMsg(null);
+          setStep(3);
+
+          const updated = saveToHistory({
+            jobId: predictionId,
+            title,
+            audioUrl: data.outputUrl,
+            downloadUrl: data.outputUrl,
+            lyrics: "",
+            createdAt: new Date().toISOString(),
+          });
+          setHistory(updated);
+          return;
+        }
+
+        if (data.status === "failed" || data.status === "canceled") {
+          stopPoll();
+          setErrorMsg("BGM生成に失敗しました。");
+          return;
+        }
+
+        if (ticks >= MAX_TICKS) {
+          stopPoll();
+          setErrorMsg("BGM生成に時間がかかりすぎています。もう一度お試しください。");
+          return;
+        }
+      } catch {
+        // 一時的な通信エラーは次回ポーリングで回復する可能性がある
+      }
+
+      pollRef.current = setTimeout(poll, 2500);
+    };
+
+    pollRef.current = setTimeout(poll, 2500);
+  }, [genre, selectedMoods, theme]);
+
   // ── Step 0: 曲を作る（構成生成まで一気に） ──────────────────────────────
 
   async function handleStart() {
     const auth = getAuth();
     const code = getAuthSecret();
-    if (!auth || !code) {
+    const id = (auth as any)?.id || (auth as any)?.loginId || "";
+    if (!auth || !code || !id) {
       router.replace("/login");
       return;
     }
@@ -381,13 +461,50 @@ export default function Music2Page() {
     const moodStr = selectedMoods.join("・");
 
     try {
+      if (generationMode === "bgm") {
+        setProgress(20);
+        const res = await fetch("/api/bgm/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            theme: theme.trim(),
+            genre,
+            mood: moodStr,
+            bpm: bpmHint ?? undefined,
+            duration: duration ?? 30,
+          }),
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+          setErrorMsg(
+            data.error === "insufficient_bp"
+              ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: ${data.required ?? 20}BP）`
+              : `BGM生成に失敗しました（${data.error ?? "unknown"}）`
+          );
+          setLoading(false);
+          return;
+        }
+
+        setJobId(data.predictionId);
+        setResultTitle(theme.trim() || "BGM");
+        setAudioUrl(null);
+        setDownloadUrl(null);
+        setStageLabel("BGM生成中");
+        setStep(2);
+        setLoading(false);
+        pollBgmUntilCompleted(data.predictionId);
+        return;
+      }
+
       // start API が同期的に structure_ready まで実行して返す
       setProgress(30);
       const res  = await fetch("/api/song/start", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          id: (auth as any).id, code, theme: theme.trim(), genre, mood: moodStr, isPro,
+          id, code, theme: theme.trim(), genre, mood: moodStr, isPro,
           bpmHint:     isPro && bpmHint                 ? bpmHint     : undefined,
           vocalStyle:  isPro && vocalStyle               ? vocalStyle  : undefined,
           vocalMood:   isPro && vocalMood                ? vocalMood   : undefined,
@@ -717,10 +834,10 @@ export default function Music2Page() {
           </div>
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
-            {step === 0 && "新しい曲を作る"}
+            {step === 0 && (isBgmMode ? "BGMを作る" : "新しい曲を作る")}
             {step === 1 && "構成案を確認"}
-            {step === 2 && "曲を生成しています…"}
-            {step === 3 && "曲が完成しました！"}
+            {step === 2 && (isBgmMode ? "BGMを生成しています…" : "曲を生成しています…")}
+            {step === 3 && (isBgmMode ? "BGMが完成しました！" : "曲が完成しました！")}
           </h1>
 
           <ErrorBox />
@@ -730,8 +847,44 @@ export default function Music2Page() {
           ════════════════════════════════════════════════════ */}
           {step === 0 && (
             <>
+              <div className="mt-5 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+                {([
+                  { value: "song", label: "曲生成", sub: "歌詞・構成あり" },
+                  { value: "bgm", label: "BGM生成", sub: "ボーカルなし" },
+                ] as const).map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => {
+                      if (item.value !== generationMode) {
+                        setBpmHint(null);
+                        setVocalStyle("");
+                        setVocalMood("");
+                        setInstruments([]);
+                        setDuration(null);
+                      }
+                      setGenerationMode(item.value);
+                      setErrorMsg(null);
+                      setProgress(0);
+                    }}
+                    disabled={loading}
+                    className={[
+                      "rounded-xl px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+                      generationMode === item.value
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-500 hover:text-slate-800",
+                    ].join(" ")}
+                  >
+                    <span className="block text-sm font-extrabold">{item.label}</span>
+                    <span className="mt-0.5 block text-[10px] font-semibold">{item.sub}</span>
+                  </button>
+                ))}
+              </div>
+
               <p className="mt-2 text-sm text-slate-600">
-                テーマ・ジャンル・雰囲気を選ぶと、AIが構成を提案してから曲を生成します。
+                {isBgmMode
+                  ? "テーマ・ジャンル・雰囲気を選ぶと、ボーカルなしのBGMを生成します。"
+                  : "テーマ・ジャンル・雰囲気を選ぶと、AIが構成を提案してから曲を生成します。"}
               </p>
 
               {/* テーマ */}
@@ -790,8 +943,50 @@ export default function Music2Page() {
                 </div>
               </div>
 
+              {/* BGM設定 */}
+              {isBgmMode && (
+                <div className="mt-5 rounded-[18px] border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🎚️</span>
+                    <span className="text-[11px] font-black tracking-widest text-slate-600">BGM SETTINGS</span>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">BPM目安</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {BPM_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setBpmHint(bpmHint === opt.value ? null : opt.value)}
+                          className={[chipBase, bpmHint === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">長さ</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DURATION_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setDuration(duration === opt.value ? null : opt.value)}
+                          className={[chipBase, duration === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Pro追加設定（isPro === true の場合のみ表示） */}
-              {isPro && (
+              {isPro && !isBgmMode && (
                 <div className="mt-5 rounded-[18px] border border-violet-500/30 bg-[#0d0d1a] p-4 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
                   {/* ヘッダー */}
                   <div className="flex items-center gap-2 mb-4">
@@ -911,9 +1106,11 @@ export default function Music2Page() {
               <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <span className="text-xs font-bold text-indigo-700">必要BP</span>
                 <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
-                  {isProSettingsActive ? "250 BP" : "100 BP"}
+                  {isBgmMode ? "20 BP" : isProSettingsActive ? "250 BP" : "100 BP"}
                 </span>
-                {isPro ? (
+                {isBgmMode ? (
+                  <span className="ml-auto text-[11px] text-indigo-500">ボーカルなしで短めに生成</span>
+                ) : isPro ? (
                   isProSettingsActive ? (
                     <span className="ml-auto text-[11px] text-violet-600 font-semibold">🎛️ Pro設定使用中（250BP）</span>
                   ) : (
@@ -925,32 +1122,34 @@ export default function Music2Page() {
               </div>
 
               {/* ローディング中のプログレス */}
-              {loading && <ProgressBar label="楽曲構成を生成しています…" />}
+              {loading && <ProgressBar label={isBgmMode ? "BGM生成を開始しています…" : "楽曲構成を生成しています…"} />}
 
               {/* リリース・申請案内 */}
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] font-bold text-slate-500 mb-2">📋 作った曲はリリース・売却できます</p>
-                <div className="flex flex-col gap-1.5 sm:flex-row">
+              {!isBgmMode && (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[11px] font-bold text-slate-500 mb-2">📋 作った曲はリリース・売却できます</p>
+                  <div className="flex flex-col gap-1.5 sm:flex-row">
+                    <Link
+                      href="/music-release-guide"
+                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-100"
+                    >
+                      🎵 リリース申請方法を見る
+                    </Link>
+                    <Link
+                      href="/apply-sell"
+                      className="flex-1 rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
+                    >
+                      💰 売却申請はこちら
+                    </Link>
+                  </div>
                   <Link
-                    href="/music-release-guide"
-                    className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-100"
+                    href="/narasu-agency"
+                    className="mt-1.5 block w-full rounded-xl border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
                   >
-                    🎵 リリース申請方法を見る
-                  </Link>
-                  <Link
-                    href="/apply-sell"
-                    className="flex-1 rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
-                  >
-                    💰 売却申請はこちら
+                    📋 narasu配信代理申請（代行サービス）
                   </Link>
                 </div>
-                <Link
-                  href="/narasu-agency"
-                  className="mt-1.5 block w-full rounded-xl border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
-                >
-                  📋 narasu配信代理申請（代行サービス）
-                </Link>
-              </div>
+              )}
 
               {/* 生成ボタン */}
               <div className="mt-4">
@@ -959,7 +1158,9 @@ export default function Music2Page() {
                   disabled={!canStart}
                   className={btnPrimary}
                 >
-                  {loading ? "構成を生成中…" : "曲を作る"}
+                  {loading
+                    ? isBgmMode ? "BGM生成を開始中…" : "構成を生成中…"
+                    : isBgmMode ? "BGMを生成する" : "曲を作る"}
                 </button>
                 {!canStart && !loading && (
                   <p className="mt-2 text-center text-[11px] text-slate-400">
@@ -1052,10 +1253,12 @@ export default function Music2Page() {
           {step === 2 && (
             <>
               <p className="mt-2 text-sm text-slate-600">
-                AIが曲を生成しています。完成まで約8分かかります。このページを閉じずにお待ちください。
+                {isBgmMode
+                  ? "AIがBGMを生成しています。完成までこのページを閉じずにお待ちください。"
+                  : "AIが曲を生成しています。完成まで約8分かかります。このページを閉じずにお待ちください。"}
               </p>
 
-              <ProgressBar label={stageLabel ?? "音楽を生成しています…"} />
+              <ProgressBar label={stageLabel ?? (isBgmMode ? "BGMを生成しています…" : "音楽を生成しています…")} />
 
               <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <p className="text-xs font-semibold leading-relaxed text-indigo-700">
@@ -1066,7 +1269,7 @@ export default function Music2Page() {
                     : audioStage === "chorus"  ? "サビ生成中... (3/4)"
                     : audioStage === "outro"   ? "アウトロ生成中... (4/4)"
                     : audioStage === "merging" ? "仕上げ中..."
-                    : "りふぁねこが一生懸命作曲中です🎵"
+                    : isBgmMode ? "BGMを作っています..." : "りふぁねこが一生懸命作曲中です🎵"
                   }
                   <br />
                   完成すると自動的に次のステップに進みます。
@@ -1087,7 +1290,7 @@ export default function Music2Page() {
           {step === 3 && audioUrl && (
             <>
               <p className="mt-2 text-sm text-slate-600">
-                曲が完成しました！再生・ダウンロードできます。
+                {isBgmMode ? "BGMが完成しました！再生・ダウンロードできます。" : "曲が完成しました！再生・ダウンロードできます。"}
               </p>
 
               <div className="mt-5 rounded-[20px] border border-indigo-100 bg-indigo-50 p-4">
@@ -1110,10 +1313,10 @@ export default function Music2Page() {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：100BP</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? 20 : 100}BP</p>
 
                 {/* 品質警告 */}
-                {(lyricsReviewRequired || !distributionReady) && audioUrl && (
+                {!isBgmMode && (lyricsReviewRequired || !distributionReady) && audioUrl && (
                   <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
                     <p className="text-[11px] font-semibold text-amber-800">
                       ⚠ この曲は歌詞一致または反復に問題があるため、配信提出前に確認してください。
@@ -1125,42 +1328,44 @@ export default function Music2Page() {
                 <audio controls src={audioUrl} className="mt-3 w-full" />
 
                 {/* ジャケット画像生成 */}
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:w-28 sm:shrink-0">
-                      {jacketImageUrl ? (
-                        <img
-                          src={jacketImageUrl}
-                          alt="生成されたジャケット画像"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-3xl text-slate-300">
-                          ♪
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col justify-center">
-                      <p className="text-xs font-extrabold text-slate-900">ジャケット画像</p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                        曲のテーマ・ジャンル・雰囲気からアルバムカバーを生成します。
-                      </p>
-                      {jacketError && (
-                        <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-600">
-                          {jacketError}
+                {!isBgmMode && (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:w-28 sm:shrink-0">
+                        {jacketImageUrl ? (
+                          <img
+                            src={jacketImageUrl}
+                            alt="生成されたジャケット画像"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-3xl text-slate-300">
+                            ♪
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col justify-center">
+                        <p className="text-xs font-extrabold text-slate-900">ジャケット画像</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                          曲のテーマ・ジャンル・雰囲気からアルバムカバーを生成します。
                         </p>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleGenerateJacket}
-                        disabled={jacketLoading}
-                        className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-600 px-4 py-2.5 text-xs font-extrabold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {jacketLoading ? "ジャケット生成中..." : jacketImageUrl ? "ジャケットを再生成する（100BP）" : "ジャケットを生成する（100BP）"}
-                      </button>
+                        {jacketError && (
+                          <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-600">
+                            {jacketError}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleGenerateJacket}
+                          disabled={jacketLoading}
+                          className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-600 px-4 py-2.5 text-xs font-extrabold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {jacketLoading ? "ジャケット生成中..." : jacketImageUrl ? "ジャケットを再生成する（100BP）" : "ジャケットを生成する（100BP）"}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* ボタン */}
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -1169,38 +1374,42 @@ export default function Music2Page() {
                       onClick={() => downloadAudio(downloadUrl, resultTitle)}
                       className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
                     >
-                      WAVをダウンロード
+                      {isBgmMode ? "MP3をダウンロード" : "WAVをダウンロード"}
                     </button>
                   )}
                   <button
                     onClick={handleFullReset}
                     className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-xs font-extrabold text-white transition hover:opacity-90"
                   >
-                    もう1曲作る
+                    {isBgmMode ? "もう1つBGMを作る" : "もう1曲作る"}
                   </button>
                 </div>
 
                 {/* リリース・売却申請ボタン */}
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <Link
-                    href="/music-release-guide"
-                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-50"
-                  >
-                    🎵 リリースガイドを見る
-                  </Link>
-                  <Link
-                    href="/apply-sell"
-                    className="flex-1 rounded-2xl border border-violet-200 bg-white px-4 py-2.5 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
-                  >
-                    💰 売却申請
-                  </Link>
-                </div>
-                <Link
-                  href="/narasu-agency"
-                  className="mt-2 block w-full rounded-2xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
-                >
-                  📋 narasu配信代理申請（代行サービス）
-                </Link>
+                {!isBgmMode && (
+                  <>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Link
+                        href="/music-release-guide"
+                        className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-50"
+                      >
+                        🎵 リリースガイドを見る
+                      </Link>
+                      <Link
+                        href="/apply-sell"
+                        className="flex-1 rounded-2xl border border-violet-200 bg-white px-4 py-2.5 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
+                      >
+                        💰 売却申請
+                      </Link>
+                    </div>
+                    <Link
+                      href="/narasu-agency"
+                      className="mt-2 block w-full rounded-2xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
+                    >
+                      📋 narasu配信代理申請（代行サービス）
+                    </Link>
+                  </>
+                )}
 
                 {/* 歌詞ダウンロード */}
                 {displayLyrics && (
