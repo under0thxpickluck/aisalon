@@ -1299,6 +1299,25 @@ export default function RumblePage() {
       {tab === "観戦" && (
         <div className="space-y-4">
 
+          {/* テスト用：モックデータ読み込み */}
+          {process.env.NODE_ENV !== "production" && (
+            <button
+              onClick={async () => {
+                const d: SpectatorData = await fetch(`/api/minigames/rumble/spectator?userId=${encodeURIComponent(userId)}&mock=1`).then(r => r.json());
+                if (d.ok) {
+                  setSpectatorData(d);
+                  setSpectatorPlayers(d.players.map(p => ({ ...p, status: "alive" as const })));
+                  setSpectatorPhase("waiting");
+                  setBattleLogs([]);
+                  setDailyResult({ ok: true, status: "ready", date: d.date ?? "", participant_count: d.players.length, winnerCount: 1, isToday: true });
+                }
+              }}
+              className="w-full py-2 rounded-xl text-xs text-white/30 border border-white/10 hover:bg-white/5 transition"
+            >
+              🧪 テストデータで確認
+            </button>
+          )}
+
           {/* ローディング */}
           {(spectatorLoading || dailyResultLoading) && (
             <div className="text-center text-white/40 text-sm py-12">読み込み中...</div>
