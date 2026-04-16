@@ -1299,7 +1299,7 @@ export default function RumblePage() {
       {tab === "観戦" && (
         <div className="space-y-4">
 
-          {/* テスト用：モックデータ読み込み */}
+          {/* テスト用：モックデータ読み込み（使うときはコメントアウトを外す）
           {process.env.NODE_ENV !== "production" && (
             <button
               onClick={async () => {
@@ -1317,6 +1317,7 @@ export default function RumblePage() {
               🧪 テストデータで確認
             </button>
           )}
+          */}
 
           {/* ローディング */}
           {(spectatorLoading || dailyResultLoading) && (
