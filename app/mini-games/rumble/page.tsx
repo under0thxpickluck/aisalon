@@ -1444,49 +1444,22 @@ export default function RumblePage() {
                 )}
               </div>
 
-              {/* バトルログカード */}
-              <div className="bg-black/60 border border-purple-500/30 rounded-2xl p-4">
-                <p className="text-xs font-bold text-purple-400/60 mb-3 tracking-widest">BATTLE LOG</p>
-                <div className="min-h-[200px] space-y-2 font-mono">
-                  {battleLogs.length === 0 && !isPlaying && (
-                    <p className="text-white/20 text-sm text-center pt-8">
-                      ▶ 観戦を開始してください
-                    </p>
-                  )}
-                  {battleLogs.map(log => (
-                    <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>
-                      {log.text}
-                    </p>
-                  ))}
-                  {isPlaying && (
-                    <p className="text-white/30 text-xs animate-pulse">▌</p>
-                  )}
-                </div>
-              </div>
-
-              {/* 再生ボタン群 */}
+              {/* アクションボタン群 */}
               <div className="flex flex-col gap-2">
-                {!isPlaying && spectatorPhase !== "result" && spectatorData?.status === "ready" && (
-                  <button
-                    onClick={handleSpectatorPlay}
-                    className="w-full py-4 rounded-xl font-black text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition"
-                  >
-                    ⚔️ 観戦スタート
-                  </button>
-                )}
-                {!isPlaying && spectatorPhase === "result" && spectatorData?.status === "ready" && (
-                  <button
-                    onClick={() => {
-                      setBattleLogs([]);
-                      setShowWinners(false);
-                      setSpectatorPlayers(spectatorData.players.map(p => ({ ...p, status: "alive" as const })));
+                <button
+                  onClick={() => {
+                    setBattleLogModalMode("today");
+                    setShowBattleLogModal(true);
+                    // まだ未再生なら自動でplay開始
+                    if (!isPlaying && spectatorPhase === "waiting" && spectatorData?.status === "ready") {
                       handleSpectatorPlay();
-                    }}
-                    className="w-full py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition"
-                  >
-                    🔄 もう一度見る
-                  </button>
-                )}
+                    }
+                  }}
+                  disabled={spectatorData?.status !== "ready"}
+                  className="w-full py-4 rounded-xl font-black text-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  ⚔️ バトルログを再生
+                </button>
                 <button
                   onClick={handleSpectatorRefresh}
                   disabled={spectatorLoading}
