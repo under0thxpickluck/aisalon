@@ -1076,18 +1076,22 @@ export default function RumblePage() {
 
           {/* 報酬帯 */}
           <div className="bg-white/5 rounded-xl p-4">
-            <p className="text-xs font-bold text-white/60 mb-2">🏆 週次報酬</p>
+            <p className="text-xs font-bold text-white/60 mb-1">🏆 週次報酬</p>
+            <p className="text-[10px] text-white/30 mb-2">参加人数に応じて変動（週合計〜700EP）</p>
+            <div className="grid grid-cols-3 gap-1 text-[10px] text-white/30 mb-1.5 px-1">
+              <span>順位</span><span className="text-center">〜9人</span><span className="text-right">10人以上</span>
+            </div>
             {[
-              { label: "🥇 1位",    ep: 1500 },
-              { label: "🥈 2位",    ep: 1000 },
-              { label: "🥉 3位",    ep: 700  },
-              { label: "4〜10位",   ep: 400  },
-              { label: "11〜50位",  ep: 80   },
-              { label: "51〜100位", ep: 10   },
+              { label: "🥇 1位",  md: 300, lg: 280 },
+              { label: "🥈 2位",  md: 200, lg: 190 },
+              { label: "🥉 3位",  md: 120, lg: 120 },
+              { label: "4〜5位",  md: 40,  lg: 45  },
+              { label: "6〜10位", md: null, lg: 4  },
             ].map(r => (
-              <div key={r.label} className="flex justify-between text-xs py-1">
-                <span className="text-white/60">{r.label}</span>
-                <span className="text-yellow-400">{r.ep.toLocaleString()} EP</span>
+              <div key={r.label} className="grid grid-cols-3 gap-1 text-xs py-0.5 px-1">
+                <span className="text-white/50">{r.label}</span>
+                <span className="text-center text-yellow-400/70">{r.md != null ? `${r.md} EP` : "—"}</span>
+                <span className="text-right text-yellow-400">{r.lg != null ? `${r.lg} EP` : "—"}</span>
               </div>
             ))}
           </div>

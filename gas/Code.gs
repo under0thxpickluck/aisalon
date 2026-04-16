@@ -7310,15 +7310,6 @@ function rumbleEquip_(params) {
 
 // action: rumble_reward_distribute（週次報酬配布）
 function rumbleRewardDistribute_(params) {
-  var WEEKLY_REWARDS = [
-    { rank_min: 1,  rank_max: 1,   ep: 1500 },
-    { rank_min: 2,  rank_max: 2,   ep: 1000 },
-    { rank_min: 3,  rank_max: 3,   ep: 700  },
-    { rank_min: 4,  rank_max: 10,  ep: 400  },
-    { rank_min: 11, rank_max: 50,  ep: 80   },
-    { rank_min: 51, rank_max: 100, ep: 10   },
-  ];
-
   var weekId    = params.weekId || getWeekId_();
 
   // Idempotency check via ScriptProperties
@@ -7351,6 +7342,37 @@ function rumbleRewardDistribute_(params) {
   var emailMap = {};
   for (var e = 1; e < appliesData.length; e++) {
     emailMap[String(appliesData[e][aIdx["login_id"]])] = String(appliesData[e][aIdx["email"]] || "");
+  }
+
+  // 参加人数に応じた週次報酬テーブル（合計〜700 EP）
+  var n = rows.length;
+  var WEEKLY_REWARDS;
+  if (n <= 2) {
+    WEEKLY_REWARDS = [
+      { rank_min: 1, rank_max: 1, ep: 400 },
+      { rank_min: 2, rank_max: 2, ep: 300 },
+    ];
+  } else if (n <= 4) {
+    WEEKLY_REWARDS = [
+      { rank_min: 1, rank_max: 1, ep: 350 },
+      { rank_min: 2, rank_max: 2, ep: 230 },
+      { rank_min: 3, rank_max: 3, ep: 120 },
+    ];
+  } else if (n <= 9) {
+    WEEKLY_REWARDS = [
+      { rank_min: 1, rank_max: 1, ep: 300 },
+      { rank_min: 2, rank_max: 2, ep: 200 },
+      { rank_min: 3, rank_max: 3, ep: 120 },
+      { rank_min: 4, rank_max: 5, ep: 40  },
+    ];
+  } else {
+    WEEKLY_REWARDS = [
+      { rank_min: 1,  rank_max: 1,  ep: 280 },
+      { rank_min: 2,  rank_max: 2,  ep: 190 },
+      { rank_min: 3,  rank_max: 3,  ep: 120 },
+      { rank_min: 4,  rank_max: 5,  ep: 45  },
+      { rank_min: 6,  rank_max: 10, ep: 4   },
+    ];
   }
 
   var distributed = 0;
