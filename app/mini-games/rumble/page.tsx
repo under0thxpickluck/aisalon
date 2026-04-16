@@ -906,6 +906,104 @@ export default function RumblePage() {
         </div>
       )}
 
+      {/* バトルログモーダル */}
+      {showBattleLogModal && (() => {
+        const isToday   = battleLogModalMode === "today";
+        const logs      = isToday ? battleLogs      : prevBattleLogs;
+        const playing   = isToday ? isPlaying       : prevIsPlaying;
+        const phase     = isToday ? spectatorPhase  : prevPhase;
+        const sData     = isToday ? spectatorData   : prevSpectatorData;
+        const hasData   = sData?.status === "ready";
+        const handlePlay   = isToday ? handleSpectatorPlay : handlePrevPlay;
+        const handleReplay = () => {
+          if (isToday) {
+            setBattleLogs([]);
+            setShowWinners(false);
+            setSpectatorPlayers((spectatorData?.players ?? []).map(p => ({ ...p, status: "alive" as const })));
+            handleSpectatorPlay();
+          } else {
+            setPrevBattleLogs([]);
+            setPrevPhase("waiting");
+            handlePrevPlay();
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-4">
+            <div className="bg-[#0d0d1a] border border-purple-500/30 rounded-2xl w-full max-w-sm flex flex-col" style={{ maxHeight: "80vh" }}>
+              {/* モーダルヘッダー */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-purple-400/80 tracking-widest">
+                    {isToday ? "TODAY" : "PREV"} BATTLE LOG
+                  </span>
+                  {playing && (
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" />
+                      <span className="text-[9px] text-pink-400 font-black">LIVE</span>
+                    </span>
+                  )}
+                  {phase === "result" && !playing && (
+                    <span className="text-[9px] text-yellow-400 font-black">RESULT</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowBattleLogModal(false)}
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/50 text-xs hover:bg-white/20 transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* ログエリア */}
+              <div className="overflow-y-auto px-4 py-3 flex-1 font-mono space-y-2 min-h-[200px]">
+                {logs.length === 0 && !playing && (
+                  <p className="text-white/20 text-sm text-center pt-8">▶ 再生してください</p>
+                )}
+                {logs.map(log => (
+                  <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>
+                    {log.text}
+                  </p>
+                ))}
+                {playing && (
+                  <p className="text-white/30 text-xs animate-pulse">▌</p>
+                )}
+                <div ref={logEndRef} />
+              </div>
+
+              {/* フッターボタン */}
+              <div className="px-4 pb-4 pt-2 border-t border-white/10 shrink-0 space-y-2">
+                {!playing && phase === "waiting" && hasData && (
+                  <button
+                    onClick={handlePlay}
+                    className="w-full py-3 rounded-xl font-black text-sm bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 transition"
+                  >
+                    ⚔️ 再生スタート
+                  </button>
+                )}
+                {!playing && phase === "result" && hasData && (
+                  <button
+                    onClick={handleReplay}
+                    className="w-full py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition"
+                  >
+                    🔄 もう一度見る
+                  </button>
+                )}
+                {!hasData && (
+                  <p className="text-center text-white/30 text-xs py-2">バトルデータがありません</p>
+                )}
+                <button
+                  onClick={() => setShowBattleLogModal(false)}
+                  className="w-full py-2 rounded-xl text-xs text-white/30 hover:bg-white/5 transition"
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
