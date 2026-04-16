@@ -1353,67 +1353,35 @@ export default function RumblePage() {
               >
                 {dailyResultLoading ? "取得中..." : "🔃 最新を取得（バトル後にタップ）"}
               </button>
+              {/* バトルログ再生ボタン（pending状態：前回バトル） */}
+              <button
+                onClick={() => {
+                  setBattleLogModalMode("prev");
+                  setShowBattleLogModal(true);
+                }}
+                disabled={!prevSpectatorData || prevSpectatorData.status !== "ready"}
+                className="w-full py-3 rounded-xl font-bold text-sm bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/20 transition text-purple-300 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                ⚔️ バトルログを再生
+              </button>
 
-              {/* 前回バトルリプレイ */}
-              {/* prevLoading中は静かに待つ（ユーザーに混乱を与えないよう非表示） */}
-              {!prevLoading && prevDailyResult && prevBattleDate && (
-                <div className="mt-2 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-white/10" />
-                    <span className="text-xs text-white/30">前回のバトル ({prevBattleDate})</span>
-                    <div className="h-px flex-1 bg-white/10" />
+              {/* 前回バトル当選者（観戦データ不要、すぐ表示） */}
+              {!prevLoading && prevDailyResult?.winners && prevDailyResult.winners.length > 0 && (
+                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4 mt-2">
+                  <p className="text-xs font-bold text-yellow-400/60 mb-3 text-center">
+                    🎰 前回({prevBattleDate})のBP抽選結果
+                  </p>
+                  <div className="space-y-1">
+                    {prevDailyResult.winners.map(w => (
+                      <div key={w.rank} className="flex justify-between text-xs px-2 py-1">
+                        <span className={`text-white/70 ${w.user_id === userId ? "text-purple-300 font-bold" : ""}`}>
+                          {w.rank}位 {w.display_name}
+                        </span>
+                        <span className="text-yellow-400">+{w.bp_amount.toLocaleString()} BP</span>
+                      </div>
+                    ))}
                   </div>
-                  {/* 前回バトルログ（観戦データがある場合のみ） */}
-                  {prevSpectatorData?.status === "ready" && (
-                    <>
-                      <div className="bg-black/60 border border-purple-500/20 rounded-2xl p-4">
-                        <p className="text-xs font-bold text-purple-400/40 mb-3 tracking-widest">PREV BATTLE LOG</p>
-                        <div className="min-h-[160px] space-y-2 font-mono">
-                          {prevBattleLogs.length === 0 && !prevIsPlaying && (
-                            <p className="text-white/20 text-sm text-center pt-6">▶ 前回バトルを観戦</p>
-                          )}
-                          {prevBattleLogs.map(log => (
-                            <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>{log.text}</p>
-                          ))}
-                          {prevIsPlaying && <p className="text-white/30 text-xs animate-pulse">▌</p>}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {!prevIsPlaying && prevPhase !== "result" && (
-                          <button onClick={handlePrevPlay}
-                            className="flex-1 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600/60 to-blue-600/60 hover:opacity-80 transition">
-                            ⚔️ 前回バトルを観戦
-                          </button>
-                        )}
-                        {!prevIsPlaying && prevPhase === "result" && (
-                          <button onClick={() => { setPrevBattleLogs([]); setPrevPhase("waiting"); }}
-                            className="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition">
-                            🔄 もう一度見る
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
-                  {/* 前回バトル当選者（観戦データ不要、すぐ表示） */}
-                  {prevDailyResult?.winners && prevDailyResult.winners.length > 0 && (
-                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
-                      <p className="text-xs font-bold text-yellow-400/60 mb-3 text-center">🎰 前回のBP抽選結果</p>
-                      <div className="space-y-1">
-                        {prevDailyResult.winners.map(w => (
-                          <div key={w.rank} className="flex justify-between text-xs px-2 py-1">
-                            <span className={`text-white/70 ${w.user_id === userId ? "text-purple-300 font-bold" : ""}`}>
-                              {w.rank}位 {w.display_name}
-                            </span>
-                            <span className="text-yellow-400">+{w.bp_amount.toLocaleString()} BP</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              )}
-              {!prevLoading && !prevSpectatorData && prevBattleDate === null && dailyResult?.participant_count === 0 && (
-                <p className="text-center text-white/20 text-xs py-2">前回のバトルデータが見つかりません</p>
               )}
             </div>
           )}
