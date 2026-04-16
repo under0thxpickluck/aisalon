@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 /** JSTの今日の日付文字列 (YYYY-MM-DD) */
@@ -173,6 +173,10 @@ export default function RumblePage() {
   const [prevPhase,          setPrevPhase]          = useState<"waiting" | "live" | "result">("waiting");
   const [prevIsPlaying,      setPrevIsPlaying]      = useState(false);
   const [prevLogCounter,     setPrevLogCounter]     = useState(0);
+  const [showBattleLogModal,   setShowBattleLogModal]   = useState(false);
+  const [battleLogModalMode,   setBattleLogModalMode]   = useState<"today" | "prev">("today");
+
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const seen = localStorage.getItem("rumble_help_seen");
@@ -403,6 +407,12 @@ export default function RumblePage() {
     }, 5000);
     return () => clearInterval(interval);
   }, [tab, dailyResult?.status, dailyResult?.isToday]);
+
+  // バトルログモーダル：新しいログが追加されたら末尾にスクロール
+  useEffect(() => {
+    if (!showBattleLogModal) return;
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [battleLogs, prevBattleLogs, showBattleLogModal]);
 
   const handleSetName = async () => {
     const trimmed = nameInput.trim();
