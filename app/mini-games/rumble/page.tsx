@@ -1359,10 +1359,10 @@ export default function RumblePage() {
                   setBattleLogModalMode("prev");
                   setShowBattleLogModal(true);
                 }}
-                disabled={!prevSpectatorData || prevSpectatorData.status !== "ready"}
+                disabled={prevLoading || !prevSpectatorData || prevSpectatorData.status !== "ready"}
                 className="w-full py-3 rounded-xl font-bold text-sm bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/20 transition text-purple-300 disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                ⚔️ バトルログを再生
+                {prevLoading ? "読み込み中..." : "⚔️ バトルログを再生"}
               </button>
 
               {/* 前回バトル当選者（観戦データ不要、すぐ表示） */}
