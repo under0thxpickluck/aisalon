@@ -6696,6 +6696,15 @@ function tapBatchPlay_(params) {
 // 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
 // ============================================================
 
+// Google Sheets がセル値を Date オブジェクトに自動変換した場合でも
+// "YYYY-MM-DD" 文字列として返すヘルパー
+function rumbleDateStr_(val) {
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "Asia/Tokyo", "yyyy-MM-dd");
+  }
+  return String(val);
+}
+
 function getRumbleEntrySheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName("rumble_entry");
@@ -6863,7 +6872,7 @@ function rumbleEntry_(params) {
     eHeaders.forEach(function(h, i) { eIdx[h] = i; });
     for (var i = 1; i < entryData.length; i++) {
       if (String(entryData[i][eIdx["user_id"]]) === userId &&
-          String(entryData[i][eIdx["date"]]) === today) {
+          rumbleDateStr_(entryData[i][eIdx["date"]]) === today) {
         return json_({ ok: false, error: "already_entered_today" });
       }
     }
@@ -7001,7 +7010,7 @@ function rumbleStatus_(params) {
   var todayEntry = null;
   for (var i = 1; i < entryData.length; i++) {
     if (String(entryData[i][eIdx["user_id"]]) === userId &&
-        String(entryData[i][eIdx["date"]]) === today) {
+        rumbleDateStr_(entryData[i][eIdx["date"]]) === today) {
       todayEntry = {
         score: Number(entryData[i][eIdx["score"]]),
         rp:    Number(entryData[i][eIdx["rp"]]),
@@ -7027,7 +7036,7 @@ function rumbleStatus_(params) {
   }
 
   // BP残高
-  var appSheet  = getAppSheet_();
+  var appSheet  = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
   var appData   = appSheet.getDataRange().getValues();
   var aHeaders  = appData[0];
   var aIdx      = {};
@@ -7414,7 +7423,7 @@ function rumbleDailyLottery_(params) {
   var participants = [];
   for (var i = 1; i < entryData.length; i++) {
     var row = entryData[i];
-    if (String(row[eIdx["date"]]) !== dateStr) continue;
+    if (rumbleDateStr_(row[eIdx["date"]]) !== dateStr) continue;
     var createdAt = String(row[eIdx["created_at"]] || "");
     if (createdAt && createdAt > deadline) continue;
     participants.push({
@@ -7615,7 +7624,7 @@ function rumbleDailyResult_(params) {
   var lotteryParticipants = [];
   for (var i = 1; i < entryData.length; i++) {
     var row = entryData[i];
-    if (String(row[eIdx["date"]]) !== dateStr) continue;
+    if (rumbleDateStr_(row[eIdx["date"]]) !== dateStr) continue;
     var createdAt = String(row[eIdx["created_at"]] || "");
     rawParticipants.push({
       user_id:    String(row[eIdx["user_id"]]),
@@ -8028,7 +8037,7 @@ function rumbleSpectator_(params) {
 
   var todayEntries = [];
   for (var i = 1; i < entryData.length; i++) {
-    if (String(entryData[i][eIdx["date"]]) === dateStr) {
+    if (rumbleDateStr_(entryData[i][eIdx["date"]]) === dateStr) {
       todayEntries.push({
         user_id: String(entryData[i][eIdx["user_id"]]),
         score:   Number(entryData[i][eIdx["score"]] || 0),
@@ -8351,7 +8360,7 @@ function rumbleForceStart_(params) {
   entryData[0].forEach(function(h, i) { eIdx[h] = i; });
   var enteredToday = {};
   for (var i = 1; i < entryData.length; i++) {
-    if (String(entryData[i][eIdx["date"]]) === today) {
+    if (rumbleDateStr_(entryData[i][eIdx["date"]]) === today) {
       enteredToday[String(entryData[i][eIdx["user_id"]])] = true;
     }
   }
@@ -8420,7 +8429,9 @@ function rumbleRunNow_(params) {
   // 現在時刻を deadline として渡す → 今日エントリー済みの全員が対象
   var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
   var result = rumbleDailyLottery_({ date: today, deadlineOverride: nowJst });
-  var parsed = (typeof result === "string") ? JSON.parse(result) : result;
+  var parsed = (result && typeof result.getContent === "function")
+    ? JSON.parse(result.getContent())
+    : (typeof result === "string" ? JSON.parse(result) : result);
   return json_({ ok: parsed.ok !== false, date: today, distributed: parsed.distributed, error: parsed.error });
 }
 
