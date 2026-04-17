@@ -45,6 +45,13 @@ const DURATION_OPTIONS = [
   { label: "3分",  value: 180 },
 ];
 
+const BGM_DURATION_OPTIONS = [
+  { label: "2分",    value: 120 },
+  { label: "2分半",  value: 150 },
+  { label: "3分",    value: 180 },
+  { label: "3分半",  value: 210 },
+];
+
 const proChipBase     = "rounded-full border px-3 py-1 text-xs font-semibold transition";
 const proChipActive   = "border-violet-500 bg-violet-600 text-white";
 const proChipInactive = "border-[#3730a3] bg-[#1e1b4b] text-indigo-300 hover:border-violet-500 hover:text-violet-300";
@@ -140,10 +147,10 @@ function formatDate(iso: string): string {
 
 // ── ユーティリティ ───────────────────────────────────────────────────────────
 
-function downloadAudio(url: string, title: string) {
+function downloadAudio(url: string, title: string, ext: "wav" | "mp3" = "wav") {
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${title || "lifai_song"}_${Date.now()}.wav`;
+  a.download = `${title || "lifai_song"}_${Date.now()}.${ext}`;
   a.target = "_blank";
   a.click();
 }
@@ -468,11 +475,13 @@ export default function Music2Page() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id,
+            code,
+            isPro,
             theme: theme.trim(),
             genre,
             mood: moodStr,
             bpm: bpmHint ?? undefined,
-            duration: duration ?? 30,
+            duration: isPro && duration ? duration : undefined,
           }),
         });
         const data = await res.json();
@@ -480,7 +489,7 @@ export default function Music2Page() {
         if (!data.ok) {
           setErrorMsg(
             data.error === "insufficient_bp"
-              ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: ${data.required ?? 20}BP）`
+              ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: ${data.required ?? 80}BP）`
               : `BGM生成に失敗しました（${data.error ?? "unknown"}）`
           );
           setLoading(false);
@@ -945,13 +954,16 @@ export default function Music2Page() {
 
               {/* BGM設定 */}
               {isBgmMode && (
-                <div className="mt-5 rounded-[18px] border border-slate-200 bg-slate-50 p-4">
+                <div className={`mt-5 rounded-[18px] border p-4 ${isPro ? "border-violet-500/30 bg-[#0d0d1a]" : "border-slate-200 bg-slate-50"}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">🎚️</span>
-                    <span className="text-[11px] font-black tracking-widest text-slate-600">BGM SETTINGS</span>
+                    <span className={`text-[11px] font-black tracking-widest ${isPro ? "text-violet-400" : "text-slate-600"}`}>BGM SETTINGS</span>
+                    {isPro && (
+                      <span className="ml-auto rounded-full bg-gradient-to-r from-violet-600 to-indigo-500 px-2.5 py-0.5 text-[9px] font-bold text-white">PRO</span>
+                    )}
                   </div>
                   <div className="mt-4">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">BPM目安</label>
+                    <label className={`block text-[11px] font-bold mb-1.5 ${isPro ? "text-violet-400" : "text-slate-600"}`}>BPM目安</label>
                     <div className="flex flex-wrap gap-1.5">
                       {BPM_OPTIONS.map((opt) => (
                         <button
@@ -959,29 +971,37 @@ export default function Music2Page() {
                           type="button"
                           disabled={loading}
                           onClick={() => setBpmHint(bpmHint === opt.value ? null : opt.value)}
-                          className={[chipBase, bpmHint === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                          className={isPro
+                            ? [proChipBase, bpmHint === opt.value ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")
+                            : [chipBase, bpmHint === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
                         >
                           {opt.label}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">長さ</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {DURATION_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          disabled={loading}
-                          onClick={() => setDuration(duration === opt.value ? null : opt.value)}
-                          className={[chipBase, duration === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                  {isPro && (
+                    <div className="mt-4">
+                      <label className="block text-[11px] font-bold text-violet-400 mb-1.5">曲の長さ</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {BGM_DURATION_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => setDuration(duration === opt.value ? null : opt.value)}
+                            className={[proChipBase, duration === opt.value ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1.5 text-[10px] text-violet-400/50">未選択の場合はランダム（2〜3分半）</p>
                     </div>
-                  </div>
+                  )}
+                  {!isPro && (
+                    <p className="mt-3 text-[10px] text-slate-400">長さはAIが自動で2〜3分半に設定します</p>
+                  )}
                 </div>
               )}
 
@@ -1106,10 +1126,10 @@ export default function Music2Page() {
               <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <span className="text-xs font-bold text-indigo-700">必要BP</span>
                 <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
-                  {isBgmMode ? "20 BP" : isProSettingsActive ? "250 BP" : "100 BP"}
+                  {isBgmMode ? (isPro ? "150 BP" : "80 BP") : isProSettingsActive ? "250 BP" : "100 BP"}
                 </span>
                 {isBgmMode ? (
-                  <span className="ml-auto text-[11px] text-indigo-500">ボーカルなしで短めに生成</span>
+                  <span className="ml-auto text-[11px] text-indigo-500">{isPro ? "🎛️ Pro BGM（時間指定）" : "2〜3分半のBGMをランダム生成"}</span>
                 ) : isPro ? (
                   isProSettingsActive ? (
                     <span className="ml-auto text-[11px] text-violet-600 font-semibold">🎛️ Pro設定使用中（250BP）</span>
@@ -1313,7 +1333,7 @@ export default function Music2Page() {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? 20 : 100}BP</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? (isPro ? 150 : 80) : (isProSettingsActive ? 250 : 100)}BP</p>
 
                 {/* 品質警告 */}
                 {!isBgmMode && (lyricsReviewRequired || !distributionReady) && audioUrl && (
@@ -1371,7 +1391,7 @@ export default function Music2Page() {
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {downloadUrl && (
                     <button
-                      onClick={() => downloadAudio(downloadUrl, resultTitle)}
+                      onClick={() => downloadAudio(downloadUrl, resultTitle, isBgmMode ? "mp3" : "wav")}
                       className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
                     >
                       {isBgmMode ? "MP3をダウンロード" : "WAVをダウンロード"}
@@ -1480,7 +1500,7 @@ export default function Music2Page() {
                   <audio controls src={entry.audioUrl} className="mt-2 w-full" style={{ height: "32px" }} />
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button
-                      onClick={() => downloadAudio(entry.downloadUrl, entry.title)}
+                      onClick={() => downloadAudio(entry.downloadUrl, entry.title, entry.downloadUrl?.includes(".mp3") ? "mp3" : "wav")}
                       className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50 transition"
                     >
                       WAV

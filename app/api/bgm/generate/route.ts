@@ -3,7 +3,7 @@ import { BP_COSTS } from "@/app/lib/bp-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const REPLICATE_VERSION = "671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb";
 
@@ -68,6 +68,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     id?: string;
+    code?: string;
+    isPro?: boolean;
     theme: string;
     genre: string;
     mood: string;
@@ -76,7 +78,8 @@ export async function POST(req: NextRequest) {
   };
 
   const id = String(body.id ?? "");
-  if (!id) {
+  const code = String(body.code ?? "");
+  if (!id || !code) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -94,7 +97,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "balance_check_failed" }, { status: 502 });
   }
 
-  const bpCost = BP_COSTS.music_bgm;
+  const isPro = body.isPro === true;
+  const bpCost = isPro ? BP_COSTS.music_bgm_pro : BP_COSTS.music_bgm;
   if (bp < bpCost) {
     return NextResponse.json({ ok: false, error: "insufficient_bp", bp, required: bpCost }, { status: 400 });
   }
@@ -106,7 +110,10 @@ export async function POST(req: NextRequest) {
     bpm: body.bpm,
   });
 
-  const duration = Math.min(Math.max(Number(body.duration ?? 30), 30), 180);
+  // 通常: 120〜210秒のランダム。Pro: ユーザー指定（120〜210でクランプ）
+  const duration = isPro
+    ? Math.min(Math.max(Number(body.duration ?? 120), 120), 210)
+    : 120 + Math.floor(Math.random() * 91); // 120〜210
 
   const res = await fetch("https://api.replicate.com/v1/predictions", {
     method: "POST",
