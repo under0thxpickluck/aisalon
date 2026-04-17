@@ -7027,11 +7027,13 @@ function rumbleStatus_(params) {
   var wIdx     = {};
   wHeaders.forEach(function(h, i) { wIdx[h] = i; });
   var weekRp = 0;
+  var weekParticipantCount = 0;
   for (var j = 1; j < weekData.length; j++) {
-    if (String(weekData[j][wIdx["user_id"]]) === userId &&
-        String(weekData[j][wIdx["week_id"]]) === weekId) {
-      weekRp = Number(weekData[j][wIdx["total_rp"]] || 0);
-      break;
+    if (String(weekData[j][wIdx["week_id"]]) === weekId) {
+      weekParticipantCount++;
+      if (String(weekData[j][wIdx["user_id"]]) === userId) {
+        weekRp = Number(weekData[j][wIdx["total_rp"]] || 0);
+      }
     }
   }
 
@@ -7052,14 +7054,15 @@ function rumbleStatus_(params) {
   }
 
   return json_({
-    ok:           true,
-    entered_today: todayEntry !== null,
-    today_score:  todayEntry ? todayEntry.score : null,
-    today_rp:     todayEntry ? todayEntry.rp    : null,
-    week_rp:      weekRp,
-    week_id:      weekId,
-    bp_balance:   bpBalance,
-    display_name: displayName,
+    ok:                    true,
+    entered_today:         todayEntry !== null,
+    today_score:           todayEntry ? todayEntry.score : null,
+    today_rp:              todayEntry ? todayEntry.rp    : null,
+    week_rp:               weekRp,
+    week_id:               weekId,
+    bp_balance:            bpBalance,
+    display_name:          displayName,
+    week_participant_count: weekParticipantCount,
   });
 }
 
