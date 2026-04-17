@@ -1093,10 +1093,13 @@ export default function RumblePage() {
           <div className="bg-white/5 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-bold text-white/60">🏆 週次報酬</p>
-              {!isAfter1850Jst && <p className="text-[10px] text-white/30">18:50に公開</p>}
+              {isFriAfter1850Jst
+                ? <span className="text-[10px] font-black text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">✅ 確定</span>
+                : <span className="text-[10px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full">📊 予測</span>
+              }
             </div>
             {(() => {
-              const n = ranking.length;
+              const n = weekParticipantCount;
               const tiers = n <= 2
                 ? [{ label: "🥇 1位", ep: 400 }, { label: "🥈 2位", ep: 300 }]
                 : n <= 4
@@ -1104,20 +1107,21 @@ export default function RumblePage() {
                 : n <= 9
                 ? [{ label: "🥇 1位", ep: 300 }, { label: "🥈 2位", ep: 200 }, { label: "🥉 3位", ep: 120 }, { label: "4〜5位", ep: 40 }]
                 : [{ label: "🥇 1位", ep: 280 }, { label: "🥈 2位", ep: 190 }, { label: "🥉 3位", ep: 120 }, { label: "4〜5位", ep: 45 }, { label: "6〜10位", ep: 4 }];
-              const rows = isAfter1850Jst ? tiers : [
-                { label: "🥇 1位" }, { label: "🥈 2位" }, { label: "🥉 3位" }, { label: "4〜5位" }, { label: "6〜10位" },
-              ];
-              return rows.map(r => (
+              return tiers.map(r => (
                 <div key={r.label} className="flex justify-between text-xs py-1">
                   <span className="text-white/60">{r.label}</span>
-                  {"ep" in r
-                    ? <span className="text-yellow-400 font-bold">{(r as {ep: number}).ep.toLocaleString()} EP</span>
-                    : <span className="text-white/20">🔒</span>
-                  }
+                  <span className={`font-bold ${isFriAfter1850Jst ? "text-yellow-400" : "text-yellow-400/50"}`}>
+                    {r.ep.toLocaleString()} EP
+                  </span>
                 </div>
               ));
             })()}
-            <p className="text-[10px] text-white/25 mt-2 pt-2 border-t border-white/10">参加人数によって変動</p>
+            <p className="text-[10px] text-white/25 mt-2 pt-2 border-t border-white/10">
+              {isFriAfter1850Jst
+                ? `今週の参加: ${weekParticipantCount}人`
+                : `現在 ${weekParticipantCount}人参加中 / 金曜18:50に確定`
+              }
+            </p>
           </div>
 
           {/* 参加ボタン */}
