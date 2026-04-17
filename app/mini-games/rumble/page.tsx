@@ -259,6 +259,15 @@ export default function RumblePage() {
       const jstMinute = parseInt(new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", minute: "2-digit" }).format(now), 10);
       setIsAfter19Jst(jstHour >= 19);
       setIsAfter1850Jst(jstHour > 18 || (jstHour === 18 && jstMinute >= 50));
+      // 現在時刻の曜日をJSTで取得（UTC環境でもズレない）
+      const dowJst = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        weekday: "short",
+      }).format(now);
+      setIsFriAfter1850Jst(
+        dowJst === "金" &&
+        (jstHour > 18 || (jstHour === 18 && jstMinute >= 50))
+      );
 
       // 目標日付の計算
       let targetDate = new Date(`${jstYear}-${jstMonth}-${jstDay}T19:00:00+09:00`);
