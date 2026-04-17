@@ -1172,7 +1172,7 @@ export default function RumblePage() {
                 <span className="font-black text-2xl text-purple-400">{rankContext.my_rank}位</span>
                 <span className="text-white font-bold">{Number(Number(rankContext.my_rp).toFixed(2))} RP</span>
               </div>
-              <p className="text-xs text-white/60 mb-3">現在の報酬帯: <span className="text-yellow-400">{rankContext.current_tier?.label} ({rankContext.current_tier?.ep?.toLocaleString()}EP)</span></p>
+              <p className="text-xs text-white/60 mb-3">現在の報酬帯: <span className="text-yellow-400">{rankContext.current_tier?.label}{isFriAfter1850Jst ? ` (${rankContext.current_tier?.ep?.toLocaleString()}EP)` : " (🔒)"}</span></p>
               {rankContext.next_better_tier && (
                 <p className="text-xs text-green-400">▲ {rankContext.next_better_tier.label}まであと {Number(Number(rankContext.next_better_tier.rp_needed).toFixed(2))} RP</p>
               )}
