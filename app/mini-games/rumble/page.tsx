@@ -131,6 +131,8 @@ export default function RumblePage() {
   const [countdown, setCountdown] = useState("");
   const [isAfter19Jst, setIsAfter19Jst] = useState(false);
   const [isAfter1850Jst, setIsAfter1850Jst] = useState(false);
+  const [weekParticipantCount, setWeekParticipantCount] = useState(0);
+  const [isFriAfter1850Jst,   setIsFriAfter1850Jst]    = useState(false);
   const [shards, setShards]       = useState(0);
   const [enhanceResult, setEnhanceResult] = useState<{result:string; after_level:number; shard_spent:number} | null>(null);
   // 強化モーダル
@@ -210,6 +212,9 @@ export default function RumblePage() {
       .then(r => r.json()).then(d => {
         setStatus(d);
         if (d.bp_balance !== undefined) setBpBalance(d.bp_balance);
+        if (d.week_participant_count !== undefined) {
+          setWeekParticipantCount(d.week_participant_count);
+        }
         // サーバー側で参加済みと確認できた場合、localStorageにも記録して次回リロード後も確実に保護
         if (d.entered_today) {
           localStorage.setItem(`rumble_entered_${userId}`, getTodayJst());
