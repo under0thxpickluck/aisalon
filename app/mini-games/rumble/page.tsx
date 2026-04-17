@@ -8,11 +8,12 @@ function getTodayJst(): string {
 }
 
 type RumbleStatus = {
-  entered_today: boolean;
-  today_score:   number | null;
-  today_rp:      number | null;
-  week_rp:       number;
-  week_id:       string;
+  entered_today:          boolean;
+  today_score:            number | null;
+  today_rp:               number | null;
+  week_rp:                number;
+  week_id:                string;
+  week_participant_count?: number;
 };
 
 type RankingEntry = { user_id: string; total_rp: number; display_name: string };
