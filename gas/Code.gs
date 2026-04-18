@@ -3572,6 +3572,9 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
 
       // ✅ メールエラーログ（デバッグ用）
       "mail_error",
+
+      // ✅ 入口識別（5000ルートから入ったユーザーに "5000" を設定）
+      "entry_source",
     ]);
 
     // ✅ ensureCols_ で列が増えた可能性があるので header/idx を再生成（壊さない）
