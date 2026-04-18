@@ -3542,6 +3542,82 @@ function approveRowCore5000_(ss5000, applySheet, header, idx, rowIndex, reason) 
     applySheet.getRange(rowIndex, idx["referral_processed_at"] + 1).setValue(new Date());
   }
 
+  // ============================================================
+  // メインシートへの書き込み（新規管理方針：entry_source="5000"）
+  // 冪等性のため login_id で重複チェックを行う
+  // ============================================================
+  try {
+    const mainSheet = getOrCreateSheet_();
+
+    // 必要列を保証
+    const mainHeaderRaw = mainSheet.getDataRange().getValues()[0];
+    ensureCols_(mainSheet, mainHeaderRaw, [
+      "created_at", "apply_id", "plan", "email", "name", "name_kana",
+      "age_band", "prefecture", "city", "job", "ref_name", "ref_id",
+      "status", "approved_at", "login_id", "my_ref_code",
+      "reset_token", "reset_expires", "reset_used_at", "reset_sent_at",
+      "bp_balance", "ep_balance", "bp_granted_at", "bp_grant_plan",
+      "bp_grant_amount", "ep_grant_amount",
+      "entry_source",
+    ]);
+
+    const mainHeader2 = mainSheet.getDataRange().getValues()[0];
+    const mainIdx2    = indexMap_(mainHeader2);
+    const mainData2   = mainSheet.getDataRange().getValues().slice(1);
+
+    // 重複チェック（login_id が既にある場合はスキップ）
+    let alreadyInMain = false;
+    for (let di = 0; di < mainData2.length; di++) {
+      if (str_(mainData2[di][mainIdx2["login_id"]]) === loginId5000) {
+        alreadyInMain = true;
+        break;
+      }
+    }
+
+    if (!alreadyInMain) {
+      // 5000ルートのプラン別BP付与量
+      const bpMap5000Route = { "500": 1000, "2000": 4000, "3000": 8000, "5000": 10000 };
+      const planStr5k = str_(applySheet.getRange(rowIndex, idx["plan"] + 1).getValue());
+      const bpGrant5k = bpMap5000Route[planStr5k] || 0;
+
+      const newRow = new Array(mainHeader2.length).fill("");
+      newRow[mainIdx2["created_at"]]      = new Date();
+      newRow[mainIdx2["apply_id"]]        = str_(applySheet.getRange(rowIndex, idx["apply_id"]   + 1).getValue());
+      newRow[mainIdx2["plan"]]            = planStr5k;
+      newRow[mainIdx2["email"]]           = email5000;
+      newRow[mainIdx2["name"]]            = str_(applySheet.getRange(rowIndex, idx["name"]        + 1).getValue());
+      newRow[mainIdx2["name_kana"]]       = str_(applySheet.getRange(rowIndex, idx["name_kana"]   + 1).getValue());
+      newRow[mainIdx2["age_band"]]        = str_(applySheet.getRange(rowIndex, idx["age_band"]    + 1).getValue());
+      newRow[mainIdx2["prefecture"]]      = str_(applySheet.getRange(rowIndex, idx["prefecture"]  + 1).getValue());
+      newRow[mainIdx2["city"]]            = str_(applySheet.getRange(rowIndex, idx["city"]        + 1).getValue());
+      newRow[mainIdx2["job"]]             = str_(applySheet.getRange(rowIndex, idx["job"]         + 1).getValue());
+      newRow[mainIdx2["ref_name"]]        = str_(applySheet.getRange(rowIndex, idx["ref_name"]    + 1).getValue());
+      newRow[mainIdx2["ref_id"]]          = str_(applySheet.getRange(rowIndex, idx["ref_id"]      + 1).getValue());
+      newRow[mainIdx2["status"]]          = "approved";
+      newRow[mainIdx2["approved_at"]]     = new Date();
+      newRow[mainIdx2["login_id"]]        = loginId5000;
+      newRow[mainIdx2["my_ref_code"]]     = myRefCode5000;
+      newRow[mainIdx2["reset_token"]]     = token5000;
+      newRow[mainIdx2["reset_expires"]]   = expires5000;
+      newRow[mainIdx2["reset_used_at"]]   = "";
+      newRow[mainIdx2["reset_sent_at"]]   = sentAt5000 ? sentAt5000 : "";
+      newRow[mainIdx2["bp_balance"]]      = bpGrant5k;
+      newRow[mainIdx2["ep_balance"]]      = 0;
+      newRow[mainIdx2["bp_granted_at"]]   = new Date();
+      newRow[mainIdx2["bp_grant_plan"]]   = planStr5k;
+      newRow[mainIdx2["bp_grant_amount"]] = bpGrant5k;
+      newRow[mainIdx2["ep_grant_amount"]] = 0;
+      newRow[mainIdx2["entry_source"]]    = "5000";
+      mainSheet.appendRow(newRow);
+      Logger.log("[approveRowCore5000_] written to main applies: loginId=" + loginId5000);
+    } else {
+      Logger.log("[approveRowCore5000_] skip: loginId=" + loginId5000 + " already in main applies");
+    }
+  } catch (mainWriteErr) {
+    // メインシート書き込み失敗はログのみ（5000シートの承認自体は成功扱い）
+    Logger.log("[approveRowCore5000_] main sheet write error: " + String(mainWriteErr));
+  }
+
   return {
     ok: true, already: false,
     loginId: loginId5000,
