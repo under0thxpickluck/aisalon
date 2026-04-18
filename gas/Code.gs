@@ -3014,10 +3014,34 @@ function handle_(key, body) {
     const id = str_(body.id);
     const code = str_(body.code);
     const group_login = str_(body.group);
-    const targetSheet_login = group_login === "5000" ? getAppliesSheet5000_() : sheet;
 
     if (!id || !code) {
       return json_({ ok: false, reason: "invalid" });
+    }
+
+    // group:"5000" のとき、メインシートを先に検索（新規5000ユーザー対応）
+    // → 見つからなければ5000シートへフォールバック（既存ユーザー互換）
+    let targetSheet_login = sheet;
+    let foundIn5000Sheet = false;
+
+    if (group_login === "5000") {
+      const mainVals = sheet.getDataRange().getValues();
+      const mainHdr  = mainVals[0];
+      const mainIdx  = indexMap_(mainHdr);
+      const mainRows = mainVals.slice(1);
+      let foundInMain = false;
+      for (let mi = 0; mi < mainRows.length; mi++) {
+        const mLoginId = str_(mainRows[mi][mainIdx["login_id"]] !== undefined ? mainRows[mi][mainIdx["login_id"]] : "");
+        const mEmail   = str_(mainRows[mi][mainIdx["email"]]    !== undefined ? mainRows[mi][mainIdx["email"]]    : "");
+        if (id === mLoginId || id === mEmail) {
+          foundInMain = true;
+          break;
+        }
+      }
+      if (!foundInMain) {
+        targetSheet_login = getAppliesSheet5000_();
+        foundIn5000Sheet  = true;
+      }
     }
 
     let values = targetSheet_login.getDataRange().getValues();
@@ -3058,15 +3082,15 @@ function handle_(key, body) {
     if (!loginId || !pwHashSaved) return json_({ ok: false, reason: "invalid" });
 
     let loginOk;
-    if (group_login === "5000") {
-      // /5000グループは平文パスワードで照合
+    if (foundIn5000Sheet) {
+      // 既存5000ユーザー（5000シートにいる）は平文パスワードで照合
       loginOk = (code === pwHashSaved);
     } else {
       loginOk = (hmacSha256Hex_(SECRET, loginId + ":" + code) === pwHashSaved);
     }
     if (!loginOk) return json_({ ok: false, reason: "invalid" });
 
-    return json_({ ok: true });
+    return json_({ ok: true, group: foundIn5000Sheet ? "5000" : "" });
   }
 
   // =========================================================
