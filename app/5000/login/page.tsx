@@ -37,7 +37,7 @@ export default function Login5000Page() {
           status: "approved",
           id: trimmedId,
           token: res.token ?? pw,
-          group: "5000",
+          group: res.group ?? "5000",
         });
         setAuthSecret(pw);
         router.push("/top");
@@ -45,7 +45,7 @@ export default function Login5000Page() {
       }
 
       if (res.reason === "pending") {
-        setAuth({ status: "pending", id: trimmedId, group: "5000" });
+        setAuth({ status: "pending", id: trimmedId, group: res.group ?? "5000" });
         router.push("/pending");
         return;
       }
