@@ -9,13 +9,22 @@ import { AppSidebar } from "@/components/AppSidebar";
 // ── 定数 ────────────────────────────────────────────────────────────────────
 
 const GENRES = [
+  // メジャー
   "ポップ", "ロック", "ジャズ", "クラシック", "EDM",
   "ヒップホップ", "R&B", "アニメ", "ローファイ", "シネマティック",
+  // サブジャンル
+  "アンビエント", "チルアウト", "ニューエイジ", "ボサノバ", "フォーク",
+  "ネオソウル", "トロピカルハウス", "ドラムンベース", "メタル", "ダークエレクトロ",
 ];
 
 const MOODS = [
+  // 基本
   "さわやか", "クール", "エモい", "明るい", "落ち着いた",
   "ロマンチック", "激しい", "切ない",
+  // 追加
+  "神秘的", "ダーク", "壮大", "かわいい", "夏っぽい",
+  "夜っぽい", "前向き", "集中できる", "緊張感", "ホラー",
+  "ファンタジー", "リラックス",
 ];
 
 const PRO_PLANS = ["500", "1000"];
@@ -147,12 +156,23 @@ function formatDate(iso: string): string {
 
 // ── ユーティリティ ───────────────────────────────────────────────────────────
 
-function downloadAudio(url: string, title: string, ext: "wav" | "mp3" = "wav") {
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${title || "lifai_song"}_${Date.now()}.${ext}`;
-  a.target = "_blank";
-  a.click();
+async function downloadAudio(url: string, title: string, ext: "wav" | "mp3" = "wav") {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${title || "lifai_song"}_${Date.now()}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch {
+    // フェッチ失敗時はブラウザの直リンクにフォールバック
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title || "lifai_song"}_${Date.now()}.${ext}`;
+    a.target = "_blank";
+    a.click();
+  }
 }
 
 // ── メインコンポーネント ─────────────────────────────────────────────────────
@@ -859,7 +879,7 @@ export default function Music2Page() {
               <div className="mt-5 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
                 {([
                   { value: "song", label: "曲生成", sub: "歌詞・構成あり" },
-                  { value: "bgm", label: "BGM生成", sub: "ボーカルなし" },
+                  { value: "bgm", label: "BGM生成", sub: "ボーカルなし｜試験運転中" },
                 ] as const).map((item) => (
                   <button
                     key={item.value}
@@ -895,6 +915,12 @@ export default function Music2Page() {
                   ? "テーマ・ジャンル・雰囲気を選ぶと、ボーカルなしのBGMを生成します。"
                   : "テーマ・ジャンル・雰囲気を選ぶと、AIが構成を提案してから曲を生成します。"}
               </p>
+
+              {isBgmMode && (
+                <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+                  ⚠ BGM生成は現在試験運転中です。成果物の品質を保証することはできません。ご留意のうえご利用ください。
+                </p>
+              )}
 
               {/* テーマ */}
               <div className="mt-6">
@@ -1314,20 +1340,20 @@ export default function Music2Page() {
               </p>
 
               <div className="mt-5 rounded-[20px] border border-indigo-100 bg-indigo-50 p-4">
-                {/* タイトル + 品質バッジ */}
+                {/* タイトル + 品質バッジ（SONGモードのみ） */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-extrabold text-slate-900">{resultTitle}</p>
-                  {lyricsGateResult === "pass" && (
+                  {!isBgmMode && lyricsGateResult === "pass" && (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                       ✓ 品質 良好
                     </span>
                   )}
-                  {lyricsGateResult === "review" && (
+                  {!isBgmMode && lyricsGateResult === "review" && (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
                       ⚠ 要確認
                     </span>
                   )}
-                  {lyricsGateResult === "reject" && (
+                  {!isBgmMode && lyricsGateResult === "reject" && (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
                       ✕ 品質不足
                     </span>
@@ -1503,7 +1529,7 @@ export default function Music2Page() {
                       onClick={() => downloadAudio(entry.downloadUrl, entry.title, entry.downloadUrl?.includes(".mp3") ? "mp3" : "wav")}
                       className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50 transition"
                     >
-                      WAV
+                      {entry.downloadUrl?.includes(".mp3") ? "MP3" : "WAV"}
                     </button>
                     {entry.lyrics && (
                       <button
