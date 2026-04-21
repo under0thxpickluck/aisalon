@@ -8117,6 +8117,28 @@ function rumbleSpectator_(params) {
   var dateStr = String(params.date || getTodayJst_());
   var weekId  = getWeekId_();
 
+  // キャッシュチェック: rumble_battle_log に保存済みデータがあれば返す
+  var cachedLog = getBattleLogCache_(dateStr);
+  if (cachedLog) {
+    var cachedSelf = null;
+    for (var ci = 0; ci < cachedLog.players.length; ci++) {
+      if (cachedLog.players[ci].id === userId) {
+        cachedSelf = cachedLog.players[ci];
+        break;
+      }
+    }
+    return json_({
+      ok:      true,
+      status:  "ready",
+      date:    dateStr,
+      players: cachedLog.players,
+      events:  cachedLog.events,
+      self:    cachedSelf,
+      ranking: cachedLog.ranking,
+      total:   cachedLog.total,
+    });
+  }
+
   // 1. 本日の rumble_entry を取得
   var entrySheet = getRumbleEntrySheet_();
   ensureRumbleEntryCols_(entrySheet);
@@ -8348,6 +8370,9 @@ function rumbleSpectator_(params) {
   weekRows.forEach(function(r, i) {
     if (r.user_id === userId) { selfWeekRp = r.total_rp; selfWeekRank = i + 1; }
   });
+
+  // バトルログをシートに保存（以降の呼び出しはキャッシュから返す）
+  saveBattleLog_(dateStr, players, events, total, weekRows.slice(0, 5));
 
   return json_({
     ok:      true,
