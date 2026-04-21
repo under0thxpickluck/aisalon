@@ -8127,6 +8127,28 @@ function rumbleSpectator_(params) {
         break;
       }
     }
+    // week_rp / week_rank を rumble_week シートから補完
+    if (cachedSelf && userId) {
+      var cWeekSheet = getRumbleWeekSheet_();
+      var cWeekData  = cWeekSheet.getDataRange().getValues();
+      var cWHeaders  = cWeekData[0];
+      var cWIdx      = {};
+      cWHeaders.forEach(function(h, i) { cWIdx[h] = i; });
+      var cWeekRp = 0; var cWeekRank = -1; var cRankCounter = 0;
+      var cWeekRows = cWeekData.slice(1)
+        .filter(function(row) { return String(row[cWIdx["week_id"]]) === weekId; })
+        .map(function(row) { return { user_id: String(row[cWIdx["user_id"]]), total_rp: Number(row[cWIdx["total_rp"]] || 0) }; });
+      cWeekRows.sort(function(a, b) { return b.total_rp - a.total_rp; });
+      cWeekRows.forEach(function(r, i) {
+        if (r.user_id === userId) { cWeekRp = r.total_rp; cWeekRank = i + 1; }
+      });
+      cachedSelf = {
+        id: cachedSelf.id, display_name: cachedSelf.display_name,
+        score: cachedSelf.score, rp: cachedSelf.rp,
+        rank: cachedSelf.rank, is_self: true,
+        week_rp: cWeekRp, week_rank: cWeekRank,
+      };
+    }
     return json_({
       ok:      true,
       status:  "ready",
