@@ -9580,6 +9580,29 @@ function setupGiftExpireTrigger() {
 // ============================================================
 
 /**
+ * 毎日18:00〜19:00 JST に発火。昨日より古いバトルログを rumble_battle_log から削除する。
+ * 昨日・今日分は保持（前回バトルログ表示のため）。
+ */
+function rumbleClearOldBattleLogsTrigger_() {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return;
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  var yesterday = new Date(Date.now() + 9 * 60 * 60 * 1000 - 86400000);
+  var yesterdayStr = Utilities.formatDate(yesterday, "Asia/Tokyo", "yyyy-MM-dd");
+  // 末尾から走査して古い行を削除（行番号がずれないようにするため）
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][idx["date"]]) < yesterdayStr) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+  SpreadsheetApp.flush();
+  Logger.log("[rumbleClearOldBattleLogsTrigger_] done. yesterdayStr=" + yesterdayStr);
+}
+
+/**
  * Run this function ONCE in the GAS editor to install time triggers.
  * Do NOT call from code — triggers persist across deploys.
  */
@@ -9588,7 +9611,7 @@ function setupRumbleTriggers_() {
   var triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(function(t) {
     var name = t.getHandlerFunction();
-    if (name === "rumbleDailyLotteryTrigger_" || name === "rumbleWeeklyRewardTrigger_") {
+    if (name === "rumbleDailyLotteryTrigger_" || name === "rumbleWeeklyRewardTrigger_" || name === "rumbleClearOldBattleLogsTrigger_") {
       ScriptApp.deleteTrigger(t);
     }
   });
@@ -9605,6 +9628,13 @@ function setupRumbleTriggers_() {
     .timeBased()
     .onWeekDay(ScriptApp.WeekDay.FRIDAY)
     .atHour(23)
+    .create();
+
+  // 毎日18:00〜19:00 JST に古いバトルログを削除（新規バトル前にクリーン化）
+  ScriptApp.newTrigger("rumbleClearOldBattleLogsTrigger_")
+    .timeBased()
+    .everyDays(1)
+    .atHour(18)
     .create();
 
   Logger.log("Rumble triggers set up successfully.");
