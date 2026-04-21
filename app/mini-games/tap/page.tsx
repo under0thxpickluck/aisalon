@@ -304,7 +304,7 @@ export default function TapMiningPage() {
     // 即時フロートエフェクト（演出のみ・金額なし）
     const id = floatIdRef.current++;
     const x  = 40 + Math.random() * 20;
-    setFloats(prev => [...prev, { id, text: "⛏️", color: "text-white/50", x }]);
+    setFloats(prev => [...prev, { id, text: "⛏️", color: isDark ? "text-white/50" : "text-gray-400", x }]);
     setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 700);
 
     // 楽観的残数更新（0未満にしない）
@@ -498,7 +498,7 @@ export default function TapMiningPage() {
                 <span>{log.taps}tap</span>
                 {log.bp > 0 && <span className="text-purple-400">+{log.bp}BP</span>}
                 {log.ep > 0 && <span className="text-yellow-400">+{log.ep}EP {log.rare ? "✨" : ""}</span>}
-                {log.bp === 0 && log.ep === 0 && <span className="text-white/20">—</span>}
+                {log.bp === 0 && log.ep === 0 && <span className={th.ghost}>—</span>}
               </div>
             ))}
           </div>
@@ -518,12 +518,16 @@ export default function TapMiningPage() {
         ) : (
           <div className="space-y-1 max-h-[calc(100vh-160px)] overflow-y-auto">
             {miningLogs.map(log => (
-              <div key={log.id} className={th.logRow(log.rare)}>
-                <span className={th.logTime}>{log.time}</span>
-                <span>{log.taps}tap</span>
-                <div className="flex gap-2">
-                  {log.bp > 0 && <span className="text-purple-400 font-bold">+{log.bp}BP</span>}
-                  {log.ep > 0 && <span className={`font-bold ${log.rare ? "text-yellow-400" : "text-yellow-300/70"}`}>+{log.ep}EP{log.rare ? " ✨" : ""}</span>}
+              <div key={log.id} className={`rounded-lg px-2 py-1.5 text-xs ${
+                log.rare
+                  ? isDark ? "bg-yellow-400/10 border border-yellow-400/30" : "bg-yellow-50 border border-yellow-200"
+                  : isDark ? "bg-white/5" : "bg-gray-50"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className={th.logTime}>{log.time}</span>
+                  <span>{log.taps}tap</span>
+                  {log.bp > 0 && <span className="text-purple-400">+{log.bp}BP</span>}
+                  {log.ep > 0 && <span className="text-yellow-400">+{log.ep}EP {log.rare ? "✨" : ""}</span>}
                   {log.bp === 0 && log.ep === 0 && <span className={th.ghost}>—</span>}
                 </div>
               </div>
