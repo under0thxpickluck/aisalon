@@ -12,7 +12,6 @@ import MissionCard from "@/components/MissionCard";
 import GachaModal from "@/components/GachaModal";
 import StakingModal from "@/components/StakingModal";
 import RadioCard from "@/components/RadioCard";
-import LifaiCat from "@/components/LifaiCat";
 
 /** ✅ カウントダウン + 調達バー（returnの外に置く） */
 function pad2(n: number) {
@@ -725,10 +724,6 @@ export default function AppHomePage() {
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
     </main>
-    <LifaiCat
-      loginId={loginId}
-      currentPage="top"
-    />
-    </>
+</>
   );
 }
