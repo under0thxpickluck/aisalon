@@ -1,15 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const THEME_KEY = "lifai_theme_v1";
 
 export function useTheme() {
-  const [isDark, setIsDark] = useState(true); // デフォルト: dark
-
-  useEffect(() => {
-    const stored = localStorage.getItem(THEME_KEY);
-    if (stored === "light") setIsDark(false);
-  }, []);
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(THEME_KEY) !== "light";
+  });
 
   function toggleTheme() {
     setIsDark(prev => {
