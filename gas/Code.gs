@@ -7687,7 +7687,10 @@ function rumbleDailyLottery_(params) {
 
 /** Called by GAS time trigger (毎日 19:00〜20:00 JST) */
 function rumbleDailyLotteryTrigger_() {
-  rumbleDailyLottery_({ date: getTodayJst_() });
+  var today = getTodayJst_();
+  rumbleDailyLottery_({ date: today });
+  // 抽選完了後にバトルログを生成・シートに保存（翌日以降も確実に取得できるようにする）
+  rumbleSpectator_({ date: today });
 }
 
 // ============================================================
