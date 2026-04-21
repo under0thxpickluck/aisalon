@@ -87,6 +87,13 @@ export default function MusicBoostPage() {
     planPrice:   isDark ? "text-white/60" : "text-gray-500",
     disabledBtn: isDark ? "bg-white/10 text-white/30" : "bg-gray-100 text-gray-400",
     creditBtn:   isDark ? "bg-white/5 text-white/20 border-white/10" : "bg-gray-100 text-gray-400 border-gray-200",
+    modalText:   isDark ? "text-white/70"                    : "text-gray-600",
+    modalMuted:  isDark ? "text-white/60"                    : "text-gray-500",
+    modalFaint:  isDark ? "text-white/30"                    : "text-gray-400",
+    modalBtn:    isDark ? "text-white/60 hover:bg-white/5"   : "text-gray-500 hover:bg-gray-100",
+    modalSkip:   isDark ? "text-white/25 hover:text-white/50": "text-gray-300 hover:text-gray-500",
+    epMuted:     isDark ? "text-white/50"                    : "text-gray-400",
+    badgeBg:     isDark ? "bg-white/10"                      : "bg-gray-200",
   };
   const [userId, setUserId]         = useState("");
   const [status, setStatus]         = useState<BoostStatus | null>(null);
@@ -236,7 +243,7 @@ export default function MusicBoostPage() {
         <p className="mt-1">ブースト率が高いほど優先的に提案されやすくなります。</p>
         <p className={`mt-1 ${th.ghost} text-xs`}>本機能は共有枠を使用するため、空きがない場合は新規契約・変更ができません。</p>
         {epBalance !== null && (
-          <p className="mt-2 text-white/50 text-xs font-bold">
+          <p className={`mt-2 ${th.epMuted} text-xs font-bold`}>
             現在のEP残高: <span className="text-purple-300">{epBalance.toLocaleString()} EP</span>
           </p>
         )}
@@ -343,7 +350,7 @@ export default function MusicBoostPage() {
                     disabled
                     className={`w-full py-2 rounded-lg text-sm font-bold ${th.creditBtn} cursor-not-allowed border flex items-center justify-center gap-2`}>
                     <span>💳 クレジットカード</span>
-                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">準備中</span>
+                    <span className={`text-[10px] ${th.badgeBg} px-2 py-0.5 rounded-full`}>準備中</span>
                   </button>
                 </div>
               )}
@@ -375,7 +382,7 @@ export default function MusicBoostPage() {
           >
             <h2 className="text-base font-extrabold text-white mb-5 text-center">ご確認ください</h2>
 
-            <div className="space-y-3 text-sm text-white/70">
+            <div className={`space-y-3 text-sm ${th.modalText}`}>
               <div className="flex justify-between">
                 <span>プラン</span>
                 <span className="font-bold text-white">{confirmPlan.label}（{confirmPlan.percent}%）</span>
@@ -408,7 +415,7 @@ export default function MusicBoostPage() {
             <div className="mt-6 flex gap-2">
               <button
                 onClick={() => setConfirmPlan(null)}
-                className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white/60 hover:bg-white/5 transition">
+                className={`flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold ${th.modalBtn} transition`}>
                 キャンセル
               </button>
               <button
@@ -440,7 +447,7 @@ export default function MusicBoostPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* 進捗 */}
-            <p className="text-center text-xs font-semibold text-white/30 mb-4">
+            <p className={`text-center text-xs font-semibold ${th.modalFaint} mb-4`}>
               {tutorialStep + 1} / {BOOST_TUTORIAL_SLIDES.length}
             </p>
 
@@ -463,7 +470,7 @@ export default function MusicBoostPage() {
               <h2 className="text-base font-extrabold text-white mb-3 leading-snug">
                 {BOOST_TUTORIAL_SLIDES[tutorialStep].title}
               </h2>
-              <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line text-left">
+              <p className={`text-sm ${th.modalMuted} leading-relaxed whitespace-pre-line text-left`}>
                 {BOOST_TUTORIAL_SLIDES[tutorialStep].body}
               </p>
             </div>
@@ -474,7 +481,7 @@ export default function MusicBoostPage() {
                 <button
                   type="button"
                   onClick={() => setTutorialStep(tutorialStep - 1)}
-                  className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white/60 hover:bg-white/5 transition"
+                  className={`flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold ${th.modalBtn} transition`}
                 >
                   ← 戻る
                 </button>
@@ -508,7 +515,7 @@ export default function MusicBoostPage() {
                 localStorage.setItem(BOOST_TUTORIAL_KEY, "true");
                 setTutorialStep(null);
               }}
-              className="mt-3 w-full text-center text-xs text-white/25 hover:text-white/50 transition"
+              className={`mt-3 w-full text-center text-xs ${th.modalSkip} transition`}
             >
               スキップ
             </button>
