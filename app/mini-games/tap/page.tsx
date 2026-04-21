@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTheme } from "../../lib/useTheme";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type TapStatus = {
   today_taps:      number;
@@ -38,6 +40,34 @@ type MiningLog = {
 };
 
 export default function TapMiningPage() {
+  const { isDark, toggleTheme } = useTheme();
+  const th = {
+    page:        isDark ? "bg-[#0a0a0a] text-white"          : "bg-gray-50 text-gray-900",
+    modal:       isDark ? "bg-[#1a1a2e] border-white/10"      : "bg-white border-gray-200",
+    card:        isDark ? "bg-white/5"                        : "bg-white shadow-sm",
+    cardBorder:  isDark ? "border-white/10"                   : "border-gray-200",
+    muted:       isDark ? "text-white/70"                     : "text-gray-500",
+    faint:       isDark ? "text-white/40"                     : "text-gray-400",
+    ghost:       isDark ? "text-white/20"                     : "text-gray-300",
+    dividerFaint:isDark ? "border-white/5"                    : "border-gray-100",
+    logRow:      (rare: boolean) =>
+      isDark
+        ? `flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0 ${rare ? "text-yellow-400" : "text-white/60"}`
+        : `flex items-center justify-between text-xs py-1 border-b border-gray-100 last:border-0 ${rare ? "text-yellow-500" : "text-gray-500"}`,
+    logTime:     isDark ? "text-white/30 w-16"                : "text-gray-300 w-16",
+    back:        isDark ? "text-white/40"                     : "text-gray-400",
+    helpBtn:     isDark ? "text-white/40 bg-white/5"          : "text-gray-400 bg-white border border-gray-200",
+    statCard:    isDark ? "bg-white/5 rounded-xl p-3 text-center" : "bg-white border border-gray-200 rounded-xl p-3 text-center",
+    statLabel:   isDark ? "text-xs text-white/40"             : "text-xs text-gray-400",
+    recordCard:  isDark ? "bg-white/5 border border-white/10 rounded-xl p-4 mb-4" : "bg-white border border-gray-200 rounded-xl p-4 mb-4",
+    recordLabel: isDark ? "text-white/40"                     : "text-gray-400",
+    recordHead:  isDark ? "text-sm font-bold text-white/60 mb-3" : "text-sm font-bold text-gray-500 mb-3",
+    totalText:   isDark ? "text-center text-xs text-white/20" : "text-center text-xs text-gray-300",
+    logHead:     isDark ? "text-xs font-bold text-white/40 mb-2" : "text-xs font-bold text-gray-400 mb-2",
+    limitCard:   isDark ? "bg-white/5 rounded-xl p-4 text-center text-sm text-white/50 mb-4" : "bg-gray-100 rounded-xl p-4 text-center text-sm text-gray-400 mb-4",
+    sidebar:     isDark ? "bg-[#0f0f1a] border-l border-white/5 rounded-xl p-4" : "bg-white border border-gray-200 rounded-xl p-4",
+  };
+
   // ── コア State ──
   const [userId,              setUserId]              = useState("");
   const [status,              setStatus]              = useState<TapStatus | null>(null);
@@ -296,29 +326,30 @@ export default function TapMiningPage() {
   const effectiveRemaining = optimisticRemaining ?? (status?.taps_remaining ?? 0);
 
   return (
-    <div className={`min-h-screen bg-[#0a0a0a] text-white${rareEffect ? " animate-pulse" : ""}`}>
+    <div className={`min-h-screen ${th.page}${rareEffect ? " animate-pulse" : ""}`}>
     {/* グリッド外：fixed要素（モーダル・ticker） */}
+      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
 
       {/* ルール説明モーダル */}
       {showHelp && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+          <div className={`${th.modal} rounded-2xl p-6 max-w-sm w-full`}>
             <h2 className="text-lg font-black mb-4 text-center">⛏️ Tap Miningとは？</h2>
-            <div className="text-sm text-white/70 space-y-3">
+            <div className={`text-sm ${th.muted} space-y-3`}>
               <div>
-                <p className="font-bold text-white mb-1">■ 基本ルール</p>
+                <p className="font-bold mb-1">■ 基本ルール</p>
                 <p>・1タップ = 2BP消費</p>
                 <p>・1日最大500回まで</p>
                 <p>・毎日リセット</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ 報酬</p>
+                <p className="font-bold mb-1">■ 報酬</p>
                 <p>・BPまたはEPがランダムで獲得できます</p>
                 <p>・最低でも0.1BPは必ずもらえます</p>
                 <p>・ごく稀に大量EPが当たることもあります</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p className="font-bold mb-1">■ ポイント</p>
                 <p>・EPはアプリ内ポイントです（換金不可）</p>
                 <p>・運が良いと大当たりも…？</p>
               </div>
@@ -359,19 +390,19 @@ export default function TapMiningPage() {
 
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
-        <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
+        <Link href="/mini-games" className={`${th.back} text-sm`}>← Arcade</Link>
         <h1 className="font-bold text-lg">⛏️ Tap Mining</h1>
-        <button onClick={() => setShowHelp(true)} className="text-white/40 text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">?</button>
+        <button onClick={() => setShowHelp(true)} className={`${th.helpBtn} text-lg w-8 h-8 rounded-full flex items-center justify-center`}>?</button>
       </div>
 
       {/* ステータスバー */}
       <div className="grid grid-cols-2 gap-2 mb-6">
-        <div className="bg-white/5 rounded-xl p-3 text-center">
-          <p className="text-xs text-white/40">今日のBP</p>
+        <div className={th.statCard}>
+          <p className={th.statLabel}>今日のBP</p>
           <p className="font-bold text-purple-400">{status?.today_bp ?? 0}</p>
         </div>
-        <div className="bg-white/5 rounded-xl p-3 text-center">
-          <p className="text-xs text-white/40">今日のEP</p>
+        <div className={th.statCard}>
+          <p className={th.statLabel}>今日のEP</p>
           <p className="font-bold text-yellow-400">{status?.today_ep ?? 0}</p>
         </div>
       </div>
@@ -423,47 +454,47 @@ export default function TapMiningPage() {
 
       {/* 上限メッセージ */}
       {effectiveRemaining <= 0 && (
-        <div className="bg-white/5 rounded-xl p-4 text-center text-sm text-white/50 mb-4">
+        <div className={th.limitCard}>
           本日のタップ上限に達しました🎉<br/>明日リセットされます
         </div>
       )}
 
       {/* 今日の記録 */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
-        <h3 className="text-sm font-bold text-white/60 mb-3">📊 今日の記録</h3>
+      <div className={th.recordCard}>
+        <h3 className={th.recordHead}>📊 今日の記録</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-white/40">タップ数</span>
+            <span className={th.recordLabel}>タップ数</span>
             <span>{status?.today_taps ?? 0} / 500</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">最大コンボ</span>
+            <span className={th.recordLabel}>最大コンボ</span>
             <span>{status?.today_max_combo ?? 0}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">獲得BP</span>
+            <span className={th.recordLabel}>獲得BP</span>
             <span className="text-purple-400">{status?.today_bp ?? 0} BP</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">獲得EP</span>
+            <span className={th.recordLabel}>獲得EP</span>
             <span className="text-yellow-400">{status?.today_ep ?? 0} EP</span>
           </div>
         </div>
       </div>
 
       {/* 累計記録 */}
-      <div className="text-center text-xs text-white/20">
+      <div className={th.totalText}>
         総タップ数: {status?.total_taps ?? 0} / 最大コンボ: {status?.max_combo ?? 0}
       </div>
 
       {/* モバイル：ログをインラインで表示 */}
       {miningLogs.length > 0 && (
-        <div className="lg:hidden mt-4 bg-white/5 border border-white/10 rounded-xl p-3">
-          <h3 className="text-xs font-bold text-white/40 mb-2">⛏️ マイニングログ</h3>
+        <div className={`lg:hidden mt-4 ${th.card} border ${th.cardBorder} rounded-xl p-3`}>
+          <h3 className={th.logHead}>⛏️ マイニングログ</h3>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {miningLogs.map(log => (
-              <div key={log.id} className={`flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0 ${log.rare ? "text-yellow-400" : "text-white/60"}`}>
-                <span className="text-white/30 w-16">{log.time}</span>
+              <div key={log.id} className={th.logRow(log.rare)}>
+                <span className={th.logTime}>{log.time}</span>
                 <span>{log.taps}tap</span>
                 {log.bp > 0 && <span className="text-purple-400">+{log.bp}BP</span>}
                 {log.ep > 0 && <span className="text-yellow-400">+{log.ep}EP {log.rare ? "✨" : ""}</span>}
@@ -478,24 +509,22 @@ export default function TapMiningPage() {
 
     {/* ── 右カラム（デスクトップ専用ログパネル） ── */}
     <div className="hidden lg:block py-0 sticky top-4 h-fit">
-      <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-        <h3 className="text-xs font-bold text-white/40 mb-3 flex items-center gap-1">
+      <div className={th.sidebar}>
+        <h3 className={`${th.logHead} mb-3 flex items-center gap-1`}>
           <span>⛏️</span> マイニングログ
         </h3>
         {miningLogs.length === 0 ? (
-          <p className="text-xs text-white/20 text-center py-8">タップするとここに<br/>結果が表示されます</p>
+          <p className={`text-xs ${th.ghost} text-center py-8`}>タップするとここに<br/>結果が表示されます</p>
         ) : (
           <div className="space-y-1 max-h-[calc(100vh-160px)] overflow-y-auto">
             {miningLogs.map(log => (
-              <div key={log.id} className={`rounded-lg px-2 py-1.5 text-xs ${log.rare ? "bg-yellow-400/10 border border-yellow-400/30" : "bg-white/5"}`}>
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-white/30">{log.time}</span>
-                  <span className="text-white/50">{log.taps}tap</span>
-                </div>
+              <div key={log.id} className={th.logRow(log.rare)}>
+                <span className={th.logTime}>{log.time}</span>
+                <span>{log.taps}tap</span>
                 <div className="flex gap-2">
                   {log.bp > 0 && <span className="text-purple-400 font-bold">+{log.bp}BP</span>}
                   {log.ep > 0 && <span className={`font-bold ${log.rare ? "text-yellow-400" : "text-yellow-300/70"}`}>+{log.ep}EP{log.rare ? " ✨" : ""}</span>}
-                  {log.bp === 0 && log.ep === 0 && <span className="text-white/20">—</span>}
+                  {log.bp === 0 && log.ep === 0 && <span className={th.ghost}>—</span>}
                 </div>
               </div>
             ))}
