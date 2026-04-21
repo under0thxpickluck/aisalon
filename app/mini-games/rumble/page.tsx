@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTheme } from "../../lib/useTheme";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 /** JSTの今日の日付文字列 (YYYY-MM-DD) */
 function getTodayJst(): string {
@@ -121,6 +123,38 @@ const TAB_LIST = ["バトル", "観戦", "ランキング", "装備", "ガチャ
 type Tab = typeof TAB_LIST[number];
 
 export default function RumblePage() {
+  const { isDark, toggleTheme } = useTheme();
+  const th = {
+    page:        isDark ? "bg-[#0a0a0a] text-white"          : "bg-gray-50 text-gray-900",
+    modal:       isDark ? "bg-[#1a1a2e] border-white/10"      : "bg-white border-gray-200",
+    modalDark:   isDark ? "bg-[#0d0d1a] border-purple-500/30" : "bg-white border-purple-200",
+    card:        isDark ? "bg-white/5"                        : "bg-white shadow-sm",
+    cardBorder:  isDark ? "border-white/10"                   : "border-gray-200",
+    muted:       isDark ? "text-white/70"                     : "text-gray-500",
+    faint:       isDark ? "text-white/40"                     : "text-gray-400",
+    ghost:       isDark ? "text-white/20"                     : "text-gray-300",
+    divider:     isDark ? "border-white/10"                   : "border-gray-200",
+    dividerFaint:isDark ? "border-white/5"                    : "border-gray-100",
+    progressBg:  isDark ? "bg-white/10"                       : "bg-gray-200",
+    tab:         (active: boolean) =>
+      isDark
+        ? active ? "border-b-2 border-purple-400 text-white font-bold" : "text-white/40 hover:text-white/70"
+        : active ? "border-b-2 border-purple-500 text-gray-900 font-bold" : "text-gray-400 hover:text-gray-600",
+    statCard:    isDark ? "bg-white/5 rounded-xl p-3 text-center" : "bg-white border border-gray-200 rounded-xl p-3 text-center",
+    statLabel:   isDark ? "text-xs text-white/40"             : "text-xs text-gray-400",
+    rankRow:     (isSelf: boolean) =>
+      isDark
+        ? `flex items-center gap-3 py-2 px-3 rounded-xl text-sm ${isSelf ? "bg-purple-500/20 border border-purple-500/30" : ""}`
+        : `flex items-center gap-3 py-2 px-3 rounded-xl text-sm ${isSelf ? "bg-purple-50 border border-purple-200" : ""}`,
+    equipCard:   isDark ? "border border-white/10 rounded-xl p-3" : "border border-gray-200 rounded-xl p-3 bg-white",
+    closeBtn:    isDark ? "bg-white/10 hover:bg-white/20 text-white/50" : "bg-gray-100 hover:bg-gray-200 text-gray-500",
+    back:        isDark ? "text-white/40"                     : "text-gray-400",
+    msgArea:     (ok: boolean) =>
+      ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400",
+    modalText:   isDark ? "text-white/70"                     : "text-gray-600",
+    modalMuted:  isDark ? "text-white/60"                     : "text-gray-500",
+    modalFaint:  isDark ? "text-white/40"                     : "text-gray-400",
+  };
   const [userId, setUserId]       = useState("");
   const [tab, setTab]             = useState<Tab>("バトル");
   const [status, setStatus]       = useState<RumbleStatus | null>(null);
@@ -472,7 +506,7 @@ export default function RumblePage() {
       await new Promise(r => setTimeout(r, Math.min(event.delay > 0 ? event.delay : 800, 2000)));
 
       if (event.type === "intro" || event.type === "log") {
-        addLog(event.text ?? "", "text-white/80");
+        addLog(event.text ?? "", th.muted);
       } else if (event.type === "batch_eliminate") {
         const ids = event.ids ?? [];
         setSpectatorPlayers(prev =>
@@ -483,7 +517,7 @@ export default function RumblePage() {
         const color = event.is_crit ? "text-yellow-400" : "text-purple-300";
         addLog(event.text ?? "", color);
       } else if (event.type === "ranking") {
-        addLog("━━━━━━━━━━━━━━━━", "text-white/20");
+        addLog("━━━━━━━━━━━━━━━━", th.ghost);
         addLog("🏆 今日の順位が確定！", "text-yellow-400");
       } else if (event.type === "result") {
         addLog(event.text ?? "バトル終了！", "text-yellow-300");
@@ -530,13 +564,13 @@ export default function RumblePage() {
     for (const event of prevSpectatorData.events) {
       await new Promise(r => setTimeout(r, Math.min(event.delay > 0 ? event.delay : 800, 2000)));
       if (event.type === "intro" || event.type === "log") {
-        addLog(event.text ?? "", "text-white/80");
+        addLog(event.text ?? "", th.muted);
       } else if (event.type === "batch_eliminate") {
         addLog(event.text ?? "", "text-red-400/80");
       } else if (event.type === "battle") {
         addLog(event.text ?? "", event.is_crit ? "text-yellow-400" : "text-purple-300");
       } else if (event.type === "ranking") {
-        addLog("━━━━━━━━━━━━━━━━", "text-white/20");
+        addLog("━━━━━━━━━━━━━━━━", th.ghost);
         addLog("🏆 順位が確定！", "text-yellow-400");
       } else if (event.type === "result") {
         addLog(event.text ?? "バトル終了！", "text-yellow-300");
@@ -683,32 +717,33 @@ export default function RumblePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-md mx-auto">
+    <div className={`min-h-screen ${th.page} px-4 py-8 max-w-md mx-auto`}>
+      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
       {/* Rumbleルール説明モーダル */}
       {showHelp && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+          <div className={`${th.modal} rounded-2xl p-6 max-w-sm w-full`}>
             <h2 className="text-lg font-black mb-4 text-center">⚔️ Rumble Leagueとは？</h2>
-            <div className="text-sm text-white/70 space-y-3">
+            <div className={`text-sm ${th.muted} space-y-3`}>
               <div>
-                <p className="font-bold text-white mb-1">■ 基本ルール</p>
+                <p className="font-bold mb-1">■ 基本ルール</p>
                 <p>・1日1回、100BPで参加</p>
                 <p>・月〜金の5日間でランキングを競います</p>
                 <p>・金曜日に最終順位が確定します</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ 勝敗の仕組み</p>
+                <p className="font-bold mb-1">■ 勝敗の仕組み</p>
                 <p>・スコアで順位が決まります</p>
                 <p>・スコアはレベル・装備・運で決まります</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ 報酬</p>
+                <p className="font-bold mb-1">■ 報酬</p>
                 <p>・順位に応じてEPがもらえます</p>
                 <p>・上位ほど報酬がアップ</p>
                 <p>・報酬量はその週の参加人数によって変動します</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p className="font-bold mb-1">■ ポイント</p>
                 <p>・毎日参加するほど有利</p>
                 <p>・装備を強化すると順位が上がりやすくなります</p>
               </div>
@@ -729,30 +764,30 @@ export default function RumblePage() {
       {/* 装備説明モーダル */}
       {showEquipHelp && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+          <div className={`${th.modal} rounded-2xl p-6 max-w-sm w-full`}>
             <h2 className="text-lg font-black mb-4 text-center">🛡️ 装備について</h2>
-            <div className="text-sm text-white/70 space-y-3">
+            <div className={`text-sm ${th.muted} space-y-3`}>
               <div>
-                <p className="font-bold text-white mb-1">■ 装備の特徴</p>
+                <p className="font-bold mb-1">■ 装備の特徴</p>
                 <p>・4部位（頭・胴・手・足）に装着できます</p>
                 <p>・同じ装備でも性能はランダムです</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ 強化</p>
+                <p className="font-bold mb-1">■ 強化</p>
                 <p>・装備は強化してさらに強くできます</p>
                 <p>・強化には力のかけらが必要です</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ 分解</p>
+                <p className="font-bold mb-1">■ 分解</p>
                 <p>・不要な装備は力のかけらに変換できます</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p className="font-bold mb-1">■ ポイント</p>
                 <p>・良い数値の装備を厳選するのが重要です</p>
               </div>
             </div>
             <button onClick={() => setShowEquipHelp(false)}
-              className="w-full mt-5 py-3 rounded-xl bg-white/10 font-bold text-sm">
+              className={`w-full mt-5 py-3 rounded-xl ${th.closeBtn} font-bold text-sm`}>
               閉じる
             </button>
           </div>
@@ -762,23 +797,23 @@ export default function RumblePage() {
       {/* ランキング説明モーダル */}
       {showRankHelp && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+          <div className={`${th.modal} rounded-2xl p-6 max-w-sm w-full`}>
             <h2 className="text-lg font-black mb-4 text-center">🏆 ランキングの見方</h2>
-            <div className="text-sm text-white/70 space-y-3">
+            <div className={`text-sm ${th.muted} space-y-3`}>
               <div>
-                <p className="font-bold text-white mb-1">■ ランキングの見方</p>
+                <p className="font-bold mb-1">■ ランキングの見方</p>
                 <p>・現在順位：あなたの位置</p>
                 <p>・RP：ランキングポイント</p>
                 <p>・報酬帯：現在もらえる報酬</p>
               </div>
               <div>
-                <p className="font-bold text-white mb-1">■ ポイント</p>
+                <p className="font-bold mb-1">■ ポイント</p>
                 <p>・上の順位に近づくほど報酬アップ</p>
                 <p>・参加しないと順位が下がることがあります</p>
               </div>
             </div>
             <button onClick={() => setShowRankHelp(false)}
-              className="w-full mt-5 py-3 rounded-xl bg-white/10 font-bold text-sm">
+              className={`w-full mt-5 py-3 rounded-xl ${th.closeBtn} font-bold text-sm`}>
               閉じる
             </button>
           </div>
@@ -788,7 +823,7 @@ export default function RumblePage() {
       {/* 表示名設定モーダル */}
       {showNameModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+          <div className={`${th.modal} rounded-2xl p-6 max-w-xs w-full`}>
             <h2 className="text-lg font-black mb-4 text-center">✏️ 表示名を設定</h2>
             <input
               type="text"
@@ -796,12 +831,12 @@ export default function RumblePage() {
               onChange={e => setNameInput(e.target.value)}
               maxLength={16}
               placeholder="16文字以内"
-              className="w-full bg-white/10 rounded-xl px-4 py-3 text-sm mb-3 outline-none border border-white/10 focus:border-purple-500"
+              className={`w-full ${th.card} border ${th.cardBorder} rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-purple-500`}
             />
-            <p className="text-xs text-white/30 mb-4">{'使用不可: < > " \' & \\ /'}</p>
+            <p className={`text-xs ${th.faint} mb-4`}>{'使用不可: < > " \' & \\ /'}</p>
             {nameMsg && <p className={`text-xs text-center mb-3 ${nameMsg.includes("保存") ? "text-green-400" : "text-red-400"}`}>{nameMsg}</p>}
             <div className="flex gap-2">
-              <button onClick={() => { setShowNameModal(false); setNameMsg(""); }} className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-bold">キャンセル</button>
+              <button onClick={() => { setShowNameModal(false); setNameMsg(""); }} className={`flex-1 py-3 rounded-xl ${th.closeBtn} text-sm font-bold`}>キャンセル</button>
               <button onClick={handleSetName} disabled={nameBusy || !nameInput.trim()} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-bold disabled:opacity-40">
                 {nameBusy ? "保存中..." : "保存"}
               </button>
@@ -817,34 +852,34 @@ export default function RumblePage() {
         const canEnhance = next !== null && shards >= (next?.cost ?? 0);
         return (
           <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-4">
-            <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <div className={`${th.modal} rounded-2xl p-6 max-w-sm w-full`}>
               <h2 className="text-lg font-black mb-1 text-center">⚙️ 装備を強化</h2>
-              <p className="text-xs text-white/40 text-center mb-5">{enhanceModal.itemName}</p>
+              <p className={`text-xs ${th.faint} text-center mb-5`}>{enhanceModal.itemName}</p>
 
               {next ? (
                 <div className="space-y-3 mb-5">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/5 rounded-xl p-3 text-center">
-                      <p className="text-xs text-white/40 mb-1">現在Lv</p>
-                      <p className="text-xl font-black text-white">{lvl}</p>
+                    <div className={th.statCard}>
+                      <p className={`${th.statLabel} mb-1`}>現在Lv</p>
+                      <p className="text-xl font-black">{lvl}</p>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-3 text-center">
-                      <p className="text-xs text-white/40 mb-1">強化後Lv</p>
+                    <div className={th.statCard}>
+                      <p className={`${th.statLabel} mb-1`}>強化後Lv</p>
                       <p className="text-xl font-black text-purple-400">{lvl + 1}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-center">
-                      <p className="text-xs text-white/40 mb-1">必要かけら</p>
+                      <p className={`${th.statLabel} mb-1`}>必要かけら</p>
                       <p className={`text-xl font-black ${shards >= next.cost ? "text-orange-400" : "text-red-400"}`}>{next.cost}</p>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-3 text-center">
-                      <p className="text-xs text-white/40 mb-1">成功率</p>
+                    <div className={th.statCard}>
+                      <p className={`${th.statLabel} mb-1`}>成功率</p>
                       <p className={`text-xl font-black ${next.rate === 100 ? "text-green-400" : next.rate >= 70 ? "text-yellow-400" : "text-red-400"}`}>{next.rate}%</p>
                     </div>
                   </div>
                   <div className="flex justify-between text-xs px-1">
-                    <span className="text-white/40">所持かけら</span>
+                    <span className={th.faint}>所持かけら</span>
                     <span className={shards >= next.cost ? "text-orange-400 font-bold" : "text-red-400 font-bold"}>{shards} 個</span>
                   </div>
                   {!canEnhance && (
@@ -871,7 +906,7 @@ export default function RumblePage() {
                 <button
                   onClick={() => { setEnhanceModal(null); setEnhanceModalMsg(""); }}
                   disabled={enhancing}
-                  className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-bold disabled:opacity-40"
+                  className={`flex-1 py-3 rounded-xl ${th.closeBtn} text-sm font-bold disabled:opacity-40`}
                 >
                   閉じる
                 </button>
@@ -893,9 +928,9 @@ export default function RumblePage() {
       {/* 分解確認モーダル */}
       {dismantleModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+          <div className={`${th.modal} rounded-2xl p-6 max-w-sm w-full`}>
             <h2 className="text-base font-black mb-1 text-center">🔨 装備を分解しますか？</h2>
-            <p className="text-sm text-white/60 text-center mb-4">
+            <p className={`text-sm ${th.muted} text-center mb-4`}>
               「{dismantleModal.itemName}」を分解します。<br />
               <span className="text-orange-400 font-bold">この操作は取り消せません。</span>
             </p>
@@ -906,7 +941,7 @@ export default function RumblePage() {
               <button
                 onClick={() => { setDismantleModal(null); setDismantleMsg(""); }}
                 disabled={dismantling}
-                className="flex-1 py-2.5 rounded-xl border border-white/20 text-sm text-white/60 hover:bg-white/5 disabled:opacity-40"
+                className={`flex-1 py-2.5 rounded-xl ${th.closeBtn} text-sm disabled:opacity-40`}
               >
                 キャンセル
               </button>
@@ -946,9 +981,9 @@ export default function RumblePage() {
 
         return (
           <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-4">
-            <div className="bg-[#0d0d1a] border border-purple-500/30 rounded-2xl w-full max-w-sm flex flex-col" style={{ maxHeight: "80vh" }}>
+            <div className={`${th.modalDark} rounded-2xl w-full max-w-sm flex flex-col`} style={{ maxHeight: "80vh" }}>
               {/* モーダルヘッダー */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+              <div className={`flex items-center justify-between px-4 py-3 border-b ${th.divider} shrink-0`}>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black text-purple-400/80 tracking-widest">
                     {isToday ? "TODAY" : "PREV"} BATTLE LOG
@@ -965,7 +1000,7 @@ export default function RumblePage() {
                 </div>
                 <button
                   onClick={() => setShowBattleLogModal(false)}
-                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/50 text-xs hover:bg-white/20 transition"
+                  className={`w-7 h-7 rounded-full ${th.closeBtn} flex items-center justify-center text-xs transition`}
                 >
                   ✕
                 </button>
@@ -974,7 +1009,7 @@ export default function RumblePage() {
               {/* ログエリア */}
               <div className="overflow-y-auto px-4 py-3 flex-1 font-mono space-y-2 min-h-[200px]">
                 {logs.length === 0 && !playing && (
-                  <p className="text-white/20 text-sm text-center pt-8">▶ 再生してください</p>
+                  <p className={`${th.ghost} text-sm text-center pt-8`}>▶ 再生してください</p>
                 )}
                 {logs.map(log => (
                   <p key={log.id} className={`text-sm leading-relaxed whitespace-pre-line ${log.color}`}>
@@ -982,13 +1017,13 @@ export default function RumblePage() {
                   </p>
                 ))}
                 {playing && (
-                  <p className="text-white/30 text-xs animate-pulse">▌</p>
+                  <p className={`${th.faint} text-xs animate-pulse`}>▌</p>
                 )}
                 <div ref={logEndRef} />
               </div>
 
               {/* フッターボタン */}
-              <div className="px-4 pb-4 pt-2 border-t border-white/10 shrink-0 space-y-2">
+              <div className={`px-4 pb-4 pt-2 border-t ${th.divider} shrink-0 space-y-2`}>
                 {!playing && phase === "waiting" && hasData && (
                   <button
                     onClick={handlePlay}
@@ -1000,17 +1035,17 @@ export default function RumblePage() {
                 {!playing && phase === "result" && hasData && (
                   <button
                     onClick={handleReplay}
-                    className="w-full py-3 rounded-xl font-bold text-sm bg-white/10 hover:bg-white/15 transition"
+                    className={`w-full py-3 rounded-xl font-bold text-sm ${th.closeBtn} transition`}
                   >
                     🔄 もう一度見る
                   </button>
                 )}
                 {!hasData && (
-                  <p className="text-center text-white/30 text-xs py-2">バトルデータがありません</p>
+                  <p className={`text-center ${th.faint} text-xs py-2`}>バトルデータがありません</p>
                 )}
                 <button
                   onClick={() => setShowBattleLogModal(false)}
-                  className="w-full py-2 rounded-xl text-xs text-white/30 hover:bg-white/5 transition"
+                  className={`w-full py-2 rounded-xl text-xs ${th.faint} hover:opacity-70 transition`}
                 >
                   閉じる
                 </button>
@@ -1022,30 +1057,30 @@ export default function RumblePage() {
 
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
-        <Link href="/mini-games" className="text-white/40 text-sm">← Arcade</Link>
+        <Link href="/mini-games" className={`${th.back} text-sm`}>← Arcade</Link>
         <h1 className="font-bold text-lg">⚔️ Rumble League</h1>
         <div className="flex items-center gap-2">
           {bpBalance !== null && (
             <span className="text-xs font-bold text-yellow-400">{bpBalance.toLocaleString()}BP</span>
           )}
-          <button onClick={() => setShowHelp(true)} className="text-white/40 text-lg w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">?</button>
+          <button onClick={() => setShowHelp(true)} className={`${th.faint} text-lg w-8 h-8 rounded-full ${th.card} flex items-center justify-center`}>?</button>
         </div>
       </div>
 
       {/* 表示名バッジ */}
       <div className="flex justify-center mb-4">
-        <button onClick={() => setShowNameModal(true)} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-xs text-white/60 hover:bg-white/10 transition">
+        <button onClick={() => setShowNameModal(true)} className={`flex items-center gap-2 ${th.card} border ${th.cardBorder} rounded-full px-4 py-1.5 text-xs ${th.muted} hover:opacity-80 transition`}>
           <span>👤</span>
           <span>{displayName || "表示名を設定"}</span>
-          <span className="text-white/30">✏️</span>
+          <span className={th.ghost}>✏️</span>
         </button>
       </div>
 
       {/* タブ */}
-      <div className="flex gap-1 mb-6 bg-white/5 rounded-xl p-1">
+      <div className={`flex gap-1 mb-6 ${th.card} rounded-xl p-1`}>
         {TAB_LIST.map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition relative ${tab === t ? "bg-purple-600 text-white" : "text-white/40"}`}>
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition relative ${tab === t ? "bg-purple-600 text-white" : th.faint}`}>
             {t === "観戦" && spectatorPhase === "live" ? (
               <span className="flex items-center justify-center gap-1">
                 観戦
@@ -1069,34 +1104,34 @@ export default function RumblePage() {
         <div className="space-y-4">
           {/* 週間RP */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/5 rounded-xl p-4 text-center">
-              <p className="text-xs text-white/40 mb-1">今週のRP</p>
+            <div className={`${th.card} rounded-xl p-4 text-center`}>
+              <p className={`text-xs ${th.faint} mb-1`}>今週のRP</p>
               <p className="text-2xl font-black text-purple-400">{status?.week_rp ?? 0}</p>
             </div>
-            <div className="bg-white/5 rounded-xl p-4 text-center">
-              <p className="text-xs text-white/40 mb-1">今日のスコア</p>
+            <div className={`${th.card} rounded-xl p-4 text-center`}>
+              <p className={`text-xs ${th.faint} mb-1`}>今日のスコア</p>
               <p className="text-2xl font-black text-white">
                 {isAfter1850Jst ? (status?.today_score ?? "-") : (status?.entered_today || localEnteredToday ? "🔒" : "-")}
               </p>
               {!isAfter1850Jst && (status?.entered_today || localEnteredToday) && (
-                <p className="text-[10px] text-white/30 mt-1">18:50に公開</p>
+                <p className={`text-[10px] ${th.faint} mt-1`}>18:50に公開</p>
               )}
             </div>
           </div>
 
           {/* カウントダウン */}
-          <div className="bg-white/5 rounded-xl p-3 text-center">
-            <p className="text-xs text-white/40">次のバトルまで</p>
+          <div className={`${th.card} rounded-xl p-3 text-center`}>
+            <p className={`text-xs ${th.faint}`}>次のバトルまで</p>
             <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
           </div>
 
           {/* 報酬帯 */}
-          <div className="bg-white/5 rounded-xl p-4">
+          <div className={`${th.card} rounded-xl p-4`}>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-white/60">🏆 週次報酬</p>
+              <p className={`text-xs font-bold ${th.muted}`}>🏆 週次報酬</p>
               {isFriAfter1850Jst
                 ? <span className="text-[10px] font-black text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">✅ 確定</span>
-                : <span className="text-[10px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full">📊 予測</span>
+                : <span className={`text-[10px] font-bold ${th.faint} ${th.card} px-2 py-0.5 rounded-full`}>📊 予測</span>
               }
             </div>
             {(() => {
@@ -1110,14 +1145,14 @@ export default function RumblePage() {
                 : [{ label: "🥇 1位", ep: 280 }, { label: "🥈 2位", ep: 190 }, { label: "🥉 3位", ep: 120 }, { label: "4〜5位", ep: 45 }, { label: "6〜10位", ep: 4 }];
               return tiers.map(r => (
                 <div key={r.label} className="flex justify-between text-xs py-1">
-                  <span className="text-white/60">{r.label}</span>
+                  <span className={th.muted}>{r.label}</span>
                   <span className={`font-bold ${isFriAfter1850Jst ? "text-yellow-400" : "text-yellow-400/50"}`}>
                     {r.ep.toLocaleString()} EP
                   </span>
                 </div>
               ));
             })()}
-            <p className="text-[10px] text-white/25 mt-2 pt-2 border-t border-white/10">
+            <p className={`text-[10px] ${th.ghost} mt-2 pt-2 border-t ${th.divider}`}>
               {isFriAfter1850Jst
                 ? `今週の参加: ${weekParticipantCount}人`
                 : `現在 ${weekParticipantCount}人参加中 / 金曜18:50に確定`
@@ -1126,22 +1161,22 @@ export default function RumblePage() {
           </div>
 
           {/* 参加ボタン */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-            <p className="text-sm text-white/50 mb-2">参加費：100BP / 日</p>
-            <p className="text-xs text-white/30 mb-4">月〜金 毎日19:00 JST</p>
+          <div className={`${th.card} border ${th.cardBorder} rounded-2xl p-6 text-center`}>
+            <p className={`text-sm ${th.muted} mb-2`}>参加費：100BP / 日</p>
+            <p className={`text-xs ${th.faint} mb-4`}>月〜金 毎日19:00 JST</p>
             {(localEnteredToday || status?.entered_today) ? (
               <div>
                 <div className="text-4xl mb-2">✅</div>
                 <p className="font-bold text-green-400">本日参加済み</p>
                 {isAfter1850Jst ? (
-                  <p className="text-sm text-white/40 mt-1">スコア: {status?.today_score ?? "—"} / RP: {status?.today_rp ?? "—"}</p>
+                  <p className={`text-sm ${th.faint} mt-1`}>スコア: {status?.today_score ?? "—"} / RP: {status?.today_rp ?? "—"}</p>
                 ) : (
-                  <p className="text-sm text-white/40 mt-1">🔒 スコアは18:50に公開されます</p>
+                  <p className={`text-sm ${th.faint} mt-1`}>🔒 スコアは18:50に公開されます</p>
                 )}
               </div>
             ) : (
               <button onClick={handleEntry} disabled={busy || !status}
-                className={`w-full py-4 rounded-xl font-black text-lg transition ${(busy || !status) ? "bg-white/10 text-white/30 cursor-not-allowed" : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"}`}>
+                className={`w-full py-4 rounded-xl font-black text-lg transition ${(busy || !status) ? `${th.closeBtn} cursor-not-allowed` : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"}`}>
                 {busy ? "参加中..." : !status ? "確認中..." : "⚔️ バトル参加！"}
               </button>
             )}
@@ -1154,7 +1189,7 @@ export default function RumblePage() {
           )}
 
           {/* ルール説明 */}
-          <div className="bg-white/5 rounded-xl p-4 text-xs text-white/40 space-y-1">
+          <div className={`${th.card} rounded-xl p-4 text-xs ${th.faint} space-y-1`}>
             <p>• スコア = 100 + レベルボーナス + 装備ボーナス + 乱数（0〜50）</p>
             <p>• 月〜金の累計RPで週次ランキング決定</p>
             <p>• 金曜終了後にランキングリセット</p>
@@ -1172,7 +1207,7 @@ export default function RumblePage() {
                 <span className="font-black text-2xl text-purple-400">{rankContext.my_rank}位</span>
                 <span className="text-white font-bold">{Number(Number(rankContext.my_rp).toFixed(2))} RP</span>
               </div>
-              <p className="text-xs text-white/60 mb-3">現在の報酬帯: <span className="text-yellow-400">{rankContext.current_tier?.label}{isFriAfter1850Jst ? ` (${rankContext.current_tier?.ep?.toLocaleString()}EP)` : " (🔒)"}</span></p>
+              <p className={`text-xs ${th.muted} mb-3`}>現在の報酬帯: <span className="text-yellow-400">{rankContext.current_tier?.label}{isFriAfter1850Jst ? ` (${rankContext.current_tier?.ep?.toLocaleString()}EP)` : " (🔒)"}</span></p>
               {rankContext.next_better_tier && (
                 <p className="text-xs text-green-400">▲ {rankContext.next_better_tier.label}まであと {Number(Number(rankContext.next_better_tier.rp_needed).toFixed(2))} RP</p>
               )}
@@ -1182,7 +1217,7 @@ export default function RumblePage() {
               {rankContext.surrounding && (
                 <div className="mt-3 space-y-1">
                   {rankContext.surrounding.map((r: any) => (
-                    <div key={r.rank} className={`flex justify-between text-xs py-1 px-2 rounded ${r.is_me ? "bg-purple-500/20 text-white font-bold" : "text-white/40"}`}>
+                    <div key={r.rank} className={`flex justify-between text-xs py-1 px-2 rounded ${r.is_me ? "bg-purple-500/20 text-white font-bold" : th.faint}`}>
                       <span>{r.rank}位 {r.is_me ? "👤 " : ""}{r.display_name || r.user_id}</span>
                       <span>{Number(Number(r.total_rp).toFixed(2))} RP</span>
                     </div>
@@ -1193,15 +1228,15 @@ export default function RumblePage() {
           )}
 
           <div className="flex items-center justify-between mb-4">
-            <p className="text-xs text-white/40">週間累計RPランキング</p>
-            <button onClick={() => setShowRankHelp(true)} className="text-white/30 text-xs">？ 見方</button>
+            <p className={`text-xs ${th.faint}`}>週間累計RPランキング</p>
+            <button onClick={() => setShowRankHelp(true)} className={`${th.faint} text-xs`}>？ 見方</button>
           </div>
           {ranking.length === 0 ? (
-            <p className="text-center text-white/30 text-sm py-8">まだ参加者がいません</p>
+            <p className={`text-center ${th.faint} text-sm py-8`}>まだ参加者がいません</p>
           ) : ranking.map((r, i) => (
-            <div key={r.user_id} className={`flex items-center justify-between p-3 rounded-xl ${r.user_id === userId ? "bg-purple-500/20 border border-purple-500/30" : "bg-white/5"}`}>
+            <div key={r.user_id} className={`flex items-center justify-between p-3 rounded-xl ${r.user_id === userId ? "bg-purple-500/20 border border-purple-500/30" : th.card}`}>
               <div className="flex items-center gap-3">
-                <span className={`text-lg font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-300" : i === 2 ? "text-orange-400" : "text-white/40"}`}>
+                <span className={`text-lg font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-300" : i === 2 ? "text-orange-400" : th.faint}`}>
                   {i + 1}
                 </span>
                 <span className="text-sm">{r.user_id === userId ? "👤 " + (r.display_name || r.user_id) : (r.display_name || r.user_id)}</span>
@@ -1216,20 +1251,20 @@ export default function RumblePage() {
       {tab === "装備" && (
         <div className="space-y-3">
           {/* シャード残高 */}
-          <div className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
-            <span className="text-sm text-white/60">⚙️ 力のかけら</span>
+          <div className={`${th.card} rounded-xl p-3 flex items-center justify-between`}>
+            <span className={`text-sm ${th.muted}`}>⚙️ 力のかけら</span>
             <span className="font-bold text-orange-400">{shards}</span>
           </div>
 
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-white/40">装備してスコアを強化しよう</p>
-            <button onClick={() => setShowEquipHelp(true)} className="text-white/30 text-xs">？ 装備とは</button>
+            <p className={`text-xs ${th.faint}`}>装備してスコアを強化しよう</p>
+            <button onClick={() => setShowEquipHelp(true)} className={`${th.faint} text-xs`}>？ 装備とは</button>
           </div>
           {["head","body","hand","leg"].map(slot => {
             const slotItems = equipment.filter(e => e.slot === slot);
             return (
-              <div key={slot} className="bg-white/5 rounded-xl p-4">
-                <p className="text-xs text-white/40 mb-2">
+              <div key={slot} className={`${th.card} rounded-xl p-4`}>
+                <p className={`text-xs ${th.faint} mb-2`}>
                   {slot === "head" ? "🪖 頭" : slot === "body" ? "🛡️ 胴" : slot === "hand" ? "🧤 手" : "👢 足"}
                 </p>
                 <div className="space-y-2">
@@ -1244,7 +1279,7 @@ export default function RumblePage() {
                         )}
                       </div>
                       {((item.luck ?? 0) > 0 || (item.stability ?? 0) > 0) && (
-                        <div className="flex gap-3 text-xs text-white/40 mb-2">
+                        <div className={`flex gap-3 text-xs ${th.faint} mb-2`}>
                           {(item.luck ?? 0) > 0 && <span>🍀 運 {item.luck}%</span>}
                           {(item.stability ?? 0) > 0 && <span>🛡 安定 {item.stability}%</span>}
                         </div>
@@ -1259,13 +1294,13 @@ export default function RumblePage() {
                           強化
                         </button>
                         <button onClick={() => handleDismantle(item.id)} disabled={item.equipped || busy}
-                          className="text-xs px-2 py-1 rounded bg-white/10 text-white/50">
+                          className={`text-xs px-2 py-1 rounded ${th.closeBtn}`}>
                           分解
                         </button>
                       </div>
                     </div>
                   ))}
-                  {slotItems.length === 0 && <p className="text-xs text-white/20">なし（ガチャで入手）</p>}
+                  {slotItems.length === 0 && <p className={`text-xs ${th.ghost}`}>なし（ガチャで入手）</p>}
                 </div>
               </div>
             );
@@ -1276,21 +1311,21 @@ export default function RumblePage() {
       {/* ガチャタブ */}
       {tab === "ガチャ" && (
         <div className="space-y-4">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+          <div className={`${th.card} border ${th.cardBorder} rounded-2xl p-6 text-center`}>
             <p className="text-4xl mb-3">🎲</p>
             <p className="font-bold text-lg mb-1">装備ガチャ</p>
-            <p className="text-sm text-white/40 mb-4">100BP / 1回</p>
+            <p className={`text-sm ${th.faint} mb-4`}>100BP / 1回</p>
             <button onClick={handleGacha} disabled={busy}
-              className={`w-full py-4 rounded-xl font-black text-lg transition ${busy ? "bg-white/10 text-white/30" : "bg-gradient-to-r from-yellow-600 to-orange-600 hover:scale-105"}`}>
+              className={`w-full py-4 rounded-xl font-black text-lg transition ${busy ? th.closeBtn : "bg-gradient-to-r from-yellow-600 to-orange-600 hover:scale-105"}`}>
               {busy ? "抽選中..." : "🎲 ガチャを引く！"}
             </button>
           </div>
 
           {gachaResult && (
-            <div className={`bg-white/5 border-2 ${RARITY_BG[gachaResult.item.rarity]} rounded-2xl p-6 text-center`}>
+            <div className={`${th.card} border-2 ${RARITY_BG[gachaResult.item.rarity]} rounded-2xl p-6 text-center`}>
               <p className={`text-xs font-bold uppercase mb-1 ${RARITY_COLOR[gachaResult.item.rarity]}`}>{gachaResult.item.rarity}</p>
               <p className="text-2xl font-black mb-1">{gachaResult.item.name}</p>
-              <p className="text-sm text-white/60">
+              <p className={`text-sm ${th.muted}`}>
                 {(() => { const s = normalizeSlot(gachaResult.item.slot); return s === "head" ? "頭" : s === "body" ? "胴" : s === "hand" ? "手" : "足"; })()} / +{gachaResult.item.bonus}ボーナス
               </p>
               {(gachaResult.auto_discarded ?? 0) > 0 && (
@@ -1306,12 +1341,12 @@ export default function RumblePage() {
           {/* 注意書き */}
           <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">
             <p className="text-xs text-orange-300/80 font-bold mb-1">⚠️ ストック上限について</p>
-            <p className="text-xs text-white/40">各部位（頭・胴・手・足）につき10個まで保持できます。超えた場合、最も古い未装備・未ロックの装備が自動的に力のかけらに変換されます。</p>
+            <p className={`text-xs ${th.faint}`}>各部位（頭・胴・手・足）につき10個まで保持できます。超えた場合、最も古い未装備・未ロックの装備が自動的に力のかけらに変換されます。</p>
           </div>
 
           {/* 排出率 */}
-          <div className="bg-white/5 rounded-xl p-4">
-            <p className="text-xs font-bold text-white/60 mb-2">排出率</p>
+          <div className={`${th.card} rounded-xl p-4`}>
+            <p className={`text-xs font-bold ${th.muted} mb-2`}>排出率</p>
             {[
               { rarity: "Common",    prob: "80%",      color: "text-gray-400" },
               { rarity: "Rare",      prob: "15%",      color: "text-blue-400" },
@@ -1321,7 +1356,7 @@ export default function RumblePage() {
             ].map(r => (
               <div key={r.rarity} className="flex justify-between text-xs py-1">
                 <span className={r.color}>{r.rarity}</span>
-                <span className="text-white/40">{r.prob}</span>
+                <span className={th.faint}>{r.prob}</span>
               </div>
             ))}
           </div>
@@ -1354,19 +1389,19 @@ export default function RumblePage() {
 
           {/* ローディング */}
           {(spectatorLoading || dailyResultLoading) && (
-            <div className="text-center text-white/40 text-sm py-12">読み込み中...</div>
+            <div className={`text-center ${th.faint} text-sm py-12`}>読み込み中...</div>
           )}
 
           {/* 抽選前（pending）：参加者一覧 */}
           {!spectatorLoading && !dailyResultLoading && dailyResult?.status === "pending" && (
             <div className="space-y-4">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <div className={`${th.card} border ${th.cardBorder} rounded-2xl p-4`}>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-bold text-white/60">本日の参加者</p>
-                  <p className="text-xs text-white/40">{dailyResult.participant_count}人</p>
+                  <p className={`text-xs font-bold ${th.muted}`}>本日の参加者</p>
+                  <p className={`text-xs ${th.faint}`}>{dailyResult.participant_count}人</p>
                 </div>
                 {dailyResult.participant_count === 0 ? (
-                  <p className="text-white/30 text-sm text-center py-4">まだ参加者がいません</p>
+                  <p className={`${th.faint} text-sm text-center py-4`}>まだ参加者がいません</p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {(dailyResult.participants ?? []).map(p => (
@@ -1375,7 +1410,7 @@ export default function RumblePage() {
                         className={`px-2 py-1 rounded-lg text-xs font-bold ${
                           p.user_id === userId
                             ? "bg-gradient-to-r from-purple-600/40 to-blue-600/40 text-white border border-purple-500/50"
-                            : "bg-white/10 text-white/60"
+                            : `${th.card} ${th.muted}`
                         }`}
                       >
                         {p.display_name}
@@ -1384,10 +1419,10 @@ export default function RumblePage() {
                   </div>
                 )}
               </div>
-              <div className="bg-white/5 rounded-2xl p-4 text-center">
-                <p className="text-xs text-white/40">⏰ バトル実行後に下の「最新を取得」を押してください</p>
+              <div className={`${th.card} rounded-2xl p-4 text-center`}>
+                <p className={`text-xs ${th.faint}`}>⏰ バトル実行後に下の「最新を取得」を押してください</p>
                 <div className="mt-2">
-                  <p className="text-xs text-white/30 mb-1">次のバトルまで</p>
+                  <p className={`text-xs ${th.faint} mb-1`}>次のバトルまで</p>
                   <p className="text-2xl font-black text-purple-400 font-mono">{countdown}</p>
                 </div>
               </div>
@@ -1427,7 +1462,7 @@ export default function RumblePage() {
                   <div className="space-y-1">
                     {prevDailyResult.winners.map(w => (
                       <div key={w.rank} className="flex justify-between text-xs px-2 py-1">
-                        <span className={`text-white/70 ${w.user_id === userId ? "text-purple-300 font-bold" : ""}`}>
+                        <span className={`${th.muted} ${w.user_id === userId ? "text-purple-300 font-bold" : ""}`}>
                           {w.rank}位 {w.display_name}
                         </span>
                         <span className="text-yellow-400">+{w.bp_amount.toLocaleString()} BP</span>
@@ -1443,7 +1478,7 @@ export default function RumblePage() {
           {!spectatorLoading && !dailyResultLoading && dailyResult?.status === "ready" && (
             <>
               {/* 観戦ステータスカード */}
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              <div className={`${th.card} border ${th.cardBorder} rounded-2xl p-4`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     {spectatorPhase === "live" ? (
@@ -1456,35 +1491,35 @@ export default function RumblePage() {
                     ) : spectatorData?.status === "no_data" ? (
                       <span className="text-xs text-red-400/70">バトルデータが見つかりません</span>
                     ) : spectatorLoading ? (
-                      <span className="text-xs text-white/40">取得中…</span>
+                      <span className={`text-xs ${th.faint}`}>取得中…</span>
                     ) : (
-                      <span className="text-xs text-white/40">観戦データを読み込み中…</span>
+                      <span className={`text-xs ${th.faint}`}>観戦データを読み込み中…</span>
                     )}
                   </div>
-                  <span className="text-xs text-white/40">参加者 {dailyResult.participant_count}人</span>
+                  <span className={`text-xs ${th.faint}`}>参加者 {dailyResult.participant_count}人</span>
                 </div>
                 {spectatorData?.status === "ready" && (
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
-                      <p className="text-xs text-white/40">生存中</p>
+                      <p className={`text-xs ${th.faint}`}>生存中</p>
                       <p className="text-xl font-black text-purple-400">
                         {spectatorPlayers.filter(p => p.status !== "eliminated").length}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-white/40">脱落</p>
+                      <p className={`text-xs ${th.faint}`}>脱落</p>
                       <p className="text-xl font-black text-red-400/70">
                         {spectatorPlayers.filter(p => p.status === "eliminated").length}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-white/40">あなた</p>
+                      <p className={`text-xs ${th.faint}`}>あなた</p>
                       <p className={`text-sm font-black ${
                         spectatorData.self
                           ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
                             ? "text-red-400"
                             : "text-green-400"
-                          : "text-white/30"
+                          : th.faint
                       }`}>
                         {spectatorData.self
                           ? spectatorPlayers.find(p => p.is_self)?.status === "eliminated"
@@ -1516,7 +1551,7 @@ export default function RumblePage() {
                 <button
                   onClick={handleSpectatorRefresh}
                   disabled={spectatorLoading}
-                  className="w-full py-2 rounded-xl font-bold text-xs bg-white/5 hover:bg-white/10 transition text-white/50 disabled:opacity-40"
+                  className={`w-full py-2 rounded-xl font-bold text-xs ${th.card} hover:opacity-80 transition ${th.muted} disabled:opacity-40`}
                 >
                   {spectatorLoading ? "取得中..." : "🔃 最新を取得"}
                 </button>
@@ -1524,10 +1559,10 @@ export default function RumblePage() {
 
               {/* 生存者一覧カード */}
               {spectatorData?.status === "ready" && (
-                <div className="bg-white/5 rounded-2xl p-4">
+                <div className={`${th.card} rounded-2xl p-4`}>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-bold text-white/60">生存者</p>
-                    <p className="text-xs text-white/30">
+                    <p className={`text-xs font-bold ${th.muted}`}>生存者</p>
+                    <p className={`text-xs ${th.faint}`}>
                       {spectatorPlayers.filter(p => p.status !== "eliminated").length} / {dailyResult.participant_count}
                     </p>
                   </div>
@@ -1541,10 +1576,10 @@ export default function RumblePage() {
                               ? "bg-red-900/40 text-red-400/60 line-through border border-red-500/20"
                               : "bg-gradient-to-r from-purple-600/40 to-blue-600/40 text-white border border-purple-500/50"
                             : p.status === "eliminated"
-                              ? "bg-white/3 text-white/20 line-through"
+                              ? `${th.ghost} line-through`
                               : p.rank <= 10
                                 ? "bg-yellow-500/10 text-yellow-400/80 border border-yellow-500/20"
-                                : "bg-white/10 text-white/60"
+                                : `${th.card} ${th.muted}`
                         }`}
                       >
                         {p.display_name}
@@ -1566,10 +1601,10 @@ export default function RumblePage() {
                           w.rank === 1 ? "bg-yellow-500/20 border border-yellow-500/40" :
                           w.rank === 2 ? "bg-slate-400/10 border border-slate-400/30" :
                           w.rank === 3 ? "bg-amber-700/10 border border-amber-700/30" :
-                          "bg-white/5"
+                          th.card
                         }`}
                       >
-                        <span className="text-sm font-bold text-white/80">
+                        <span className={`text-sm font-bold ${th.muted}`}>
                           {w.rank === 1 ? "🏆" : w.rank === 2 ? "🥈" : w.rank === 3 ? "🥉" : `${w.rank}位`}{" "}
                           <span className={w.user_id === userId ? "text-purple-300" : ""}>{w.display_name}</span>
                         </span>
@@ -1582,17 +1617,17 @@ export default function RumblePage() {
 
               {/* 今週のランキング簡易 */}
               {spectatorData?.ranking && spectatorData.ranking.length > 0 && (
-                <div className="bg-white/5 rounded-2xl p-4">
-                  <p className="text-xs font-bold text-white/60 mb-3">📊 今週ランキング TOP5</p>
+                <div className={`${th.card} rounded-2xl p-4`}>
+                  <p className={`text-xs font-bold ${th.muted} mb-3`}>📊 今週ランキング TOP5</p>
                   <div className="space-y-1">
                     {spectatorData.ranking.map((r, i) => (
-                      <div key={r.user_id} className={`flex justify-between text-xs py-1 px-2 rounded ${r.user_id === userId ? "bg-purple-500/20 text-white font-bold" : "text-white/50"}`}>
+                      <div key={r.user_id} className={`flex justify-between text-xs py-1 px-2 rounded ${r.user_id === userId ? "bg-purple-500/20 text-white font-bold" : th.muted}`}>
                         <span>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i+1}位`} {r.display_name}</span>
                         <span className="text-purple-400">{r.total_rp} RP</span>
                       </div>
                     ))}
                     {spectatorData.self && (spectatorData.self.week_rank ?? 0) > 5 && (
-                      <div className="flex justify-between text-xs py-1 px-2 rounded bg-purple-500/20 text-white font-bold mt-2 border-t border-white/10 pt-2">
+                      <div className={`flex justify-between text-xs py-1 px-2 rounded bg-purple-500/20 text-white font-bold mt-2 border-t ${th.divider} pt-2`}>
                         <span>👤 {spectatorData.self.week_rank}位 {spectatorData.self.display_name}</span>
                         <span className="text-purple-400">{spectatorData.self.week_rp} RP</span>
                       </div>
