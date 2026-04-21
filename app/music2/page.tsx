@@ -145,6 +145,51 @@ function saveToHistory(entry: MusicHistoryEntry): MusicHistoryEntry[] {
   return next;
 }
 
+// サーバーに履歴を保存（fire-and-forget）
+async function saveToServer(entry: MusicHistoryEntry, userId: string): Promise<void> {
+  try {
+    await fetch("/api/music/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        jobId:       entry.jobId,
+        title:       entry.title,
+        audioUrl:    entry.audioUrl,
+        downloadUrl: entry.downloadUrl,
+        lyrics:      entry.lyrics,
+        createdAt:   entry.createdAt,
+        expiresAt:   entry.expiresAt ?? "",
+      }),
+    });
+  } catch {
+    // サーバー保存失敗はサイレントに無視（localStorage に保存済みなので問題なし）
+  }
+}
+
+// サーバーから履歴を取得してlocalStorageとマージ（jobId で重複排除、createdAt降順）
+async function fetchAndMergeHistory(userId: string): Promise<MusicHistoryEntry[]> {
+  try {
+    const res  = await fetch(`/api/music/history?userId=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    if (!data.ok) return loadHistory();
+    const serverItems: MusicHistoryEntry[] = data.items ?? [];
+    const local  = loadHistory();
+    const merged = new Map<string, MusicHistoryEntry>();
+    // ローカルを先に入れてサーバーで上書き（サーバーが正）
+    local.forEach((e)  => merged.set(e.jobId, e));
+    serverItems.forEach((e) => merged.set(e.jobId, e));
+    const result = Array.from(merged.values())
+      .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1))
+      .slice(0, 50);
+    // マージ結果をlocalStorageにキャッシュ
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(result)); } catch {}
+    return result;
+  } catch {
+    return loadHistory(); // サーバー取得失敗時はlocalStorage fallback
+  }
+}
+
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -225,6 +270,7 @@ export default function Music2Page() {
   // 履歴
   const [history, setHistory] = useState<MusicHistoryEntry[]>([]);
   const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string>("");
 
   // チュートリアル (null=非表示, 0〜3=スライド番号)
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
@@ -251,6 +297,7 @@ export default function Music2Page() {
       router.replace("/login");
       return;
     }
+    // まずlocalStorageを即時表示（高速表示）してからサーバーマージ
     setHistory(loadHistory());
 
     // チュートリアル: 未表示なら自動表示
@@ -259,6 +306,10 @@ export default function Music2Page() {
     }
 
     const id   = (auth as any)?.id || (auth as any)?.loginId || "";
+    if (id) {
+      setUserId(id);
+      fetchAndMergeHistory(id).then(setHistory).catch(() => {});
+    }
     const code = getAuthSecret() || (auth as any)?.token || "";
 
     const cachedPlan = String((auth as any)?.plan ?? "");
@@ -361,6 +412,7 @@ export default function Music2Page() {
                 createdAt:   new Date().toISOString(),
               });
               setHistory(updated);
+              if (userId) saveToServer(updated[0], userId).catch(() => {});
             }
           } else {
             setErrorMsg("曲の取得に失敗しました。");
@@ -444,6 +496,7 @@ export default function Music2Page() {
             createdAt: new Date().toISOString(),
           });
           setHistory(updated);
+          if (userId) saveToServer(updated[0], userId).catch(() => {});
           return;
         }
 
