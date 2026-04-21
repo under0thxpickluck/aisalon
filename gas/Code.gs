@@ -6802,13 +6802,18 @@ function getBattleLogCache_(dateStr) {
 function saveBattleLog_(dateStr, players, events, total, ranking) {
   var sheet = getRumbleBattleLogSheet_();
   var data = sheet.getDataRange().getValues();
-  var headers = data[0];
-  var idx = {};
-  headers.forEach(function(h, i) { idx[h] = i; });
   var nowJst      = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
   var playersJson = JSON.stringify(players);
   var eventsJson  = JSON.stringify(events);
   var rankingJson = JSON.stringify(ranking);
+  if (data.length < 1) {
+    sheet.appendRow([dateStr, playersJson, eventsJson, total, rankingJson, nowJst]);
+    SpreadsheetApp.flush();
+    return;
+  }
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][idx["date"]]) === dateStr) {
       var rowNum = i + 1;
