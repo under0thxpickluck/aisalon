@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTheme } from "../lib/useTheme";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const ADMIN_PASSWORD = "nagoya01@";
 
@@ -60,6 +62,32 @@ type BoostStatus = {
 };
 
 export default function MusicBoostPage() {
+  const { isDark, toggleTheme } = useTheme();
+  const th = {
+    page:       isDark ? "bg-[#0a0a0a] text-white"          : "bg-gray-50 text-gray-900",
+    card:       isDark ? "bg-white/5"                        : "bg-white shadow-sm",
+    cardBorder: isDark ? "border-white/10"                   : "border-gray-200",
+    muted:      isDark ? "text-white/60"                     : "text-gray-500",
+    faint:      isDark ? "text-white/40"                     : "text-gray-400",
+    ghost:      isDark ? "text-white/20"                     : "text-gray-300",
+    modal:      isDark ? "bg-[#18181b] border-white/10"      : "bg-white border-gray-200",
+    progressBg: isDark ? "bg-white/10"                       : "bg-gray-200",
+    inputBg:    isDark ? "bg-white/5 border-white/10 text-white" : "bg-white border-gray-300 text-gray-900",
+    back:       isDark ? "text-white/40"                     : "text-gray-400",
+    helpBtn:    isDark ? "border-white/20 bg-white/5 text-white/50 hover:border-purple-400 hover:bg-purple-500/20 hover:text-purple-300" : "border-gray-300 bg-white text-gray-400 hover:border-purple-400 hover:bg-purple-50 hover:text-purple-500",
+    planCard:   (isCurrent: boolean, isSelected: boolean) =>
+      isDark
+        ? isCurrent  ? "border-purple-500 bg-purple-500/10"
+          : isSelected ? "border-white/30 bg-white/10"
+          : "border-white/10 bg-white/5 hover:bg-white/8"
+        : isCurrent  ? "border-purple-500 bg-purple-50"
+          : isSelected ? "border-gray-400 bg-gray-100"
+          : "border-gray-200 bg-white hover:bg-gray-50",
+    planSubText: isDark ? "text-white/40" : "text-gray-400",
+    planPrice:   isDark ? "text-white/60" : "text-gray-500",
+    disabledBtn: isDark ? "bg-white/10 text-white/30" : "bg-gray-100 text-gray-400",
+    creditBtn:   isDark ? "bg-white/5 text-white/20 border-white/10" : "bg-gray-100 text-gray-400 border-gray-200",
+  };
   const [userId, setUserId]         = useState("");
   const [status, setStatus]         = useState<BoostStatus | null>(null);
   const [busy, setBusy]             = useState(false);
@@ -155,8 +183,8 @@ export default function MusicBoostPage() {
   const currentPlan = status?.current_boost ? PLANS.find(p => p.id === status.current_boost!.plan_id) : null;
 
   if (!authed) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 w-full max-w-sm">
+    <div className={`min-h-screen ${th.page} flex items-center justify-center px-4`}>
+      <div className={`${th.card} border ${th.cardBorder} rounded-2xl p-8 w-full max-w-sm`}>
         <h2 className="text-lg font-bold text-center mb-6">🔒 Music Boost</h2>
         <input
           type="password"
@@ -169,7 +197,7 @@ export default function MusicBoostPage() {
             }
           }}
           placeholder="パスワードを入力"
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm mb-3 outline-none"
+          className={`w-full ${th.inputBg} rounded-xl px-4 py-3 text-sm mb-3 outline-none`}
         />
         {pwError && <p className="text-red-400 text-xs mb-3 text-center">パスワードが違います</p>}
         <button
@@ -186,26 +214,27 @@ export default function MusicBoostPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white px-4 py-8 max-w-lg mx-auto">
+    <div className={`min-h-screen ${th.page} px-4 py-8 max-w-lg mx-auto`}>
+      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
-        <Link href="/top" className="text-white/40 text-sm">← Back</Link>
+        <Link href="/top" className={`${th.back} text-sm`}>← Back</Link>
         <h1 className="font-bold text-lg">🚀 Music Boost</h1>
         <button
           type="button"
           onClick={() => setTutorialStep(0)}
           title="使い方を見る"
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 bg-white/5 text-xs font-bold text-white/50 hover:border-purple-400 hover:bg-purple-500/20 hover:text-purple-300 transition"
+          className={`flex h-7 w-7 items-center justify-center rounded-full border ${th.helpBtn} text-xs font-bold transition`}
         >
           ?
         </button>
       </div>
 
       {/* 説明 */}
-      <div className="bg-white/5 rounded-xl p-4 mb-6 text-sm text-white/60">
+      <div className={`${th.card} border ${th.cardBorder} rounded-xl p-4 mb-6 text-sm ${th.muted}`}>
         <p>音楽ブーストは、企業案件や協力依頼時の優先度を高める月額オプションです。</p>
         <p className="mt-1">ブースト率が高いほど優先的に提案されやすくなります。</p>
-        <p className="mt-1 text-white/30 text-xs">本機能は共有枠を使用するため、空きがない場合は新規契約・変更ができません。</p>
+        <p className={`mt-1 ${th.ghost} text-xs`}>本機能は共有枠を使用するため、空きがない場合は新規契約・変更ができません。</p>
         {epBalance !== null && (
           <p className="mt-2 text-white/50 text-xs font-bold">
             現在のEP残高: <span className="text-purple-300">{epBalance.toLocaleString()} EP</span>
@@ -215,18 +244,18 @@ export default function MusicBoostPage() {
 
       {/* 枠状況 */}
       {status && (
-        <div className="bg-white/5 rounded-xl p-4 mb-6">
+        <div className={`${th.card} border ${th.cardBorder} rounded-xl p-4 mb-6`}>
           <div className="flex justify-between text-sm mb-2">
-            <span className="text-white/60">全体枠</span>
+            <span className={th.muted}>全体枠</span>
             <span className="font-bold">{status.used_slots.toLocaleString()} / {status.total_slots.toLocaleString()}</span>
           </div>
-          <div className="w-full bg-white/10 rounded-full h-2">
+          <div className={`w-full ${th.progressBg} rounded-full h-2`}>
             <div
               className="bg-gradient-to-r from-purple-600 to-blue-500 h-2 rounded-full transition-all"
               style={{ width: `${Math.min(100, (status.used_slots / status.total_slots) * 100)}%` }}
             />
           </div>
-          <p className="text-xs text-white/40 mt-1">残り {status.available_slots.toLocaleString()} 枠</p>
+          <p className={`text-xs ${th.faint} mt-1`}>残り {status.available_slots.toLocaleString()} 枠</p>
         </div>
       )}
 
@@ -256,7 +285,7 @@ export default function MusicBoostPage() {
       )}
 
       {/* プラン一覧 */}
-      <h2 className="font-bold text-sm text-white/60 mb-3">
+      <h2 className={`font-bold text-sm ${th.muted} mb-3`}>
         {status?.current_boost ? "プランを変更する" : "プランを選ぶ"}
       </h2>
       <div className="space-y-3">
@@ -266,23 +295,19 @@ export default function MusicBoostPage() {
           return (
             <div key={plan.id}
               onClick={() => setSelected(selected === plan.id ? null : plan.id)}
-              className={`rounded-xl p-4 border cursor-pointer transition ${
-                isCurrent ? "border-purple-500 bg-purple-500/10" :
-                selected === plan.id ? "border-white/30 bg-white/10" :
-                "border-white/10 bg-white/5 hover:bg-white/8"
-              }`}>
+              className={`rounded-xl p-4 border cursor-pointer transition ${th.planCard(isCurrent, selected === plan.id)}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${plan.color}`} />
                   <div>
                     <p className="font-bold">{plan.label}</p>
-                    <p className="text-xs text-white/40">{plan.slots}枠使用</p>
+                    <p className={`text-xs ${th.planSubText}`}>{plan.slots}枠使用</p>
                     <p className="text-[10px] text-purple-300/70 mt-0.5">{plan.recommend}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="font-black text-purple-400">{plan.percent}%</p>
-                  <p className="text-sm text-white/60">${plan.price}/月</p>
+                  <p className={`text-sm ${th.planPrice}`}>${plan.price}/月</p>
                 </div>
               </div>
               {selected === plan.id && !isCurrent && (
@@ -298,9 +323,9 @@ export default function MusicBoostPage() {
                         disabled={epDisabled}
                         className={`w-full py-2 rounded-lg text-sm font-bold transition ${
                           !canAfford
-                            ? "bg-white/10 text-white/30 cursor-not-allowed"
+                            ? `${th.disabledBtn} cursor-not-allowed`
                             : !hasEnoughEp
-                            ? "bg-white/10 text-red-400/70 cursor-not-allowed"
+                            ? `${th.disabledBtn} text-red-400/70 cursor-not-allowed`
                             : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"
                         }`}>
                         {busy
@@ -316,7 +341,7 @@ export default function MusicBoostPage() {
                   {/* クレジットカードボタン（準備中） */}
                   <button
                     disabled
-                    className="w-full py-2 rounded-lg text-sm font-bold bg-white/5 text-white/20 cursor-not-allowed border border-white/10 flex items-center justify-center gap-2">
+                    className={`w-full py-2 rounded-lg text-sm font-bold ${th.creditBtn} cursor-not-allowed border flex items-center justify-center gap-2`}>
                     <span>💳 クレジットカード</span>
                     <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">準備中</span>
                   </button>
@@ -331,7 +356,7 @@ export default function MusicBoostPage() {
       </div>
 
       {/* 注意書き */}
-      <div className="mt-8 text-xs text-white/20 space-y-1">
+      <div className={`mt-8 text-xs ${th.ghost} space-y-1`}>
         <p>• EPは換金不可です</p>
         <p>• ブースト率・枠数は予告なく変更される場合があります</p>
         <p>• 不正利用が確認された場合はアカウントを停止します</p>
@@ -345,7 +370,7 @@ export default function MusicBoostPage() {
           onClick={() => setConfirmPlan(null)}
         >
           <div
-            className="relative w-full max-w-sm rounded-2xl bg-[#18181b] border border-white/10 p-7 shadow-2xl"
+            className={`relative w-full max-w-sm rounded-2xl ${th.modal} p-7 shadow-2xl`}
             onClick={e => e.stopPropagation()}
           >
             <h2 className="text-base font-extrabold text-white mb-5 text-center">ご確認ください</h2>
@@ -411,7 +436,7 @@ export default function MusicBoostPage() {
           }}
         >
           <div
-            className="relative w-full max-w-sm rounded-2xl bg-[#18181b] border border-white/10 p-7 shadow-2xl"
+            className={`relative w-full max-w-sm rounded-2xl ${th.modal} p-7 shadow-2xl`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* 進捗 */}
