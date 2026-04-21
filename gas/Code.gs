@@ -6765,6 +6765,66 @@ function getRumbleDailyResultSheet_() {
   return sheet;
 }
 
+function getRumbleBattleLogSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("rumble_battle_log");
+  if (!sheet) {
+    sheet = ss.insertSheet("rumble_battle_log");
+    sheet.appendRow(["date", "players_json", "events_json", "total", "ranking_json", "created_at"]);
+  }
+  return sheet;
+}
+
+function getBattleLogCache_(dateStr) {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return null;
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["date"]]) === dateStr) {
+      try {
+        return {
+          players: JSON.parse(String(data[i][idx["players_json"]] || "[]")),
+          events:  JSON.parse(String(data[i][idx["events_json"]]  || "[]")),
+          total:   Number(data[i][idx["total"]] || 0),
+          ranking: JSON.parse(String(data[i][idx["ranking_json"]] || "[]")),
+        };
+      } catch(e) {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function saveBattleLog_(dateStr, players, events, total, ranking) {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  var nowJst      = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  var playersJson = JSON.stringify(players);
+  var eventsJson  = JSON.stringify(events);
+  var rankingJson = JSON.stringify(ranking);
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["date"]]) === dateStr) {
+      var rowNum = i + 1;
+      sheet.getRange(rowNum, idx["players_json"] + 1).setValue(playersJson);
+      sheet.getRange(rowNum, idx["events_json"]  + 1).setValue(eventsJson);
+      sheet.getRange(rowNum, idx["total"]        + 1).setValue(total);
+      sheet.getRange(rowNum, idx["ranking_json"] + 1).setValue(rankingJson);
+      sheet.getRange(rowNum, idx["created_at"]   + 1).setValue(nowJst);
+      SpreadsheetApp.flush();
+      return;
+    }
+  }
+  sheet.appendRow([dateStr, playersJson, eventsJson, total, rankingJson, nowJst]);
+  SpreadsheetApp.flush();
+}
+
 function ensureRumbleDailyResultCols_(sheet) {
   if (sheet.getLastRow() > 0) return;
   sheet.appendRow([
