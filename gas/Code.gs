@@ -5747,6 +5747,8 @@ function doPost(e) {
     if (action === 'bp_refund')      return imageBpRefund_(body);
     if (action === 'image_log')      return imageLog_(body);
     if (action === 'image_history')  return imageHistory_(body);
+    if (action === 'music_history_save') return musicHistorySave_(body);
+    if (action === 'music_history_list') return musicHistoryList_(body);
   // =========================================================
   // narasu代理申請 submit
   // =========================================================
@@ -9968,4 +9970,109 @@ function adjustImageBp_(userId, delta, note) {
   } catch(e) {
     // サイレント失敗
   }
+}
+
+// ============================================================
+// MUSIC HISTORY（音楽生成履歴 サーバー管理）
+// 追加日: 2026-04 / 既存コードへの変更なし・追記のみ
+// ============================================================
+
+function getMusicHistorySheet_() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("music_history");
+  if (!sheet) {
+    sheet = ss.insertSheet("music_history");
+    sheet.appendRow([
+      "id", "user_id", "job_id", "title",
+      "audio_url", "download_url", "lyrics",
+      "created_at", "expires_at"
+    ]);
+  }
+  return sheet;
+}
+
+// action: music_history_save
+// body: { userId, jobId, title, audioUrl, downloadUrl, lyrics, createdAt, expiresAt }
+function musicHistorySave_(body) {
+  var userId      = String(body.userId      || "");
+  var jobId       = String(body.jobId       || "");
+  var title       = String(body.title       || "");
+  var audioUrl    = String(body.audioUrl    || "");
+  var downloadUrl = String(body.downloadUrl || "");
+  var lyrics      = String(body.lyrics      || "");
+  var createdAt   = String(body.createdAt   || new Date().toISOString());
+  var expiresAt   = String(body.expiresAt   || "");
+
+  if (!userId || !jobId) return json_({ ok: false, error: "userId_and_jobId_required" });
+
+  var sheet   = getMusicHistorySheet_();
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  // 同一 job_id が既にあれば上書き（冪等性）
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === userId &&
+        String(data[i][idx["job_id"]])  === jobId) {
+      var rowNum = i + 1;
+      sheet.getRange(rowNum, idx["title"]        + 1).setValue(title);
+      sheet.getRange(rowNum, idx["audio_url"]    + 1).setValue(audioUrl);
+      sheet.getRange(rowNum, idx["download_url"] + 1).setValue(downloadUrl);
+      sheet.getRange(rowNum, idx["lyrics"]       + 1).setValue(lyrics);
+      sheet.getRange(rowNum, idx["expires_at"]   + 1).setValue(expiresAt);
+      SpreadsheetApp.flush();
+      return json_({ ok: true, action: "updated" });
+    }
+  }
+
+  // 新規追加
+  var id = Utilities.getUuid();
+  sheet.appendRow([
+    id, userId, jobId, title,
+    audioUrl, downloadUrl, lyrics,
+    createdAt, expiresAt
+  ]);
+  SpreadsheetApp.flush();
+  return json_({ ok: true, action: "created" });
+}
+
+// action: music_history_list
+// body: { userId, limit? }
+// 返却: 最新50件（expires_at が過去のものは除外）
+function musicHistoryList_(body) {
+  var userId = String(body.userId || "");
+  var limit  = Math.min(Number(body.limit || 50), 50);
+
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var sheet   = getMusicHistorySheet_();
+  var data    = sheet.getDataRange().getValues();
+  if (data.length < 2) return json_({ ok: true, items: [] });
+
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var nowIso = new Date().toISOString();
+  var items  = [];
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) !== userId) continue;
+    var expiresAt = String(data[i][idx["expires_at"]] || "");
+    if (expiresAt && expiresAt < nowIso) continue; // 有効期限切れをスキップ
+    items.push({
+      jobId:       String(data[i][idx["job_id"]]),
+      title:       String(data[i][idx["title"]]),
+      audioUrl:    String(data[i][idx["audio_url"]]),
+      downloadUrl: String(data[i][idx["download_url"]]),
+      lyrics:      String(data[i][idx["lyrics"]]),
+      createdAt:   String(data[i][idx["created_at"]]),
+      expiresAt:   expiresAt,
+    });
+  }
+
+  // created_at 降順で最新 limit 件
+  items.sort(function(a, b) { return b.createdAt > a.createdAt ? 1 : -1; });
+  return json_({ ok: true, items: items.slice(0, limit) });
 }
