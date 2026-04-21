@@ -53,6 +53,37 @@ const LS_RESULT  = 'dango_result';
 const LS_INSTALL = 'dango_install_id';
 const LS_FORTUNE = 'dango_fortune_cache';
 
+// ─── Server Sync Helpers ──────────────────────────────────────────────────────
+function getLoginIdFromStorage(): string {
+  try {
+    const raw = localStorage.getItem('addval_auth_v1');
+    if (raw) {
+      const auth = JSON.parse(raw);
+      if (auth?.id) return String(auth.id);
+    }
+  } catch { /* ignore */ }
+  return '';
+}
+
+async function saveFortuneResultToServer(loginId: string, result: StoredDiagnosis): Promise<void> {
+  try {
+    await fetch('/api/fortune/result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: loginId, result }),
+    });
+  } catch { /* サーバー保存失敗はサイレントに無視 */ }
+}
+
+async function fetchFortuneResultFromServer(loginId: string): Promise<StoredDiagnosis | null> {
+  try {
+    const res  = await fetch(`/api/fortune/result?userId=${encodeURIComponent(loginId)}`);
+    const data = await res.json();
+    if (data.ok && data.result) return data.result as StoredDiagnosis;
+  } catch { /* ignore */ }
+  return null;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function stableHash(s: string): number {
   // FNV-1a (31-bit) — matches Flutter _stableHash
@@ -407,16 +438,26 @@ export default function FortunePage() {
       }
       setInstallId(id);
 
-      // Stored diagnosis
+      // Stored diagnosis — localStorage を即時表示してからサーバーマージ
+      let localDiag: StoredDiagnosis | null = null;
       try {
         const raw = localStorage.getItem(LS_RESULT);
-        if (raw) {
-          const s: StoredDiagnosis = JSON.parse(raw);
-          setStored(s);
-        }
+        if (raw) localDiag = JSON.parse(raw);
       } catch { /* ignore */ }
+      if (localDiag) setStored(localDiag);
 
       setView('home');
+
+      // サーバーから取得してマージ（loginId があれば）
+      const loginId = getLoginIdFromStorage();
+      if (loginId) {
+        fetchFortuneResultFromServer(loginId).then((serverResult) => {
+          if (serverResult) {
+            localStorage.setItem(LS_RESULT, JSON.stringify(serverResult));
+            setStored(serverResult);
+          }
+        }).catch(() => {});
+      }
     })();
   }, []);
 
@@ -443,6 +484,8 @@ export default function FortunePage() {
     setStored(r);
     setDisplayDiag(r);
     setView('result');
+    const lid = getLoginIdFromStorage();
+    if (lid) saveFortuneResultToServer(lid, r).catch(() => {});
   }
 
   // openFortune: compute fortune data, show fortune view, grant BP
