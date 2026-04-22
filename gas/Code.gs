@@ -5757,10 +5757,11 @@ function doPost(e) {
   if (action === 'monitor_games_stats')  return json_(monitorGamesStats_());
   if (action === 'monitor_market_stats') return json_(monitorMarketStats_());
   if (action === 'monitor_wallet_stats')       return json_(monitorWalletStats_());
-  if (action === 'monitor_boost_subscribers') return json_(monitorBoostSubscribers_());
-  if (action === 'monitor_rumble_today')      return json_(monitorRumbleToday_());
-  if (action === 'monitor_rumble_daily')      return json_(monitorRumbleDaily_());
-  if (action === 'monitor_rumble_weekly')     return json_(monitorRumbleWeekly_());
+  if (action === 'monitor_boost_subscribers')  return json_(monitorBoostSubscribers_());
+  if (action === 'monitor_rumble_today')       return json_(monitorRumbleToday_());
+  if (action === 'monitor_rumble_daily')       return json_(monitorRumbleDaily_());
+  if (action === 'monitor_rumble_weekly')      return json_(monitorRumbleWeekly_());
+  if (action === 'monitor_rumble_spectator')   return json_(monitorRumbleSpectator_());
 
   // =========================================================
   // narasu代理申請 submit
@@ -10635,5 +10636,65 @@ function rumbleEpForRank_(rank, total) {
     return rank === 1 ? 300 : rank === 2 ? 200 : rank === 3 ? 120 : rank <= 5 ? 40 : 0;
   } else {
     return rank === 1 ? 280 : rank === 2 ? 190 : rank === 3 ? 120 : rank <= 5 ? 45 : rank <= 10 ? 4 : 0;
+  }
+}
+
+
+function monitorRumbleSpectator_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var entrySheet = ss.getSheetByName('rumble_entry');
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    if (!entrySheet || entrySheet.getLastRow() < 2) {
+      return { ok: true, status: 'no_entries', date: todayStr, events: [], players: [], total: 0 };
+    }
+
+    var data = entrySheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    // Find today's first participant to use as requestor for spectator
+    var firstUserId = null;
+    var todayCount = 0;
+    for (var i = 1; i < data.length; i++) {
+      if (rumbleDateStr_(data[i][idx['date']]) === todayStr) {
+        if (!firstUserId) firstUserId = String(data[i][idx['user_id']] || '');
+        todayCount++;
+      }
+    }
+
+    if (!firstUserId) {
+      // No entries today — return last entry date for diagnosis
+      var lastDate = '';
+      for (var i = 1; i < data.length; i++) {
+        var d = rumbleDateStr_(data[i][idx['date']]);
+        if (d > lastDate) lastDate = d;
+      }
+      return {
+        ok: true,
+        status: 'no_today_entries',
+        date: todayStr,
+        last_entry_date: lastDate || null,
+        events: [],
+        players: [],
+        total: 0
+      };
+    }
+
+    // Reuse existing spectator logic
+    var spectatorResult = rumbleSpectator_({ userId: firstUserId });
+    return {
+      ok: true,
+      status: 'ready',
+      date: todayStr,
+      total: todayCount,
+      events:  spectatorResult.events  || [],
+      players: spectatorResult.players || [],
+    };
+  } catch (e) {
+    return { ok: false, error: String(e), status: 'error' };
   }
 }
