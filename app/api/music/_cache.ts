@@ -43,3 +43,18 @@ export function updateJob(jobId: string, update: Partial<JobState>): void {
   const existing = jobCache.get(jobId);
   if (existing) jobCache.set(jobId, { ...existing, ...update });
 }
+
+// ── 監視用集計 ──────────────────────────────────────────────────────
+export function getAllJobStats(): {
+  active_jobs: number
+  stage_counts: Record<JobStage, number>
+} {
+  const counts: Record<JobStage, number> = {
+    verse: 0, chorus: 0, bridge: 0, merging: 0, done: 0, failed: 0,
+  }
+  for (const job of Array.from(jobCache.values())) {
+    counts[job.stage] = (counts[job.stage] ?? 0) + 1
+  }
+  const active = counts.verse + counts.chorus + counts.bridge + counts.merging
+  return { active_jobs: active, stage_counts: counts }
+}

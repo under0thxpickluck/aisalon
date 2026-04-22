@@ -5749,6 +5749,15 @@ function doPost(e) {
     if (action === 'image_history')  return imageHistory_(body);
     if (action === 'music_history_save') return musicHistorySave_(body);
     if (action === 'music_history_list') return musicHistoryList_(body);
+
+  // =========================================================
+  // MONITOR ACTIONS（監視ダッシュボード用 — 追加のみ、既存コード無変更）
+  // =========================================================
+  if (action === 'monitor_song_stats')   return json_(monitorSongStats_());
+  if (action === 'monitor_games_stats')  return json_(monitorGamesStats_());
+  if (action === 'monitor_market_stats') return json_(monitorMarketStats_());
+  if (action === 'monitor_wallet_stats') return json_(monitorWalletStats_());
+
   // =========================================================
   // narasu代理申請 submit
   // =========================================================
@@ -10075,4 +10084,276 @@ function musicHistoryList_(body) {
   // created_at 降順で最新 limit 件
   items.sort(function(a, b) { return b.createdAt > a.createdAt ? 1 : -1; });
   return json_({ ok: true, items: items.slice(0, limit) });
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Monitor helper functions（監視ダッシュボード用）
+// ──────────────────────────────────────────────────────────────────────
+
+function monitorSongStats_() {
+  try {
+    var sheet = getMusicJobSheet_();
+    if (!sheet || sheet.getLastRow() < 2) {
+      return {
+        ok: true,
+        status_counts: {
+          lyrics_generating: 0, lyrics_done: 0,
+          structure_generating: 0, structure_done: 0,
+          audio_generating: 0, done: 0, failed: 0
+        },
+        avg_total_duration_sec: null
+      };
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    var counts = {
+      lyrics_generating: 0, lyrics_ready: 0,
+      structure_generating: 0, structure_ready: 0,
+      generating_audio: 0, audio_generating: 0,
+      postprocessing: 0, uploading_result: 0,
+      completed: 0, failed: 0, cancelled: 0
+    };
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[idx['job_id']]) continue;
+      var status = String(row[idx['status']] || '');
+      if (counts.hasOwnProperty(status)) {
+        counts[status]++;
+      }
+    }
+
+    var doneToday = 0, failedToday = 0;
+    for (var j = 1; j < data.length; j++) {
+      var r = data[j];
+      if (!r[idx['job_id']]) continue;
+      var updatedAt = String(r[idx['updated_at']] || '');
+      if (updatedAt.slice(0, 10) === todayStr) {
+        var st = String(r[idx['status']] || '');
+        if (st === 'completed') doneToday++;
+        if (st === 'failed') failedToday++;
+      }
+    }
+
+    return {
+      ok: true,
+      status_counts: {
+        lyrics_generating: counts.lyrics_generating,
+        lyrics_done: counts.lyrics_ready,
+        structure_generating: counts.structure_generating,
+        structure_done: counts.structure_ready,
+        audio_generating: counts.generating_audio + counts.audio_generating + counts.postprocessing + counts.uploading_result,
+        done: doneToday,
+        failed: failedToday
+      },
+      avg_total_duration_sec: null
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorGamesStats_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var tapActiveUsers = 0;
+    var tapTotalTaps = 0;
+    var batchCallsLast5m = 0;
+
+    var batchSheet = ss.getSheetByName('tap_batch_logs');
+    if (batchSheet && batchSheet.getLastRow() > 1) {
+      var bData = batchSheet.getDataRange().getValues();
+      var bHeaders = bData[0];
+      var bIdx = {};
+      bHeaders.forEach(function(h, i) { bIdx[h] = i; });
+
+      var nowJst5 = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      var todayStr5 = nowJst5.toISOString().slice(0, 10);
+      var fiveMinAgo = Date.now() - 5 * 60 * 1000;
+      var tapUsers = {};
+
+      for (var i = 1; i < bData.length; i++) {
+        var row = bData[i];
+        var createdAt = String(row[bIdx['created_at']] || '');
+        if (createdAt.slice(0, 10) !== todayStr5) continue;
+        var userId = String(row[bIdx['user_id']] || '');
+        tapUsers[userId] = true;
+        tapTotalTaps += Number(row[bIdx['processed_tap_count']] || 0);
+
+        var rowTime = new Date(createdAt).getTime();
+        if (!isNaN(rowTime) && rowTime > fiveMinAgo) {
+          batchCallsLast5m++;
+        }
+      }
+      tapActiveUsers = Object.keys(tapUsers).length;
+    }
+
+    var rumbleParticipants = 0;
+    var entrySheet = ss.getSheetByName('rumble_entry');
+    if (entrySheet && entrySheet.getLastRow() > 1) {
+      rumbleParticipants = entrySheet.getLastRow() - 1;
+    }
+
+    return {
+      ok: true,
+      tap: {
+        active_users_today: tapActiveUsers,
+        total_taps_today: tapTotalTaps,
+        batch_calls_last_5m: batchCallsLast5m
+      },
+      rumble: {
+        current_participants: rumbleParticipants,
+        gacha_today: 0,
+        enhance_today: 0,
+        dismantle_today: 0
+      }
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorMarketStats_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var marketSheet = ss.getSheetByName('market');
+    if (!marketSheet) {
+      return {
+        ok: true,
+        active_items: 0,
+        orders_today: 0,
+        reports_today: 0,
+        sell_requests_today: 0
+      };
+    }
+
+    var data = marketSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    var activeItems = 0;
+    var ordersToday = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var status = String(row[idx['status']] || '');
+      if (status === 'active') activeItems++;
+
+      var updatedAt = String(row[idx['updated_at']] || row[idx['created_at']] || '');
+      if (status === 'sold' && updatedAt.slice(0, 10) === todayStr) {
+        ordersToday++;
+      }
+    }
+
+    var sellToday = 0;
+    var sellSheet = ss.getSheetByName('SellRequests');
+    if (sellSheet && sellSheet.getLastRow() > 1) {
+      var sData = sellSheet.getDataRange().getValues();
+      var sHeaders = sData[0];
+      var sIdx = {};
+      sHeaders.forEach(function(h, i) { sIdx[h] = i; });
+      for (var j = 1; j < sData.length; j++) {
+        var createdAt = String(sData[j][sIdx['created_at']] || '');
+        if (createdAt.slice(0, 10) === todayStr) sellToday++;
+      }
+    }
+
+    return {
+      ok: true,
+      active_items: activeItems,
+      orders_today: ordersToday,
+      reports_today: 0,
+      sell_requests_today: sellToday
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorWalletStats_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var boostSheet = ss.getSheetByName('music_boost');
+    if (!boostSheet || boostSheet.getLastRow() < 2) {
+      return {
+        ok: true,
+        pending_bp_claims: 0,
+        music_boost_active: 0,
+        music_boost_expiring_soon: 0,
+        music_boost_canceled_today: 0
+      };
+    }
+
+    var data = boostSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var nowMs = Date.now();
+    var nowJst = new Date(nowMs + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+    var threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+
+    var active = 0, expiringSoon = 0, canceledToday = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var status = String(row[idx['status']] || '');
+
+      if (status === 'active') {
+        active++;
+        var expiresAt = row[idx['expires_at']];
+        if (expiresAt) {
+          var expMs = new Date(expiresAt).getTime();
+          if (!isNaN(expMs) && expMs - nowMs < threeDaysMs && expMs > nowMs) {
+            expiringSoon++;
+          }
+        }
+      }
+
+      if (status === 'canceled') {
+        var canceledAt = String(row[idx['canceled_at']] || row[idx['updated_at']] || '');
+        if (canceledAt.slice(0, 10) === todayStr) canceledToday++;
+      }
+    }
+
+    var pendingBp = 0;
+    var pendingSheet = ss.getSheetByName('PendingBP');
+    if (pendingSheet && pendingSheet.getLastRow() > 1) {
+      var pData = pendingSheet.getDataRange().getValues();
+      var pHeaders = pData[0];
+      var pIdx = {};
+      pHeaders.forEach(function(h, i) { pIdx[h] = i; });
+      for (var j = 1; j < pData.length; j++) {
+        var claimed = pData[j][pIdx['claimed_at']];
+        if (!claimed) pendingBp++;
+      }
+    }
+
+    return {
+      ok: true,
+      pending_bp_claims: pendingBp,
+      music_boost_active: active,
+      music_boost_expiring_soon: expiringSoon,
+      music_boost_canceled_today: canceledToday
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }
