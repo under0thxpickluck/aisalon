@@ -1174,6 +1174,12 @@ export default function RumblePage() {
                   <p className={`text-sm ${th.faint} mt-1`}>🔒 スコアは18:50に公開されます</p>
                 )}
               </div>
+            ) : isAfter1850Jst ? (
+              <div>
+                <div className="text-4xl mb-2">⏳</div>
+                <p className={`font-bold ${th.muted}`}>バトル準備中</p>
+                <p className={`text-xs ${th.faint} mt-1`}>18:50 で参加締め切り済みです</p>
+              </div>
             ) : (
               <button onClick={handleEntry} disabled={busy || !status}
                 className={`w-full py-4 rounded-xl font-black text-lg transition ${(busy || !status) ? `${th.closeBtn} cursor-not-allowed` : "bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105"}`}>

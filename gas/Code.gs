@@ -6799,9 +6799,10 @@ function getBattleLogCache_(dateStr) {
   var idx = {};
   headers.forEach(function(h, i) { idx[h] = i; });
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idx["date"]]) === dateStr) {
+    if (rumbleDateStr_(data[i][idx["date"]]) === dateStr) {
       try {
         return {
+          date:    dateStr,
           players: JSON.parse(String(data[i][idx["players_json"]] || "[]")),
           events:  JSON.parse(String(data[i][idx["events_json"]]  || "[]")),
           total:   Number(data[i][idx["total"]] || 0),
@@ -6813,6 +6814,31 @@ function getBattleLogCache_(dateStr) {
     }
   }
   return null;
+}
+
+function getLatestBattleLogCache_() {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return null;
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  var latestDate = '';
+  var latestRow = null;
+  for (var i = 1; i < data.length; i++) {
+    var d = rumbleDateStr_(data[i][idx["date"]]);
+    if (d > latestDate) { latestDate = d; latestRow = data[i]; }
+  }
+  if (!latestRow) return null;
+  try {
+    return {
+      date:    latestDate,
+      players: JSON.parse(String(latestRow[idx["players_json"]] || "[]")),
+      events:  JSON.parse(String(latestRow[idx["events_json"]]  || "[]")),
+      total:   Number(latestRow[idx["total"]] || 0),
+      ranking: JSON.parse(String(latestRow[idx["ranking_json"]] || "[]")),
+    };
+  } catch(e) { return null; }
 }
 
 function saveBattleLog_(dateStr, players, events, total, ranking) {
@@ -6831,7 +6857,7 @@ function saveBattleLog_(dateStr, players, events, total, ranking) {
   var idx = {};
   headers.forEach(function(h, i) { idx[h] = i; });
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idx["date"]]) === dateStr) {
+    if (rumbleDateStr_(data[i][idx["date"]]) === dateStr) {
       var rowNum = i + 1;
       sheet.getRange(rowNum, idx["players_json"] + 1).setValue(playersJson);
       sheet.getRange(rowNum, idx["events_json"]  + 1).setValue(eventsJson);
@@ -7514,9 +7540,9 @@ var RUMBLE_DAILY_BP_REWARDS_ = [1000, 700, 400, 250, 200];
 function rumbleDailyLottery_(params) {
   var dateStr  = String(params.date || getTodayJst_());
   // created_at in rumble_entry is stored as fake-JST ISO (Date.now()+9h).
-  // 19:00 JST stored in that format = "YYYY-MM-DDT19:00:00.000Z"
+  // 18:50 JST stored in that format = "YYYY-MM-DDT18:50:00.000Z"
   // deadlineOverride を渡すと任意の締め切りで実行可能（rumble_run_now から使用）
-  var deadline = params.deadlineOverride || (dateStr + "T19:00:00.000Z");
+  var deadline = params.deadlineOverride || (dateStr + "T18:50:00.000Z");
 
   // 1. Get participants filtered by deadline
   var entrySheet = getRumbleEntrySheet_();
@@ -7701,8 +7727,16 @@ function rumbleDailyLottery_(params) {
   return json_({ ok: true, distributed: distributed, date: dateStr, participant_count: participants.length });
 }
 
-/** Called by GAS time trigger (毎日 19:00〜20:00 JST) */
+/** Called by GAS time trigger (毎日 18:50〜19:59 JST を目標に atHour(18)+atHour(19) の2本で登録) */
 function rumbleDailyLotteryTrigger_() {
+  // GASトリガーは指定時間帯のどこかで発火するため、18:50以前は何もしない
+  var nowJst   = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var jstHour  = nowJst.getUTCHours();
+  var jstMin   = nowJst.getUTCMinutes();
+  if (jstHour < 18 || (jstHour === 18 && jstMin < 50)) {
+    Logger.log("[rumbleDailyLotteryTrigger_] Too early (JST " + jstHour + ":" + jstMin + "), skipping.");
+    return;
+  }
   var today = getTodayJst_();
   rumbleDailyLottery_({ date: today });
   // 抽選完了後にバトルログを生成・シートに保存（翌日以降も確実に取得できるようにする）
@@ -7717,7 +7751,7 @@ function rumbleDailyResult_(params) {
   var todayStr = getTodayJst_();
   var isToday  = dateStr === todayStr;
   // Deadline same as lottery filter
-  var deadline = dateStr + "T19:00:00.000Z";
+  var deadline = dateStr + "T18:50:00.000Z";
 
   // --- Participants ---
   var entrySheet = getRumbleEntrySheet_();
@@ -9632,11 +9666,17 @@ function setupRumbleTriggers_() {
     }
   });
 
-  // Daily lottery: every day 19:00–20:00 JST
+  // Daily lottery: 18:xx (main — fires 18:00–18:59, guard skips if before 18:50)
   ScriptApp.newTrigger("rumbleDailyLotteryTrigger_")
     .timeBased()
     .everyDays(1)
-    .atHour(19) // GAS uses script timezone; set GAS timezone to Asia/Tokyo in Project Settings
+    .atHour(18) // GAS uses script timezone; set GAS timezone to Asia/Tokyo in Project Settings
+    .create();
+  // Daily lottery: 19:xx (fallback — idempotency check skips if already done at 18:xx)
+  ScriptApp.newTrigger("rumbleDailyLotteryTrigger_")
+    .timeBased()
+    .everyDays(1)
+    .atHour(19)
     .create();
 
   // Weekly EP reward: every Friday 23:00–24:00 JST
@@ -10647,52 +10687,63 @@ function monitorRumbleSpectator_() {
     var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
     var todayStr = nowJst.toISOString().slice(0, 10);
 
-    if (!entrySheet || entrySheet.getLastRow() < 2) {
-      return { ok: true, status: 'no_entries', date: todayStr, events: [], players: [], total: 0 };
-    }
-
-    var data = entrySheet.getDataRange().getValues();
-    var headers = data[0];
-    var idx = {};
-    headers.forEach(function(h, i) { idx[h] = i; });
-
-    // Find today's first participant to use as requestor for spectator
+    // Scan rumble_entry for today
     var firstUserId = null;
     var todayCount = 0;
-    for (var i = 1; i < data.length; i++) {
-      if (rumbleDateStr_(data[i][idx['date']]) === todayStr) {
-        if (!firstUserId) firstUserId = String(data[i][idx['user_id']] || '');
-        todayCount++;
+    var lastEntryDate = '';
+    if (entrySheet && entrySheet.getLastRow() >= 2) {
+      var data = entrySheet.getDataRange().getValues();
+      var headers = data[0];
+      var idx = {};
+      headers.forEach(function(h, i) { idx[h] = i; });
+      for (var i = 1; i < data.length; i++) {
+        var d = rumbleDateStr_(data[i][idx['date']]);
+        if (d === todayStr) {
+          if (!firstUserId) firstUserId = String(data[i][idx['user_id']] || '');
+          todayCount++;
+        }
+        if (d > lastEntryDate) lastEntryDate = d;
       }
     }
 
-    if (!firstUserId) {
-      // No entries today — return last entry date for diagnosis
-      var lastDate = '';
-      for (var i = 1; i < data.length; i++) {
-        var d = rumbleDateStr_(data[i][idx['date']]);
-        if (d > lastDate) lastDate = d;
-      }
+    if (firstUserId) {
+      // Today has entries — generate (or read from cache) via existing spectator logic
+      var raw = rumbleSpectator_({ userId: firstUserId });
+      var spectatorResult = JSON.parse(raw.getContent());
       return {
-        ok: true,
-        status: 'no_today_entries',
-        date: todayStr,
-        last_entry_date: lastDate || null,
-        events: [],
-        players: [],
-        total: 0
+        ok:      true,
+        status:  'ready',
+        date:    todayStr,
+        total:   todayCount,
+        last_entry_date: todayStr,
+        events:  spectatorResult.events  || [],
+        players: spectatorResult.players || [],
       };
     }
 
-    // Reuse existing spectator logic
-    var spectatorResult = rumbleSpectator_({ userId: firstUserId });
+    // No entries today — fall back to most recent cached battle log
+    var cached = getLatestBattleLogCache_();
+    if (cached && cached.events && cached.events.length > 0) {
+      return {
+        ok:      true,
+        status:  'ready',
+        date:    cached.date,
+        total:   cached.total,
+        last_entry_date: cached.date,
+        events:  cached.events,
+        players: cached.players,
+      };
+    }
+
+    // Nothing available
     return {
       ok: true,
-      status: 'ready',
+      status: 'no_entries',
       date: todayStr,
-      total: todayCount,
-      events:  spectatorResult.events  || [],
-      players: spectatorResult.players || [],
+      total: 0,
+      last_entry_date: lastEntryDate || null,
+      events: [],
+      players: [],
     };
   } catch (e) {
     return { ok: false, error: String(e), status: 'error' };
