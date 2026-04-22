@@ -5756,7 +5756,11 @@ function doPost(e) {
   if (action === 'monitor_song_stats')   return json_(monitorSongStats_());
   if (action === 'monitor_games_stats')  return json_(monitorGamesStats_());
   if (action === 'monitor_market_stats') return json_(monitorMarketStats_());
-  if (action === 'monitor_wallet_stats') return json_(monitorWalletStats_());
+  if (action === 'monitor_wallet_stats')       return json_(monitorWalletStats_());
+  if (action === 'monitor_boost_subscribers') return json_(monitorBoostSubscribers_());
+  if (action === 'monitor_rumble_today')      return json_(monitorRumbleToday_());
+  if (action === 'monitor_rumble_daily')      return json_(monitorRumbleDaily_());
+  if (action === 'monitor_rumble_weekly')     return json_(monitorRumbleWeekly_());
 
   // =========================================================
   // narasu代理申請 submit
@@ -10355,5 +10359,281 @@ function monitorWalletStats_() {
     };
   } catch (e) {
     return { ok: false, error: String(e) };
+  }
+}
+
+
+// ──────────────────────────────────────────────────────────────────────
+// Monitor helpers — Boost & Rumble（監視ダッシュボード用）
+// ──────────────────────────────────────────────────────────────────────
+
+function monitorBoostSubscribers_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var boostSheet = getMusicBoostSheet_();
+    if (!boostSheet || boostSheet.getLastRow() < 2) {
+      return { ok: true, subscribers: [], total: 0 };
+    }
+
+    var data = boostSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var displayNameMap = {};
+    var appliesSheet = ss.getSheetByName('applies');
+    if (appliesSheet && appliesSheet.getLastRow() > 1) {
+      var aData = appliesSheet.getDataRange().getValues();
+      var aHeaders = aData[0];
+      var aIdx = {};
+      aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+      for (var ai = 1; ai < aData.length; ai++) {
+        var uid = String(aData[ai][aIdx['login_id']] || '');
+        if (!uid) continue;
+        displayNameMap[uid] = String(aData[ai][aIdx['rumble_display_name']] || '') || uid;
+      }
+    }
+
+    var subscribers = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[idx['status']] || '') !== 'active') continue;
+      var userId = String(row[idx['user_id']] || '');
+      subscribers.push({
+        user_id:      userId,
+        display_name: displayNameMap[userId] || userId,
+        plan_id:      String(row[idx['plan_id']] || ''),
+        percent:      Number(row[idx['percent']] || 0),
+        slots_used:   Number(row[idx['slots_used']] || 0),
+        started_at:   String(row[idx['started_at']] || ''),
+        expires_at:   String(row[idx['expires_at']] || ''),
+      });
+    }
+
+    subscribers.sort(function(a, b) { return b.percent - a.percent; });
+    return { ok: true, subscribers: subscribers, total: subscribers.length };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorRumbleToday_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var entrySheet = ss.getSheetByName('rumble_entry');
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    if (!entrySheet || entrySheet.getLastRow() < 2) {
+      return { ok: true, date: todayStr, participants: [], total: 0 };
+    }
+
+    var data = entrySheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var displayNameMap = {};
+    var appliesSheet = ss.getSheetByName('applies');
+    if (appliesSheet && appliesSheet.getLastRow() > 1) {
+      var aData = appliesSheet.getDataRange().getValues();
+      var aHeaders = aData[0];
+      var aIdx = {};
+      aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+      for (var ai = 1; ai < aData.length; ai++) {
+        var uid = String(aData[ai][aIdx['login_id']] || '');
+        if (uid) displayNameMap[uid] = String(aData[ai][aIdx['rumble_display_name']] || '') || uid;
+      }
+    }
+
+    var participants = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var dateStr = rumbleDateStr_(row[idx['date']]);
+      if (dateStr !== todayStr) continue;
+      var userId = String(row[idx['user_id']] || '');
+      participants.push({
+        user_id:      userId,
+        display_name: displayNameMap[userId] || userId,
+        score:        Number(row[idx['score']] || 0),
+        rp:           Number(row[idx['rp']] || 0),
+        created_at:   String(row[idx['created_at']] || ''),
+      });
+    }
+
+    participants.sort(function(a, b) { return b.score - a.score; });
+    participants.forEach(function(p, i) { p.rank = i + 1; });
+    return { ok: true, date: todayStr, participants: participants, total: participants.length };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorRumbleDaily_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var resultSheet = ss.getSheetByName('rumble_daily_result');
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    if (!resultSheet || resultSheet.getLastRow() < 2) {
+      return { ok: true, status: 'no_data', date: todayStr, winners: [], participant_count: 0 };
+    }
+
+    var data = resultSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var todayRows = [];
+    var latestDate = '';
+    var latestRows = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var d = rumbleDateStr_(data[i][idx['date']]);
+      if (d === todayStr) {
+        todayRows.push(data[i]);
+      }
+      if (d > latestDate) {
+        latestDate = d;
+        latestRows = [data[i]];
+      } else if (d === latestDate) {
+        latestRows.push(data[i]);
+      }
+    }
+
+    var targetRows = todayRows.length > 0 ? todayRows : latestRows;
+    var targetDate = todayRows.length > 0 ? todayStr : latestDate;
+    var isToday = todayRows.length > 0;
+
+    if (targetRows.length === 0) {
+      return { ok: true, status: 'no_data', date: todayStr, winners: [], participant_count: 0 };
+    }
+
+    var participantCount = Number(targetRows[0][idx['participant_count']] || 0);
+    var allDistributed = targetRows.every(function(row) { return !!row[idx['distributed']]; });
+
+    if (!allDistributed && isToday) {
+      return {
+        ok: true, status: 'pending', date: targetDate, is_today: true,
+        participant_count: participantCount, winners: []
+      };
+    }
+
+    var winners = targetRows.map(function(row) {
+      return {
+        rank:         Number(row[idx['rank']] || 0),
+        user_id:      String(row[idx['user_id']] || ''),
+        display_name: String(row[idx['display_name']] || ''),
+        bp_amount:    Number(row[idx['bp_amount']] || 0),
+        distributed:  !!row[idx['distributed']],
+      };
+    });
+    winners.sort(function(a, b) { return a.rank - b.rank; });
+
+    return {
+      ok: true, status: 'ready', date: targetDate, is_today: isToday,
+      participant_count: participantCount, winners: winners
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorRumbleWeekly_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var weekId = getRumbleWeekId_();
+    var weekSheet = ss.getSheetByName('rumble_week');
+
+    if (!weekSheet || weekSheet.getLastRow() < 2) {
+      return { ok: true, week_id: weekId, participant_count: 0, ranking: [], ep_table: rumbleEpTable_(0) };
+    }
+
+    var data = weekSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var displayNameMap = {};
+    var appliesSheet = ss.getSheetByName('applies');
+    if (appliesSheet && appliesSheet.getLastRow() > 1) {
+      var aData = appliesSheet.getDataRange().getValues();
+      var aHeaders = aData[0];
+      var aIdx = {};
+      aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+      for (var ai = 1; ai < aData.length; ai++) {
+        var uid = String(aData[ai][aIdx['login_id']] || '');
+        if (uid) displayNameMap[uid] = String(aData[ai][aIdx['rumble_display_name']] || '') || uid;
+      }
+    }
+
+    var ranking = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[idx['week_id']] || '') !== weekId) continue;
+      var userId = String(row[idx['user_id']] || '');
+      ranking.push({
+        user_id:    userId,
+        display_name: displayNameMap[userId] || userId,
+        total_rp:   Number(row[idx['total_rp']] || 0),
+        updated_at: String(row[idx['updated_at']] || ''),
+      });
+    }
+
+    ranking.sort(function(a, b) { return b.total_rp - a.total_rp; });
+    var total = ranking.length;
+    ranking.forEach(function(r, i) {
+      r.rank = i + 1;
+      r.ep_reward = rumbleEpForRank_(i + 1, total);
+    });
+
+    return {
+      ok: true, week_id: weekId, participant_count: total,
+      ranking: ranking.slice(0, 100), ep_table: rumbleEpTable_(total)
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function getRumbleWeekId_() {
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var day = nowJst.getDay();
+  var monday = new Date(nowJst);
+  monday.setDate(nowJst.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setHours(0, 0, 0, 0);
+  var startOfYear = new Date(monday.getFullYear(), 0, 1);
+  var weekNum = Math.ceil(((monday - startOfYear) / 86400000 + 1) / 7);
+  return monday.getFullYear() + '-W' + String(weekNum).padStart(2, '0');
+}
+
+
+function rumbleEpTable_(total) {
+  if (total <= 2) {
+    return [{ rank: '1位', ep: 400 }, { rank: '2位', ep: 300 }];
+  } else if (total <= 4) {
+    return [{ rank: '1位', ep: 350 }, { rank: '2位', ep: 230 }, { rank: '3位', ep: 120 }];
+  } else if (total <= 9) {
+    return [{ rank: '1位', ep: 300 }, { rank: '2位', ep: 200 }, { rank: '3位', ep: 120 }, { rank: '4〜5位', ep: 40 }];
+  } else {
+    return [{ rank: '1位', ep: 280 }, { rank: '2位', ep: 190 }, { rank: '3位', ep: 120 }, { rank: '4〜5位', ep: 45 }, { rank: '6〜10位', ep: 4 }];
+  }
+}
+
+
+function rumbleEpForRank_(rank, total) {
+  if (total <= 2) {
+    return rank === 1 ? 400 : rank === 2 ? 300 : 0;
+  } else if (total <= 4) {
+    return rank === 1 ? 350 : rank === 2 ? 230 : rank === 3 ? 120 : 0;
+  } else if (total <= 9) {
+    return rank === 1 ? 300 : rank === 2 ? 200 : rank === 3 ? 120 : rank <= 5 ? 40 : 0;
+  } else {
+    return rank === 1 ? 280 : rank === 2 ? 190 : rank === 3 ? 120 : rank <= 5 ? 45 : rank <= 10 ? 4 : 0;
   }
 }
