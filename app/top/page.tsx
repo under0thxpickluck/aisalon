@@ -365,6 +365,52 @@ function ReferralCard({ auth }: { auth: AuthState }) {
   );
 }
 
+// ── お知らせデータ（空配列のときは「なし」表示） ────────────────────
+type Notice = {
+  id: string;
+  date: string;   // "YYYY-MM-DD"
+  title: string;
+  body: string;
+};
+
+const NOTICES: Notice[] = [
+  // 例:
+  // { id: "1", date: "2026-04-24", title: "メンテナンスのお知らせ", body: "4月25日 2:00〜4:00 はメンテナンスのためサービスが停止します。" },
+];
+
+function NoticeBoard() {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+      <p className="text-[10px] font-extrabold tracking-wide text-slate-500">お知らせ</p>
+      {NOTICES.length === 0 ? (
+        <p className="mt-1 text-xs text-slate-400">なし</p>
+      ) : (
+        <ul className="mt-1 divide-y divide-slate-100">
+          {NOTICES.map((n) => (
+            <li key={n.id}>
+              <button
+                onClick={() => setOpenId(openId === n.id ? null : n.id)}
+                className="flex w-full items-start gap-2 rounded px-1 py-2 text-left transition hover:bg-slate-100"
+              >
+                <span className="mt-0.5 shrink-0 text-[10px] text-slate-400">{n.date}</span>
+                <span className="flex-1 text-xs font-semibold text-slate-700">{n.title}</span>
+                <span className="shrink-0 text-[10px] text-slate-400">{openId === n.id ? "▲" : "▼"}</span>
+              </button>
+              {openId === n.id && (
+                <div className="px-1 pb-2">
+                  <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600">{n.body}</p>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 type AppDef = {
   id: string;
   label: string;
@@ -585,15 +631,7 @@ export default function AppHomePage() {
             </div>
             <div>
               <p className="text-lg font-extrabold text-white">{selectedApp.label}</p>
-              {selectedApp.id === 'music2' ? (
-                <ul className="mt-1 text-sm text-zinc-400 text-left space-y-1">
-                  <li>① 歌詞を作成</li>
-                  <li>② メロディを作成</li>
-                  <li>③ 音楽生成 ※ボーカルは現在未実装です</li>
-                </ul>
-              ) : (
-                <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
-              )}
+              <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
             </div>
             {selectedApp.badge === '準備中' ? (
               <button
@@ -643,19 +681,15 @@ export default function AppHomePage() {
 
       <div className="mx-auto max-w-[920px] px-4 py-6">
         <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_18px_rgba(16,185,129,.35)]" />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,.4)]" />
                 LIFAI APP HOME
               </div>
-
-              <h1 className="mt-4 text-xl font-extrabold tracking-tight text-slate-900">
+              <h1 className="truncate text-sm font-extrabold tracking-tight text-slate-900">
                 LIFAIへようこそ
               </h1>
-              <p className="mt-2 hidden text-xs text-slate-600 sm:block">
-                使いたい機能を「アプリアイコン」から開けます。
-              </p>
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
@@ -669,6 +703,8 @@ export default function AppHomePage() {
               </button>
             </div>
           </div>
+
+          <NoticeBoard />
 
           {/* ✅ アプリグリッド（LINEミニアプリ風 4列） */}
           <div className="mt-6">

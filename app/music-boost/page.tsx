@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useTheme } from "../lib/useTheme";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-const ADMIN_PASSWORD = "nagoya01@";
-
 // ── チュートリアル ────────────────────────────────────────────────────────────
 
 const BOOST_TUTORIAL_KEY = "musicboost_tutorial_seen";
@@ -101,25 +99,16 @@ export default function MusicBoostPage() {
   const [msg, setMsg]               = useState("");
   const [selected, setSelected]     = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
-  const [authed, setAuthed]         = useState(false);
-  const [pwInput, setPwInput]       = useState("");
-  const [pwError, setPwError]       = useState(false);
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [epBalance, setEpBalance]       = useState<number | null>(null);
   const [confirmPlan, setConfirmPlan]   = useState<typeof PLANS[number] | null>(null);
 
+  // チュートリアル初回表示チェック
   useEffect(() => {
-    const ok = sessionStorage.getItem("music_boost_authed");
-    if (ok === "1") setAuthed(true);
-  }, []);
-
-  // 認証後にチュートリアル初回表示チェック
-  useEffect(() => {
-    if (!authed) return;
     if (!localStorage.getItem(BOOST_TUTORIAL_KEY)) {
       setTutorialStep(0);
     }
-  }, [authed]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -188,37 +177,6 @@ export default function MusicBoostPage() {
   };
 
   const currentPlan = status?.current_boost ? PLANS.find(p => p.id === status.current_boost!.plan_id) : null;
-
-  if (!authed) return (
-    <div className={`min-h-screen ${th.page} flex items-center justify-center px-4`}>
-      <div className={`${th.card} border ${th.cardBorder} rounded-2xl p-8 w-full max-w-sm`}>
-        <h2 className="text-lg font-bold text-center mb-6">🔒 Music Boost</h2>
-        <input
-          type="password"
-          value={pwInput}
-          onChange={e => { setPwInput(e.target.value); setPwError(false); }}
-          onKeyDown={e => {
-            if (e.key === "Enter") {
-              if (pwInput === ADMIN_PASSWORD) { sessionStorage.setItem("music_boost_authed", "1"); setAuthed(true); }
-              else setPwError(true);
-            }
-          }}
-          placeholder="パスワードを入力"
-          className={`w-full ${th.inputBg} rounded-xl px-4 py-3 text-sm mb-3 outline-none`}
-        />
-        {pwError && <p className="text-red-400 text-xs mb-3 text-center">パスワードが違います</p>}
-        <button
-          onClick={() => {
-            if (pwInput === ADMIN_PASSWORD) { sessionStorage.setItem("music_boost_authed", "1"); setAuthed(true); }
-            else setPwError(true);
-          }}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-bold text-sm"
-        >
-          入室する
-        </button>
-      </div>
-    </div>
-  );
 
   return (
     <div className={`min-h-screen ${th.page} px-4 py-8 max-w-lg mx-auto`}>
