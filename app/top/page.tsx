@@ -144,15 +144,20 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
 
   return (
     <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-700">
-      <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-extrabold text-white">
+      <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-extrabold text-white leading-none">
         WALLET
       </span>
-      <span>BP</span>
-      <span className="font-extrabold text-slate-900">{bp}</span>
-      <span className="opacity-40">/</span>
-      <span>EP</span>
-      <span className="font-extrabold text-slate-900">{ep}</span>
-      {err ? <span className="ml-2 text-[10px] opacity-50">({err})</span> : null}
+      <div className="flex flex-col gap-0.5 leading-none">
+        <span className="flex items-center gap-0.5">
+          <span className="text-slate-500">BP</span>
+          <span className="font-extrabold text-slate-900">{bp}</span>
+        </span>
+        <span className="flex items-center gap-0.5">
+          <span className="text-slate-500">EP</span>
+          <span className="font-extrabold text-slate-900">{ep}</span>
+        </span>
+      </div>
+      {err ? <span className="text-[10px] opacity-50">(!)</span> : null}
     </div>
   );
 }
@@ -385,7 +390,7 @@ function NoticeBoard() {
     <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
       <p className="text-[10px] font-extrabold tracking-wide text-slate-500">お知らせ</p>
       {NOTICES.length === 0 ? (
-        <p className="mt-1 text-xs text-slate-400">なし</p>
+        <p className="mt-1 text-xs text-slate-400">最新のお知らせはありません</p>
       ) : (
         <ul className="mt-1 divide-y divide-slate-100">
           {NOTICES.map((n) => (
@@ -500,6 +505,20 @@ export default function AppHomePage() {
           }
         })
         .catch(() => {});
+
+      // 月次BP回復チェック（30日に1回、サイレント失敗）
+      fetch("/api/wallet/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId, group: (a as any)?.group || "" }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok && data.bp_recovered > 0) {
+            setBalanceTrigger((n) => n + 1);
+          }
+        })
+        .catch(() => {});
     }
   }, [router]);
 
@@ -539,10 +558,10 @@ export default function AppHomePage() {
     () => [
       { id: "fortune",  label: "団子占い",     icon: "🔮", color: "from-violet-500 to-purple-600",  href: "/fortune",    desc: "毎日の運勢 +10BP" },
       { id: "market",   label: "マーケット",   icon: "🛒", color: "from-orange-400 to-amber-500",   href: "/market",     desc: "メンバー間売買" },
-      { id: "gacha",    label: "ガチャ",       icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
+      { id: "gacha",    label: "LIFASLOT",    icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
       { id: "staking",  label: "ステーキング", icon: "💎", color: "from-cyan-400 to-teal-500",      href: "#staking",    desc: "BPを預けて増やす",      onOpen: () => { setSelectedApp(null); setShowStaking(true); } },
       { id: "member",    label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600",  href: "/membership", desc: "プランをアップグレード" },
-      { id: "music2",    label: "音楽生成",     icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",        desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
+      { id: "music2",    label: "MUSICCREATE", icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",        desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
       { id: "music-boost", label: "Music Boost", icon: "🚀", color: "from-purple-700 to-blue-600",   href: "/music-boost",   desc: "案件優先度を高める月額ブースト",    badge: "New"  },
       { id: "note",      label: "ノート生成",    icon: "📝", color: "from-violet-400 to-purple-500", href: "/note-generator", desc: "構成→本文→見出し→導入文まで一括", badge: "New" },
       { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
@@ -699,7 +718,7 @@ export default function AppHomePage() {
                 onClick={logout}
                 className="rounded-2xl border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
-                退出
+                LOGOUT
               </button>
             </div>
           </div>
