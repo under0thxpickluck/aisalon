@@ -10875,3 +10875,38 @@ function monitorRumbleSpectator_() {
     return { ok: false, error: String(e), status: 'error' };
   }
 }
+
+// ============================================================
+// RUMBLE 自動エントリー（管理者用タイムトリガー）
+// 使い方:
+//   1. GASスクリプトプロパティに RUMBLE_AUTO_USER_IDS = "your_login_id" を設定
+//   2. createRumbleAutoEntryTrigger_() を一度だけ手動実行 → 毎日JST 6:00に自動エントリー
+// ============================================================
+
+function rumbleAutoEntry_() {
+  var prop = PropertiesService.getScriptProperties().getProperty('RUMBLE_AUTO_USER_IDS') || '';
+  var userIds = prop.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+  if (userIds.length === 0) {
+    Logger.log('[rumbleAutoEntry] RUMBLE_AUTO_USER_IDS が未設定です');
+    return;
+  }
+  userIds.forEach(function(userId) {
+    var result = rumbleEntry_({ userId: userId });
+    Logger.log('[rumbleAutoEntry] userId=' + userId + ' result=' + JSON.stringify(result));
+  });
+}
+
+function createRumbleAutoEntryTrigger_() {
+  // 既存の同名トリガーを削除してから再登録（重複防止）
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'rumbleAutoEntry_') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger('rumbleAutoEntry_')
+    .timeBased()
+    .everyDays(1)
+    .atHour(6) // JST 6:00（GASはプロジェクトタイムゾーン基準）
+    .create();
+  Logger.log('[createRumbleAutoEntryTrigger] 毎日6時のトリガーを登録しました');
+}
