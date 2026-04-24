@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAuth, getAuthSecret } from "@/app/lib/auth";
+import GiftEPTutorial, { useGiftEPTutorial } from "@/components/GiftEPTutorial";
 
 const GIFT_PASSWORD = "nagoya01@";
 
@@ -21,6 +22,7 @@ export default function GiftEPTopPage() {
   const [myCode, setMyCode] = useState("");
   const [data, setData] = useState<BalanceData | null>(null);
   const [loading, setLoading] = useState(true);
+  const { open: tutorialOpen, openTutorial, closeTutorial } = useGiftEPTutorial();
 
   useEffect(() => {
     if (sessionStorage.getItem("gift_ep_authed") === "1") setAuthed(true);
@@ -81,6 +83,8 @@ export default function GiftEPTopPage() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>
+      <GiftEPTutorial open={tutorialOpen} onClose={closeTutorial} />
+
       <div style={{ position: "fixed", inset: 0, zIndex: -10, pointerEvents: "none",
         background: "radial-gradient(ellipse 800px 500px at 20% -10%, rgba(124,58,237,0.18) 0%, transparent 60%)" }} />
 
@@ -96,6 +100,14 @@ export default function GiftEPTopPage() {
             padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "rgba(234,240,255,0.65)" }}>
             🎁 GiftEP
           </div>
+          <button
+            onClick={openTutorial}
+            style={{ marginLeft: "auto", width: 30, height: 30, borderRadius: 9999,
+              border: "1px solid rgba(167,139,250,0.3)", background: "rgba(167,139,250,0.1)",
+              fontSize: 13, fontWeight: 700, color: "#A78BFA", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            ?
+          </button>
         </div>
 
         <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em", color: "#EAF0FF", marginBottom: 4 }}>

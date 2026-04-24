@@ -14,7 +14,7 @@
     "jsx": "preserve",
     "plugins": [{ "name": "next" }],
 
-    "types": ["node"],
+    "types": ["node", "jest"],
 
     "baseUrl": ".",
     "paths": {

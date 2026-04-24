@@ -16,12 +16,14 @@ export async function GET() {
       );
     }
 
-    const url =
-      `${base}?action=get_sell_requests` +
-      `&key=${encodeURIComponent(key)}` +
-      `&adminKey=${encodeURIComponent(adminKey)}`;
+    const url = `${base}${base.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
 
-    const res = await fetch(url, { method: "GET", cache: "no-store" });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ action: "get_sell_requests", adminKey }),
+    });
     const text = await res.text();
 
     let data: any;

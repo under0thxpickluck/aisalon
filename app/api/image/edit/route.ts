@@ -10,11 +10,12 @@ const GAS_URL = process.env.GAS_WEBAPP_URL ?? "";
 const GAS_KEY = process.env.GAS_API_KEY ?? "";
 
 async function gasPost(action: string, body: Record<string, unknown>) {
-  const r = await fetch(GAS_URL, {
+  const url = `${GAS_URL}${GAS_URL.includes("?") ? "&" : "?"}key=${encodeURIComponent(GAS_KEY)}`;
+  const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
-    body: JSON.stringify({ action, key: GAS_KEY, ...body }),
+    body: JSON.stringify({ action, ...body }),
   });
   return r.json();
 }

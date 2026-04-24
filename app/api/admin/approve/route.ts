@@ -32,17 +32,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ 4) GASには GETクエリで渡す（listと同じ方式）
-    const url =
-      `${base}?action=admin_approve` +
-      `&key=${encodeURIComponent(key)}` +
-      `&adminKey=${encodeURIComponent(adminKey)}` +
-      `&rowIndex=${encodeURIComponent(String(rowIndex))}`;
+    const url = `${base}${base.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
 
     // 5) GAS呼び出し
     const res = await fetch(url, {
-      method: "GET",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       cache: "no-store",
+      body: JSON.stringify({ action: "admin_approve", adminKey, rowIndex }),
     });
 
     // 6) 応答をJSONとして返す（GAS側がJSONを返している前提）

@@ -13,10 +13,15 @@ export async function POST(req: Request) {
   }
 
   const loginId = String(body?.loginId ?? "");
+  const id      = String(body?.id      ?? "");
   const group   = String(body?.group   ?? "");
 
   if (!loginId) {
     return NextResponse.json({ ok: false, error: "loginId_required" }, { status: 400 });
+  }
+
+  if (!id || id !== loginId) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 403 });
   }
 
   const gasUrl      = process.env.GAS_WEBAPP_URL;

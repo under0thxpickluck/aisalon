@@ -510,7 +510,7 @@ export default function AppHomePage() {
       fetch("/api/wallet/recover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginId, group: (a as any)?.group || "" }),
+        body: JSON.stringify({ loginId, id: loginId, group: (a as any)?.group || "" }),
       })
         .then((r) => r.json())
         .then((data) => {

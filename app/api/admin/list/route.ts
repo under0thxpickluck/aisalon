@@ -19,15 +19,13 @@ export async function GET() {
       );
     }
 
-    // 🔥 GAS用URL（GETクエリ）
-    const url =
-      `${base}?action=admin_list` +
-      `&key=${encodeURIComponent(key)}` +
-      `&adminKey=${encodeURIComponent(adminKey)}`;
+    const url = `${base}${base.includes("?") ? "&" : "?"}key=${encodeURIComponent(key)}`;
 
     const res = await fetch(url, {
-      method: "GET",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       cache: "no-store",
+      body: JSON.stringify({ action: "admin_list", adminKey }),
     });
 
     const text = await res.text();

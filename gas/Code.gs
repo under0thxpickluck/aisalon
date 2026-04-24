@@ -32,6 +32,9 @@ function buildRefTreeManual_() {
   return handle_(secrets.SECRET, body);
 }
 
+// NOTE: これらの doGet/doPost 定義は後方の定義（最終定義）に上書きされるため無効です。
+// 最終有効定義: doPost @ 5788行付近, doGet @ 5911行付近
+/*
 function doGet(e) {
   try {
     const key = pickKey_(e);
@@ -106,6 +109,7 @@ function doPost(e) {
     return json_({ ok: false, error: String(err) });
   }
 }
+*/
 
 function handle_(key, body) {
   const secrets = getSecrets_();
@@ -3470,7 +3474,7 @@ function handle_(key, body) {
         now,
         "submitted",
         str_(body.narasu_login_id),
-        str_(body.narasu_password),
+        "[OMITTED]",
         str_(body.audio_urls),
         str_(body.lyrics_text),
         str_(body.jacket_image_url),
@@ -3481,6 +3485,17 @@ function handle_(key, body) {
         str_(body.agreed_at),
         ""
       ]);
+      // パスワードはシートに保存せず管理者メールのみに送信
+      try {
+        var adminEmail = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL') || '';
+        if (adminEmail) {
+          MailApp.sendEmail(adminEmail,
+            '[LIFAI] narasu申請 ' + requestId + ' ログイン情報',
+            'requestId: ' + requestId + '\nloginId: ' + str_(body.narasu_login_id) + '\npassword: ' + str_(body.narasu_password));
+        }
+      } catch(mailErr) {
+        Logger.log('[narasu_agency_submit] email送信失敗: ' + String(mailErr));
+      }
       Logger.log("[narasu_agency_submit] saved: " + requestId);
       return json_({ ok: true, requestId: requestId });
     } catch (e) {
@@ -4631,6 +4646,8 @@ var MARKET_MIN_EP_TO_LIST_ = 1;
 var MARKET_RESERVE_HOURS_ = 24;
 
 // ---- doPost 再定義（market_ / gift_ アクションをそれぞれのハンドラへルーティング）----
+// NOTE: この doPost/doGet 定義は後方の最終定義に上書きされるため無効です。
+/*
 function doPost(e) {
   try {
     const key = pickKey_(e);
@@ -4723,6 +4740,7 @@ function doGet(e) {
     return json_({ ok: false, error: String(err) });
   }
 }
+*/
 
 // ==============================
 // handleMarket_ : market_* アクションのメインハンドラ
@@ -5717,6 +5735,8 @@ function handle_sell_request_(data) {
 
 // 2. 申請一覧取得（admin用）
 function handle_get_sell_requests_(data) {
+  const secrets = getSecrets_();
+  if (str_(data.adminKey) !== secrets.ADMIN_SECRET) return { ok: false, error: 'admin_unauthorized' };
   const sheet = getSellRequestsSheet_();
   const rows = sheet.getDataRange().getValues();
   const headers = rows[0];
@@ -5730,6 +5750,8 @@ function handle_get_sell_requests_(data) {
 
 // 3. BP付与（admin用）
 function handle_grant_bp_for_sell_(data) {
+  const secrets = getSecrets_();
+  if (str_(data.adminKey) !== secrets.ADMIN_SECRET) return { ok: false, error: 'admin_unauthorized' };
   const request_id = str_(data.request_id);
   const user_id = str_(data.user_id);
   const bp_amount = num_(data.bp_amount);
@@ -5881,7 +5903,7 @@ function doPost(e) {
         now,
         "submitted",
         str_(body.narasu_login_id),
-        str_(body.narasu_password),
+        "[OMITTED]",
         str_(body.audio_urls),
         str_(body.lyrics_text),
         str_(body.jacket_image_url),
@@ -5892,6 +5914,17 @@ function doPost(e) {
         str_(body.agreed_at),
         ""
       ]);
+      // パスワードはシートに保存せず管理者メールのみに送信
+      try {
+        var adminEmail = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL') || '';
+        if (adminEmail) {
+          MailApp.sendEmail(adminEmail,
+            '[LIFAI] narasu申請 ' + requestId + ' ログイン情報',
+            'requestId: ' + requestId + '\nloginId: ' + str_(body.narasu_login_id) + '\npassword: ' + str_(body.narasu_password));
+        }
+      } catch(mailErr) {
+        Logger.log('[narasu_agency_submit] email送信失敗: ' + String(mailErr));
+      }
       Logger.log("[narasu_agency_submit] saved: " + requestId);
       return json_({ ok: true, requestId: requestId });
     } catch (e) {
@@ -6851,10 +6884,10 @@ function ensureEquipmentCols_(sheet) {
 }
 
 function getWeekId_() {
-  var now = new Date(); // GASタイムゾーンがAsia/Tokyo(JST)のため、手動オフセット不要
-  var year = now.getFullYear();
-  var startOfYear = new Date(year, 0, 1);
-  var weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  var now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var year = now.getUTCFullYear();
+  var startOfYear = new Date(Date.UTC(year, 0, 1));
+  var weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getUTCDay() + 1) / 7);
   return year + "-W" + String(weekNum).padStart(2, "0");
 }
 
