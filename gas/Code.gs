@@ -1746,6 +1746,93 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // monthly_bp_recover（月次BP回復：30日に1回）
+  // - adminKey 認証必須（GAS_ADMIN_KEY）
+  // - group:"5000" で applies_5000 シートに振り分け
+  // - bp_last_reset_at で30日経過チェック（空 = 初回 = 即回復）
+  // - 回復量 = min(cap×50%, max(0, cap - currentBp))
+  // - cap超えの場合は回復量0だがbp_last_reset_atは更新する
+  // =========================================================
+  if (action === "monthly_bp_recover") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const loginId_rec = str_(body.loginId);
+    const group_rec   = str_(body.group);
+    if (!loginId_rec) return json_({ ok: false, error: "loginId_required" });
+
+    const targetSheet_rec = group_rec === "5000" ? getAppliesSheet5000_() : sheet;
+
+    let values_rec = targetSheet_rec.getDataRange().getValues();
+    let header_rec = values_rec[0];
+
+    ensureCols_(targetSheet_rec, header_rec, [
+      "login_id", "bp_balance", "bp_last_reset_at", "plan",
+    ]);
+
+    values_rec = targetSheet_rec.getDataRange().getValues();
+    header_rec = values_rec[0];
+
+    const idx_rec  = indexMap_(header_rec);
+    const rows_rec = values_rec.slice(1);
+
+    let hitRowIndex_rec = 0;
+    let hitEmail_rec    = "";
+
+    for (let i = 0; i < rows_rec.length; i++) {
+      if (str_(rows_rec[i][idx_rec["login_id"]]) === loginId_rec) {
+        hitRowIndex_rec = i + 2;
+        hitEmail_rec    = str_(rows_rec[i][idx_rec["email"]] || "");
+        break;
+      }
+    }
+
+    if (!hitRowIndex_rec) return json_({ ok: false, error: "not_found" });
+
+    // 前回回復日チェック（30日 = 30 * 24 * 60 * 60 * 1000 ms）
+    const lastResetRaw_rec = targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_last_reset_at"] + 1).getValue();
+    if (lastResetRaw_rec) {
+      const elapsed_rec = Date.now() - new Date(lastResetRaw_rec).getTime();
+      if (elapsed_rec < 30 * 24 * 60 * 60 * 1000) {
+        return json_({ ok: false, reason: "already_recovered" });
+      }
+    }
+
+    // plan → bp_cap
+    const plan_rec            = str_(targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["plan"] + 1).getValue());
+    const BP_CAP_MAP_REC      = { "34":300, "57":600, "114":1200, "567":6000, "1134":12000 };
+    const BP_CAP_MAP_REC_5000 = { "500":1000, "2000":4000, "3000":8000, "5000":10000 };
+    const capMap_rec = group_rec === "5000" ? BP_CAP_MAP_REC_5000 : BP_CAP_MAP_REC;
+    const bpCap_rec  = capMap_rec[plan_rec] ?? 0;
+    if (!bpCap_rec) return json_({ ok: false, reason: "unknown_plan" });
+
+    // 回復量計算
+    const currentBp_rec = Number(targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_balance"] + 1).getValue() || 0);
+    const recover_rec   = Math.min(Math.floor(bpCap_rec * 0.5), Math.max(0, bpCap_rec - currentBp_rec));
+
+    // bp_last_reset_at は回復量0でも更新（次の30日サイクルを開始）
+    targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_last_reset_at"] + 1).setValue(new Date());
+
+    if (recover_rec === 0) {
+      return json_({ ok: true, bp_recovered: 0, bp_balance: currentBp_rec });
+    }
+
+    const newBp_rec = currentBp_rec + recover_rec;
+    targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_balance"] + 1).setValue(newBp_rec);
+
+    appendWalletLedger_({
+      kind:     "monthly_recover",
+      login_id: loginId_rec,
+      email:    hitEmail_rec,
+      amount:   recover_rec,
+      memo:     "月次BP回復（cap=" + bpCap_rec + "）",
+    });
+
+    return json_({ ok: true, bp_recovered: recover_rec, bp_balance: newBp_rec });
+  }
+
+  // =========================================================
   // get_missions（今日のミッション状況取得）
   // - adminKey 認証必須（GAS_ADMIN_KEY）
   // - loginId でユーザーを検索し、ミッション列と bp_balance を返す
