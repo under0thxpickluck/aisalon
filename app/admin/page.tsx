@@ -731,7 +731,7 @@ export default function AdminPage() {
                             </a>
                           ) : "—"}
                         </Td>
-                        <Td>{req.price_usdt ? `$${req.price_usdt}` : "—"}</Td>
+                        <Td>{req.price_usdt ? `${req.price_usdt} EP` : "—"}</Td>
                         <Td className="max-w-[140px]"><div className="truncate text-xs text-zinc-400">{req.memo || "—"}</div></Td>
                         <Td>
                           <span className={[

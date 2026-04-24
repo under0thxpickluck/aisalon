@@ -6,7 +6,7 @@ export default function ApplySellPage() {
   const [loginId,   setLoginId]   = useState("");
   const [title,     setTitle]     = useState("");
   const [musicUrl,  setMusicUrl]  = useState("");
-  const [priceUsd,  setPriceUsd]  = useState("");
+  const [priceUsd,  setPriceUsd]  = useState("20");
   const [memo,      setMemo]      = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted,  setSubmitted]  = useState(false);
@@ -87,13 +87,14 @@ export default function ApplySellPage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-white/60 mb-1">希望売却価格（USDT）</label>
+              <label className="block text-sm text-white/60 mb-1">希望売却価格（EP）</label>
+              <div className="mb-1 text-xs text-amber-400">現在の相場：20 EP</div>
               <input
                 type="number"
                 value={priceUsd}
                 onChange={e => setPriceUsd(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:border-purple-500 focus:outline-none"
-                placeholder="例：50"
+                placeholder="例：20"
                 min={0}
               />
             </div>
