@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cacheLyrics, cacheJob } from "../_cache";
+import { cacheLyrics, cacheJob, checkAndIncrementRateLimit } from "../_cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -247,6 +247,7 @@ type GenerateRequest = {
   bpm?: number;
   waveform?: string;
   vocal?: string;
+  userId?: string;
 };
 
 export async function POST(req: Request) {
@@ -274,7 +275,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const { prompt, mode, bpm = 120, waveform = "sine", vocal = "none" } = body;
+  const { prompt, mode, bpm = 120, waveform = "sine", vocal = "none", userId } = body;
+
+  // レートリミットチェック（userId がある場合のみ適用）
+  if (userId && typeof userId === "string") {
+    const allowed = checkAndIncrementRateLimit(userId);
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, error: "rate_limited" },
+        { status: 429 }
+      );
+    }
+  }
 
   if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
     console.error("[MUSIC-GENERATE] failed: prompt_required - received:", JSON.stringify(prompt));

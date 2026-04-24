@@ -44,6 +44,30 @@ export function updateJob(jobId: string, update: Partial<JobState>): void {
   if (existing) jobCache.set(jobId, { ...existing, ...update });
 }
 
+// ── レートリミット ──────────────────────────────────────────────────
+const RATE_WINDOW_MS = 3 * 60 * 60 * 1000; // 3時間
+const RATE_MAX = 5;
+
+type RateLimitEntry = { count: number; windowStart: number };
+const rateLimitStore = new Map<string, RateLimitEntry>();
+
+export function checkAndIncrementRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitStore.get(userId);
+
+  if (!entry || now - entry.windowStart >= RATE_WINDOW_MS) {
+    rateLimitStore.set(userId, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (entry.count >= RATE_MAX) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
 // ── 監視用集計 ──────────────────────────────────────────────────────
 export function getAllJobStats(): {
   active_jobs: number

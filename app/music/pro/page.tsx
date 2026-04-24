@@ -371,6 +371,7 @@ export default function MusicProPage() {
     let predictionId: string;
 
     try {
+      const authNow = getAuth();
       const res = await fetch("/api/music/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -380,11 +381,16 @@ export default function MusicProPage() {
           bpm: bpmValue,
           waveform: WAVEFORM_API_MAP[waveformType] ?? "sine",
           vocal: VOCAL_STYLE_API[vocalStyle] || "none",
+          userId: authNow?.id || "",
         }),
       });
       const data = await res.json();
       if (!data.ok) {
-        setErrorMsg(musicError("MUSIC-001"));
+        if (data.error === "rate_limited") {
+          setErrorMsg("現在ジョブが込み合っております。しばらくたってからお試しください。");
+        } else {
+          setErrorMsg(musicError("MUSIC-001"));
+        }
         setStatus("failed");
         return;
       }
