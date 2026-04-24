@@ -3504,6 +3504,73 @@ function handle_(key, body) {
     }
   }
 
+  // =========================================================
+  // 楽曲売却申請（music_sell_submit / music_sell_list / music_sell_update）
+  // =========================================================
+  if (action === "music_sell_submit") {
+    try {
+      var loginId = str_(body.loginId);
+      if (!loginId) return json_({ ok: false, error: "loginId_required" });
+      var ss2 = SpreadsheetApp.getActiveSpreadsheet();
+      var mss = ss2.getSheetByName("music_sell_requests");
+      if (!mss) {
+        mss = ss2.insertSheet("music_sell_requests");
+        mss.appendRow(["request_id","login_id","title","music_url","price_usdt","memo","status","created_at"]);
+      }
+      var mRequestId = "MSR-" + Date.now();
+      var mNow = new Date().toISOString();
+      mss.appendRow([mRequestId, loginId, str_(body.title), str_(body.music_url),
+                     str_(body.price_usdt), str_(body.memo), "pending", mNow]);
+      return json_({ ok: true, requestId: mRequestId });
+    } catch(e) {
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
+  if (action === "music_sell_list") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) return json_({ ok: false, error: "admin_unauthorized" });
+    try {
+      var ss3 = SpreadsheetApp.getActiveSpreadsheet();
+      var mss2 = ss3.getSheetByName("music_sell_requests");
+      if (!mss2) return json_({ ok: true, requests: [] });
+      var mRows = mss2.getDataRange().getValues();
+      var mHeaders = mRows[0];
+      var mResult = mRows.slice(1).map(function(r) {
+        var obj = {};
+        mHeaders.forEach(function(h, i) { obj[h] = r[i]; });
+        return obj;
+      });
+      return json_({ ok: true, requests: mResult });
+    } catch(e) {
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
+  if (action === "music_sell_update") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) return json_({ ok: false, error: "admin_unauthorized" });
+    try {
+      var requestId2 = str_(body.requestId);
+      var newStatus  = str_(body.status); // "approved" or "rejected"
+      if (!requestId2 || !newStatus) return json_({ ok: false, error: "missing_params" });
+      var ss4 = SpreadsheetApp.getActiveSpreadsheet();
+      var mss3 = ss4.getSheetByName("music_sell_requests");
+      if (!mss3) return json_({ ok: false, error: "sheet_not_found" });
+      var mRows2   = mss3.getDataRange().getValues();
+      var mHeaders2 = mRows2[0];
+      var ridIdx   = mHeaders2.indexOf("request_id");
+      var stIdx    = mHeaders2.indexOf("status");
+      for (var mi = 1; mi < mRows2.length; mi++) {
+        if (str_(mRows2[mi][ridIdx]) === requestId2) {
+          mss3.getRange(mi + 1, stIdx + 1).setValue(newStatus);
+          return json_({ ok: true });
+        }
+      }
+      return json_({ ok: false, error: "request_not_found" });
+    } catch(e) {
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
   // actionが不明
   return json_({ ok: false, error: "bad_action" });
 }

@@ -14,6 +14,17 @@ type SellRequest = {
   status?: string;
 };
 
+type MusicSellRequest = {
+  request_id: string;
+  login_id: string;
+  title: string;
+  music_url: string;
+  price_usdt: string;
+  memo: string;
+  status: string;
+  created_at: string;
+};
+
 type ApplyRow = {
   created_at?: string;
   plan?: string | number;
@@ -198,6 +209,13 @@ export default function AdminPage() {
   const [msg,      setMsg]      = useState<string | null>(null);
   const [err,      setErr]      = useState<string | null>(null);
 
+  // --- 楽曲売却申請 ---
+  const [musicSellRequests, setMusicSellRequests] = useState<MusicSellRequest[]>([]);
+  const [musicSellLoading,  setMusicSellLoading]  = useState(false);
+  const [musicSellErr,      setMusicSellErr]      = useState<string | null>(null);
+  const [musicSellMsg,      setMusicSellMsg]      = useState<string | null>(null);
+  const [updatingMusicId,   setUpdatingMusicId]   = useState<string | null>(null);
+
   // --- 既存: 売却申請 ---
   const [sellRequests, setSellRequests] = useState<SellRequest[]>([]);
   const [sellLoading,  setSellLoading]  = useState(false);
@@ -240,6 +258,39 @@ export default function AdminPage() {
       setErr(String(e?.message ?? e));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMusicSellRequests = async () => {
+    setMusicSellLoading(true); setMusicSellErr(null);
+    try {
+      const res  = await fetch("/api/admin/music-sell-requests", { cache: "no-store" });
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.error || "failed");
+      setMusicSellRequests(Array.isArray(json.requests) ? json.requests : []);
+    } catch (e: any) {
+      setMusicSellErr(String(e?.message ?? e));
+    } finally {
+      setMusicSellLoading(false);
+    }
+  };
+
+  const handleMusicSellUpdate = async (requestId: string, status: "approved" | "rejected") => {
+    setUpdatingMusicId(requestId); setMusicSellErr(null); setMusicSellMsg(null);
+    try {
+      const res  = await fetch("/api/admin/music-sell-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, status }),
+      });
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.error || "update_failed");
+      setMusicSellMsg(status === "approved" ? "✅ 承認しました" : "❌ 却下しました");
+      await loadMusicSellRequests();
+    } catch (e: any) {
+      setMusicSellErr(String(e?.message ?? e));
+    } finally {
+      setUpdatingMusicId(null);
     }
   };
 
@@ -339,6 +390,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     load();
+    loadMusicSellRequests();
     loadSellRequests();
     loadDashboard();
     loadMembers(0);
@@ -489,7 +541,7 @@ export default function AdminPage() {
         <header className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-bold text-white">LIFAI 管理</h1>
           <button
-            onClick={() => { load(); loadSellRequests(); loadDashboard(); loadMembers(membersPage); }}
+            onClick={() => { load(); loadMusicSellRequests(); loadSellRequests(); loadDashboard(); loadMembers(membersPage); }}
             className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-black hover:bg-amber-600"
           >
             再読み込み
@@ -622,6 +674,94 @@ export default function AdminPage() {
                           >
                             {busy ? "処理中…" : "承認して発行"}
                           </button>
+                        </Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* ═══ セクション4: 楽曲売却申請管理 ══════════════════ */}
+        <section className="mb-6 rounded-2xl bg-zinc-900 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-lg font-semibold text-zinc-200">🎵 楽曲売却申請管理</p>
+            <button
+              onClick={loadMusicSellRequests}
+              disabled={musicSellLoading}
+              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {musicSellLoading ? "読み込み中…" : "更新"}
+            </button>
+          </div>
+
+          {musicSellMsg && <div className="mb-3 rounded-xl bg-emerald-900/50 px-4 py-2 text-sm font-bold text-emerald-300">{musicSellMsg}</div>}
+          {musicSellErr && <div className="mb-3 rounded-xl bg-red-900/50 px-4 py-2 text-sm font-bold text-red-300">エラー：{musicSellErr}</div>}
+
+          {musicSellLoading ? (
+            <div className="h-20 animate-pulse rounded-xl bg-zinc-800" />
+          ) : musicSellRequests.length === 0 ? (
+            <EmptyState title="申請はありません" desc="楽曲売却申請が入るとここに表示されます。" />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-zinc-800">
+              <table className="w-full min-w-[720px] text-left">
+                <thead className="bg-zinc-800">
+                  <tr>
+                    <Th>申請日時</Th><Th>ユーザー</Th><Th>楽曲タイトル</Th>
+                    <Th>URL</Th><Th>希望価格</Th><Th>メモ</Th>
+                    <Th>ステータス</Th><Th className="text-right">操作</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {musicSellRequests.map((req, i) => {
+                    const busy = updatingMusicId === req.request_id;
+                    const isPending = req.status === "pending";
+                    return (
+                      <tr key={req.request_id || i} className="border-t border-zinc-800 hover:bg-zinc-800/40">
+                        <Td className="whitespace-nowrap">{formatDate(String(req.created_at))}</Td>
+                        <Td>{req.login_id}</Td>
+                        <Td className="max-w-[160px]"><div className="truncate">{req.title}</div></Td>
+                        <Td className="max-w-[140px]">
+                          {req.music_url ? (
+                            <a href={req.music_url} target="_blank" rel="noopener noreferrer"
+                               className="truncate block text-indigo-400 hover:underline text-xs">
+                              リンク
+                            </a>
+                          ) : "—"}
+                        </Td>
+                        <Td>{req.price_usdt ? `$${req.price_usdt}` : "—"}</Td>
+                        <Td className="max-w-[140px]"><div className="truncate text-xs text-zinc-400">{req.memo || "—"}</div></Td>
+                        <Td>
+                          <span className={[
+                            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                            req.status === "approved" ? "bg-emerald-900/60 text-emerald-300"
+                            : req.status === "rejected" ? "bg-zinc-700 text-zinc-400"
+                            : "bg-amber-900/60 text-amber-300"
+                          ].join(" ")}>
+                            {req.status === "approved" ? "承認済" : req.status === "rejected" ? "却下済" : "審査中"}
+                          </span>
+                        </Td>
+                        <Td className="text-right">
+                          {isPending && (
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleMusicSellUpdate(req.request_id, "approved")}
+                                disabled={busy}
+                                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {busy ? "…" : "承認"}
+                              </button>
+                              <button
+                                onClick={() => handleMusicSellUpdate(req.request_id, "rejected")}
+                                disabled={busy}
+                                className="rounded-lg border border-zinc-600 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700 disabled:opacity-50"
+                              >
+                                {busy ? "…" : "却下"}
+                              </button>
+                            </div>
+                          )}
                         </Td>
                       </tr>
                     );
