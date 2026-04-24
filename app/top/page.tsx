@@ -542,7 +542,7 @@ export default function AppHomePage() {
       { id: "gacha",    label: "ガチャ",       icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
       { id: "staking",  label: "ステーキング", icon: "💎", color: "from-cyan-400 to-teal-500",      href: "#staking",    desc: "BPを預けて増やす",      onOpen: () => { setSelectedApp(null); setShowStaking(true); } },
       { id: "member",    label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600",  href: "/membership", desc: "プランをアップグレード" },
-      { id: "music2",    label: "音楽生成NEW",   icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",        desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
+      { id: "music2",    label: "音楽生成",     icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",        desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
       { id: "music-boost", label: "Music Boost", icon: "🚀", color: "from-purple-700 to-blue-600",   href: "/music-boost",   desc: "案件優先度を高める月額ブースト",    badge: "New"  },
       { id: "note",      label: "ノート生成",    icon: "📝", color: "from-violet-400 to-purple-500", href: "/note-generator", desc: "構成→本文→見出し→導入文まで一括", badge: "New" },
       { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
