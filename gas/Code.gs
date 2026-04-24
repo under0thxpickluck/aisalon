@@ -1494,11 +1494,17 @@ function handle_(key, body) {
     const bp = Number(bpRaw || 0);
     const ep = Number(epRaw || 0);
 
+    const BP_CAP_MAP_BAL      = { "34":300, "57":600, "114":1200, "567":6000, "1134":12000 };
+    const BP_CAP_MAP_BAL_5000 = { "500":1000, "2000":4000, "3000":8000, "5000":10000 };
+    const capMap_bal = group_bal === "5000" ? BP_CAP_MAP_BAL_5000 : BP_CAP_MAP_BAL;
+    const bpCap_bal  = capMap_bal[str_(planRaw)] ?? 0;
+
     return json_({
-      ok:   true,
-      bp:   Number.isFinite(bp) ? bp : 0,
-      ep:   Number.isFinite(ep) ? ep : 0,
-      plan: str_(planRaw),
+      ok:     true,
+      bp:     Number.isFinite(bp) ? bp : 0,
+      ep:     Number.isFinite(ep) ? ep : 0,
+      plan:   str_(planRaw),
+      bp_cap: bpCap_bal,
     });
   }
 
