@@ -10896,7 +10896,7 @@ function rumbleAutoEntry_() {
   });
 }
 
-function createRumbleAutoEntryTrigger_() {
+function createRumbleAutoEntryTrigger() {
   // 既存の同名トリガーを削除してから再登録（重複防止）
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'rumbleAutoEntry_') {
