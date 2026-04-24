@@ -300,7 +300,7 @@ export default function OrdersPage() {
                       </div>
                       {isRequested && (
                         <p className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
-                          24時間〜48時間以内に売却申請の可否の返答が行われます。今しばらくお待ちください。
+                          ご利用ありがとうございます。24時間〜48時間以内に売却申請の可否の返答が行われます。今しばらくお待ちください。
                         </p>
                       )}
                       {requestErrors[item.item_id] && (
