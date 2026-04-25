@@ -1108,6 +1108,8 @@ function handle_(key, body) {
         last_login_at:     r[idx["last_login_at"]] ? new Date(r[idx["last_login_at"]]).toISOString() : "",
         music_boost_plan:       boostMap[str_(r[idx["login_id"]])] ? boostMap[str_(r[idx["login_id"]])].plan_id    : null,
         music_boost_expires_at: boostMap[str_(r[idx["login_id"]])] ? boostMap[str_(r[idx["login_id"]])].expires_at : null,
+        music_boost_artist:     str_(r[idx["music_boost_artist"]] || ""),
+        music_boost_album:      str_(r[idx["music_boost_album"]]  || ""),
       });
     }
 
@@ -6023,6 +6025,8 @@ function doPost(e) {
     if (action === 'music_boost_subscribe')  return musicBoostSubscribe_(body);
     if (action === 'music_boost_cancel')     return musicBoostCancel_(body);
     if (action === 'music_boost_admin_list') return musicBoostAdminList_(body);
+    if (action === 'music_boost_get_info')    return musicBoostGetInfo_(body);
+    if (action === 'music_boost_update_info') return musicBoostUpdateInfo_(body);
     if (action === 'cat_log_create')     return catLogCreate_(body);
     if (action === 'cat_log_feedback')   return catLogFeedback_(body);
     if (action === 'cat_faq_list')       return catFaqList_(body);
@@ -9312,6 +9316,50 @@ function musicBoostAdminList_(params) {
     total_slots:     MUSIC_BOOST_TOTAL_SLOTS,
     available_slots: MUSIC_BOOST_TOTAL_SLOTS - usedSlots,
   });
+}
+
+// action: music_boost_get_info（アーティスト・楽曲情報取得）
+function musicBoostGetInfo_(params) {
+  var userId = String(params.userId || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+  var sheet  = getOrCreateSheet_();
+  var values = getValuesSafe_(sheet);
+  var header = values[0];
+  ensureCols_(sheet, header, ["music_boost_artist", "music_boost_album"]);
+  var idx = indexMap_(header);
+  for (var i = 1; i < values.length; i++) {
+    if (str_(values[i][idx["login_id"]]) === userId) {
+      return json_({
+        ok:     true,
+        artist: str_(values[i][idx["music_boost_artist"]] || ""),
+        album:  str_(values[i][idx["music_boost_album"]]  || ""),
+      });
+    }
+  }
+  return json_({ ok: false, error: "user_not_found" });
+}
+
+// action: music_boost_update_info（アーティスト・楽曲情報更新）
+function musicBoostUpdateInfo_(params) {
+  var userId = String(params.userId || "");
+  var artist = String(params.artist || "");
+  var album  = String(params.album  || "");
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+  var sheet  = getOrCreateSheet_();
+  var values = getValuesSafe_(sheet);
+  var header = values[0];
+  ensureCols_(sheet, header, ["music_boost_artist", "music_boost_album"]);
+  values = getValuesSafe_(sheet);
+  header = values[0];
+  var idx = indexMap_(header);
+  for (var i = 1; i < values.length; i++) {
+    if (str_(values[i][idx["login_id"]]) === userId) {
+      sheet.getRange(i + 1, idx["music_boost_artist"] + 1).setValue(artist);
+      sheet.getRange(i + 1, idx["music_boost_album"]  + 1).setValue(album);
+      return json_({ ok: true });
+    }
+  }
+  return json_({ ok: false, error: "user_not_found" });
 }
 // =========================================================
 // gachaDailySpin_（デイリー割引ガチャ：80BP・1日1回・JST日付管理）
