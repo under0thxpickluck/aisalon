@@ -34,6 +34,11 @@ const BOOST_TUTORIAL_SLIDES = [
     title: "使い方はとてもシンプル",
     body: `① プランを選択\n② 楽曲を登録\n③ 自動で配信開始\n\nブースト率が高いほど、優先的に採用されやすくなります。\n\n💡 ポイント\n空き枠には上限があります\n早めの利用がおすすめです`,
   },
+  {
+    icon: "🎵",
+    title: "配信したい楽曲を登録しよう",
+    body: `契約後に表示されるフォームから、ブーストしたいアーティスト名と楽曲名を入力できます。\n\n入力内容は運営に即時反映されます。\n\n✏️ いつでも変更可能\n契約期間中は何度でも更新できます。`,
+  },
 ] as const;
 
 const PLANS = [
@@ -102,6 +107,10 @@ export default function MusicBoostPage() {
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [epBalance, setEpBalance]       = useState<number | null>(null);
   const [confirmPlan, setConfirmPlan]   = useState<typeof PLANS[number] | null>(null);
+  const [artist, setArtist]         = useState("");
+  const [album, setAlbum]           = useState("");
+  const [infoSaving, setInfoSaving] = useState(false);
+  const [infoLog, setInfoLog]       = useState("");
 
   // チュートリアル初回表示チェック
   useEffect(() => {
@@ -133,6 +142,14 @@ export default function MusicBoostPage() {
       .then(d => { if (d.ok) setEpBalance(Number(d.ep ?? 0)); })
       .catch(() => {});
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !status?.current_boost) return;
+    fetch(`/api/music-boost/info?userId=${encodeURIComponent(userId)}`)
+      .then(r => r.json())
+      .then(d => { if (d.ok) { setArtist(d.artist ?? ""); setAlbum(d.album ?? ""); } })
+      .catch(() => {});
+  }, [userId, status]);
 
   const handleSubscribe = async (planId: string, paymentMethod = "ep") => {
     if (!userId || busy) return;
@@ -176,11 +193,33 @@ export default function MusicBoostPage() {
     finally { setBusy(false); }
   };
 
+  const handleSaveInfo = async () => {
+    if (infoSaving) return;
+    setInfoSaving(true);
+    setInfoLog("変更を保存しています...");
+    try {
+      const res  = await fetch("/api/music-boost/info", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, artist, album }),
+      });
+      const data = await res.json();
+      setInfoLog(data.ok ? "✅ 保存しました" : "❌ 保存に失敗しました");
+    } catch {
+      setInfoLog("❌ 通信エラー");
+    } finally {
+      setInfoSaving(false);
+      setTimeout(() => setInfoLog(""), 2000);
+    }
+  };
+
   const currentPlan = status?.current_boost ? PLANS.find(p => p.id === status.current_boost!.plan_id) : null;
 
   return (
-    <div className={`min-h-screen ${th.page} px-4 py-8 max-w-lg mx-auto`}>
+    <div className={`min-h-screen ${th.page} px-4 py-8 mx-auto transition-all ${status?.current_boost ? "max-w-3xl" : "max-w-lg"}`}>
+      <div className={`${status?.current_boost ? "flex gap-8 items-start" : ""}`}>
       <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+      <div className={status?.current_boost ? "flex-1 min-w-0" : ""}>
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <Link href="/top" className={`${th.back} text-sm`}>← Back</Link>
@@ -327,6 +366,48 @@ export default function MusicBoostPage() {
         <p>• 不正利用が確認された場合はアカウントを停止します</p>
         <p>• 運営判断で報酬・優先度の調整を行うことがあります</p>
       </div>
+        </div>{/* left column */}
+
+        {status?.current_boost && (
+          <div className={`w-72 shrink-0 ${th.card} border ${th.cardBorder} rounded-2xl p-5`}>
+            <h2 className="font-bold text-sm mb-4">🎵 配信楽曲情報</h2>
+            <div className="space-y-3">
+              <div>
+                <label className={`text-xs ${th.muted} block mb-1`}>アーティスト名</label>
+                <input
+                  type="text"
+                  value={artist}
+                  onChange={e => setArtist(e.target.value)}
+                  placeholder="例: 山田太郎"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm ${th.inputBg}`}
+                />
+              </div>
+              <div>
+                <label className={`text-xs ${th.muted} block mb-1`}>楽曲名</label>
+                <input
+                  type="text"
+                  value={album}
+                  onChange={e => setAlbum(e.target.value)}
+                  placeholder="例: 夜明けのメロディ"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm ${th.inputBg}`}
+                />
+              </div>
+              <button
+                onClick={handleSaveInfo}
+                disabled={infoSaving}
+                className="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50"
+              >
+                {infoSaving ? "保存中..." : "編集完了"}
+              </button>
+              {infoLog && (
+                <p className={`text-xs text-center ${infoLog.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>
+                  {infoLog}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        </div>{/* flex wrapper */}
 
       {/* ── EP決済確認モーダル ─────────────────────────────────────── */}
       {confirmPlan !== null && (
