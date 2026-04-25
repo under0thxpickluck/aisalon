@@ -54,6 +54,8 @@ type MemberRow = {
   last_login_at: string;
   music_boost_plan?: string | null;
   music_boost_expires_at?: string | null;
+  music_boost_artist?: string | null;
+  music_boost_album?: string | null;
 };
 
 type Summary = {
@@ -920,6 +922,16 @@ export default function AdminPage() {
                               {m.music_boost_expires_at && (
                                 <span className="text-[10px] text-zinc-500">
                                   〜{new Date(m.music_boost_expires_at).toLocaleDateString("ja-JP", { month: "2-digit", day: "2-digit" })}
+                                </span>
+                              )}
+                              {m.music_boost_artist && (
+                                <span className="text-[10px] text-zinc-400">
+                                  🎤 {m.music_boost_artist}
+                                </span>
+                              )}
+                              {m.music_boost_album && (
+                                <span className="text-[10px] text-zinc-400">
+                                  🎵 {m.music_boost_album}
                                 </span>
                               )}
                             </span>
