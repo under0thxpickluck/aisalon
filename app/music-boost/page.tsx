@@ -218,8 +218,8 @@ export default function MusicBoostPage() {
   return (
     <div className={`min-h-screen ${th.page} px-4 py-8 mx-auto transition-all ${status?.current_boost ? "max-w-3xl" : "max-w-lg"}`}>
       <div className={`${status?.current_boost ? "flex gap-8 items-start" : ""}`}>
-      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
       <div className={status?.current_boost ? "flex-1 min-w-0" : ""}>
+      <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-6">
         <Link href="/top" className={`${th.back} text-sm`}>← Back</Link>
