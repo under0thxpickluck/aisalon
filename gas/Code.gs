@@ -9326,6 +9326,8 @@ function musicBoostGetInfo_(params) {
   var values = getValuesSafe_(sheet);
   var header = values[0];
   ensureCols_(sheet, header, ["music_boost_artist", "music_boost_album"]);
+  values = getValuesSafe_(sheet);
+  header = values[0];
   var idx = indexMap_(header);
   for (var i = 1; i < values.length; i++) {
     if (str_(values[i][idx["login_id"]]) === userId) {
