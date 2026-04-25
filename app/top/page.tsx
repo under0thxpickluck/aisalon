@@ -12,7 +12,6 @@ import MissionCard from "@/components/MissionCard";
 import GachaModal from "@/components/GachaModal";
 import StakingModal from "@/components/StakingModal";
 import RadioCard from "@/components/RadioCard";
-import LifaiCat from "@/components/LifaiCat";
 
 /** ✅ カウントダウン + 調達バー（returnの外に置く） */
 function pad2(n: number) {
@@ -145,15 +144,20 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
 
   return (
     <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-700">
-      <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-extrabold text-white">
+      <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-extrabold text-white leading-none">
         WALLET
       </span>
-      <span>BP</span>
-      <span className="font-extrabold text-slate-900">{bp}</span>
-      <span className="opacity-40">/</span>
-      <span>EP</span>
-      <span className="font-extrabold text-slate-900">{ep}</span>
-      {err ? <span className="ml-2 text-[10px] opacity-50">({err})</span> : null}
+      <div className="flex flex-col gap-0.5 leading-none">
+        <span className="flex items-center gap-0.5">
+          <span className="text-slate-500">BP</span>
+          <span className="font-extrabold text-slate-900">{bp}</span>
+        </span>
+        <span className="flex items-center gap-0.5">
+          <span className="text-slate-500">EP</span>
+          <span className="font-extrabold text-slate-900">{ep}</span>
+        </span>
+      </div>
+      {err ? <span className="text-[10px] opacity-50">(!)</span> : null}
     </div>
   );
 }
@@ -366,6 +370,52 @@ function ReferralCard({ auth }: { auth: AuthState }) {
   );
 }
 
+// ── お知らせデータ（空配列のときは「なし」表示） ────────────────────
+type Notice = {
+  id: string;
+  date: string;   // "YYYY-MM-DD"
+  title: string;
+  body: string;
+};
+
+const NOTICES: Notice[] = [
+  // 例:
+  // { id: "1", date: "2026-04-24", title: "メンテナンスのお知らせ", body: "4月25日 2:00〜4:00 はメンテナンスのためサービスが停止します。" },
+];
+
+function NoticeBoard() {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+      <p className="text-[10px] font-extrabold tracking-wide text-slate-500">お知らせ</p>
+      {NOTICES.length === 0 ? (
+        <p className="mt-1 text-xs text-slate-400">最新のお知らせはありません</p>
+      ) : (
+        <ul className="mt-1 divide-y divide-slate-100">
+          {NOTICES.map((n) => (
+            <li key={n.id}>
+              <button
+                onClick={() => setOpenId(openId === n.id ? null : n.id)}
+                className="flex w-full items-start gap-2 rounded px-1 py-2 text-left transition hover:bg-slate-100"
+              >
+                <span className="mt-0.5 shrink-0 text-[10px] text-slate-400">{n.date}</span>
+                <span className="flex-1 text-xs font-semibold text-slate-700">{n.title}</span>
+                <span className="shrink-0 text-[10px] text-slate-400">{openId === n.id ? "▲" : "▼"}</span>
+              </button>
+              {openId === n.id && (
+                <div className="px-1 pb-2">
+                  <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600">{n.body}</p>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 type AppDef = {
   id: string;
   label: string;
@@ -455,6 +505,20 @@ export default function AppHomePage() {
           }
         })
         .catch(() => {});
+
+      // 月次BP回復チェック（30日に1回、サイレント失敗）
+      fetch("/api/wallet/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId, id: loginId, group: (a as any)?.group || "" }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok && data.bp_recovered > 0) {
+            setBalanceTrigger((n) => n + 1);
+          }
+        })
+        .catch(() => {});
     }
   }, [router]);
 
@@ -494,10 +558,10 @@ export default function AppHomePage() {
     () => [
       { id: "fortune",  label: "団子占い",     icon: "🔮", color: "from-violet-500 to-purple-600",  href: "/fortune",    desc: "毎日の運勢 +10BP" },
       { id: "market",   label: "マーケット",   icon: "🛒", color: "from-orange-400 to-amber-500",   href: "/market",     desc: "メンバー間売買" },
-      { id: "gacha",    label: "ガチャ",       icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
+      { id: "gacha",    label: "LIFASLOT",    icon: "🎰", color: "from-pink-500 to-rose-500",      href: "#gacha",      desc: "BP消費で報酬",          onOpen: () => { setSelectedApp(null); setShowGacha(true); } },
       { id: "staking",  label: "ステーキング", icon: "💎", color: "from-cyan-400 to-teal-500",      href: "#staking",    desc: "BPを預けて増やす",      onOpen: () => { setSelectedApp(null); setShowStaking(true); } },
       { id: "member",    label: "メンバーシップ", icon: "👑", color: "from-slate-500 to-zinc-600",  href: "/membership", desc: "プランをアップグレード" },
-      { id: "music2",    label: "音楽生成NEW",   icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",        desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
+      { id: "music2",    label: "MUSICCREATE", icon: "🎼", color: "from-indigo-500 to-violet-600", href: "/music2",        desc: "歌詞・構成・音楽を3ステップで生成", badge: "Beta" },
       { id: "music-boost", label: "Music Boost", icon: "🚀", color: "from-purple-700 to-blue-600",   href: "/music-boost",   desc: "案件優先度を高める月額ブースト",    badge: "New"  },
       { id: "note",      label: "ノート生成",    icon: "📝", color: "from-violet-400 to-purple-500", href: "/note-generator", desc: "構成→本文→見出し→導入文まで一括", badge: "New" },
       { id: "workflow",  label: "ワークフロー",  icon: "🧩", color: "from-cyan-400 to-sky-500",     href: "/workflow",   desc: "n8n/自動化の設計テンプレを作る",           badge: "準備中" },
@@ -586,15 +650,7 @@ export default function AppHomePage() {
             </div>
             <div>
               <p className="text-lg font-extrabold text-white">{selectedApp.label}</p>
-              {selectedApp.id === 'music2' ? (
-                <ul className="mt-1 text-sm text-zinc-400 text-left space-y-1">
-                  <li>① 歌詞を作成</li>
-                  <li>② メロディを作成</li>
-                  <li>③ 音楽生成 ※ボーカルは現在未実装です</li>
-                </ul>
-              ) : (
-                <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
-              )}
+              <p className="mt-1 text-sm text-zinc-400">{selectedApp.desc}</p>
             </div>
             {selectedApp.badge === '準備中' ? (
               <button
@@ -644,19 +700,15 @@ export default function AppHomePage() {
 
       <div className="mx-auto max-w-[920px] px-4 py-6">
         <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_18px_rgba(16,185,129,.35)]" />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,.4)]" />
                 LIFAI APP HOME
               </div>
-
-              <h1 className="mt-4 text-xl font-extrabold tracking-tight text-slate-900">
+              <h1 className="truncate text-sm font-extrabold tracking-tight text-slate-900">
                 LIFAIへようこそ
               </h1>
-              <p className="mt-2 hidden text-xs text-slate-600 sm:block">
-                使いたい機能を「アプリアイコン」から開けます。
-              </p>
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
@@ -666,10 +718,12 @@ export default function AppHomePage() {
                 onClick={logout}
                 className="rounded-2xl border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
-                退出
+                LOGOUT
               </button>
             </div>
           </div>
+
+          <NoticeBoard />
 
           {/* ✅ アプリグリッド（LINEミニアプリ風 4列） */}
           <div className="mt-6">
@@ -725,10 +779,6 @@ export default function AppHomePage() {
         <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
       </div>
     </main>
-    <LifaiCat
-      loginId={loginId}
-      currentPage="top"
-    />
-    </>
+</>
   );
 }

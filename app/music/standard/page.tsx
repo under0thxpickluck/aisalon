@@ -127,14 +127,19 @@ export default function MusicStandardPage() {
     let predictionId: string;
 
     try {
+      const auth = getAuth();
       const res = await fetch("/api/music/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: combinedPrompt, mode: "standard" }),
+        body: JSON.stringify({ prompt: combinedPrompt, mode: "standard", userId: auth?.id || "" }),
       });
       const data = await res.json();
       if (!data.ok) {
-        setErrorMsg(musicError("MUSIC-001"));
+        if (data.error === "rate_limited") {
+          setErrorMsg("現在ジョブが込み合っております。しばらくたってからお試しください。");
+        } else {
+          setErrorMsg(musicError("MUSIC-001"));
+        }
         setStatus("failed");
         return;
       }

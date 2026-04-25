@@ -9,13 +9,22 @@ import { AppSidebar } from "@/components/AppSidebar";
 // ── 定数 ────────────────────────────────────────────────────────────────────
 
 const GENRES = [
+  // メジャー
   "ポップ", "ロック", "ジャズ", "クラシック", "EDM",
   "ヒップホップ", "R&B", "アニメ", "ローファイ", "シネマティック",
+  // サブジャンル
+  "アンビエント", "チルアウト", "ニューエイジ", "ボサノバ", "フォーク",
+  "ネオソウル", "トロピカルハウス", "ドラムンベース", "メタル", "ダークエレクトロ",
 ];
 
 const MOODS = [
+  // 基本
   "さわやか", "クール", "エモい", "明るい", "落ち着いた",
   "ロマンチック", "激しい", "切ない",
+  // 追加
+  "神秘的", "ダーク", "壮大", "かわいい", "夏っぽい",
+  "夜っぽい", "前向き", "集中できる", "緊張感", "ホラー",
+  "ファンタジー", "リラックス",
 ];
 
 const PRO_PLANS = ["500", "1000"];
@@ -43,6 +52,13 @@ const DURATION_OPTIONS = [
   { label: "1分",  value: 60 },
   { label: "2分",  value: 120 },
   { label: "3分",  value: 180 },
+];
+
+const BGM_DURATION_OPTIONS = [
+  { label: "2分",    value: 120 },
+  { label: "2分半",  value: 150 },
+  { label: "3分",    value: 180 },
+  { label: "3分半",  value: 210 },
 ];
 
 const proChipBase     = "rounded-full border px-3 py-1 text-xs font-semibold transition";
@@ -129,6 +145,51 @@ function saveToHistory(entry: MusicHistoryEntry): MusicHistoryEntry[] {
   return next;
 }
 
+// サーバーに履歴を保存（fire-and-forget）
+async function saveToServer(entry: MusicHistoryEntry, userId: string): Promise<void> {
+  try {
+    await fetch("/api/music/history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId,
+        jobId:       entry.jobId,
+        title:       entry.title,
+        audioUrl:    entry.audioUrl,
+        downloadUrl: entry.downloadUrl,
+        lyrics:      entry.lyrics,
+        createdAt:   entry.createdAt,
+        expiresAt:   entry.expiresAt ?? "",
+      }),
+    });
+  } catch {
+    // サーバー保存失敗はサイレントに無視（localStorage に保存済みなので問題なし）
+  }
+}
+
+// サーバーから履歴を取得してlocalStorageとマージ（jobId で重複排除、createdAt降順）
+async function fetchAndMergeHistory(userId: string): Promise<MusicHistoryEntry[]> {
+  try {
+    const res  = await fetch(`/api/music/history?userId=${encodeURIComponent(userId)}`);
+    const data = await res.json();
+    if (!data.ok) return loadHistory();
+    const serverItems: MusicHistoryEntry[] = data.items ?? [];
+    const local  = loadHistory();
+    const merged = new Map<string, MusicHistoryEntry>();
+    // ローカルを先に入れてサーバーで上書き（サーバーが正）
+    local.forEach((e)  => merged.set(e.jobId, e));
+    serverItems.forEach((e) => merged.set(e.jobId, e));
+    const result = Array.from(merged.values())
+      .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1))
+      .slice(0, 50);
+    // マージ結果をlocalStorageにキャッシュ
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(result)); } catch {}
+    return result;
+  } catch {
+    return loadHistory(); // サーバー取得失敗時はlocalStorage fallback
+  }
+}
+
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -140,12 +201,23 @@ function formatDate(iso: string): string {
 
 // ── ユーティリティ ───────────────────────────────────────────────────────────
 
-function downloadAudio(url: string, title: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${title || "lifai_song"}_${Date.now()}.wav`;
-  a.target = "_blank";
-  a.click();
+async function downloadAudio(url: string, title: string, ext: "wav" | "mp3" = "wav") {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${title || "lifai_song"}_${Date.now()}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch {
+    // フェッチ失敗時はブラウザの直リンクにフォールバック
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title || "lifai_song"}_${Date.now()}.${ext}`;
+    a.target = "_blank";
+    a.click();
+  }
 }
 
 // ── メインコンポーネント ─────────────────────────────────────────────────────
@@ -198,6 +270,7 @@ export default function Music2Page() {
   // 履歴
   const [history, setHistory] = useState<MusicHistoryEntry[]>([]);
   const [copiedJobId, setCopiedJobId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string>("");
 
   // チュートリアル (null=非表示, 0〜3=スライド番号)
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
@@ -224,6 +297,7 @@ export default function Music2Page() {
       router.replace("/login");
       return;
     }
+    // まずlocalStorageを即時表示（高速表示）してからサーバーマージ
     setHistory(loadHistory());
 
     // チュートリアル: 未表示なら自動表示
@@ -232,6 +306,10 @@ export default function Music2Page() {
     }
 
     const id   = (auth as any)?.id || (auth as any)?.loginId || "";
+    if (id) {
+      setUserId(id);
+      fetchAndMergeHistory(id).then(setHistory).catch(() => {});
+    }
     const code = getAuthSecret() || (auth as any)?.token || "";
 
     const cachedPlan = String((auth as any)?.plan ?? "");
@@ -334,6 +412,7 @@ export default function Music2Page() {
                 createdAt:   new Date().toISOString(),
               });
               setHistory(updated);
+              if (userId) saveToServer(updated[0], userId).catch(() => {});
             }
           } else {
             setErrorMsg("曲の取得に失敗しました。");
@@ -417,6 +496,7 @@ export default function Music2Page() {
             createdAt: new Date().toISOString(),
           });
           setHistory(updated);
+          if (userId) saveToServer(updated[0], userId).catch(() => {});
           return;
         }
 
@@ -468,11 +548,13 @@ export default function Music2Page() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id,
+            code,
+            isPro,
             theme: theme.trim(),
             genre,
             mood: moodStr,
             bpm: bpmHint ?? undefined,
-            duration: duration ?? 30,
+            duration: isPro && duration ? duration : undefined,
           }),
         });
         const data = await res.json();
@@ -480,7 +562,7 @@ export default function Music2Page() {
         if (!data.ok) {
           setErrorMsg(
             data.error === "insufficient_bp"
-              ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: ${data.required ?? 20}BP）`
+              ? `BPが不足しています（現在: ${data.bp ?? "?"}BP、必要: ${data.required ?? 80}BP）`
               : `BGM生成に失敗しました（${data.error ?? "unknown"}）`
           );
           setLoading(false);
@@ -850,7 +932,7 @@ export default function Music2Page() {
               <div className="mt-5 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
                 {([
                   { value: "song", label: "曲生成", sub: "歌詞・構成あり" },
-                  { value: "bgm", label: "BGM生成", sub: "ボーカルなし" },
+                  { value: "bgm", label: "BGM生成", sub: "ボーカルなし｜試験運転中" },
                 ] as const).map((item) => (
                   <button
                     key={item.value}
@@ -886,6 +968,12 @@ export default function Music2Page() {
                   ? "テーマ・ジャンル・雰囲気を選ぶと、ボーカルなしのBGMを生成します。"
                   : "テーマ・ジャンル・雰囲気を選ぶと、AIが構成を提案してから曲を生成します。"}
               </p>
+
+              {isBgmMode && (
+                <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+                  ⚠ BGM生成は現在試験運転中です。成果物の品質を保証することはできません。ご留意のうえご利用ください。
+                </p>
+              )}
 
               {/* テーマ */}
               <div className="mt-6">
@@ -945,13 +1033,16 @@ export default function Music2Page() {
 
               {/* BGM設定 */}
               {isBgmMode && (
-                <div className="mt-5 rounded-[18px] border border-slate-200 bg-slate-50 p-4">
+                <div className={`mt-5 rounded-[18px] border p-4 ${isPro ? "border-violet-500/30 bg-[#0d0d1a]" : "border-slate-200 bg-slate-50"}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">🎚️</span>
-                    <span className="text-[11px] font-black tracking-widest text-slate-600">BGM SETTINGS</span>
+                    <span className={`text-[11px] font-black tracking-widest ${isPro ? "text-violet-400" : "text-slate-600"}`}>BGM SETTINGS</span>
+                    {isPro && (
+                      <span className="ml-auto rounded-full bg-gradient-to-r from-violet-600 to-indigo-500 px-2.5 py-0.5 text-[9px] font-bold text-white">PRO</span>
+                    )}
                   </div>
                   <div className="mt-4">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">BPM目安</label>
+                    <label className={`block text-[11px] font-bold mb-1.5 ${isPro ? "text-violet-400" : "text-slate-600"}`}>BPM目安</label>
                     <div className="flex flex-wrap gap-1.5">
                       {BPM_OPTIONS.map((opt) => (
                         <button
@@ -959,29 +1050,37 @@ export default function Music2Page() {
                           type="button"
                           disabled={loading}
                           onClick={() => setBpmHint(bpmHint === opt.value ? null : opt.value)}
-                          className={[chipBase, bpmHint === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                          className={isPro
+                            ? [proChipBase, bpmHint === opt.value ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")
+                            : [chipBase, bpmHint === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
                         >
                           {opt.label}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">長さ</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {DURATION_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          disabled={loading}
-                          onClick={() => setDuration(duration === opt.value ? null : opt.value)}
-                          className={[chipBase, duration === opt.value ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                  {isPro && (
+                    <div className="mt-4">
+                      <label className="block text-[11px] font-bold text-violet-400 mb-1.5">曲の長さ</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {BGM_DURATION_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => setDuration(duration === opt.value ? null : opt.value)}
+                            className={[proChipBase, duration === opt.value ? proChipActive : proChipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1.5 text-[10px] text-violet-400/50">未選択の場合はランダム（2〜3分半）</p>
                     </div>
-                  </div>
+                  )}
+                  {!isPro && (
+                    <p className="mt-3 text-[10px] text-slate-400">長さはAIが自動で2〜3分半に設定します</p>
+                  )}
                 </div>
               )}
 
@@ -1106,10 +1205,10 @@ export default function Music2Page() {
               <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <span className="text-xs font-bold text-indigo-700">必要BP</span>
                 <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
-                  {isBgmMode ? "20 BP" : isProSettingsActive ? "250 BP" : "100 BP"}
+                  {isBgmMode ? (isPro ? "150 BP" : "80 BP") : isProSettingsActive ? "250 BP" : "100 BP"}
                 </span>
                 {isBgmMode ? (
-                  <span className="ml-auto text-[11px] text-indigo-500">ボーカルなしで短めに生成</span>
+                  <span className="ml-auto text-[11px] text-indigo-500">{isPro ? "🎛️ Pro BGM（時間指定）" : "2〜3分半のBGMをランダム生成"}</span>
                 ) : isPro ? (
                   isProSettingsActive ? (
                     <span className="ml-auto text-[11px] text-violet-600 font-semibold">🎛️ Pro設定使用中（250BP）</span>
@@ -1294,26 +1393,26 @@ export default function Music2Page() {
               </p>
 
               <div className="mt-5 rounded-[20px] border border-indigo-100 bg-indigo-50 p-4">
-                {/* タイトル + 品質バッジ */}
+                {/* タイトル + 品質バッジ（SONGモードのみ） */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-extrabold text-slate-900">{resultTitle}</p>
-                  {lyricsGateResult === "pass" && (
+                  {!isBgmMode && lyricsGateResult === "pass" && (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                       ✓ 品質 良好
                     </span>
                   )}
-                  {lyricsGateResult === "review" && (
+                  {!isBgmMode && lyricsGateResult === "review" && (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
                       ⚠ 要確認
                     </span>
                   )}
-                  {lyricsGateResult === "reject" && (
+                  {!isBgmMode && lyricsGateResult === "reject" && (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
                       ✕ 品質不足
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? 20 : 100}BP</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? (isPro ? 150 : 80) : (isProSettingsActive ? 250 : 100)}BP</p>
 
                 {/* 品質警告 */}
                 {!isBgmMode && (lyricsReviewRequired || !distributionReady) && audioUrl && (
@@ -1371,7 +1470,7 @@ export default function Music2Page() {
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {downloadUrl && (
                     <button
-                      onClick={() => downloadAudio(downloadUrl, resultTitle)}
+                      onClick={() => downloadAudio(downloadUrl, resultTitle, isBgmMode ? "mp3" : "wav")}
                       className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
                     >
                       {isBgmMode ? "MP3をダウンロード" : "WAVをダウンロード"}
@@ -1480,10 +1579,10 @@ export default function Music2Page() {
                   <audio controls src={entry.audioUrl} className="mt-2 w-full" style={{ height: "32px" }} />
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button
-                      onClick={() => downloadAudio(entry.downloadUrl, entry.title)}
+                      onClick={() => downloadAudio(entry.downloadUrl, entry.title, entry.downloadUrl?.includes(".mp3") ? "mp3" : "wav")}
                       className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-indigo-600 hover:bg-indigo-50 transition"
                     >
-                      WAV
+                      {entry.downloadUrl?.includes(".mp3") ? "MP3" : "WAV"}
                     </button>
                     {entry.lyrics && (
                       <button

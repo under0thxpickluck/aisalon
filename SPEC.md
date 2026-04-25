@@ -1,7 +1,8 @@
 # LIFAI システム仕様書
 
-> 作成日: 2026-03-08
-> 対象ブランチ: main
+> 作成日: 2026-03-08  
+> 更新日: 2026-04-24  
+> 対象ブランチ: main  
 > フレームワーク: Next.js 14 (App Router)
 
 ---
@@ -21,13 +22,17 @@
 11. [状態管理・ストレージ](#11-状態管理ストレージ)
 12. [認証フロー](#12-認証フロー)
 13. [ユーザー申請フロー](#13-ユーザー申請フロー)
-14. [決済フロー（NOWPayments）](#14-決済フローNOWPayments)
+14. [決済フロー（NOWPayments）](#14-決済フローnowpayments)
 15. [音楽・曲生成フロー](#15-音楽曲生成フロー)
-16. [GAS バックエンド連携](#16-GAS-バックエンド連携)
+16. [GAS バックエンド連携](#16-gas-バックエンド連携)
 17. [マーケットプレイス](#17-マーケットプレイス)
-18. [管理者機能](#18-管理者機能)
-19. [セキュリティ設計](#19-セキュリティ設計)
-20. [データフロー図](#20-データフロー図)
+18. [ミニゲーム（LIFAI Arcade）](#18-ミニゲームlifai-arcade)
+19. [ギフトシステム](#19-ギフトシステム)
+20. [LifaiCat（AIアシスタント）](#20-lifaicataiアシスタント)
+21. [テーマシステム（ダーク/ライト）](#21-テーマシステムダークライト)
+22. [管理者機能](#22-管理者機能)
+23. [セキュリティ設計](#23-セキュリティ設計)
+24. [データフロー図](#24-データフロー図)
 
 ---
 
@@ -41,6 +46,7 @@
 | バックエンド | Google Apps Script (GAS) + Sheets |
 | 決済 | NOWPayments (USDT/TRC20) |
 | 音楽生成 | Replicate (Minimax music-01) + OpenAI GPT-4o-mini |
+| 画像生成 | OpenAI (準備中) |
 | デプロイ | Vercel |
 | 認証（ユーザー） | localStorage + sessionStorage |
 | 認証（管理者） | HTTP Basic Auth (middleware) |
@@ -51,6 +57,24 @@
 ホーム → プラン購入 → 申請フォーム → 審査待ち → 管理者承認 → ログイン → ダッシュボード
 ```
 
+### 主要機能一覧
+
+| 機能 | 状態 |
+|---|---|
+| 音楽生成（旧/新）| 有効（ユーザー毎3時間5回レート制限あり） |
+| Music Boost（月額EP契約） | 有効 |
+| ノート記事生成 | 有効 |
+| マーケットプレイス | 有効 |
+| ミニゲーム（Rumble Arena / Tap Mining） | 有効 |
+| GiftEP システム | 有効（初回チュートリアルあり） |
+| LifaiCat AIアシスタント | 有効（全ページ） |
+| 画像生成 | 準備中（disabled） |
+| ガチャ（LIFASLOT） | 有効 |
+| ステーキング | 有効（固定利率: 30日+10% / 60日+25% / 90日+50%） |
+| デイリーログインボーナス | 有効 |
+| 毎日占い | 有効 |
+| BP月次回復 | 有効（30日に1回、cap×50%回復） |
+
 ---
 
 ## 2. ディレクトリ構造
@@ -58,76 +82,249 @@
 ```
 aisalon/
 ├── app/
-│   ├── layout.tsx                  # グローバルレイアウト
-│   ├── page.tsx                    # ホームページ (/)
-│   ├── login/page.tsx              # ログイン
-│   ├── top/page.tsx                # ダッシュボード (認証後)
-│   ├── purchase/page.tsx           # Step 1: プラン選択
-│   ├── apply/page.tsx              # Step 2: 申請フォーム
-│   ├── confirm/page.tsx            # Step 3: 確認・送信
-│   ├── pending/page.tsx            # 審査待ち画面
-│   ├── reset/page.tsx              # パスワードリセット
-│   ├── admin/page.tsx              # 管理者ダッシュボード
-│   ├── market/page.tsx             # マーケットプレイス
-│   ├── music/page.tsx              # 音楽生成 (旧)
-│   ├── music2/page.tsx             # 音楽生成 (新)
-│   ├── music-boost/page.tsx        # Music Boost（EP決済）
-│   ├── 5000/page.tsx               # 特定プランLP
+│   ├── layout.tsx                      # グローバルレイアウト
+│   ├── globals.css                     # グローバルスタイル
+│   ├── page.tsx                        # ホームページ (/)
+│   ├── login/page.tsx                  # ログイン
+│   ├── top/page.tsx                    # ダッシュボード (認証後)
+│   ├── start/page.tsx                  # オンボーディング
+│   ├── purchase/
+│   │   ├── page.tsx                    # Step 1: プラン選択
+│   │   └── jam/page.tsx                # JAMプラン選択
+│   ├── apply/page.tsx                  # Step 2: 申請フォーム
+│   ├── confirm/page.tsx                # Step 3: 確認・送信
+│   ├── pending/page.tsx                # 審査待ち画面
+│   ├── reset/page.tsx                  # パスワードリセット
+│   ├── admin/page.tsx                  # 管理者ダッシュボード
+│   ├── market/
+│   │   ├── page.tsx                    # マーケット一覧
+│   │   ├── [item_id]/page.tsx          # 商品詳細
+│   │   ├── create/page.tsx             # 商品出品
+│   │   └── orders/page.tsx             # 購入履歴
+│   ├── music/
+│   │   ├── page.tsx                    # 音楽生成ハブ（旧）
+│   │   ├── standard/page.tsx           # スタンダード生成
+│   │   └── pro/page.tsx                # プロ生成
+│   ├── music2/page.tsx                 # 音楽生成 2.0 (Beta/新)
+│   ├── music-boost/page.tsx            # Music Boost（EP月額契約）
+│   ├── music-release-guide/page.tsx    # 音楽リリースガイド
+│   ├── mini-games/
+│   │   ├── page.tsx                    # LIFAI Arcade ハブ
+│   │   ├── rumble/page.tsx             # Rumble Arena
+│   │   └── tap/page.tsx                # Tap Mining
+│   ├── gift/
+│   │   ├── page.tsx                    # GiftEP メイン
+│   │   ├── send/page.tsx               # ギフト送信
+│   │   ├── use/page.tsx                # ギフト使用
+│   │   └── history/page.tsx            # ギフト履歴
+│   ├── note-generator/page.tsx         # ノート記事生成
+│   ├── image/page.tsx                  # 画像生成（準備中）
+│   ├── chat/page.tsx                   # チャット
+│   ├── fortune/page.tsx                # 毎日占い (+10BP)
+│   ├── gacha/route.ts                  # ガチャ
+│   ├── membership/page.tsx             # メンバーシップアップグレード
+│   ├── narasu-agency/
+│   │   ├── page.tsx                    # Narasu Agency パートナープログラム
+│   │   ├── form/page.tsx               # 申請フォーム
+│   │   ├── confirm/page.tsx            # 確認
+│   │   ├── complete/page.tsx           # 完了
+│   │   └── terms/page.tsx              # 規約
+│   ├── 5000/
+│   │   ├── page.tsx                    # 5000プログラムLP
+│   │   ├── login/page.tsx              # 5000ログイン
+│   │   ├── apply/page.tsx              # 5000申請
+│   │   ├── confirm/page.tsx            # 5000確認
+│   │   ├── admin/page.tsx              # 5000管理
+│   │   └── purchase-status/page.tsx    # 支払い状況確認
+│   ├── column/
+│   │   ├── page.tsx                    # コラム一覧
+│   │   ├── [id]/page.tsx               # コラム詳細
+│   │   └── posts/
+│   │       └── 2026-01-31-design-win/page.tsx
+│   ├── apply-sell/page.tsx             # 売却申請
+│   ├── referral/page.tsx               # 紹介プログラム
+│   ├── invest/page.tsx                 # 投資家・広告主情報
+│   ├── vision/page.tsx                 # ビジョン
+│   ├── rule/page.tsx                   # 利用規約
+│   ├── privacy/page.tsx                # プライバシーポリシー
+│   ├── tokushoho/page.tsx              # 特定商取引法に基づく表記
 │   ├── lib/
-│   │   └── auth.ts                 # 認証ヘルパー
+│   │   ├── auth.ts                     # 認証ヘルパー
+│   │   ├── useTheme.ts                 # ダーク/ライトモード管理
+│   │   ├── bp-config.ts                # BP設定・価格
+│   │   ├── presale.ts                  # プレセール計算
+│   │   └── image/                      # 画像生成ライブラリ（準備中）
+│   │       ├── image_types.ts
+│   │       ├── chat_state.ts
+│   │       ├── cost_calculator.ts
+│   │       ├── image_client.ts
+│   │       ├── image_guard.ts
+│   │       └── prompt_builder.ts
 │   └── api/
 │       ├── auth/
-│       │   ├── login/route.ts      # ログイン
-│       │   └── reset/route.ts      # パスワードリセット
+│       │   ├── login/route.ts          # ログイン
+│       │   ├── reset/route.ts          # パスワードリセット
+│       │   ├── forgot-id/route.ts      # ID問い合わせ
+│       │   └── forgot-password/route.ts# パスワード問い合わせ
 │       ├── apply/
-│       │   ├── create/route.ts     # 申請作成
-│       │   └── status/route.ts     # 申請状況確認
-│       ├── me/route.ts             # ログインユーザー情報
+│       │   ├── create/route.ts         # 申請作成
+│       │   ├── route.ts                # 申請状況
+│       │   └── status/route.ts         # 支払い状況確認
+│       ├── me/route.ts                 # ログインユーザー情報
+│       ├── daily-login/route.ts        # デイリーログインボーナス
+│       ├── missions/route.ts           # ミッション一覧・管理
 │       ├── nowpayments/
-│       │   ├── create/route.ts     # インボイス作成
-│       │   └── ipn/route.ts        # 決済Webhook
+│       │   ├── create/route.ts         # インボイス作成
+│       │   └── ipn/route.ts            # 決済Webhook
 │       ├── admin/
-│       │   ├── list/route.ts       # 申請一覧
-│       │   ├── approve/route.ts    # 承認
-│       │   ├── grant-bp/route.ts   # BP付与
-│       │   ├── sell-requests/route.ts # 売却申請一覧
-│       │   ├── members/route.ts    # 会員一覧（ページング・ソート）
-│       │   └── dashboard/route.ts  # ダッシュボード統計
+│       │   ├── list/route.ts           # 申請一覧
+│       │   ├── approve/route.ts        # 承認
+│       │   ├── pending/route.ts        # 承認待ち一覧
+│       │   ├── grant-bp/route.ts       # BP付与
+│       │   ├── sell-requests/route.ts  # 売却申請一覧
+│       │   ├── members/route.ts        # 会員一覧
+│       │   ├── dashboard/route.ts      # 統計
+│       │   ├── music-review/route.ts   # 音楽審査
+│       │   ├── rumble-force-start/route.ts # Rumble強制開始
+│       │   ├── rumble-reward/route.ts  # Rumble報酬設定
+│       │   ├── rumble-run-now/route.ts # Rumble即時実行
+│       │   └── apply/create/route.ts   # 管理者申請作成
 │       ├── market/
-│       │   ├── create/route.ts     # 商品出品
-│       │   ├── list/route.ts       # 商品一覧
-│       │   └── orders/route.ts     # 購入履歴
+│       │   ├── create/route.ts         # 商品出品
+│       │   ├── list/route.ts           # 商品一覧
+│       │   ├── item/route.ts           # 商品詳細
+│       │   ├── buy/route.ts            # 購入
+│       │   ├── confirm/route.ts        # 購入確定
+│       │   ├── refund/route.ts         # 返金申請
+│       │   ├── sell-request/route.ts   # 売却申請
+│       │   ├── report/route.ts         # 通報
+│       │   ├── my-orders/route.ts      # 購入履歴
+│       │   └── orders/route.ts         # 購入履歴（別エンドポイント）
 │       ├── user/
-│       │   ├── pending-bp/route.ts # 未受取BP確認
-│       │   └── claim-bp/route.ts   # BP受取
+│       │   ├── pending-bp/route.ts     # 未受取BP確認
+│       │   └── claim-bp/route.ts       # BP受取
 │       ├── wallet/
-│       │   └── balance/route.ts    # 残高確認
+│       │   ├── balance/route.ts        # 残高確認（bp_cap フィールドも返す）
+│       │   └── recover/route.ts        # 月次BP回復チェック
 │       ├── music-boost/
-│       │   ├── status/route.ts     # Music Boost状態取得
-│       │   ├── subscribe/route.ts  # Music Boost契約（EP決済）
-│       │   └── cancel/route.ts     # Music Boost解約
+│       │   ├── status/route.ts         # Music Boost状態取得
+│       │   ├── subscribe/route.ts      # Music Boost契約
+│       │   ├── cancel/route.ts         # Music Boost解約
+│       │   └── admin/route.ts          # 管理者用一覧
 │       ├── music/
-│       │   ├── generate/route.ts   # 音楽生成開始
-│       │   ├── status/route.ts     # 音楽生成状況
-│       │   └── _cache.ts           # 音楽生成キャッシュ
-│       └── song/
-│           ├── start/route.ts      # 曲作成開始
-│           └── _jobStore.ts        # 曲作成ジョブストア
+│       │   ├── generate/route.ts       # 音楽生成開始
+│       │   ├── status/route.ts         # 音楽生成状況
+│       │   ├── history/route.ts        # 音楽生成履歴（サーバー管理）
+│       │   └── _cache.ts               # 音楽生成キャッシュ
+│       ├── bgm/
+│       │   ├── generate/route.ts       # BGM生成開始
+│       │   └── status/route.ts         # BGM生成状況
+│       ├── song/
+│       │   ├── start/route.ts          # 曲作成開始
+│       │   ├── structure/route.ts      # 曲構造確定
+│       │   ├── lyrics/route.ts         # 歌詞確定
+│       │   ├── status/route.ts         # 曲作成状況
+│       │   ├── cancel/route.ts         # キャンセル
+│       │   ├── result/route.ts         # 完成楽曲取得
+│       │   ├── approve-structure/route.ts # 構成承認
+│       │   ├── approve-lyrics/route.ts # 歌詞承認
+│       │   └── _jobStore.ts            # 曲作成ジョブストア
+│       ├── note/
+│       │   ├── plan/route.ts           # 記事プラン生成
+│       │   └── generate/route.ts       # 記事本文生成
+│       ├── image/
+│       │   ├── generate/route.ts       # 画像生成
+│       │   ├── chat/route.ts           # チャット型生成
+│       │   ├── edit/route.ts           # 画像編集
+│       │   ├── preview-cost/route.ts   # コスト試算
+│       │   ├── history/route.ts        # 生成履歴
+│       │   └── jacket/route.ts         # アルバムジャケット生成
+│       ├── gift/
+│       │   ├── balance/route.ts        # ギフト残高・期限
+│       │   ├── send/route.ts           # ギフト送信
+│       │   ├── use/route.ts            # ギフト使用
+│       │   └── history/route.ts        # ギフト履歴
+│       ├── minigames/
+│       │   ├── rumble/
+│       │   │   ├── entry/route.ts      # 参加登録
+│       │   │   ├── force-entry/route.ts# 強制参加（管理者）
+│       │   │   ├── status/route.ts     # 状況取得
+│       │   │   ├── ranking/route.ts    # 週間ランキング・報酬
+│       │   │   ├── equipment/route.ts  # 装備一覧
+│       │   │   ├── equip/route.ts      # 装備
+│       │   │   ├── gacha/route.ts      # 装備ガチャ
+│       │   │   ├── enhance/route.ts    # 強化
+│       │   │   ├── dismantle/route.ts  # 解体
+│       │   │   ├── set-name/route.ts   # バトル名設定
+│       │   │   ├── my-rank-context/route.ts # 自分のランク状況
+│       │   │   ├── shard-status/route.ts # シャード在庫
+│       │   │   ├── spectator/route.ts  # 観戦
+│       │   │   └── daily-result/route.ts # 日次バトル結果
+│       │   └── tap/
+│       │       ├── play/route.ts       # 単タップ処理
+│       │       ├── batch-play/route.ts # バッチタップ処理
+│       │       ├── status/route.ts     # 状況取得
+│       │       ├── ranking/route.ts    # ランキング
+│       │       └── ticker/route.ts     # グローバルイベントティッカー
+│       ├── cat-chat/route.ts           # LifaiCat チャット
+│       ├── cat-feedback/route.ts       # LifaiCat フィードバック
+│       ├── cat-recommendation/route.ts # LifaiCat おすすめ
+│       ├── fortune-bp/route.ts         # 占いBP付与
+│       ├── fortune/result/route.ts     # 占い結果（サーバー管理）
+│       ├── gacha/
+│       │   ├── route.ts                # ガチャ実行
+│       │   ├── daily/route.ts          # デイリーガチャ
+│       │   └── daily/status/route.ts   # デイリーガチャ状況
+│       ├── staking/route.ts            # ステーキング操作
+│       ├── narasu-agency/
+│       │   ├── submit/route.ts         # 申請送信
+│       │   ├── pay-bp/route.ts         # BP支払い
+│       │   └── pay-ep/route.ts         # EP支払い
+│       ├── 5000/
+│       │   ├── apply/route.ts
+│       │   ├── admin/approve/route.ts
+│       │   ├── admin/list/route.ts
+│       │   ├── nowpayments/create/route.ts
+│       │   ├── nowpayments/ipn/route.ts
+│       │   ├── purchase-status/route.ts
+│       │   └── reset/resend/route.ts
+│       ├── music-release-guide/route.ts
+│       ├── radio/route.ts              # ラジオ配信
+│       └── debug/env/route.ts          # 環境変数確認（開発用）
 ├── components/
-│   ├── Field.tsx                   # テキスト入力
-│   ├── Select.tsx                  # セレクトボックス
-│   ├── StepHeader.tsx              # ステップ表示ヘッダー
-│   ├── PlanPicker.tsx              # プラン選択UI
-│   ├── WalletBadge.tsx             # BP/EP残高バッジ
-│   ├── BPGrantModal.tsx            # BP受取モーダル
-│   ├── storage.ts                  # sessionStorage操作
-│   ├── useToast.ts                 # トーストhook
-│   ├── Toast.tsx                   # トースト表示
-│   └── AIBot/
-│       ├── AIBotProvider.tsx       # AIBotコンテキスト
-│       └── AIBotWidget.tsx         # AIBotウィジェット
-├── middleware.ts                   # Basic Auth ガード
-├── vercel.json                     # Vercelタイムアウト設定
+│   ├── Field.tsx                       # テキスト入力
+│   ├── Select.tsx                      # セレクトボックス
+│   ├── StepHeader.tsx                  # ステップ表示ヘッダー
+│   ├── PlanPicker.tsx                  # プラン選択UI
+│   ├── WalletBadge.tsx                 # BP/EP残高バッジ
+│   ├── BPGrantModal.tsx                # BP受取モーダル
+│   ├── LoginBonusModal.tsx             # ログインボーナスモーダル
+│   ├── GachaModal.tsx                  # ガチャモーダル
+│   ├── StakingModal.tsx                # ステーキングモーダル
+│   ├── AppSidebar.tsx                  # サイドバーナビ
+│   ├── GameTile.tsx                    # ゲームタイル表示
+│   ├── MissionCard.tsx                 # ミッションカード
+│   ├── RadioCard.tsx                   # ラジオカード
+│   ├── CopyField.tsx                   # コピー用フィールド
+│   ├── ThemeToggle.tsx                 # ダーク/ライト切替ボタン
+│   ├── Toast.tsx                       # トースト通知
+│   ├── useToast.ts                     # トーストhook
+│   ├── storage.ts                      # sessionStorage操作
+│   ├── auth.ts                         # 認証ユーティリティ
+│   ├── GiftEPTutorial.tsx              # GiftEP チュートリアルモーダル（3ページ）
+│   ├── LifaiCat.tsx                    # LifaiCat UIコンポーネント
+│   ├── LifaiCatGlobal.tsx              # LifaiCat グローバルインスタンス
+│   └── image/                          # 画像生成コンポーネント（準備中）
+│       ├── ImageChatPanel.tsx
+│       ├── ImageGenerateButton.tsx
+│       ├── ImageEditPanel.tsx
+│       ├── ImagePreviewCard.tsx
+│       ├── ImageHistoryGrid.tsx
+│       ├── ImageStateChips.tsx
+│       ├── ImageStylePicker.tsx
+│       └── ImageCostBox.tsx
+├── middleware.ts                       # Basic Auth ガード
+├── vercel.json                         # Vercelタイムアウト設定
 └── package.json
 ```
 
@@ -135,21 +332,21 @@ aisalon/
 
 ## 3. 環境変数
 
-`.env.local` で管理。全て必須（注記がある場合は任意）。
+`.env.local` で管理。
 
-| 変数名 | 用途 |
-|---|---|
-| `GAS_WEBAPP_URL` | GAS WebApp デプロイURL |
-| `GAS_API_KEY` | GAS APIキー（全リクエストに付加） |
-| `GAS_ADMIN_KEY` | GAS 管理者専用キー |
-| `ADMIN_USER` | Basic Auth ユーザー名 |
-| `ADMIN_PASS` | Basic Auth パスワード |
-| `NOWPAYMENTS_API_KEY` | NOWPayments API キー |
-| `NOWPAYMENTS_IPN_SECRET` | IPN HMAC-SHA512 署名検証用シークレット |
-| `NEXT_PUBLIC_SITE_URL` | 公開URL（IPN callback等に使用） |
-| `OPENAI_API_KEY` | 歌詞生成（任意） |
-| `REPLICATE_API_TOKEN` | 音楽生成（任意） |
-| `MERGE_SERVER_URL` | 音声マージサーバURL（任意） |
+| 変数名 | 用途 | 必須 |
+|---|---|---|
+| `GAS_WEBAPP_URL` | GAS WebApp デプロイURL | ○ |
+| `GAS_API_KEY` | GAS APIキー（全リクエストに付加） | ○ |
+| `GAS_ADMIN_KEY` | GAS 管理者専用キー | ○ |
+| `ADMIN_USER` | Basic Auth ユーザー名 | ○ |
+| `ADMIN_PASS` | Basic Auth パスワード | ○ |
+| `NOWPAYMENTS_API_KEY` | NOWPayments API キー | ○ |
+| `NOWPAYMENTS_IPN_SECRET` | IPN HMAC-SHA512 署名検証用シークレット | ○ |
+| `NEXT_PUBLIC_SITE_URL` | 公開URL（IPN callback等に使用） | ○ |
+| `OPENAI_API_KEY` | 歌詞・記事生成 | 任意 |
+| `REPLICATE_API_TOKEN` | 音楽生成 | 任意 |
+| `MERGE_SERVER_URL` | 音声マージサーバURL | 任意 |
 
 ---
 
@@ -164,12 +361,18 @@ aisalon/
 | next-pwa | 5.6.0 | PWA対応 |
 | sonner | 2.0.7 | トースト通知 |
 | tailwindcss | 3.4.10 | スタイリング |
+| framer-motion | 12.38.0 | アニメーション |
+| openai | 6.32.0 | OpenAI SDK |
+| @aws-sdk/client-s3 | 3.x | S3連携 |
+| fluent-ffmpeg | 2.1.3 | 音声処理 |
+| ffmpeg-static | 5.2.0 | ffmpegバイナリ |
 
 スクリプト:
 ```bash
 npm run dev    # 開発サーバー起動 (http://localhost:3000)
 npm run build  # 本番ビルド
 npm start      # 本番サーバー起動 (port 3000)
+npm test       # Jest テスト実行
 ```
 
 ### `vercel.json`
@@ -177,13 +380,16 @@ npm start      # 本番サーバー起動 (port 3000)
 ```json
 {
   "functions": {
-    "app/api/music/**": { "maxDuration": 300 },
-    "app/api/song/**":  { "maxDuration": 300 }
+    "app/api/music/**":                    { "maxDuration": 300 },
+    "app/api/bgm/**":                      { "maxDuration": 120 },
+    "app/api/song/approve-structure/**":   { "maxDuration": 300 },
+    "app/api/song/start/**":               { "maxDuration": 60 },
+    "app/api/song/approve-lyrics/**":      { "maxDuration": 60 }
   }
 }
 ```
 
-音楽・曲生成は2〜3分かかるため、Vercel の実行時間を300秒（5分）に延長。
+音楽・曲生成は2〜3分かかるため、Vercel の実行時間を延長している。
 
 ---
 
@@ -193,15 +399,22 @@ npm start      # 本番サーバー起動 (port 3000)
 
 ### 役割
 
-`/admin/*` および `/api/admin/*` に対して HTTP Basic Auth を強制する。
+以下パスに HTTP Basic Auth を強制する。
+
+| 保護パス | 説明 |
+|---|---|
+| `/admin/*` | メイン管理者画面 |
+| `/api/admin/*` | メイン管理者API |
+| `/5000/admin/*` | 5000プログラム管理画面 |
+| `/api/5000/admin/*` | 5000プログラム管理API |
 
 ### 処理フロー
 
-1. リクエストパスが `/admin` または `/api/admin` で始まるかチェック
+1. リクエストパスが対象かチェック
 2. `Authorization` ヘッダーを確認
 3. Base64 デコードして `user:pass` を検証
 4. 環境変数 `ADMIN_USER` / `ADMIN_PASS` と比較
-5. 不一致 → `401 Unauthorized` + `WWW-Authenticate: Basic realm="Admin"` ヘッダー返却
+5. 不一致 → `401 Unauthorized` + `WWW-Authenticate: Basic realm="Admin"` 返却
 6. 一致 → リクエストを通過させる
 
 ---
@@ -222,10 +435,15 @@ npm start      # 本番サーバー起動 (port 3000)
 
 ### 主要要素
 
-- `<AIBotProvider>` — AIBotコンテキストプロバイダー
+- `<LifaiCatGlobal>` — 全ページに表示されるAIアシスタント（新）
 - `<ToastHost>` — トースト表示ホスト
-- `<AIBotWidget>` — チャットウィジェット（全ページに表示）
 - フォント: 日本語対応フォント設定
+
+### グローバルスタイル (`globals.css`)
+
+- Body 背景色: `#070A12`（非常に濃いネイビー）
+- グリッドパターン背景（24×24px、透明度6%）
+- Tailwind ディレクティブ設定
 
 ---
 
@@ -238,28 +456,10 @@ npm start      # 本番サーバー起動 (port 3000)
 | 要素 | 内容 |
 |---|---|
 | カウントダウン | `endAtISO = "2026-05-01T23:59:59+09:00"` |
-| 調達バー | `raised = 4852` / `goal = 10000` USDT |
+| 調達バー | `raised` / `goal` USDT（`app/lib/presale.ts` の `computeRaised` で計算） |
 | CTA | 権利購入 / ログイン / ビジョン確認 |
 | フッター | 利用規約 / 紹介プログラム / プライバシーポリシー / 特定商取引法 / LINE問い合わせ |
 | PWA案内 | ホーム画面追加を促す |
-
----
-
-### `app/login/page.tsx` — ログイン (`/login`)
-
-**用途:** ユーザー認証
-
-**入力項目:**
-- ログインID
-- パスワード（ワンタイムコード）
-
-**フロー:**
-1. `POST /api/auth/login` に `{ id, code }` 送信
-2. 成功時:
-   - `setAuth()` → localStorage に `{ status, id, token, updatedAt }` 保存
-   - `setAuthSecret()` → sessionStorage にパスワード保存
-   - `/top` へリダイレクト
-3. pending 返却時: `/pending` へリダイレクト
 
 ---
 
@@ -271,24 +471,43 @@ npm start      # 本番サーバー起動 (port 3000)
 
 | コンポーネント | 説明 |
 |---|---|
-| `PresaleHeader` | プレセール進捗バー |
-| `BalanceBadge` | BP/EP残高 (`/api/wallet/balance` 呼び出し) |
-| `ReferralCard` | 紹介コード表示 (`/api/me` 呼び出し) |
-| `AppIconCard` | 機能タイル（下記参照） |
+| `BalanceBadge`（インライン） | BP/EP残高をWALLETバッジで表示（BP/EP縦2段レイアウト） |
+| `NoticeBoard`（インライン） | お知らせ一覧（空の場合「最新のお知らせはありません」） |
+| `MissionCard` | アクティブミッション表示 |
+| `RadioCard` | ラジオカード |
+| `LoginBonusModal` | デイリーログインボーナス（`/api/daily-login`） |
+| `BPGrantModal` | 未受取BP受取 |
+| `GachaModal` | ガチャモーダル |
+| `StakingModal` | ステーキングモーダル |
 
-**機能タイル一覧:**
+**ヘッダー構成:**
+- 左: `LIFAI APP HOME` バッジ + `LIFAIへようこそ`（同一行）
+- 右: Walletバッジ（BP/EP縦2段） + `LOGOUT` ボタン
+- 下: `NoticeBoard`（折りたたみ式お知らせ）
 
-| タイル | カラー | 状態 |
-|---|---|---|
-| 音楽生成 NEW | violet | 有効 |
-| 音楽生成 (旧) | indigo | 有効 |
-| マーケット | emerald | 有効 |
-| note記事生成 | — | 準備中 |
-| ワークフロー生成 | — | 準備中 |
-| アプリ作成 | — | 準備中 |
-| 毎日占い | amber | 外部リンク |
-| コラム | indigo | NEW |
-| 権利購入 | rose | 有効 |
+**機能タイル一覧（4列グリッド）:**
+
+| タイル ID | 表示名 | リンク先 | 状態 |
+|---|---|---|---|
+| fortune | 団子占い | /fortune | 有効（デイリー+10BP） |
+| market | マーケット | /market | 有効 |
+| gacha | LIFASLOT | モーダル | 有効 |
+| staking | ステーキング | モーダル | 有効 |
+| member | メンバーシップ | /membership | 有効 |
+| music2 | MUSICCREATE | /music2 | 有効（Beta） |
+| music-boost | Music Boost | /music-boost | 有効（New） |
+| note | ノート生成 | /note-generator | 有効（New） |
+| workflow | ワークフロー | /workflow | 準備中 |
+| minigames | LIFAI Arcade | /mini-games | 有効（New） |
+| gift | GiftEP | /gift | 有効 |
+| gift-exchange | Gift交換 | — | 準備中 |
+| image | 画像生成 | — | 準備中 |
+
+**useEffect 処理順（ページ表示時）:**
+1. 認証チェック → 未ログインなら `/login` へ
+2. 未受取BPチェック（`/api/user/pending-bp`） → `BPGrantModal`
+3. デイリーログインボーナス（`/api/daily-login`） → `LoginBonusModal`
+4. 月次BP回復チェック（`/api/wallet/recover`） → 回復があれば残高更新
 
 **未受取BP通知:**
 1. `/api/user/pending-bp` で確認
@@ -298,8 +517,6 @@ npm start      # 本番サーバー起動 (port 3000)
 ---
 
 ### `app/purchase/page.tsx` — プラン選択 (`/purchase`, Step 1)
-
-**用途:** 購入プランの選択・決済開始
 
 **プラン定義:**
 
@@ -323,8 +540,6 @@ npm start      # 本番サーバー起動 (port 3000)
 
 ### `app/apply/page.tsx` — 申請フォーム (`/apply`, Step 2)
 
-**用途:** 申請者の個人情報入力
-
 **必須入力項目:**
 
 | フィールド | 説明 |
@@ -338,31 +553,33 @@ npm start      # 本番サーバー起動 (port 3000)
 | city | 市区町村 |
 | job | 職業 |
 
-**任意入力項目:**
+**任意入力項目:** `refName`（紹介者名）、`refId`（紹介者ID）
 
-| フィールド | 説明 |
-|---|---|
-| refName | 紹介者名 |
-| refId | 紹介者ID |
-
-**バリデーション:**
-- メール形式チェック
-- 全必須項目の空文字NG
-
-**自動保存:** `addval_apply_draft_v1`（sessionStorage）に変更時自動保存
+**自動保存:** `addval_apply_draft_v1`（sessionStorage）
 
 ---
 
 ### `app/confirm/page.tsx` — 確認・送信 (`/confirm`, Step 3)
 
-**用途:** 入力内容の最終確認・申請送信
-
 **フロー:**
 1. Step 2 の入力内容をsessionStorageから読み込み表示
 2. `GET /api/apply/status?applyId=...` で支払い状況確認
-3. "支払い完了しました" チェックボックス（ローカル状態）
+3. "支払い完了しました" チェックボックス
 4. 送信: `POST /api/apply`
 5. 成功時: `/pending` へリダイレクト + Draft クリア
+
+---
+
+### `app/music2/page.tsx` — 音楽生成 2.0 (`/music2`, Beta)
+
+**用途:** 3ステップで楽曲を完成させる新フロー
+
+**ステップ:**
+1. テーマ・ジャンル・ムード入力 → 歌詞生成 (`/api/song/start`)
+2. 歌詞確認・編集 → 曲構成生成 (`/api/song/structure`)
+3. 構成確認 → 音源生成 (`/api/song/approve-structure`)
+
+**入力オプション:** BPM、ボーカルスタイル（女性/男性/混合/なし）
 
 ---
 
@@ -370,20 +587,7 @@ npm start      # 本番サーバー起動 (port 3000)
 
 **用途:** EP を消費して楽曲の配信優先度を高める月額ブーストサービス
 
-**認証:** ページ独自のパスワード認証（`sessionStorage` に `music_boost_authed=1`）
-
-**機能:**
-
-| 機能 | 詳細 |
-|---|---|
-| EP残高表示 | `GET /api/wallet/balance` から取得 |
-| ブースト状況 | `GET /api/music-boost/status?userId=...` |
-| プラン選択 | 10プラン（Starter〜Legend）、枠数チェックあり |
-| EP決済確認モーダル | プラン・費用・有効期限・免責事項を表示 |
-| EP決済ボタン | EP残高不足時は無効化 |
-| クレジットカードボタン | 準備中（常にdisabled） |
-| 解約 | `POST /api/music-boost/cancel` |
-| チュートリアル | `localStorage: musicboost_tutorial_seen`（初回のみ） |
+**認証:** なし（パスワードロック廃止済み）
 
 **プラン一覧（PLANS）:**
 
@@ -402,51 +606,137 @@ npm start      # 本番サーバー起動 (port 3000)
 
 **EP換算:** `price_usd × 100 EP`（例: $9 → 900 EP）
 
-**自動更新:** GAS 時間ベーストリガー（毎日深夜0時）が期限切れブーストを自動更新。EP不足の場合は失効 + メール通知。
+**機能:**
+- EP残高表示 (`GET /api/wallet/balance`)
+- ブースト状況確認 (`GET /api/music-boost/status`)
+- EP決済 (`POST /api/music-boost/subscribe`)
+- 解約 (`POST /api/music-boost/cancel`)
+- チュートリアル（`localStorage: musicboost_tutorial_seen`、初回のみ）
+
+**自動更新:** GAS 時間ベーストリガー（毎日深夜0時）が期限切れブーストを自動更新。EP不足時は失効 + メール通知。
+
+---
+
+### `app/mini-games/page.tsx` — LIFAI Arcade (`/mini-games`)
+
+**用途:** ミニゲームハブ。各ゲームへの導線を提供。
+
+**ゲーム一覧:**
+- Rumble Arena（週次PvPトーナメント）
+- Tap Mining（デイリータップゲーム）
+
+---
+
+### `app/mini-games/rumble/page.tsx` — Rumble Arena (`/mini-games/rumble`)
+
+**用途:** 週次PvPバトルトーナメント
+
+**ゲームシステム:**
+
+| 要素 | 詳細 |
+|---|---|
+| 通貨 | シャード（装備ガチャ・強化に使用） |
+| 装備 | ガチャで入手、強化・解体が可能 |
+| バトル | 週次ランキング制。金曜18:50 JST に報酬発表 |
+| 報酬 | EP（参加者数に応じて変動） |
+| 観戦モード | 他ユーザーのバトルを閲覧可能 |
+| バトルログ | モーダルでリプレイ表示 |
+
+**API:**
+- `/api/minigames/rumble/entry` — 参加登録
+- `/api/minigames/rumble/status` — 状況取得
+- `/api/minigames/rumble/ranking` — ランキング・報酬
+- `/api/minigames/rumble/equipment` — 装備一覧
+- `/api/minigames/rumble/gacha` — 装備ガチャ
+- `/api/minigames/rumble/enhance` — 強化
+- `/api/minigames/rumble/dismantle` — 解体
+- `/api/minigames/rumble/spectator` — 観戦
+
+---
+
+### `app/mini-games/tap/page.tsx` — Tap Mining (`/mini-games/tap`)
+
+**用途:** デイリータップゲーム。BP/EP報酬を獲得。
+
+**ゲームシステム:**
+
+| 要素 | 詳細 |
+|---|---|
+| 1日の上限 | 500タップ |
+| コンボシステム | 50ヒット以上でフィーバーモード（10秒間） |
+| バッチ最適化 | 10タップごと or 2秒ごとにバッチAPIへフラッシュ |
+| フロートアニメーション | レアリポートが画面上に浮遊表示 |
+| マイニングログ | 直近15件の活動ログ表示 |
+| デスクトップ | サイドバーにログ表示 |
+
+**API:**
+- `/api/minigames/tap/batch-play` — バッチタップ処理（主要）
+- `/api/minigames/tap/status` — 状況取得
+- `/api/minigames/tap/ranking` — ランキング
+- `/api/minigames/tap/ticker` — グローバルイベントティッカー
+
+---
+
+### `app/gift/page.tsx` — GiftEP (`/gift`)
+
+**用途:** GiftEP（ギフトポイント）の管理・送受信
+
+**認証:** パスワード保護（`"nagoya01@"`）
+
+**チュートリアル:** 初回訪問時に3ページのモーダルチュートリアルを自動表示。ヘッダーの `?` ボタンで再表示可能。
+- Page 1: GiftEPとは？（基本スペック）
+- Page 2: 使い道（贈る / サービスで使う / 履歴）
+- Page 3: 利用ルール（換金禁止・再送不可・30日期限）
+- 既読管理: `localStorage: gift_ep_tutorial_seen`
+
+**サブページ:**
+- `/gift/send` — 他ユーザーへのギフト送信
+- `/gift/use` — ギフト使用・交換
+- `/gift/history` — ギフト取引履歴
+
+**機能:**
+- ギフト残高表示 + 期限アラート
+- ユーザーへのギフト送信
+- ギフト使用・引き換え
+
+---
+
+### `app/note-generator/page.tsx` — ノート記事生成 (`/note-generator`)
+
+**用途:** note.com 向け記事をAIで3ステップ生成
+
+**ステップ:**
+1. テーマ・ターゲット・スタイル・専門レベル入力
+2. AI生成プラン・タイトル候補確認（売れやすさスコア付き）
+3. 完全な記事（マークダウン形式、有料/無料パート区分）
+
+**生成物:**
+- タイトル候補（売れやすさスコア付き）
+- 推奨販売価格（JPY）
+- SNSコピー（X, LINE用）
+- 本文（セクション区分、有料/無料マーキング）
+
+---
+
+### `app/fortune/page.tsx` — 毎日占い (`/fortune`)
+
+**用途:** デイリー占い + 10BP報酬
+
+- 結果はサーバー側で管理（`/api/fortune/result`）
+- 1日1回、占い結果取得で10BP付与（`/api/fortune-bp`）
 
 ---
 
 ### `app/admin/page.tsx` — 管理者ダッシュボード (`/admin`)
 
-**用途:** 申請一覧の表示・承認・BP付与・会員一覧・Music Boost管理
-
 **アクセス:** HTTP Basic Auth 必須
 
 **機能:**
-- 申請一覧: `GET /api/admin/list`
-- 申請承認: `POST /api/admin/approve`
-- 売却申請一覧: `GET /api/admin/sell-requests`
-- BP付与: `POST /api/admin/grant-bp`
-- ダッシュボード統計: `GET /api/admin/dashboard`
-- 会員一覧（ページング・サーバーサイドソート）: `GET /api/admin/members`
-- 会員一覧のソート可能列: `bp_balance` / `ep_balance` / `login_streak` / `total_login_count` / `last_login_at`
-- 会員一覧の Music Boost 列: 契約中プランと有効期限を表示
-
----
-
-### `app/market/page.tsx` — マーケットプレイス (`/market`)
-
-**用途:** デジタルアイテムの売買プラットフォーム
-
-**スタイル:**
-- ダークテーマ: 背景 `#0B1220` / 文字 `#EAF0FF`
-- Radial glow 背景効果
-
-**機能:**
-
-| 機能 | 詳細 |
-|---|---|
-| 商品検索 | 500ms debounce |
-| フィルター | item_type / currency |
-| ページング | PAGE_SIZE = 12 |
-| 商品出品 | `POST /api/market/create` |
-| チュートリアル | `TutorialModal`（localStorage確認・初回のみ表示） |
-
-**ItemCard 表示情報:**
-- 商品タイプバッジ
-- 通貨バッジ
-- 価格
-- 在庫数
+- 申請一覧・承認・BP付与
+- 売却申請管理
+- 会員一覧（ページング・ソート・Music Boost表示）
+- Rumble Arena 管理（強制開始・報酬設定・即時実行）
+- 音楽審査
 
 ---
 
@@ -456,8 +746,6 @@ npm start      # 本番サーバー起動 (port 3000)
 
 #### `POST /api/auth/login`
 
-**ファイル:** `app/api/auth/login/route.ts`
-
 | 項目 | 内容 |
 |---|---|
 | リクエスト | `{ id: string, code: string }` |
@@ -465,18 +753,13 @@ npm start      # 本番サーバー起動 (port 3000)
 | 成功レスポンス | `{ ok: true, status, id, token, plan, ... }` |
 | 失敗レスポンス | `{ ok: false, reason: "pending" \| "invalid" }` |
 
----
-
 #### `POST /api/auth/reset`
-
-**ファイル:** `app/api/auth/reset/route.ts`
 
 | 項目 | 内容 |
 |---|---|
 | リクエスト | `{ token: string, password: string }` |
 | GAS action | `reset_password` |
 | 成功レスポンス | `{ ok: true }` |
-| 失敗レスポンス | `{ ok: false, error: string }` |
 
 ---
 
@@ -484,19 +767,12 @@ npm start      # 本番サーバー起動 (port 3000)
 
 #### `POST /api/apply/create`
 
-**ファイル:** `app/api/apply/create/route.ts`
-
 | 項目 | 内容 |
 |---|---|
 | リクエスト | `{ plan: string, applyId: string, ...フォームデータ }` |
 | GAS action | `apply_create` (初回) / `apply` (フォーム送信時) |
-| 成功レスポンス | `{ ok: true }` |
-
----
 
 #### `GET /api/apply/status`
-
-**ファイル:** `app/api/apply/status/route.ts`
 
 | 項目 | 内容 |
 |---|---|
@@ -510,23 +786,26 @@ npm start      # 本番サーバー起動 (port 3000)
 
 #### `POST /api/me`
 
-**ファイル:** `app/api/me/route.ts`
-
 | 項目 | 内容 |
 |---|---|
 | リクエスト | `{ id: string, code: string }` |
 | GAS action | `me` |
 | タイムアウト | 15秒 |
 | 成功レスポンス | `{ ok: true, me: { login_id, email, status, plan, my_ref_code, ref_path, referrer_login_id, ... } }` |
-| 失敗レスポンス | `{ ok: false, reason: "pending" \| "invalid", error: string }` |
+
+#### `POST /api/daily-login`
+
+| 項目 | 内容 |
+|---|---|
+| 用途 | デイリーログインボーナス付与 |
+| GAS action | `daily_login` |
+| 成功レスポンス | `{ ok: true, bonus_bp, streak, total_count }` |
 
 ---
 
 ### 決済（NOWPayments）
 
 #### `POST /api/nowpayments/create`
-
-**ファイル:** `app/api/nowpayments/create/route.ts`
 
 | 項目 | 内容 |
 |---|---|
@@ -535,7 +814,6 @@ npm start      # 本番サーバー起動 (port 3000)
 | 成功レスポンス | `{ ok: true, invoice_url: string }` |
 
 **NOWPayments リクエストペイロード:**
-
 ```json
 {
   "price_amount": "<金額>",
@@ -548,13 +826,7 @@ npm start      # 本番サーバー起動 (port 3000)
 }
 ```
 
----
-
 #### `POST /api/nowpayments/ipn`
-
-**ファイル:** `app/api/nowpayments/ipn/route.ts`
-
-**用途:** NOWPayments からの決済完了Webhookを受け取り、GASを更新する
 
 | 項目 | 内容 |
 |---|---|
@@ -562,87 +834,27 @@ npm start      # 本番サーバー起動 (port 3000)
 | テストモード | `x-test-ipn: 1` ヘッダーで署名チェック回避 |
 | GAS action | `payment_update` |
 
-**GASに送信するペイロード:**
-
-```json
-{
-  "applyId": "string",
-  "orderId": "string",
-  "paymentStatus": "string",
-  "isPaid": "boolean",
-  "invoiceId": "string",
-  "actuallyPaid": "number",
-  "payAmount": "number",
-  "payCurrency": "string",
-  "priceAmount": "number",
-  "priceCurrency": "string",
-  "raw": "object",
-  "isTest": "boolean"
-}
-```
-
 ---
 
 ### 管理者 (Basic Auth 必須)
 
 #### `GET /api/admin/list`
-
-**ファイル:** `app/api/admin/list/route.ts`
-
-| 項目 | 内容 |
-|---|---|
-| GAS action | `admin_list` |
-| 成功レスポンス | `{ ok: true, items: ApplyRow[] }` |
-
----
+GAS `admin_list` → `{ ok: true, items: ApplyRow[] }`
 
 #### `POST /api/admin/approve`
-
-**ファイル:** `app/api/admin/approve/route.ts`
-
-| 項目 | 内容 |
-|---|---|
 | リクエスト | `{ rowIndex: number }` |
-| GAS action | `admin_approve&rowIndex={rowIndex}` |
-| 成功レスポンス | `{ ok: true, loginId, tempPassword }` または `{ ok: true, oneTimeCode }` |
-
----
-
-#### `POST /api/admin/grant-bp`
-
-**ファイル:** `app/api/admin/grant-bp/route.ts`
-
-| 項目 | 内容 |
-|---|---|
-| リクエスト | `{ request_id: string, user_id: string, bp_amount: number }` |
-| GAS action | `grant_bp_for_sell` |
-| 用途 | 売却申請に対してBP付与 |
-
----
-
-#### `GET /api/admin/sell-requests`
-
-**ファイル:** `app/api/admin/sell-requests/route.ts`
-
-| 項目 | 内容 |
-|---|---|
-| GAS action | `get_sell_requests` |
-| 成功レスポンス | `{ ok: true, items: SellRequest[] }` |
-
----
+GAS `admin_approve` → `{ ok: true, loginId, tempPassword }` または `{ ok: true, oneTimeCode }`
 
 #### `GET /api/admin/members`
 
-**ファイル:** `app/api/admin/members/route.ts`
-
-| 項目 | 内容 |
+| クエリパラメータ | 説明 |
 |---|---|
-| クエリパラメータ | `page`, `pageSize`, `sortKey`, `sortOrder` |
-| GAS action | `admin_get_members` |
-| 成功レスポンス | `{ ok: true, members: MemberRow[], total, page, pageSize }` |
+| `page` | ページ番号 |
+| `pageSize` | 1ページの件数 |
+| `sortKey` | ソートキー |
+| `sortOrder` | `asc` \| `desc` |
 
 **MemberRow 型:**
-
 ```typescript
 {
   login_id: string;
@@ -657,12 +869,12 @@ npm start      # 本番サーバー起動 (port 3000)
   total_login_count: number;
   subscription_plan: string;
   last_login_at: string;
-  music_boost_plan?: string | null;       // アクティブな Music Boost プランID
-  music_boost_expires_at?: string | null; // Music Boost 有効期限
+  music_boost_plan?: string | null;
+  music_boost_expires_at?: string | null;
 }
 ```
 
-**ソートキー（`ALLOWED_SORT_KEYS`）:** `created_at` / `ep_balance` / `bp_balance` / `login_streak` / `total_login_count` / `last_login_at`
+**ソートキー (`ALLOWED_SORT_KEYS`):** `created_at` / `ep_balance` / `bp_balance` / `login_streak` / `total_login_count` / `last_login_at`
 
 ---
 
@@ -670,22 +882,12 @@ npm start      # 本番サーバー起動 (port 3000)
 
 #### `GET /api/music-boost/status`
 
-**ファイル:** `app/api/music-boost/status/route.ts`
-
-| 項目 | 内容 |
-|---|---|
 | クエリパラメータ | `userId: string` |
 | GAS action | `music_boost_status` |
 | 成功レスポンス | `{ ok: true, current_boost, total_slots, used_slots, available_slots, plans }` |
 
----
-
 #### `POST /api/music-boost/subscribe`
 
-**ファイル:** `app/api/music-boost/subscribe/route.ts`
-
-| 項目 | 内容 |
-|---|---|
 | リクエスト | `{ userId, planId, paymentMethod?: "ep" }` |
 | GAS action | `music_boost_subscribe` |
 | 成功レスポンス | `{ ok: true, boost_id, plan_id, percent, price_usd, slots_used, started_at, expires_at, ep_cost? }` |
@@ -693,29 +895,83 @@ npm start      # 本番サーバー起動 (port 3000)
 
 **EP換算:** `paymentMethod="ep"` の場合、`price_usd × 100 EP` を差し引く。
 
----
-
 #### `POST /api/music-boost/cancel`
 
-**ファイル:** `app/api/music-boost/cancel/route.ts`
-
-| 項目 | 内容 |
-|---|---|
 | リクエスト | `{ userId: string }` |
 | GAS action | `music_boost_cancel` |
 | 成功レスポンス | `{ ok: true, canceled_at }` |
 
 ---
 
+### ミニゲーム - Rumble Arena
+
+#### `POST /api/minigames/rumble/entry`
+参加登録。`{ userId, code }` → `{ ok: true, entry_id, battle_name }`
+
+#### `GET /api/minigames/rumble/status`
+現在の状況取得。ランク・シャード数・装備情報を返す。
+
+#### `GET /api/minigames/rumble/ranking`
+週間ランキング + 報酬額（参加者数に応じて変動、金曜18:50 JST 発表）。
+
+#### `POST /api/minigames/rumble/gacha`
+装備ガチャ実行。シャードを消費。
+
+#### `POST /api/minigames/rumble/enhance`
+装備強化。シャードを消費。
+
+#### `POST /api/minigames/rumble/dismantle`
+装備解体。シャードを返還。
+
+---
+
+### ミニゲーム - Tap Mining
+
+#### `POST /api/minigames/tap/batch-play`
+バッチタップ処理（10タップ or 2秒ごとにフラッシュ）。
+`{ userId, code, count, session_id }` → `{ ok: true, rewards, total_taps_today, remaining_taps }`
+
+#### `GET /api/minigames/tap/status`
+今日のタップ数・残り・コンボ状態などを返す。
+
+#### `GET /api/minigames/tap/ticker`
+グローバルイベントティッカー（他ユーザーの活動含む）。
+
+---
+
+### ギフトシステム
+
+#### `GET /api/gift/balance`
+ギフト残高 + 期限情報。`{ ok: true, balance, expires_at }`
+
+#### `POST /api/gift/send`
+`{ sender_id, code, receiver_id, amount, message }` → `{ ok: true }`
+
+#### `POST /api/gift/use`
+`{ user_id, code, amount }` → `{ ok: true, new_balance }`
+
+---
+
+### ノート記事生成
+
+#### `POST /api/note/plan`
+`{ theme, target, style, expertise }` → `{ ok: true, title_candidates, suggested_price, sns_copy }`
+
+#### `POST /api/note/generate`
+`{ plan_id, selected_title, ... }` → `{ ok: true, article_markdown }`
+
+---
+
 ### マーケット
 
+#### `GET /api/market/list`
+```
+?page=1&limit=50&item_type=...&currency=...&q=...
+```
+500ms debounce で検索対応。
+
 #### `POST /api/market/create`
-
-**ファイル:** `app/api/market/create/route.ts`
-
-| 項目 | 内容 |
-|---|---|
-| 認証 | `{ id, code }` (ユーザー認証) |
+| 認証 | `{ id, code }` |
 | リクエスト | `{ title, desc, item_type, asset_count, currency, price, delivery_mode, delivery_ref, stock_total }` |
 | GAS action | `market_create` |
 
@@ -724,40 +980,24 @@ npm start      # 本番サーバー起動 (port 3000)
 ### 音楽生成
 
 #### `POST /api/music/generate`
-
-**ファイル:** `app/api/music/generate/route.ts`
 **maxDuration:** 300秒
 
-| 項目 | 内容 |
-|---|---|
-| リクエスト | `{ prompt: string, mode: "standard"\|"pro", bpm?: number, waveform?: string, vocal?: boolean }` |
-| 成功レスポンス | `{ ok: true, predictionId: string, lyrics: string }` |
+| リクエスト | `{ prompt, mode: "standard"\|"pro", bpm?, waveform?, vocal?, userId? }` |
+| 成功レスポンス | `{ ok: true, predictionId, lyrics }` |
+| レート制限エラー | `{ ok: false, error: "rate_limited" }` （HTTP 429） |
+
+**レート制限:** `userId` が指定された場合、3時間ウィンドウ内で最大5回。超過時はHTTP 429 + `{ ok: false, error: "rate_limited" }` を返す。フロントは「現在ジョブが込み合っております。しばらくたってからお試しください。」と表示。
 
 **処理フロー:**
-1. 歌詞生成（OpenAI GPT-4o-mini、オプション）
-2. プロンプト構築（`mode` により異なるフォーマット）
-3. Replicate Minimax music-01 で3セクション並列生成
-   - Verse / Chorus / Bridge
+1. OpenAI GPT-4o-mini で歌詞生成（オプション）
+2. 日本語→英語キーワード変換
+3. Replicate Minimax music-01 で3セクション並列生成（Verse/Chorus/Bridge）
 4. メモリキャッシュ保存（TTL 4時間）
 
-**特記事項:**
-- 日本語→英語キーワード変換マッピング（例: さわやか→refreshing）
-- STANDARDモード: 女性ボーカル自動付加
-- ヒューマナイズキーワード自動追加
-
----
-
 #### `GET /api/music/status`
-
-**ファイル:** `app/api/music/status/route.ts`
 **maxDuration:** 300秒
 
-| 項目 | 内容 |
-|---|---|
 | クエリパラメータ | `id: string`（predictionId） |
-| 成功レスポンス | `{ ok: true, status, stage, progress, outputUrl, lyrics }` |
-
-**マルチセクション進捗管理:**
 
 | stage | 説明 | progress |
 |---|---|---|
@@ -767,30 +1007,103 @@ npm start      # 本番サーバー起動 (port 3000)
 | `merging` | マージ中 | 0.9〜1.0 |
 | `done` | 完成 | 1.0 |
 
-**ポーリング:** フロント側 `MAX_TICKS = 150`（2秒×150 = 5分）
+#### `GET /api/music/history`（新）
+ユーザーの音楽生成履歴（サーバー側管理）。
 
 ---
 
-### 曲作成（新仕様）
+### 曲作成（Song）
 
 #### `POST /api/song/start`
+**maxDuration:** 60秒
 
-**ファイル:** `app/api/song/start/route.ts`
-**maxDuration:** 300秒
-
-| 項目 | 内容 |
-|---|---|
-| 認証 | `{ id, code }` (ユーザー認証) |
-| リクエスト | `{ theme: string, genre: string, mood: string }` |
+| 認証 | `{ id, code }` |
+| リクエスト | `{ theme, genre, mood }` |
 | 必要BP | 最低 10BP |
 | 成功レスポンス | `{ ok: true, jobId, status: "lyrics_generating", bpLocked: 10 }` |
 
-**処理フロー:**
+処理フロー:
 1. ユーザー認証
-2. BP残高確認（10BP以上必要）
+2. BP残高確認（10BP以上）
 3. JobID生成: `song_{YYYYMMDD}_{RANDOM}`
-4. ジョブ作成（TTL 4時間）
-5. 歌詞生成をバックグラウンドで非同期実行（fire-and-forget）
+4. バックグラウンドで歌詞生成（fire-and-forget）
+
+#### `POST /api/song/approve-structure`
+**maxDuration:** 300秒
+
+構成承認後、音源生成を開始。
+
+---
+
+### ステーキング
+
+#### `GET /api/staking`
+
+| クエリパラメータ | `loginId: string` |
+| GAS action | `get_stakes` |
+| 成功レスポンス | `{ ok: true, stakes: StakeItem[], bp_balance: number }` |
+
+**StakeItem 型:**
+```typescript
+{
+  stake_id:    string;
+  staked_bp:   number;
+  rate:        number;
+  interest_bp: number;
+  total_bp:    number;
+  started_at:  string;
+  expires_at:  string;
+  status:      "active" | "matured" | "claimed";
+  claimable:   boolean;
+}
+```
+
+#### `POST /api/staking`
+
+| リクエスト | `{ loginId, amount, days }` |
+| GAS action | `stake_bp` |
+| 成功レスポンス | `{ ok: true, stake_id }` |
+| エラー | `{ ok: false, reason: "insufficient_bp" }` |
+
+#### `PATCH /api/staking`
+
+| リクエスト | `{ loginId, stake_id }` |
+| GAS action | `claim_stake` |
+| 成功レスポンス | `{ ok: true, total_bp }` |
+
+---
+
+### ウォレット
+
+#### `POST /api/wallet/balance`
+
+| リクエスト | `{ id, group? }` |
+| GAS action | `get_balance` |
+| 成功レスポンス | `{ ok: true, bp, ep, plan, bp_cap }` |
+
+`bp_cap` はプランに応じた BP 月次回復の上限値。
+
+#### `POST /api/wallet/recover`
+
+| リクエスト | `{ loginId, group? }` |
+| GAS action | `monthly_bp_recover` |
+| 成功（回復あり） | `{ ok: true, bp_recovered: N, bp_balance: M }` |
+| 成功（期限内） | `{ ok: false, reason: "already_recovered" }` |
+
+30日に1回、`bp_cap × 50%` を上限に BP を回復。`/top` 表示時に自動呼び出し。
+
+---
+
+### LifaiCat
+
+#### `POST /api/cat-chat`
+LifaiCat AI との会話。`{ userId, message, context }` → `{ ok: true, reply }`
+
+#### `POST /api/cat-feedback`
+フィードバック送信。
+
+#### `GET /api/cat-recommendation`
+ユーザーへのパーソナライズされたおすすめ。
 
 ---
 
@@ -798,31 +1111,21 @@ npm start      # 本番サーバー起動 (port 3000)
 
 ### `components/Field.tsx`
 
-テキスト入力コンポーネント
-
-**Props:**
-
 ```typescript
 {
   label: string;
   required?: boolean;
-  type?: string;          // デフォルト: "text"
+  type?: string;         // デフォルト: "text"
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  hint?: string;          // 補足説明
-  error?: string;         // エラーメッセージ（赤表示）
+  hint?: string;
+  error?: string;
   maxLength?: number;
 }
 ```
 
----
-
 ### `components/Select.tsx`
-
-セレクトボックスコンポーネント
-
-**Props:**
 
 ```typescript
 {
@@ -835,103 +1138,107 @@ npm start      # 本番サーバー起動 (port 3000)
 }
 ```
 
----
-
 ### `components/StepHeader.tsx`
-
-申請ステップ表示ヘッダー
-
-**Props:**
 
 ```typescript
 {
-  step: number;       // 現在のステップ番号
-  total?: number;     // 総ステップ数（デフォルト: 3）
+  step: number;
+  total?: number;   // デフォルト: 3
   title: string;
   subtitle?: string;
 }
 ```
 
-**機能:** ステップ番号 + プログレスバー + タイトル表示
-
----
-
 ### `components/PlanPicker.tsx`
-
-プラン選択グリッドUI
-
-**Props:**
 
 ```typescript
 {
-  value?: Plan;                 // 選択中プランID
+  value?: Plan;
   onChange: (p: Plan) => void;
 }
 ```
 
-**レイアウト:** 2列グリッド（モバイル対応）、選択時ハイライト表示
-
----
+2列グリッド（モバイル対応）、選択時ハイライト。
 
 ### `components/WalletBadge.tsx`
-
-BP/EP残高表示バッジ
 
 - `login_id` を localStorage から取得
 - `GET /api/wallet/balance` を呼び出し
 - BP・EP残高を表示
 
----
-
 ### `components/BPGrantModal.tsx`
-
-未受取BP受取モーダル
-
-**Props:**
 
 ```typescript
 {
-  amount: number;       // 受取BP量
+  amount: number;
   onClose: () => void;
 }
 ```
 
----
+### `components/LoginBonusModal.tsx`
+
+デイリーログインボーナスモーダル。`/api/daily-login` を呼び出して streak と bonus_bp を表示。
+
+### `components/GachaModal.tsx`
+
+ガチャ実行モーダル。BP消費でアイテム抽選。
+
+### `components/GiftEPTutorial.tsx`（新）
+
+GiftEP チュートリアルモーダル（3ページ）。
+
+```typescript
+// コンポーネント
+<GiftEPTutorial open={bool} onClose={() => void} />
+
+// カスタムフック（初回表示判定）
+const { open, openTutorial, closeTutorial } = useGiftEPTutorial();
+```
+
+- `localStorage: gift_ep_tutorial_seen` で既読管理
+- ページインジケーター（ドット）でナビゲーション
+- 最後のページで「はじめる」ボタン → localStorage に記録して閉じる
+
+### `components/StakingModal.tsx`
+
+BP ステーキングモーダル。固定利率モデルで完全有効化済み。
+
+```typescript
+{
+  loginId:     string;
+  onClose:     () => void;
+  onBpChanged: () => void;
+}
+```
+
+**機能:**
+- `GET /api/staking?loginId=...` でステーク一覧 + BP残高を取得
+- ロック期間（30/60/90日）を選択し、BPを預け入れ（最低100BP）
+- 満期ステークを「受け取る」ボタンで回収（元本＋利息まとめて）
+- ステーク中・受取可能を分けてリスト表示
+
+**連携 GAS action:** `stake_bp` / `get_stakes` / `claim_stake`
+
+### `components/ThemeToggle.tsx`（新）
+
+- 固定位置（右上、z-index 30）
+- ☀️（ダーク時）/ 🌙（ライト時）
+- `useTheme()` フック連携
+
+### `components/LifaiCat.tsx`（新）
+
+LifaiCat UI コンポーネント + Context Provider。
+
+### `components/LifaiCatGlobal.tsx`（新）
+
+全ページで表示されるグローバル LifaiCat インスタンス（`app/layout.tsx` でインジェクション）。
 
 ### `components/Toast.tsx` / `components/useToast.ts`
 
-トースト通知システム
-
-**`useToast()` hook:**
-
-```typescript
-const { items, remove } = useToast();
-```
-
-**`toast(message)` 関数:** CustomEvent を dispatch してトーストを表示
-
-**仕様:**
 - 固定位置: 画面上部中央
 - z-index: 9999
 - TTL: 2.2秒で自動消滅
 - 背景: 黒/60%透明度 + blur
-
----
-
-### `components/AIBot/AIBotProvider.tsx`
-
-AIBotコンテキストプロバイダー
-
-- `useAIBot()` フックを提供
-- 全ページで利用可能
-
----
-
-### `components/AIBot/AIBotWidget.tsx`
-
-AIチャットウィジェット
-
-- 全ページに表示（`app/layout.tsx` でインジェクション）
 
 ---
 
@@ -940,7 +1247,6 @@ AIチャットウィジェット
 ### `app/lib/auth.ts`
 
 **AuthState 型:**
-
 ```typescript
 type AuthState = {
   status: "approved" | "pending";
@@ -950,8 +1256,6 @@ type AuthState = {
   updatedAt: number;
 }
 ```
-
-**提供関数:**
 
 | 関数 | 説明 |
 |---|---|
@@ -964,15 +1268,27 @@ type AuthState = {
 
 ---
 
+### `app/lib/useTheme.ts`（新）
+
+**用途:** ダーク/ライトモード管理
+
+```typescript
+const { isDark, toggleTheme } = useTheme();
+```
+
+- localStorage キー: `"lifai_theme_v1"`
+- デフォルト: ダークモード
+- 対応ページ: ミニゲームハブ、Tap Mining、Rumble Arena、Music Boost
+
+---
+
 ### `components/storage.ts`
 
 申請フォームのDraft管理
 
 **Draft 型:**
-
 ```typescript
 type Plan = "30" | "50" | "100" | "500" | "1000";
-
 type Draft = {
   version?: number;
   plan?: Plan;
@@ -991,25 +1307,20 @@ type Draft = {
 }
 ```
 
-**提供関数:**
-
 | 関数 | 説明 |
 |---|---|
-| `loadDraft()` | sessionStorage からDraftを読み込み（バージョンチェックあり） |
-| `saveDraft(next)` | 既存Draftにマージして保存（`updatedAt` 自動追加） |
-| `clearDraft()` | Draftを削除 |
+| `loadDraft()` | sessionStorage から読み込み（バージョンチェックあり） |
+| `saveDraft(next)` | 既存Draftにマージして保存 |
+| `clearDraft()` | 削除 |
 | `updateDraftField(field, value)` | 単一フィールドのみ更新 |
-| `hasDraft()` | Draftが存在するか確認 |
+| `hasDraft()` | 存在確認 |
 | `getRawDraft()` | デバッグ用: 生データを返す |
 
 ---
 
 ### `app/api/music/_cache.ts`
 
-音楽生成キャッシュ（メモリ上のインメモリキャッシュ）
-
 **JobState 型:**
-
 ```typescript
 type JobState = {
   verseId: string;
@@ -1024,8 +1335,6 @@ type JobState = {
 }
 ```
 
-**提供関数:**
-
 | 関数 | TTL | 説明 |
 |---|---|---|
 | `cacheLyrics(predictionId, lyrics)` | 2時間 | 歌詞をキャッシュ |
@@ -1038,10 +1347,7 @@ type JobState = {
 
 ### `app/api/song/_jobStore.ts`
 
-曲作成ジョブストア（グローバル変数によるメモリ管理）
-
 **SongJob 型:**
-
 ```typescript
 type SongStatus =
   | "lyrics_generating"
@@ -1059,19 +1365,8 @@ type SongJob = {
   bpLocked: number;
   bpFinal: number | null;
   prompt: { theme: string; genre: string; mood: string };
-  lyricsData?: {
-    title: string;
-    lyrics: string;
-    editedByUser: boolean;
-    version: number;
-  };
-  structureData?: {
-    bpm: number;
-    key: string;
-    sections: object[];
-    hookSummary: string;
-    title: string;
-  };
+  lyricsData?: { title, lyrics, editedByUser, version };
+  structureData?: { bpm, key, sections, hookSummary, title };
   audioUrl: string | null;
   downloadUrl: string | null;
   rightsLog: {
@@ -1085,8 +1380,6 @@ type SongJob = {
 }
 ```
 
-**提供関数:**
-
 | 関数 | 説明 |
 |---|---|
 | `createJob(params)` | 新規ジョブ作成（TTL 4時間） |
@@ -1094,7 +1387,7 @@ type SongJob = {
 | `updateJob(jobId, update)` | ジョブ部分更新（`updatedAt` 自動更新） |
 | `listUserJobs(userId)` | ユーザーの全ジョブ一覧 |
 
-**実装詳細:** グローバル変数 `__jobMap__` を使用（Next.js ホットリロード対策）
+グローバル変数 `__jobMap__` を使用（Next.js ホットリロード対策）。
 
 ---
 
@@ -1106,7 +1399,10 @@ type SongJob = {
 |---|---|---|---|
 | `addval_auth_v1` | AuthState | ログイン状態 | ブラウザ再起動後も保持 |
 | `login_id` | string | WalletBadge用ユーザーID | ブラウザ再起動後も保持 |
+| `lifai_theme_v1` | `"dark"` \| `"light"` | テーマ設定 | ブラウザ再起動後も保持 |
 | `TUTORIAL_KEY` | boolean | マーケットチュートリアル表示済み | ブラウザ再起動後も保持 |
+| `musicboost_tutorial_seen` | boolean | Music Boostチュートリアル表示済み | ブラウザ再起動後も保持 |
+| `gift_ep_tutorial_seen` | `"1"` | GiftEP チュートリアル表示済み | ブラウザ再起動後も保持 |
 
 ### sessionStorage
 
@@ -1114,6 +1410,8 @@ type SongJob = {
 |---|---|---|---|
 | `addval_auth_secret_v1` | string | ログインパスワード | ブラウザ終了時に消滅 |
 | `addval_apply_draft_v1` | Draft | 申請フォームの入力途中データ | ブラウザ終了時に消滅 |
+| `music_boost_authed` | `"1"` | Music Boostページ認証フラグ（廃止済み・参照のみ残留） | ブラウザ終了時に消滅 |
+| `gift_ep_authed` | `"1"` | GiftEPページ認証フラグ | ブラウザ終了時に消滅 |
 
 ### メモリキャッシュ（サーバーサイド）
 
@@ -1154,7 +1452,7 @@ type SongJob = {
 ```
 リクエスト → middleware.ts
    │
-   ├─ パス /admin/* または /api/admin/* ?
+   ├─ パス /admin/* /api/admin/* /5000/admin/* /api/5000/admin/* ?
    │
    ├─ YES → Authorization ヘッダー確認
    │         Base64デコード → user:pass 検証
@@ -1242,7 +1540,7 @@ curl -X POST /api/nowpayments/ipn \
 
 ## 15. 音楽・曲生成フロー
 
-### 音楽生成フロー（旧: `/api/music/generate`）
+### 音楽生成フロー（`/api/music/generate`）
 
 ```
 POST /api/music/generate { prompt, mode, bpm, waveform, vocal }
@@ -1256,7 +1554,7 @@ POST /api/music/generate { prompt, mode, bpm, waveform, vocal }
    │
    └─ { ok: true, predictionId: "music_{timestamp}", lyrics }
 
-GET /api/music/status?id={predictionId}  (ポーリング)
+GET /api/music/status?id={predictionId}  (ポーリング、MAX_TICKS=150、2秒×150=5分)
    │
    ├─ stage: verse   → Verse  完了待ち
    ├─ stage: chorus  → Chorus 完了待ち
@@ -1265,18 +1563,19 @@ GET /api/music/status?id={predictionId}  (ポーリング)
    └─ stage: done    → { outputUrl, lyrics, progress: 1.0 }
 ```
 
-### 曲作成フロー（新: `/api/song/start`）
+### 曲作成フロー（`/api/song/start`、3ステップ新フロー）
 
 ```
-POST /api/song/start { id, code, theme, genre, mood }
-   │
-   ├─ ユーザー認証
-   ├─ BP残高確認 (>=10BP 必要)
+[Step 1] POST /api/song/start { id, code, theme, genre, mood }
+   ├─ ユーザー認証 + BP残高確認 (>=10BP)
    ├─ JobID生成: song_{YYYYMMDD}_{RANDOM}
-   ├─ Job作成 (status: "lyrics_generating", bpLocked: 10)
    └─ バックグラウンド: OpenAI 歌詞生成（fire-and-forget）
 
-→ { ok: true, jobId, status: "lyrics_generating", bpLocked: 10 }
+[Step 2] ユーザーが歌詞確認・編集後
+   POST /api/song/structure → 曲構成生成
+
+[Step 3] ユーザーが構成確認後
+   POST /api/song/approve-structure (maxDuration: 300秒) → 音源生成
 ```
 
 ---
@@ -1300,7 +1599,8 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | `admin_approve` | POST | `/api/admin/approve` | 手動承認→リセットメール送信 |
 | `login` | POST | `/api/auth/login` | HMAC-SHA256でパスワード照合 |
 | `me` | POST | `/api/me` | ログイン済みユーザーの紹介情報 |
-| `get_balance` | GET | `/api/wallet/balance` | BP/EP残高を返す |
+| `get_balance` | GET/POST | `/api/wallet/balance` | BP/EP残高を返す（`bp_cap` フィールドを含む） |
+| `monthly_bp_recover` | POST | `/api/wallet/recover` | 30日に1回BP回復（`bp_last_reset_at` で制御） |
 | `reset_password` | POST | `/api/auth/reset` | トークン検証→パスワードハッシュ保存 |
 | `reset_resend` | — | 管理者直呼び | リセットメール再送 |
 | `ref_tree_build` | — | 管理者メニュー | 紹介ツリーシートを再生成 |
@@ -1309,11 +1609,33 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | `grant_bp_for_sell` | POST | `/api/admin/grant-bp` | 売却申請へBP付与 |
 | `pending_bp` | GET | `/api/user/pending-bp` | 未受取BP確認 |
 | `claim_bp` | POST | `/api/user/claim-bp` | BP受取確定 |
+| `daily_login` | POST | `/api/daily-login` | デイリーログインボーナス付与 |
 | `admin_get_members` | POST | `/api/admin/members` | 承認済み会員一覧（ページング・ソート・Music Boost結合） |
 | `music_boost_status` | GET | `/api/music-boost/status` | ユーザーの現在ブースト状況 |
 | `music_boost_subscribe` | POST | `/api/music-boost/subscribe` | Music Boost 新規契約・プラン変更（EP差引） |
 | `music_boost_cancel` | POST | `/api/music-boost/cancel` | Music Boost 解約 |
 | `music_boost_admin_list` | — | 管理者直呼び | 全ブースト一覧 |
+| `stake_bp` | POST | `/api/staking` (POST) | BP ステーキング開始 |
+| `claim_stake` | POST | `/api/staking` (PATCH) | ステーク満期受取 |
+| `get_stakes` | GET | `/api/staking` (GET) | ステーク一覧 + BP残高取得 |
+
+### ステーキング仕様
+
+**GAS action:** `stake_bp` / `get_stakes` / `claim_stake`  
+**最小ステーク量:** 100BP  
+**利率（固定）:**
+
+| 期間 | 利率 |
+|---|---|
+| 30日 | +10% |
+| 60日 | +25% |
+| 90日 | +50% |
+
+**計算:** `interest_bp = floor(staked_bp × rate)` / `total_bp = staked_bp + interest_bp`
+
+**Stakingシートカラム:** `stake_id`, `login_id`, `staked_bp`, `rate`, `started_at`, `expires_at`, `status`, `claimed_at`, `interest_bp`, `total_bp`
+
+**status の値:** `active` / `matured` / `claimed`
 
 ### GAS 自動実行
 
@@ -1331,7 +1653,7 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | `wallet_ledger` | 紹介配当などの金融取引履歴 |
 | `music_boost` | Music Boost 契約履歴（id, user_id, plan_id, percent, price_usd, slots_used, status, started_at, expires_at, canceled_at, updated_at） |
 
-**`music_boost.status` の値:** `active` / `canceled` / `expired`（EP不足自動更新失敗 or 期限到来）
+**`music_boost.status` の値:** `active` / `canceled` / `expired`
 
 ### GAS 既知の仕様・注意事項
 
@@ -1343,65 +1665,206 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | 自動承認の許容誤差 | `payment_update` での自動承認は `expected_paid` の -2% まで許容（`TOLERANCE_PCT = 2`） |
 | 重複関数 | `getValuesSafe_()` と `getSheetValuesSafe_()` が同一処理で2つ存在（`getValuesSafe_()` を使うこと） |
 
+### `POST /api/wallet/recover`
+
+| 項目 | 内容 |
+|---|---|
+| リクエスト | `{ loginId: string, group?: string }` |
+| GAS action | `monthly_bp_recover` |
+| 成功（回復あり） | `{ ok: true, bp_recovered: N, bp_balance: M }` |
+| 成功（期限内） | `{ ok: false, reason: "already_recovered" }` |
+| エラー | `{ ok: false, reason: "unknown_plan" \| "not_found" }` |
+
+**回復ルール:**
+- `bp_last_reset_at` が空 or 30日以上経過した場合に回復
+- 回復量 = `min(bp_cap × 50%, max(0, bp_cap - currentBp))`
+- cap超えの場合は回復量0でも `bp_last_reset_at` を更新（次の30日サイクル開始）
+- `wallet_ledger` に `kind: "monthly_recover"` で記録
+
+**bp_cap マッピング（GAS 実値）:**
+
+| group | plan | bp_cap |
+|---|---|---|
+| 通常 | "34" | 300 |
+| 通常 | "57" | 600 |
+| 通常 | "114" | 1,200 |
+| 通常 | "567" | 6,000 |
+| 通常 | "1134" | 12,000 |
+| 5000 | "500" | 1,000 |
+| 5000 | "2000" | 4,000 |
+| 5000 | "3000" | 8,000 |
+| 5000 | "5000" | 10,000 |
+
 ---
 
 ## 17. マーケットプレイス
 
-### API エンドポイント
+**ファイル:** `app/market/page.tsx`
 
-| エンドポイント | メソッド | 説明 |
-|---|---|---|
-| `/api/market/list` | GET | 商品一覧（ページング・フィルタ対応） |
-| `/api/market/create` | POST | 商品出品（要認証） |
-| `/api/market/orders` | GET | 購入履歴（要認証） |
+**スタイル:** ダークテーマ（背景 `#0B1220` / 文字 `#EAF0FF`、Radial glow 背景）
 
-### 商品一覧クエリパラメータ
+**機能:**
 
-```
-GET /api/market/list?page=1&limit=50&item_type=...&currency=...&q=...
-```
-
-| パラメータ | 説明 |
+| 機能 | 詳細 |
 |---|---|
-| `page` | ページ番号（デフォルト: 1） |
-| `limit` | 1ページの件数（デフォルト: 50, UI: 12） |
-| `item_type` | 商品タイプフィルター |
-| `currency` | 通貨フィルター |
-| `q` | 検索キーワード（500ms debounce） |
+| 商品検索 | 500ms debounce |
+| フィルター | item_type / currency |
+| ページング | PAGE_SIZE = 12 |
+| 商品出品 | `POST /api/market/create` |
+| チュートリアル | localStorage確認・初回のみ表示 |
+
+**サブページ:**
+- `/market/[item_id]` — 商品詳細・購入
+- `/market/create` — 出品フォーム
+- `/market/orders` — 購入履歴
 
 ---
 
-## 18. 管理者機能
+## 18. ミニゲーム（LIFAI Arcade）
+
+### アーキテクチャ概要
+
+```
+/mini-games           ← ハブ（ゲーム選択）
+├── /rumble           ← Rumble Arena（週次PvPトーナメント）
+└── /tap              ← Tap Mining（デイリータップゲーム）
+```
+
+### Rumble Arena システム
+
+**週次サイクル:**
+1. 月〜木: バトルフェーズ（デイリー結果更新）
+2. 金曜18:50 JST: ランキング確定・EP報酬配布
+3. 週末: 次週に向けた準備
+
+**装備システム:**
+- ガチャでランダム入手
+- シャード（Shard）を消費して強化・解体
+- 強さによってバトルに影響
+
+**報酬計算:** 参加者数に応じてEP報酬が変動（金曜18:50 JST 発表）
+
+### Tap Mining システム
+
+**セッションフロー:**
+1. 画面タップ → フロント側でバッファリング
+2. 10タップ or 2秒ごとに `/api/minigames/tap/batch-play` へフラッシュ
+3. サーバーがBP/EP報酬を計算して返す
+4. コンボ50以上でフィーバーモード（10秒間、報酬UP）
+5. 1日500タップ上限
+
+---
+
+## 19. ギフトシステム
+
+**ページ:** `/gift`（パスワード保護: `"nagoya01@"`）
+
+**機能フロー:**
+
+```
+[残高確認] GET /api/gift/balance
+   └─ { balance, expires_at }
+
+[送信] POST /api/gift/send
+   ├─ 送信者認証（id + code）
+   ├─ 受取者IDを指定
+   └─ GAS側でギフト残高移動
+
+[使用] POST /api/gift/use
+   └─ ギフト残高を消費して特典に変換
+
+[履歴] GET /api/gift/history
+   └─ 送受信履歴一覧
+```
+
+**期限管理:** 残高に期限が設定されており、期限切れアラートを表示。
+
+---
+
+## 20. LifaiCat（AIアシスタント）
+
+**コンポーネント:**
+- `components/LifaiCat.tsx` — UIコンポーネント + Context Provider
+- `components/LifaiCatGlobal.tsx` — グローバルインスタンス（全ページ表示）
+
+**API:**
+- `POST /api/cat-chat` — AI会話
+- `POST /api/cat-feedback` — フィードバック送信
+- `GET /api/cat-recommendation` — パーソナライズされたおすすめ
+
+**用途:**
+- 機能の使い方をAIが案内
+- コンテキストに応じたおすすめを提示
+- フィードバック収集
+
+---
+
+## 21. テーマシステム（ダーク/ライト）
+
+### 実装方法
+
+**フック:** `app/lib/useTheme.ts`
+```typescript
+const { isDark, toggleTheme } = useTheme();
+```
+
+- localStorage キー: `"lifai_theme_v1"`
+- デフォルト: ダークモード
+- トグルボタン: `components/ThemeToggle.tsx`（固定右上、z-30）
+
+### テーマトークン（Tailwind クラス）
+
+| 項目 | ダーク | ライト |
+|---|---|---|
+| 背景 | `bg-[#0a0a0a]` | `bg-gray-50` |
+| テキスト | `text-white` | `text-gray-900` |
+| カード | `bg-white/5` | `bg-white border border-gray-200` |
+| ボーダー | `border-white/10` | `border-gray-200` |
+| ミュート | `text-white/40` | `text-gray-500` |
+
+### 対応ページ
+
+- `/mini-games`（LIFAI Arcade ハブ）
+- `/mini-games/tap`（Tap Mining）
+- `/mini-games/rumble`（Rumble Arena）
+- `/music-boost`（Music Boost）
+
+---
+
+## 22. 管理者機能
 
 **アクセス:** Basic Auth (`ADMIN_USER` / `ADMIN_PASS`)
 
 ### 申請管理
-
 1. `GET /api/admin/list` で申請一覧取得
-2. 各申請の詳細確認（支払い状況・フォーム内容）
-3. `POST /api/admin/approve { rowIndex }` で承認
-4. GASがログイン情報を生成し、リセットメールを送信
+2. `POST /api/admin/approve { rowIndex }` で承認
+3. GASがログイン情報を生成し、リセットメール送信
 
 ### BP管理
-
 1. `GET /api/admin/sell-requests` で売却申請一覧取得
 2. `POST /api/admin/grant-bp { request_id, user_id, bp_amount }` でBP付与
 
 ### 会員一覧
-
-1. `GET /api/admin/members?page=0&pageSize=20&sortKey=created_at&sortOrder=desc` で取得
+1. `GET /api/admin/members?page=0&pageSize=20&sortKey=created_at&sortOrder=desc`
 2. 1ページ20件・サーバーサイドソート対応
 3. ソート可能列: BP残高 / EP残高 / 連続ログイン / 累計ログイン / 最終ログイン
-4. Music Boost 列: 契約中プランIDと有効期限を表示（`music_boost` シートとJOIN）
+4. Music Boost 列: 契約中プランIDと有効期限を表示
 
 ### Music Boost 管理
-
 - `music_boost_admin_list` GAS action で全ブースト一覧を確認可能
 - 自動更新は毎日深夜0時の GAS トリガーで実行（`musicBoostAutoRenew_`）
 
+### Rumble Arena 管理
+- `/api/admin/rumble-force-start` — トーナメント強制開始
+- `/api/admin/rumble-reward` — 報酬設定
+- `/api/admin/rumble-run-now` — スケジュール即時実行
+
+### 音楽審査
+- `/api/admin/music-review` — 提出された楽曲の審査・承認
+
 ---
 
-## 19. セキュリティ設計
+## 23. セキュリティ設計
 
 ### パスワード管理
 
@@ -1421,8 +1884,13 @@ GET /api/market/list?page=1&limit=50&item_type=...&currency=...&q=...
 |---|---|
 | `/admin/*` | HTTP Basic Auth (middleware) |
 | `/api/admin/*` | HTTP Basic Auth (middleware) |
+| `/5000/admin/*` | HTTP Basic Auth (middleware) |
+| `/api/5000/admin/*` | HTTP Basic Auth (middleware) |
 | `/api/market/create` | ユーザー認証（id + code） |
 | `/api/song/start` | ユーザー認証（id + code） |
+| `/api/gift/send` | ユーザー認証（id + code） |
+| `/gift/*` | ページパスワード（sessionStorage確認） |
+| `/music-boost` | なし（パスワードロック廃止済み） |
 
 ### テスト・デバッグ用
 
@@ -1433,40 +1901,46 @@ GET /api/market/list?page=1&limit=50&item_type=...&currency=...&q=...
 
 ---
 
-## 20. データフロー図
+## 24. データフロー図
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                       ユーザー                           │
-└─────────────────────────────────────────────────────────┘
-         │                              │
-    ブラウザ操作                    決済ポータル
-         │                              │
-┌────────▼────────────────────────────────────────────────┐
-│                   Next.js (Vercel)                      │
-│                                                         │
-│  Pages                    API Routes                    │
-│  ├── /                    ├── /api/auth/login           │
-│  ├── /purchase            ├── /api/auth/reset           │
-│  ├── /apply               ├── /api/apply/create         │
-│  ├── /confirm             ├── /api/apply/status         │
-│  ├── /login               ├── /api/me                   │
-│  ├── /top                 ├── /api/nowpayments/create   │
-│  ├── /admin               ├── /api/nowpayments/ipn ←── NOWPayments IPN
-│  └── /market              ├── /api/admin/*              │
-│                           ├── /api/market/*             │
-│                           ├── /api/music/*              │
-│                           └── /api/song/*               │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-         ┌────────────┼────────────────┐
-         │            │                │
-   ┌─────▼─────┐ ┌────▼─────┐ ┌───────▼───────┐
-   │    GAS    │ │NOWPayments│ │  Replicate /  │
-   │ (Sheets)  │ │   API     │ │   OpenAI      │
-   └───────────┘ └──────────┘ └───────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         ユーザー                                 │
+└─────────────────────────────────────────────────────────────────┘
+         │                                │
+    ブラウザ操作                      決済ポータル
+         │                                │
+┌────────▼────────────────────────────────────────────────────────┐
+│                      Next.js (Vercel)                           │
+│                                                                 │
+│  Pages                         API Routes                       │
+│  ├── /                         ├── /api/auth/*                  │
+│  ├── /purchase                 ├── /api/apply/*                 │
+│  ├── /apply                    ├── /api/me                      │
+│  ├── /confirm                  ├── /api/daily-login             │
+│  ├── /login                    ├── /api/nowpayments/* ←── IPN   │
+│  ├── /top                      ├── /api/admin/*                 │
+│  ├── /admin                    ├── /api/market/*                │
+│  ├── /market                   ├── /api/music/*                 │
+│  ├── /music2                   ├── /api/song/*                  │
+│  ├── /music-boost              ├── /api/music-boost/*           │
+│  ├── /mini-games               ├── /api/minigames/rumble/*      │
+│  │   ├── /rumble               ├── /api/minigames/tap/*         │
+│  │   └── /tap                  ├── /api/gift/*                  │
+│  ├── /gift                     ├── /api/note/*                  │
+│  ├── /note-generator           ├── /api/image/* (準備中)        │
+│  ├── /fortune                  ├── /api/cat-chat                │
+│  └── /image (準備中)           └── /api/bgm/*                  │
+└──────────────────┬──────────────────────────────────────────────┘
+                   │
+      ┌────────────┼────────────────────┐
+      │            │                    │
+┌─────▼─────┐ ┌────▼─────┐ ┌───────────▼───────┐
+│    GAS    │ │NOWPayments│ │  Replicate /      │
+│ (Sheets)  │ │   API     │ │  OpenAI / S3      │
+└───────────┘ └──────────┘ └───────────────────┘
 ```
 
 ---
 
-*この仕様書は `C:\Users\unitu\aisalon` プロジェクトの全ファイルを解析して自動生成されました。*
+*この仕様書は `C:\Users\unitu\aisalon` プロジェクトの全ファイルを解析して更新されました。*

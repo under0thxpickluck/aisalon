@@ -13,11 +13,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const r = await fetch(GAS_URL, {
+    const url = `${GAS_URL}${GAS_URL.includes("?") ? "&" : "?"}key=${encodeURIComponent(GAS_KEY)}`;
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({ action: "image_history", key: GAS_KEY, id }),
+      body: JSON.stringify({ action: "image_history", id }),
     });
     const data = await r.json();
     return NextResponse.json(data);

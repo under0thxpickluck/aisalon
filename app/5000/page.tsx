@@ -233,29 +233,6 @@ function DaoMemberPage() {
             <p className="text-xl text-white/45 mb-10">$500 / $2,000 / $3,000 / $5,000</p>
           </motion.div>
 
-          {/* 残り枠カウンター */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            custom={3}
-            className="inline-flex flex-wrap justify-center gap-3"
-          >
-            {[
-              { label: "$500",   slots: "残り——枠" },
-              { label: "$2,000", slots: "残り50枠" },
-              { label: "$3,000", slots: "残り30枠" },
-              { label: "$5,000", slots: "残り20枠" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs backdrop-blur-sm"
-              >
-                <span className="text-white/80 font-bold">{item.label}</span>{" "}
-                <span className="text-white/40">{item.slots}</span>
-              </div>
-            ))}
-          </motion.div>
         </div>
 
         {/* スクロール誘導 */}

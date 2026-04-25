@@ -32,6 +32,9 @@ function buildRefTreeManual_() {
   return handle_(secrets.SECRET, body);
 }
 
+// NOTE: これらの doGet/doPost 定義は後方の定義（最終定義）に上書きされるため無効です。
+// 最終有効定義: doPost @ 5788行付近, doGet @ 5911行付近
+/*
 function doGet(e) {
   try {
     const key = pickKey_(e);
@@ -106,6 +109,7 @@ function doPost(e) {
     return json_({ ok: false, error: String(err) });
   }
 }
+*/
 
 function handle_(key, body) {
   const secrets = getSecrets_();
@@ -1494,11 +1498,17 @@ function handle_(key, body) {
     const bp = Number(bpRaw || 0);
     const ep = Number(epRaw || 0);
 
+    const BP_CAP_MAP_BAL      = { "34":300, "57":600, "114":1200, "567":6000, "1134":12000 };
+    const BP_CAP_MAP_BAL_5000 = { "500":1000, "2000":4000, "3000":8000, "5000":10000 };
+    const capMap_bal = group_bal === "5000" ? BP_CAP_MAP_BAL_5000 : BP_CAP_MAP_BAL;
+    const bpCap_bal  = capMap_bal[str_(planRaw)] ?? 0;
+
     return json_({
-      ok:   true,
-      bp:   Number.isFinite(bp) ? bp : 0,
-      ep:   Number.isFinite(ep) ? ep : 0,
-      plan: str_(planRaw),
+      ok:     true,
+      bp:     Number.isFinite(bp) ? bp : 0,
+      ep:     Number.isFinite(ep) ? ep : 0,
+      plan:   str_(planRaw),
+      bp_cap: bpCap_bal,
     });
   }
 
@@ -1737,6 +1747,93 @@ function handle_(key, body) {
     }
 
     return json_({ ok: true, bp_earned: bpEarned, streak: streak, bp_balance: newBp });
+  }
+
+  // =========================================================
+  // monthly_bp_recover（月次BP回復：30日に1回）
+  // - adminKey 認証必須（GAS_ADMIN_KEY）
+  // - group:"5000" で applies_5000 シートに振り分け
+  // - bp_last_reset_at で30日経過チェック（空 = 初回 = 即回復）
+  // - 回復量 = min(cap×50%, max(0, cap - currentBp))
+  // - cap超えの場合は回復量0だがbp_last_reset_atは更新する
+  // =========================================================
+  if (action === "monthly_bp_recover") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const loginId_rec = str_(body.loginId);
+    const group_rec   = str_(body.group);
+    if (!loginId_rec) return json_({ ok: false, error: "loginId_required" });
+
+    const targetSheet_rec = group_rec === "5000" ? getAppliesSheet5000_() : sheet;
+
+    let values_rec = targetSheet_rec.getDataRange().getValues();
+    let header_rec = values_rec[0];
+
+    ensureCols_(targetSheet_rec, header_rec, [
+      "login_id", "bp_balance", "bp_last_reset_at", "plan",
+    ]);
+
+    values_rec = targetSheet_rec.getDataRange().getValues();
+    header_rec = values_rec[0];
+
+    const idx_rec  = indexMap_(header_rec);
+    const rows_rec = values_rec.slice(1);
+
+    let hitRowIndex_rec = 0;
+    let hitEmail_rec    = "";
+
+    for (let i = 0; i < rows_rec.length; i++) {
+      if (str_(rows_rec[i][idx_rec["login_id"]]) === loginId_rec) {
+        hitRowIndex_rec = i + 2;
+        hitEmail_rec    = str_(rows_rec[i][idx_rec["email"]] || "");
+        break;
+      }
+    }
+
+    if (!hitRowIndex_rec) return json_({ ok: false, error: "not_found" });
+
+    // 前回回復日チェック（30日 = 30 * 24 * 60 * 60 * 1000 ms）
+    const lastResetRaw_rec = targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_last_reset_at"] + 1).getValue();
+    if (lastResetRaw_rec) {
+      const elapsed_rec = Date.now() - new Date(lastResetRaw_rec).getTime();
+      if (elapsed_rec < 30 * 24 * 60 * 60 * 1000) {
+        return json_({ ok: false, reason: "already_recovered" });
+      }
+    }
+
+    // plan → bp_cap
+    const plan_rec            = str_(targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["plan"] + 1).getValue());
+    const BP_CAP_MAP_REC      = { "34":300, "57":600, "114":1200, "567":6000, "1134":12000 };
+    const BP_CAP_MAP_REC_5000 = { "500":1000, "2000":4000, "3000":8000, "5000":10000 };
+    const capMap_rec = group_rec === "5000" ? BP_CAP_MAP_REC_5000 : BP_CAP_MAP_REC;
+    const bpCap_rec  = capMap_rec[plan_rec] ?? 0;
+    if (!bpCap_rec) return json_({ ok: false, reason: "unknown_plan" });
+
+    // 回復量計算
+    const currentBp_rec = Number(targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_balance"] + 1).getValue() || 0);
+    const recover_rec   = Math.min(Math.floor(bpCap_rec * 0.5), Math.max(0, bpCap_rec - currentBp_rec));
+
+    // bp_last_reset_at は回復量0でも更新（次の30日サイクルを開始）
+    targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_last_reset_at"] + 1).setValue(new Date());
+
+    if (recover_rec === 0) {
+      return json_({ ok: true, bp_recovered: 0, bp_balance: currentBp_rec });
+    }
+
+    const newBp_rec = currentBp_rec + recover_rec;
+    targetSheet_rec.getRange(hitRowIndex_rec, idx_rec["bp_balance"] + 1).setValue(newBp_rec);
+
+    appendWalletLedger_({
+      kind:     "monthly_recover",
+      login_id: loginId_rec,
+      email:    hitEmail_rec,
+      amount:   recover_rec,
+      memo:     "月次BP回復（cap=" + bpCap_rec + "）",
+    });
+
+    return json_({ ok: true, bp_recovered: recover_rec, bp_balance: newBp_rec });
   }
 
   // =========================================================
@@ -3401,7 +3498,7 @@ function handle_(key, body) {
         now,
         "submitted",
         str_(body.narasu_login_id),
-        str_(body.narasu_password),
+        "[OMITTED]",
         str_(body.audio_urls),
         str_(body.lyrics_text),
         str_(body.jacket_image_url),
@@ -3412,10 +3509,88 @@ function handle_(key, body) {
         str_(body.agreed_at),
         ""
       ]);
+      // パスワードはシートに保存せず管理者メールのみに送信
+      try {
+        var adminEmail = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL') || '';
+        if (adminEmail) {
+          MailApp.sendEmail(adminEmail,
+            '[LIFAI] narasu申請 ' + requestId + ' ログイン情報',
+            'requestId: ' + requestId + '\nloginId: ' + str_(body.narasu_login_id) + '\npassword: ' + str_(body.narasu_password));
+        }
+      } catch(mailErr) {
+        Logger.log('[narasu_agency_submit] email送信失敗: ' + String(mailErr));
+      }
       Logger.log("[narasu_agency_submit] saved: " + requestId);
       return json_({ ok: true, requestId: requestId });
     } catch (e) {
       Logger.log("[narasu_agency_submit] error: " + String(e));
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
+  // =========================================================
+  // 楽曲売却申請（music_sell_submit / music_sell_list / music_sell_update）
+  // =========================================================
+  if (action === "music_sell_submit") {
+    try {
+      var loginId = str_(body.loginId);
+      if (!loginId) return json_({ ok: false, error: "loginId_required" });
+      var ss2 = SpreadsheetApp.getActiveSpreadsheet();
+      var mss = ss2.getSheetByName("music_sell_requests");
+      if (!mss) {
+        mss = ss2.insertSheet("music_sell_requests");
+        mss.appendRow(["request_id","login_id","title","music_url","price_usdt","memo","status","created_at"]);
+      }
+      var mRequestId = "MSR-" + Date.now();
+      var mNow = new Date().toISOString();
+      mss.appendRow([mRequestId, loginId, str_(body.title), str_(body.music_url),
+                     str_(body.price_usdt), str_(body.memo), "pending", mNow]);
+      return json_({ ok: true, requestId: mRequestId });
+    } catch(e) {
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
+  if (action === "music_sell_list") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) return json_({ ok: false, error: "admin_unauthorized" });
+    try {
+      var ss3 = SpreadsheetApp.getActiveSpreadsheet();
+      var mss2 = ss3.getSheetByName("music_sell_requests");
+      if (!mss2) return json_({ ok: true, requests: [] });
+      var mRows = mss2.getDataRange().getValues();
+      var mHeaders = mRows[0];
+      var mResult = mRows.slice(1).map(function(r) {
+        var obj = {};
+        mHeaders.forEach(function(h, i) { obj[h] = r[i]; });
+        return obj;
+      });
+      return json_({ ok: true, requests: mResult });
+    } catch(e) {
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
+  if (action === "music_sell_update") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) return json_({ ok: false, error: "admin_unauthorized" });
+    try {
+      var requestId2 = str_(body.requestId);
+      var newStatus  = str_(body.status); // "approved" or "rejected"
+      if (!requestId2 || !newStatus) return json_({ ok: false, error: "missing_params" });
+      var ss4 = SpreadsheetApp.getActiveSpreadsheet();
+      var mss3 = ss4.getSheetByName("music_sell_requests");
+      if (!mss3) return json_({ ok: false, error: "sheet_not_found" });
+      var mRows2   = mss3.getDataRange().getValues();
+      var mHeaders2 = mRows2[0];
+      var ridIdx   = mHeaders2.indexOf("request_id");
+      var stIdx    = mHeaders2.indexOf("status");
+      for (var mi = 1; mi < mRows2.length; mi++) {
+        if (str_(mRows2[mi][ridIdx]) === requestId2) {
+          mss3.getRange(mi + 1, stIdx + 1).setValue(newStatus);
+          return json_({ ok: true });
+        }
+      }
+      return json_({ ok: false, error: "request_not_found" });
+    } catch(e) {
       return json_({ ok: false, error: String(e) });
     }
   }
@@ -4641,6 +4816,8 @@ var MARKET_MIN_EP_TO_LIST_ = 1;
 var MARKET_RESERVE_HOURS_ = 24;
 
 // ---- doPost 再定義（market_ / gift_ アクションをそれぞれのハンドラへルーティング）----
+// NOTE: この doPost/doGet 定義は後方の最終定義に上書きされるため無効です。
+/*
 function doPost(e) {
   try {
     const key = pickKey_(e);
@@ -4733,6 +4910,7 @@ function doGet(e) {
     return json_({ ok: false, error: String(err) });
   }
 }
+*/
 
 // ==============================
 // handleMarket_ : market_* アクションのメインハンドラ
@@ -5727,6 +5905,8 @@ function handle_sell_request_(data) {
 
 // 2. 申請一覧取得（admin用）
 function handle_get_sell_requests_(data) {
+  const secrets = getSecrets_();
+  if (str_(data.adminKey) !== secrets.ADMIN_SECRET) return { ok: false, error: 'admin_unauthorized' };
   const sheet = getSellRequestsSheet_();
   const rows = sheet.getDataRange().getValues();
   const headers = rows[0];
@@ -5740,6 +5920,8 @@ function handle_get_sell_requests_(data) {
 
 // 3. BP付与（admin用）
 function handle_grant_bp_for_sell_(data) {
+  const secrets = getSecrets_();
+  if (str_(data.adminKey) !== secrets.ADMIN_SECRET) return { ok: false, error: 'admin_unauthorized' };
   const request_id = str_(data.request_id);
   const user_id = str_(data.user_id);
   const bp_amount = num_(data.bp_amount);
@@ -5850,6 +6032,22 @@ function doPost(e) {
     if (action === 'bp_refund')      return imageBpRefund_(body);
     if (action === 'image_log')      return imageLog_(body);
     if (action === 'image_history')  return imageHistory_(body);
+    if (action === 'music_history_save') return musicHistorySave_(body);
+    if (action === 'music_history_list') return musicHistoryList_(body);
+
+  // =========================================================
+  // MONITOR ACTIONS（監視ダッシュボード用 — 追加のみ、既存コード無変更）
+  // =========================================================
+  if (action === 'monitor_song_stats')   return json_(monitorSongStats_());
+  if (action === 'monitor_games_stats')  return json_(monitorGamesStats_());
+  if (action === 'monitor_market_stats') return json_(monitorMarketStats_());
+  if (action === 'monitor_wallet_stats')       return json_(monitorWalletStats_());
+  if (action === 'monitor_boost_subscribers')  return json_(monitorBoostSubscribers_());
+  if (action === 'monitor_rumble_today')       return json_(monitorRumbleToday_());
+  if (action === 'monitor_rumble_daily')       return json_(monitorRumbleDaily_());
+  if (action === 'monitor_rumble_weekly')      return json_(monitorRumbleWeekly_());
+  if (action === 'monitor_rumble_spectator')   return json_(monitorRumbleSpectator_());
+
   // =========================================================
   // narasu代理申請 submit
   // =========================================================
@@ -5875,7 +6073,7 @@ function doPost(e) {
         now,
         "submitted",
         str_(body.narasu_login_id),
-        str_(body.narasu_password),
+        "[OMITTED]",
         str_(body.audio_urls),
         str_(body.lyrics_text),
         str_(body.jacket_image_url),
@@ -5886,6 +6084,17 @@ function doPost(e) {
         str_(body.agreed_at),
         ""
       ]);
+      // パスワードはシートに保存せず管理者メールのみに送信
+      try {
+        var adminEmail = PropertiesService.getScriptProperties().getProperty('ADMIN_EMAIL') || '';
+        if (adminEmail) {
+          MailApp.sendEmail(adminEmail,
+            '[LIFAI] narasu申請 ' + requestId + ' ログイン情報',
+            'requestId: ' + requestId + '\nloginId: ' + str_(body.narasu_login_id) + '\npassword: ' + str_(body.narasu_password));
+        }
+      } catch(mailErr) {
+        Logger.log('[narasu_agency_submit] email送信失敗: ' + String(mailErr));
+      }
       Logger.log("[narasu_agency_submit] saved: " + requestId);
       return json_({ ok: true, requestId: requestId });
     } catch (e) {
@@ -6845,10 +7054,10 @@ function ensureEquipmentCols_(sheet) {
 }
 
 function getWeekId_() {
-  var now = new Date(); // GASタイムゾーンがAsia/Tokyo(JST)のため、手動オフセット不要
-  var year = now.getFullYear();
-  var startOfYear = new Date(year, 0, 1);
-  var weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  var now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var year = now.getUTCFullYear();
+  var startOfYear = new Date(Date.UTC(year, 0, 1));
+  var weekNum = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getUTCDay() + 1) / 7);
   return year + "-W" + String(weekNum).padStart(2, "0");
 }
 
@@ -6866,6 +7075,97 @@ function getRumbleDailyResultSheet_() {
   var sheet = ss.getSheetByName("rumble_daily_result");
   if (!sheet) sheet = ss.insertSheet("rumble_daily_result");
   return sheet;
+}
+
+function getRumbleBattleLogSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("rumble_battle_log");
+  if (!sheet) {
+    sheet = ss.insertSheet("rumble_battle_log");
+    sheet.appendRow(["date", "players_json", "events_json", "total", "ranking_json", "created_at"]);
+  }
+  return sheet;
+}
+
+function getBattleLogCache_(dateStr) {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return null;
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (rumbleDateStr_(data[i][idx["date"]]) === dateStr) {
+      try {
+        return {
+          date:    dateStr,
+          players: JSON.parse(String(data[i][idx["players_json"]] || "[]")),
+          events:  JSON.parse(String(data[i][idx["events_json"]]  || "[]")),
+          total:   Number(data[i][idx["total"]] || 0),
+          ranking: JSON.parse(String(data[i][idx["ranking_json"]] || "[]")),
+        };
+      } catch(e) {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function getLatestBattleLogCache_() {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return null;
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  var latestDate = '';
+  var latestRow = null;
+  for (var i = 1; i < data.length; i++) {
+    var d = rumbleDateStr_(data[i][idx["date"]]);
+    if (d > latestDate) { latestDate = d; latestRow = data[i]; }
+  }
+  if (!latestRow) return null;
+  try {
+    return {
+      date:    latestDate,
+      players: JSON.parse(String(latestRow[idx["players_json"]] || "[]")),
+      events:  JSON.parse(String(latestRow[idx["events_json"]]  || "[]")),
+      total:   Number(latestRow[idx["total"]] || 0),
+      ranking: JSON.parse(String(latestRow[idx["ranking_json"]] || "[]")),
+    };
+  } catch(e) { return null; }
+}
+
+function saveBattleLog_(dateStr, players, events, total, ranking) {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  var nowJst      = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString();
+  var playersJson = JSON.stringify(players);
+  var eventsJson  = JSON.stringify(events);
+  var rankingJson = JSON.stringify(ranking);
+  if (data.length < 1) {
+    sheet.appendRow([dateStr, playersJson, eventsJson, total, rankingJson, nowJst]);
+    SpreadsheetApp.flush();
+    return;
+  }
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  for (var i = 1; i < data.length; i++) {
+    if (rumbleDateStr_(data[i][idx["date"]]) === dateStr) {
+      var rowNum = i + 1;
+      sheet.getRange(rowNum, idx["players_json"] + 1).setValue(playersJson);
+      sheet.getRange(rowNum, idx["events_json"]  + 1).setValue(eventsJson);
+      sheet.getRange(rowNum, idx["total"]        + 1).setValue(total);
+      sheet.getRange(rowNum, idx["ranking_json"] + 1).setValue(rankingJson);
+      sheet.getRange(rowNum, idx["created_at"]   + 1).setValue(nowJst);
+      SpreadsheetApp.flush();
+      return;
+    }
+  }
+  sheet.appendRow([dateStr, playersJson, eventsJson, total, rankingJson, nowJst]);
+  SpreadsheetApp.flush();
 }
 
 function ensureRumbleDailyResultCols_(sheet) {
@@ -7130,11 +7430,13 @@ function rumbleStatus_(params) {
   var wIdx     = {};
   wHeaders.forEach(function(h, i) { wIdx[h] = i; });
   var weekRp = 0;
+  var weekParticipantCount = 0;
   for (var j = 1; j < weekData.length; j++) {
-    if (String(weekData[j][wIdx["user_id"]]) === userId &&
-        String(weekData[j][wIdx["week_id"]]) === weekId) {
-      weekRp = Number(weekData[j][wIdx["total_rp"]] || 0);
-      break;
+    if (String(weekData[j][wIdx["week_id"]]) === weekId) {
+      weekParticipantCount++;
+      if (String(weekData[j][wIdx["user_id"]]) === userId) {
+        weekRp = Number(weekData[j][wIdx["total_rp"]] || 0);
+      }
     }
   }
 
@@ -7155,14 +7457,15 @@ function rumbleStatus_(params) {
   }
 
   return json_({
-    ok:           true,
-    entered_today: todayEntry !== null,
-    today_score:  todayEntry ? todayEntry.score : null,
-    today_rp:     todayEntry ? todayEntry.rp    : null,
-    week_rp:      weekRp,
-    week_id:      weekId,
-    bp_balance:   bpBalance,
-    display_name: displayName,
+    ok:                    true,
+    entered_today:         todayEntry !== null,
+    today_score:           todayEntry ? todayEntry.score : null,
+    today_rp:              todayEntry ? todayEntry.rp    : null,
+    week_rp:               weekRp,
+    week_id:               weekId,
+    bp_balance:            bpBalance,
+    display_name:          displayName,
+    week_participant_count: weekParticipantCount,
   });
 }
 
@@ -7533,9 +7836,9 @@ var RUMBLE_DAILY_BP_REWARDS_ = [1000, 700, 400, 250, 200];
 function rumbleDailyLottery_(params) {
   var dateStr  = String(params.date || getTodayJst_());
   // created_at in rumble_entry is stored as fake-JST ISO (Date.now()+9h).
-  // 19:00 JST stored in that format = "YYYY-MM-DDT19:00:00.000Z"
+  // 18:50 JST stored in that format = "YYYY-MM-DDT18:50:00.000Z"
   // deadlineOverride を渡すと任意の締め切りで実行可能（rumble_run_now から使用）
-  var deadline = params.deadlineOverride || (dateStr + "T19:00:00.000Z");
+  var deadline = params.deadlineOverride || (dateStr + "T18:50:00.000Z");
 
   // 1. Get participants filtered by deadline
   var entrySheet = getRumbleEntrySheet_();
@@ -7720,9 +8023,20 @@ function rumbleDailyLottery_(params) {
   return json_({ ok: true, distributed: distributed, date: dateStr, participant_count: participants.length });
 }
 
-/** Called by GAS time trigger (毎日 19:00〜20:00 JST) */
+/** Called by GAS time trigger (毎日 18:50〜19:59 JST を目標に atHour(18)+atHour(19) の2本で登録) */
 function rumbleDailyLotteryTrigger_() {
-  rumbleDailyLottery_({ date: getTodayJst_() });
+  // GASトリガーは指定時間帯のどこかで発火するため、18:50以前は何もしない
+  var nowJst   = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var jstHour  = nowJst.getUTCHours();
+  var jstMin   = nowJst.getUTCMinutes();
+  if (jstHour < 18 || (jstHour === 18 && jstMin < 50)) {
+    Logger.log("[rumbleDailyLotteryTrigger_] Too early (JST " + jstHour + ":" + jstMin + "), skipping.");
+    return;
+  }
+  var today = getTodayJst_();
+  rumbleDailyLottery_({ date: today });
+  // 抽選完了後にバトルログを生成・シートに保存（翌日以降も確実に取得できるようにする）
+  rumbleSpectator_({ date: today });
 }
 
 // ============================================================
@@ -7733,7 +8047,7 @@ function rumbleDailyResult_(params) {
   var todayStr = getTodayJst_();
   var isToday  = dateStr === todayStr;
   // Deadline same as lottery filter
-  var deadline = dateStr + "T19:00:00.000Z";
+  var deadline = dateStr + "T18:50:00.000Z";
 
   // --- Participants ---
   var entrySheet = getRumbleEntrySheet_();
@@ -8152,6 +8466,50 @@ function rumbleSpectator_(params) {
   var dateStr = String(params.date || getTodayJst_());
   var weekId  = getWeekId_();
 
+  // キャッシュチェック: rumble_battle_log に保存済みデータがあれば返す
+  var cachedLog = getBattleLogCache_(dateStr);
+  if (cachedLog) {
+    var cachedSelf = null;
+    for (var ci = 0; ci < cachedLog.players.length; ci++) {
+      if (cachedLog.players[ci].id === userId) {
+        cachedSelf = cachedLog.players[ci];
+        break;
+      }
+    }
+    // week_rp / week_rank を rumble_week シートから補完
+    if (cachedSelf && userId) {
+      var cWeekSheet = getRumbleWeekSheet_();
+      var cWeekData  = cWeekSheet.getDataRange().getValues();
+      var cWHeaders  = cWeekData[0];
+      var cWIdx      = {};
+      cWHeaders.forEach(function(h, i) { cWIdx[h] = i; });
+      var cWeekRp = 0; var cWeekRank = -1; var cRankCounter = 0;
+      var cWeekRows = cWeekData.slice(1)
+        .filter(function(row) { return String(row[cWIdx["week_id"]]) === weekId; })
+        .map(function(row) { return { user_id: String(row[cWIdx["user_id"]]), total_rp: Number(row[cWIdx["total_rp"]] || 0) }; });
+      cWeekRows.sort(function(a, b) { return b.total_rp - a.total_rp; });
+      cWeekRows.forEach(function(r, i) {
+        if (r.user_id === userId) { cWeekRp = r.total_rp; cWeekRank = i + 1; }
+      });
+      cachedSelf = {
+        id: cachedSelf.id, display_name: cachedSelf.display_name,
+        score: cachedSelf.score, rp: cachedSelf.rp,
+        rank: cachedSelf.rank, is_self: true,
+        week_rp: cWeekRp, week_rank: cWeekRank,
+      };
+    }
+    return json_({
+      ok:      true,
+      status:  "ready",
+      date:    dateStr,
+      players: cachedLog.players,
+      events:  cachedLog.events,
+      self:    cachedSelf,
+      ranking: cachedLog.ranking,
+      total:   cachedLog.total,
+    });
+  }
+
   // 1. 本日の rumble_entry を取得
   var entrySheet = getRumbleEntrySheet_();
   ensureRumbleEntryCols_(entrySheet);
@@ -8383,6 +8741,9 @@ function rumbleSpectator_(params) {
   weekRows.forEach(function(r, i) {
     if (r.user_id === userId) { selfWeekRp = r.total_rp; selfWeekRank = i + 1; }
   });
+
+  // バトルログをシートに保存（以降の呼び出しはキャッシュから返す）
+  saveBattleLog_(dateStr, players, events, total, weekRows.slice(0, 5));
 
   return json_({
     ok:      true,
@@ -9565,6 +9926,29 @@ function setupGiftExpireTrigger() {
 // ============================================================
 
 /**
+ * 毎日18:00〜19:00 JST に発火。昨日より古いバトルログを rumble_battle_log から削除する。
+ * 昨日・今日分は保持（前回バトルログ表示のため）。
+ */
+function rumbleClearOldBattleLogsTrigger_() {
+  var sheet = getRumbleBattleLogSheet_();
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return;
+  var headers = data[0];
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+  var yesterday = new Date(Date.now() + 9 * 60 * 60 * 1000 - 86400000);
+  var yesterdayStr = Utilities.formatDate(yesterday, "Asia/Tokyo", "yyyy-MM-dd");
+  // 末尾から走査して古い行を削除（行番号がずれないようにするため）
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][idx["date"]]) < yesterdayStr) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+  SpreadsheetApp.flush();
+  Logger.log("[rumbleClearOldBattleLogsTrigger_] done. yesterdayStr=" + yesterdayStr);
+}
+
+/**
  * Run this function ONCE in the GAS editor to install time triggers.
  * Do NOT call from code — triggers persist across deploys.
  */
@@ -9573,16 +9957,22 @@ function setupRumbleTriggers_() {
   var triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(function(t) {
     var name = t.getHandlerFunction();
-    if (name === "rumbleDailyLotteryTrigger_" || name === "rumbleWeeklyRewardTrigger_") {
+    if (name === "rumbleDailyLotteryTrigger_" || name === "rumbleWeeklyRewardTrigger_" || name === "rumbleClearOldBattleLogsTrigger_") {
       ScriptApp.deleteTrigger(t);
     }
   });
 
-  // Daily lottery: every day 19:00–20:00 JST
+  // Daily lottery: 18:xx (main — fires 18:00–18:59, guard skips if before 18:50)
   ScriptApp.newTrigger("rumbleDailyLotteryTrigger_")
     .timeBased()
     .everyDays(1)
-    .atHour(19) // GAS uses script timezone; set GAS timezone to Asia/Tokyo in Project Settings
+    .atHour(18) // GAS uses script timezone; set GAS timezone to Asia/Tokyo in Project Settings
+    .create();
+  // Daily lottery: 19:xx (fallback — idempotency check skips if already done at 18:xx)
+  ScriptApp.newTrigger("rumbleDailyLotteryTrigger_")
+    .timeBased()
+    .everyDays(1)
+    .atHour(19)
     .create();
 
   // Weekly EP reward: every Friday 23:00–24:00 JST
@@ -9590,6 +9980,13 @@ function setupRumbleTriggers_() {
     .timeBased()
     .onWeekDay(ScriptApp.WeekDay.FRIDAY)
     .atHour(23)
+    .create();
+
+  // 毎日18:00〜19:00 JST に古いバトルログを削除（新規バトル前にクリーン化）
+  ScriptApp.newTrigger("rumbleClearOldBattleLogsTrigger_")
+    .timeBased()
+    .everyDays(1)
+    .atHour(18)
     .create();
 
   Logger.log("Rumble triggers set up successfully.");
@@ -9923,4 +10320,763 @@ function adjustImageBp_(userId, delta, note) {
   } catch(e) {
     // サイレント失敗
   }
+}
+
+// ============================================================
+// MUSIC HISTORY（音楽生成履歴 サーバー管理）
+// 追加日: 2026-04 / 既存コードへの変更なし・追記のみ
+// ============================================================
+
+function getMusicHistorySheet_() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("music_history");
+  if (!sheet) {
+    sheet = ss.insertSheet("music_history");
+    sheet.appendRow([
+      "id", "user_id", "job_id", "title",
+      "audio_url", "download_url", "lyrics",
+      "created_at", "expires_at"
+    ]);
+  }
+  return sheet;
+}
+
+// action: music_history_save
+// body: { userId, jobId, title, audioUrl, downloadUrl, lyrics, createdAt, expiresAt }
+function musicHistorySave_(body) {
+  var userId      = String(body.userId      || "");
+  var jobId       = String(body.jobId       || "");
+  var title       = String(body.title       || "");
+  var audioUrl    = String(body.audioUrl    || "");
+  var downloadUrl = String(body.downloadUrl || "");
+  var lyrics      = String(body.lyrics      || "");
+  var createdAt   = String(body.createdAt   || new Date().toISOString());
+  var expiresAt   = String(body.expiresAt   || "");
+
+  if (!userId || !jobId) return json_({ ok: false, error: "userId_and_jobId_required" });
+
+  var sheet   = getMusicHistorySheet_();
+  var data    = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  // 同一 job_id が既にあれば上書き（冪等性）
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) === userId &&
+        String(data[i][idx["job_id"]])  === jobId) {
+      var rowNum = i + 1;
+      sheet.getRange(rowNum, idx["title"]        + 1).setValue(title);
+      sheet.getRange(rowNum, idx["audio_url"]    + 1).setValue(audioUrl);
+      sheet.getRange(rowNum, idx["download_url"] + 1).setValue(downloadUrl);
+      sheet.getRange(rowNum, idx["lyrics"]       + 1).setValue(lyrics);
+      sheet.getRange(rowNum, idx["expires_at"]   + 1).setValue(expiresAt);
+      SpreadsheetApp.flush();
+      return json_({ ok: true, action: "updated" });
+    }
+  }
+
+  // 新規追加
+  var id = Utilities.getUuid();
+  sheet.appendRow([
+    id, userId, jobId, title,
+    audioUrl, downloadUrl, lyrics,
+    createdAt, expiresAt
+  ]);
+  SpreadsheetApp.flush();
+  return json_({ ok: true, action: "created" });
+}
+
+// action: music_history_list
+// body: { userId, limit? }
+// 返却: 最新50件（expires_at が過去のものは除外）
+function musicHistoryList_(body) {
+  var userId = String(body.userId || "");
+  var limit  = Math.min(Number(body.limit || 50), 50);
+
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+
+  var sheet   = getMusicHistorySheet_();
+  var data    = sheet.getDataRange().getValues();
+  if (data.length < 2) return json_({ ok: true, items: [] });
+
+  var headers = data[0];
+  var idx     = {};
+  headers.forEach(function(h, i) { idx[h] = i; });
+
+  var nowIso = new Date().toISOString();
+  var items  = [];
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx["user_id"]]) !== userId) continue;
+    var expiresAt = String(data[i][idx["expires_at"]] || "");
+    if (expiresAt && expiresAt < nowIso) continue; // 有効期限切れをスキップ
+    items.push({
+      jobId:       String(data[i][idx["job_id"]]),
+      title:       String(data[i][idx["title"]]),
+      audioUrl:    String(data[i][idx["audio_url"]]),
+      downloadUrl: String(data[i][idx["download_url"]]),
+      lyrics:      String(data[i][idx["lyrics"]]),
+      createdAt:   String(data[i][idx["created_at"]]),
+      expiresAt:   expiresAt,
+    });
+  }
+
+  // created_at 降順で最新 limit 件
+  items.sort(function(a, b) { return b.createdAt > a.createdAt ? 1 : -1; });
+  return json_({ ok: true, items: items.slice(0, limit) });
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Monitor helper functions（監視ダッシュボード用）
+// ──────────────────────────────────────────────────────────────────────
+
+function monitorSongStats_() {
+  try {
+    var sheet = getMusicJobSheet_();
+    if (!sheet || sheet.getLastRow() < 2) {
+      return {
+        ok: true,
+        status_counts: {
+          lyrics_generating: 0, lyrics_done: 0,
+          structure_generating: 0, structure_done: 0,
+          audio_generating: 0, done: 0, failed: 0
+        },
+        avg_total_duration_sec: null
+      };
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    var counts = {
+      lyrics_generating: 0, lyrics_ready: 0,
+      structure_generating: 0, structure_ready: 0,
+      generating_audio: 0, audio_generating: 0,
+      postprocessing: 0, uploading_result: 0,
+      completed: 0, failed: 0, cancelled: 0
+    };
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[idx['job_id']]) continue;
+      var status = String(row[idx['status']] || '');
+      if (counts.hasOwnProperty(status)) {
+        counts[status]++;
+      }
+    }
+
+    var doneToday = 0, failedToday = 0;
+    for (var j = 1; j < data.length; j++) {
+      var r = data[j];
+      if (!r[idx['job_id']]) continue;
+      var updatedAt = String(r[idx['updated_at']] || '');
+      if (updatedAt.slice(0, 10) === todayStr) {
+        var st = String(r[idx['status']] || '');
+        if (st === 'completed') doneToday++;
+        if (st === 'failed') failedToday++;
+      }
+    }
+
+    return {
+      ok: true,
+      status_counts: {
+        lyrics_generating: counts.lyrics_generating,
+        lyrics_done: counts.lyrics_ready,
+        structure_generating: counts.structure_generating,
+        structure_done: counts.structure_ready,
+        audio_generating: counts.generating_audio + counts.audio_generating + counts.postprocessing + counts.uploading_result,
+        done: doneToday,
+        failed: failedToday
+      },
+      avg_total_duration_sec: null
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorGamesStats_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var tapActiveUsers = 0;
+    var tapTotalTaps = 0;
+    var batchCallsLast5m = 0;
+
+    var batchSheet = ss.getSheetByName('tap_batch_logs');
+    if (batchSheet && batchSheet.getLastRow() > 1) {
+      var bData = batchSheet.getDataRange().getValues();
+      var bHeaders = bData[0];
+      var bIdx = {};
+      bHeaders.forEach(function(h, i) { bIdx[h] = i; });
+
+      var nowJst5 = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      var todayStr5 = nowJst5.toISOString().slice(0, 10);
+      var fiveMinAgo = Date.now() - 5 * 60 * 1000;
+      var tapUsers = {};
+
+      for (var i = 1; i < bData.length; i++) {
+        var row = bData[i];
+        var createdAt = String(row[bIdx['created_at']] || '');
+        if (createdAt.slice(0, 10) !== todayStr5) continue;
+        var userId = String(row[bIdx['user_id']] || '');
+        tapUsers[userId] = true;
+        tapTotalTaps += Number(row[bIdx['processed_tap_count']] || 0);
+
+        var rowTime = new Date(createdAt).getTime();
+        if (!isNaN(rowTime) && rowTime > fiveMinAgo) {
+          batchCallsLast5m++;
+        }
+      }
+      tapActiveUsers = Object.keys(tapUsers).length;
+    }
+
+    var rumbleParticipants = 0;
+    var entrySheet = ss.getSheetByName('rumble_entry');
+    if (entrySheet && entrySheet.getLastRow() > 1) {
+      rumbleParticipants = entrySheet.getLastRow() - 1;
+    }
+
+    return {
+      ok: true,
+      tap: {
+        active_users_today: tapActiveUsers,
+        total_taps_today: tapTotalTaps,
+        batch_calls_last_5m: batchCallsLast5m
+      },
+      rumble: {
+        current_participants: rumbleParticipants,
+        gacha_today: 0,
+        enhance_today: 0,
+        dismantle_today: 0
+      }
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorMarketStats_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    var marketSheet = ss.getSheetByName('market');
+    if (!marketSheet) {
+      return {
+        ok: true,
+        active_items: 0,
+        orders_today: 0,
+        reports_today: 0,
+        sell_requests_today: 0
+      };
+    }
+
+    var data = marketSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    var activeItems = 0;
+    var ordersToday = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var status = String(row[idx['status']] || '');
+      if (status === 'active') activeItems++;
+
+      var updatedAt = String(row[idx['updated_at']] || row[idx['created_at']] || '');
+      if (status === 'sold' && updatedAt.slice(0, 10) === todayStr) {
+        ordersToday++;
+      }
+    }
+
+    var sellToday = 0;
+    var sellSheet = ss.getSheetByName('SellRequests');
+    if (sellSheet && sellSheet.getLastRow() > 1) {
+      var sData = sellSheet.getDataRange().getValues();
+      var sHeaders = sData[0];
+      var sIdx = {};
+      sHeaders.forEach(function(h, i) { sIdx[h] = i; });
+      for (var j = 1; j < sData.length; j++) {
+        var createdAt = String(sData[j][sIdx['created_at']] || '');
+        if (createdAt.slice(0, 10) === todayStr) sellToday++;
+      }
+    }
+
+    return {
+      ok: true,
+      active_items: activeItems,
+      orders_today: ordersToday,
+      reports_today: 0,
+      sell_requests_today: sellToday
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorWalletStats_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var boostSheet = ss.getSheetByName('music_boost');
+    if (!boostSheet || boostSheet.getLastRow() < 2) {
+      return {
+        ok: true,
+        pending_bp_claims: 0,
+        music_boost_active: 0,
+        music_boost_expiring_soon: 0,
+        music_boost_canceled_today: 0
+      };
+    }
+
+    var data = boostSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var nowMs = Date.now();
+    var nowJst = new Date(nowMs + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+    var threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+
+    var active = 0, expiringSoon = 0, canceledToday = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var status = String(row[idx['status']] || '');
+
+      if (status === 'active') {
+        active++;
+        var expiresAt = row[idx['expires_at']];
+        if (expiresAt) {
+          var expMs = new Date(expiresAt).getTime();
+          if (!isNaN(expMs) && expMs - nowMs < threeDaysMs && expMs > nowMs) {
+            expiringSoon++;
+          }
+        }
+      }
+
+      if (status === 'canceled') {
+        var canceledAt = String(row[idx['canceled_at']] || row[idx['updated_at']] || '');
+        if (canceledAt.slice(0, 10) === todayStr) canceledToday++;
+      }
+    }
+
+    var pendingBp = 0;
+    var pendingSheet = ss.getSheetByName('PendingBP');
+    if (pendingSheet && pendingSheet.getLastRow() > 1) {
+      var pData = pendingSheet.getDataRange().getValues();
+      var pHeaders = pData[0];
+      var pIdx = {};
+      pHeaders.forEach(function(h, i) { pIdx[h] = i; });
+      for (var j = 1; j < pData.length; j++) {
+        var claimed = pData[j][pIdx['claimed_at']];
+        if (!claimed) pendingBp++;
+      }
+    }
+
+    return {
+      ok: true,
+      pending_bp_claims: pendingBp,
+      music_boost_active: active,
+      music_boost_expiring_soon: expiringSoon,
+      music_boost_canceled_today: canceledToday
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+// ──────────────────────────────────────────────────────────────────────
+// Monitor helpers — Boost & Rumble（監視ダッシュボード用）
+// ──────────────────────────────────────────────────────────────────────
+
+function monitorBoostSubscribers_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var boostSheet = getMusicBoostSheet_();
+    if (!boostSheet || boostSheet.getLastRow() < 2) {
+      return { ok: true, subscribers: [], total: 0 };
+    }
+
+    var data = boostSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var displayNameMap = {};
+    var appliesSheet = ss.getSheetByName('applies');
+    if (appliesSheet && appliesSheet.getLastRow() > 1) {
+      var aData = appliesSheet.getDataRange().getValues();
+      var aHeaders = aData[0];
+      var aIdx = {};
+      aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+      for (var ai = 1; ai < aData.length; ai++) {
+        var uid = String(aData[ai][aIdx['login_id']] || '');
+        if (!uid) continue;
+        displayNameMap[uid] = String(aData[ai][aIdx['rumble_display_name']] || '') || uid;
+      }
+    }
+
+    var subscribers = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[idx['status']] || '') !== 'active') continue;
+      var userId = String(row[idx['user_id']] || '');
+      subscribers.push({
+        user_id:      userId,
+        display_name: displayNameMap[userId] || userId,
+        plan_id:      String(row[idx['plan_id']] || ''),
+        percent:      Number(row[idx['percent']] || 0),
+        slots_used:   Number(row[idx['slots_used']] || 0),
+        started_at:   String(row[idx['started_at']] || ''),
+        expires_at:   String(row[idx['expires_at']] || ''),
+      });
+    }
+
+    subscribers.sort(function(a, b) { return b.percent - a.percent; });
+    return { ok: true, subscribers: subscribers, total: subscribers.length };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorRumbleToday_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var entrySheet = ss.getSheetByName('rumble_entry');
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    if (!entrySheet || entrySheet.getLastRow() < 2) {
+      return { ok: true, date: todayStr, participants: [], total: 0 };
+    }
+
+    var data = entrySheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var displayNameMap = {};
+    var appliesSheet = ss.getSheetByName('applies');
+    if (appliesSheet && appliesSheet.getLastRow() > 1) {
+      var aData = appliesSheet.getDataRange().getValues();
+      var aHeaders = aData[0];
+      var aIdx = {};
+      aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+      for (var ai = 1; ai < aData.length; ai++) {
+        var uid = String(aData[ai][aIdx['login_id']] || '');
+        if (uid) displayNameMap[uid] = String(aData[ai][aIdx['rumble_display_name']] || '') || uid;
+      }
+    }
+
+    var participants = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var dateStr = rumbleDateStr_(row[idx['date']]);
+      if (dateStr !== todayStr) continue;
+      var userId = String(row[idx['user_id']] || '');
+      participants.push({
+        user_id:      userId,
+        display_name: displayNameMap[userId] || userId,
+        score:        Number(row[idx['score']] || 0),
+        rp:           Number(row[idx['rp']] || 0),
+        created_at:   String(row[idx['created_at']] || ''),
+      });
+    }
+
+    participants.sort(function(a, b) { return b.score - a.score; });
+    participants.forEach(function(p, i) { p.rank = i + 1; });
+    return { ok: true, date: todayStr, participants: participants, total: participants.length };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorRumbleDaily_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var resultSheet = ss.getSheetByName('rumble_daily_result');
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    if (!resultSheet || resultSheet.getLastRow() < 2) {
+      return { ok: true, status: 'no_data', date: todayStr, winners: [], participant_count: 0 };
+    }
+
+    var data = resultSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var todayRows = [];
+    var latestDate = '';
+    var latestRows = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var d = rumbleDateStr_(data[i][idx['date']]);
+      if (d === todayStr) {
+        todayRows.push(data[i]);
+      }
+      if (d > latestDate) {
+        latestDate = d;
+        latestRows = [data[i]];
+      } else if (d === latestDate) {
+        latestRows.push(data[i]);
+      }
+    }
+
+    var targetRows = todayRows.length > 0 ? todayRows : latestRows;
+    var targetDate = todayRows.length > 0 ? todayStr : latestDate;
+    var isToday = todayRows.length > 0;
+
+    if (targetRows.length === 0) {
+      return { ok: true, status: 'no_data', date: todayStr, winners: [], participant_count: 0 };
+    }
+
+    var participantCount = Number(targetRows[0][idx['participant_count']] || 0);
+    var allDistributed = targetRows.every(function(row) { return !!row[idx['distributed']]; });
+
+    if (!allDistributed && isToday) {
+      return {
+        ok: true, status: 'pending', date: targetDate, is_today: true,
+        participant_count: participantCount, winners: []
+      };
+    }
+
+    var winners = targetRows.map(function(row) {
+      return {
+        rank:         Number(row[idx['rank']] || 0),
+        user_id:      String(row[idx['user_id']] || ''),
+        display_name: String(row[idx['display_name']] || ''),
+        bp_amount:    Number(row[idx['bp_amount']] || 0),
+        distributed:  !!row[idx['distributed']],
+      };
+    });
+    winners.sort(function(a, b) { return a.rank - b.rank; });
+
+    return {
+      ok: true, status: 'ready', date: targetDate, is_today: isToday,
+      participant_count: participantCount, winners: winners
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function monitorRumbleWeekly_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var weekId = getRumbleWeekId_();
+    var weekSheet = ss.getSheetByName('rumble_week');
+
+    if (!weekSheet || weekSheet.getLastRow() < 2) {
+      return { ok: true, week_id: weekId, participant_count: 0, ranking: [], ep_table: rumbleEpTable_(0) };
+    }
+
+    var data = weekSheet.getDataRange().getValues();
+    var headers = data[0];
+    var idx = {};
+    headers.forEach(function(h, i) { idx[h] = i; });
+
+    var displayNameMap = {};
+    var appliesSheet = ss.getSheetByName('applies');
+    if (appliesSheet && appliesSheet.getLastRow() > 1) {
+      var aData = appliesSheet.getDataRange().getValues();
+      var aHeaders = aData[0];
+      var aIdx = {};
+      aHeaders.forEach(function(h, i) { aIdx[h] = i; });
+      for (var ai = 1; ai < aData.length; ai++) {
+        var uid = String(aData[ai][aIdx['login_id']] || '');
+        if (uid) displayNameMap[uid] = String(aData[ai][aIdx['rumble_display_name']] || '') || uid;
+      }
+    }
+
+    var ranking = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[idx['week_id']] || '') !== weekId) continue;
+      var userId = String(row[idx['user_id']] || '');
+      ranking.push({
+        user_id:    userId,
+        display_name: displayNameMap[userId] || userId,
+        total_rp:   Number(row[idx['total_rp']] || 0),
+        updated_at: String(row[idx['updated_at']] || ''),
+      });
+    }
+
+    ranking.sort(function(a, b) { return b.total_rp - a.total_rp; });
+    var total = ranking.length;
+    ranking.forEach(function(r, i) {
+      r.rank = i + 1;
+      r.ep_reward = rumbleEpForRank_(i + 1, total);
+    });
+
+    return {
+      ok: true, week_id: weekId, participant_count: total,
+      ranking: ranking.slice(0, 100), ep_table: rumbleEpTable_(total)
+    };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+
+function getRumbleWeekId_() {
+  var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  var day = nowJst.getDay();
+  var monday = new Date(nowJst);
+  monday.setDate(nowJst.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setHours(0, 0, 0, 0);
+  var startOfYear = new Date(monday.getFullYear(), 0, 1);
+  var weekNum = Math.ceil(((monday - startOfYear) / 86400000 + 1) / 7);
+  return monday.getFullYear() + '-W' + String(weekNum).padStart(2, '0');
+}
+
+
+function rumbleEpTable_(total) {
+  if (total <= 2) {
+    return [{ rank: '1位', ep: 400 }, { rank: '2位', ep: 300 }];
+  } else if (total <= 4) {
+    return [{ rank: '1位', ep: 350 }, { rank: '2位', ep: 230 }, { rank: '3位', ep: 120 }];
+  } else if (total <= 9) {
+    return [{ rank: '1位', ep: 300 }, { rank: '2位', ep: 200 }, { rank: '3位', ep: 120 }, { rank: '4〜5位', ep: 40 }];
+  } else {
+    return [{ rank: '1位', ep: 280 }, { rank: '2位', ep: 190 }, { rank: '3位', ep: 120 }, { rank: '4〜5位', ep: 45 }, { rank: '6〜10位', ep: 4 }];
+  }
+}
+
+
+function rumbleEpForRank_(rank, total) {
+  if (total <= 2) {
+    return rank === 1 ? 400 : rank === 2 ? 300 : 0;
+  } else if (total <= 4) {
+    return rank === 1 ? 350 : rank === 2 ? 230 : rank === 3 ? 120 : 0;
+  } else if (total <= 9) {
+    return rank === 1 ? 300 : rank === 2 ? 200 : rank === 3 ? 120 : rank <= 5 ? 40 : 0;
+  } else {
+    return rank === 1 ? 280 : rank === 2 ? 190 : rank === 3 ? 120 : rank <= 5 ? 45 : rank <= 10 ? 4 : 0;
+  }
+}
+
+
+function monitorRumbleSpectator_() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var entrySheet = ss.getSheetByName('rumble_entry');
+    var nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    var todayStr = nowJst.toISOString().slice(0, 10);
+
+    // Scan rumble_entry for today
+    var firstUserId = null;
+    var todayCount = 0;
+    var lastEntryDate = '';
+    if (entrySheet && entrySheet.getLastRow() >= 2) {
+      var data = entrySheet.getDataRange().getValues();
+      var headers = data[0];
+      var idx = {};
+      headers.forEach(function(h, i) { idx[h] = i; });
+      for (var i = 1; i < data.length; i++) {
+        var d = rumbleDateStr_(data[i][idx['date']]);
+        if (d === todayStr) {
+          if (!firstUserId) firstUserId = String(data[i][idx['user_id']] || '');
+          todayCount++;
+        }
+        if (d > lastEntryDate) lastEntryDate = d;
+      }
+    }
+
+    if (firstUserId) {
+      // Today has entries — generate (or read from cache) via existing spectator logic
+      var raw = rumbleSpectator_({ userId: firstUserId });
+      var spectatorResult = JSON.parse(raw.getContent());
+      return {
+        ok:      true,
+        status:  'ready',
+        date:    todayStr,
+        total:   todayCount,
+        last_entry_date: todayStr,
+        events:  spectatorResult.events  || [],
+        players: spectatorResult.players || [],
+      };
+    }
+
+    // No entries today — fall back to most recent cached battle log
+    var cached = getLatestBattleLogCache_();
+    if (cached && cached.events && cached.events.length > 0) {
+      return {
+        ok:      true,
+        status:  'ready',
+        date:    cached.date,
+        total:   cached.total,
+        last_entry_date: cached.date,
+        events:  cached.events,
+        players: cached.players,
+      };
+    }
+
+    // Nothing available
+    return {
+      ok: true,
+      status: 'no_entries',
+      date: todayStr,
+      total: 0,
+      last_entry_date: lastEntryDate || null,
+      events: [],
+      players: [],
+    };
+  } catch (e) {
+    return { ok: false, error: String(e), status: 'error' };
+  }
+}
+
+// ============================================================
+// RUMBLE 自動エントリー（管理者用タイムトリガー）
+// 使い方:
+//   1. GASスクリプトプロパティに RUMBLE_AUTO_USER_IDS = "your_login_id" を設定
+//   2. createRumbleAutoEntryTrigger_() を一度だけ手動実行 → 毎日JST 6:00に自動エントリー
+// ============================================================
+
+function rumbleAutoEntry_() {
+  var prop = PropertiesService.getScriptProperties().getProperty('RUMBLE_AUTO_USER_IDS') || '';
+  var userIds = prop.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+  if (userIds.length === 0) {
+    Logger.log('[rumbleAutoEntry] RUMBLE_AUTO_USER_IDS が未設定です');
+    return;
+  }
+  userIds.forEach(function(userId) {
+    var result = rumbleEntry_({ userId: userId });
+    Logger.log('[rumbleAutoEntry] userId=' + userId + ' result=' + JSON.stringify(result));
+  });
+}
+
+function createRumbleAutoEntryTrigger() {
+  // 既存の同名トリガーを削除してから再登録（重複防止）
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'rumbleAutoEntry_') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger('rumbleAutoEntry_')
+    .timeBased()
+    .everyDays(1)
+    .atHour(6) // JST 6:00（GASはプロジェクトタイムゾーン基準）
+    .create();
+  Logger.log('[createRumbleAutoEntryTrigger] 毎日6時のトリガーを登録しました');
 }

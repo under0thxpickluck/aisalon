@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { ToastHost } from "@/components/Toast";
 import { LifaiCatProvider } from "@/components/LifaiCat";
+import LifaiCatGlobal from "@/components/LifaiCatGlobal";
 
 export const metadata: Metadata = {
   title: {
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <LifaiCatProvider>
           <ToastHost />
           {children}
+          <LifaiCatGlobal />
         </LifaiCatProvider>
       </body>
     </html>
