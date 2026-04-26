@@ -60,6 +60,13 @@ export default function HomePage() {
             >
               ログイン
             </Link>
+
+            <button
+              disabled
+              className="col-span-2 md:col-auto inline-flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-400 cursor-not-allowed opacity-60"
+            >
+              🎨 AI作品集（準備中）
+            </button>
           </div>
         </div>
 
