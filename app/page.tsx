@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { getFeaturedWorks } from "@/data/works";
-import WorkCard from "@/components/WorkCard";
 
 export default function HomePage() {
   return (
@@ -100,33 +98,6 @@ export default function HomePage() {
             すでにIDをお持ちの方はこちら
           </Link>
         </div>
-
-        {/* ===== AI作品サンプル ===== */}
-        {(() => {
-          const featured = getFeaturedWorks();
-          if (featured.length === 0) return null;
-          return (
-            <div className="mt-12">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <div className="text-lg font-bold">AIで実際に作れるもの</div>
-                  <div className="text-xs text-slate-500 mt-0.5">LIFAIで生成した作品サンプル</div>
-                </div>
-                <Link
-                  href="/gallery#works"
-                  className="text-xs text-indigo-600 font-semibold hover:underline underline-offset-4"
-                >
-                  すべて見る →
-                </Link>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {featured.map(work => (
-                  <WorkCard key={work.slug} work={work} />
-                ))}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* ===== 始め方 ===== */}
         <div className="relative mt-16 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
