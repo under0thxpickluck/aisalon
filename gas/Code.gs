@@ -1421,6 +1421,133 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // ✅ wallet_ledger_all（管理：wallet_ledger シート全行を返す）
+  // =========================================================
+  if (action === "wallet_ledger_all") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const led = ss.getSheetByName("wallet_ledger");
+    if (!led) return json_({ ok: true, items: [] });
+
+    const ledValues = getValuesSafe_(led);
+    if (ledValues.length < 2) return json_({ ok: true, items: [] });
+
+    const ledHeader = ledValues[0];
+    const ledIdx = indexMap_(ledHeader);
+    const items = ledValues.slice(1).map(function(r) {
+      return {
+        ts:       str_(r[ledIdx["ts"]]),
+        kind:     str_(r[ledIdx["kind"]]),
+        login_id: str_(r[ledIdx["login_id"]]),
+        email:    str_(r[ledIdx["email"]]),
+        amount:   num_(r[ledIdx["amount"]]),
+        memo:     str_(r[ledIdx["memo"]]),
+      };
+    }).filter(function(it) { return it.login_id || it.kind; });
+
+    return json_({ ok: true, items: items });
+  }
+
+  // =========================================================
+  // ✅ ref_reassign（管理：紹介者変更 + referrer_2〜5 再計算）
+  // =========================================================
+  if (action === "ref_reassign") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const targetLoginId      = str_(body.targetLoginId);
+    const newReferrerLoginId = str_(body.newReferrerLoginId);
+    const note               = str_(body.note) || "admin_finance_drag";
+
+    if (!targetLoginId) {
+      return json_({ ok: false, error: "missing_targetLoginId" });
+    }
+    if (newReferrerLoginId && targetLoginId === newReferrerLoginId) {
+      return json_({ ok: false, error: "self_referral" });
+    }
+
+    const rrSheet  = getOrCreateSheet_();
+    const rrValues = getValuesSafe_(rrSheet);
+    const rrHeader = rrValues[0];
+    const rrIdx    = indexMap_(rrHeader);
+
+    let targetRowIndex = -1;
+    for (let ri = 1; ri < rrValues.length; ri++) {
+      if (str_(rrValues[ri][rrIdx["login_id"]]) === targetLoginId) {
+        targetRowIndex = ri + 1;
+        break;
+      }
+    }
+    if (targetRowIndex === -1) {
+      return json_({ ok: false, error: "target_not_found" });
+    }
+
+    if (newReferrerLoginId) {
+      const rrVisited = new Set();
+      let rrCur = newReferrerLoginId;
+      while (rrCur && !rrVisited.has(rrCur)) {
+        if (rrCur === targetLoginId) {
+          return json_({ ok: false, error: "circular_reference" });
+        }
+        rrVisited.add(rrCur);
+        let rrNext = null;
+        for (let ri = 1; ri < rrValues.length; ri++) {
+          if (str_(rrValues[ri][rrIdx["login_id"]]) === rrCur) {
+            rrNext = str_(rrValues[ri][rrIdx["referrer_login_id"]]) || null;
+            break;
+          }
+        }
+        rrCur = rrNext;
+      }
+    }
+
+    const newChain = [];
+    if (newReferrerLoginId) {
+      newChain.push(newReferrerLoginId);
+      const chainVisited = new Set([newReferrerLoginId]);
+      let chainCur = newReferrerLoginId;
+      while (newChain.length < 5) {
+        let chainNext = null;
+        for (let ri = 1; ri < rrValues.length; ri++) {
+          if (str_(rrValues[ri][rrIdx["login_id"]]) === chainCur) {
+            chainNext = str_(rrValues[ri][rrIdx["referrer_login_id"]]) || null;
+            break;
+          }
+        }
+        if (!chainNext || chainVisited.has(chainNext)) break;
+        chainVisited.add(chainNext);
+        newChain.push(chainNext);
+        chainCur = chainNext;
+      }
+    }
+
+    const newRefPath  = [targetLoginId].concat(newChain).join(" > ");
+    const writeCols   = ["referrer_login_id","referrer_2_login_id","referrer_3_login_id","referrer_4_login_id","referrer_5_login_id","ref_path"];
+    const writeVals   = [newChain[0]||"", newChain[1]||"", newChain[2]||"", newChain[3]||"", newChain[4]||"", newRefPath];
+    for (let ci = 0; ci < writeCols.length; ci++) {
+      if (rrIdx[writeCols[ci]] !== undefined) {
+        rrSheet.getRange(targetRowIndex, rrIdx[writeCols[ci]] + 1).setValue(writeVals[ci]);
+      }
+    }
+
+    appendRefEvent_({
+      new_login_id:  targetLoginId,
+      new_email:     "",
+      used_ref_code: "",
+      ref1_login_id: newChain[0] || "",
+      ref2_login_id: newChain[1] || "",
+      ref3_login_id: newChain[2] || "",
+      note:          note,
+    });
+
+    return json_({ ok: true, targetLoginId: targetLoginId, newReferrerLoginId: newReferrerLoginId });
+  }
+
+  // =========================================================
   // ✅ send_test_mail（管理：メール送信テスト）
   // adminKey + to アドレスが必要。デプロイ後のMailApp動作確認用。
   // curl などから: ?action=send_test_mail&key=...&adminKey=...&to=xxx@yyy.com
