@@ -3708,17 +3708,125 @@ function handle_(key, body) {
       var ss4 = SpreadsheetApp.getActiveSpreadsheet();
       var mss3 = ss4.getSheetByName("music_sell_requests");
       if (!mss3) return json_({ ok: false, error: "sheet_not_found" });
-      var mRows2   = mss3.getDataRange().getValues();
+      var mRows2    = mss3.getDataRange().getValues();
       var mHeaders2 = mRows2[0];
-      var ridIdx   = mHeaders2.indexOf("request_id");
-      var stIdx    = mHeaders2.indexOf("status");
+      var ridIdx    = mHeaders2.indexOf("request_id");
+      var stIdx     = mHeaders2.indexOf("status");
+      var liIdx     = mHeaders2.indexOf("login_id");
+      var priceIdx  = mHeaders2.indexOf("price_usdt");
+      var titleIdx  = mHeaders2.indexOf("title");
+      var epGrantedIdx = mHeaders2.indexOf("ep_granted_at");
+
       for (var mi = 1; mi < mRows2.length; mi++) {
         if (str_(mRows2[mi][ridIdx]) === requestId2) {
+          // 二重付与防止：既に approved なら何もしない
+          if (str_(mRows2[mi][stIdx]) === "approved") {
+            return json_({ ok: true, already: true });
+          }
+
           mss3.getRange(mi + 1, stIdx + 1).setValue(newStatus);
+
+          // approved 時のみ EP を付与
+          if (newStatus === "approved") {
+            var sellLoginId = str_(mRows2[mi][liIdx]);
+            var epAmount    = Number(mRows2[mi][priceIdx] || 0);
+            var sellTitle   = str_(mRows2[mi][titleIdx]);
+
+            if (sellLoginId && epAmount > 0) {
+              // applies シートのユーザー行を検索して ep_balance を加算
+              var applySheet = ss4.getSheetByName("applies");
+              if (applySheet) {
+                var applyVals   = applySheet.getDataRange().getValues();
+                var applyHeader = applyVals[0];
+                ensureCols_(applySheet, applyHeader, ["login_id", "email", "ep_balance"]);
+                applyVals   = applySheet.getDataRange().getValues();
+                applyHeader = applyVals[0];
+                var aIdx = indexMap_(applyHeader);
+                var hitRow   = 0;
+                var hitEmail = "";
+                var currentEp = 0;
+                for (var ai = 1; ai < applyVals.length; ai++) {
+                  if (str_(applyVals[ai][aIdx["login_id"]]) === sellLoginId) {
+                    hitRow    = ai + 1;
+                    hitEmail  = str_(applyVals[ai][aIdx["email"]]);
+                    currentEp = Number(applyVals[ai][aIdx["ep_balance"]] || 0);
+                    break;
+                  }
+                }
+                if (hitRow) {
+                  var newEp = currentEp + epAmount;
+                  applySheet.getRange(hitRow, aIdx["ep_balance"] + 1).setValue(newEp);
+                  appendWalletLedger_({
+                    kind:     "music_sell",
+                    login_id: sellLoginId,
+                    email:    hitEmail,
+                    amount:   epAmount,
+                    memo:     "楽曲売却承認EP（" + sellTitle + "）",
+                  });
+                  // ep_granted_at 列に記録（列がなければヘッダーを追加してから書き込む）
+                  if (epGrantedIdx === -1) {
+                    epGrantedIdx = mHeaders2.length;
+                    mss3.getRange(1, epGrantedIdx + 1).setValue("ep_granted_at");
+                  }
+                  mss3.getRange(mi + 1, epGrantedIdx + 1).setValue(new Date().toISOString());
+                  return json_({ ok: true, ep_granted: epAmount, ep_balance: newEp });
+                }
+              }
+            }
+          }
+
           return json_({ ok: true });
         }
       }
       return json_({ ok: false, error: "request_not_found" });
+    } catch(e) {
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
+  // =========================================================
+  // music_sell_notify（承認済み・未通知の売却申請をユーザーに返し、notified_at を記録）
+  // =========================================================
+  if (action === "music_sell_notify") {
+    try {
+      var notifyLoginId = str_(body.loginId);
+      if (!notifyLoginId) return json_({ ok: false, error: "loginId_required" });
+      var ss5 = SpreadsheetApp.getActiveSpreadsheet();
+      var mss5 = ss5.getSheetByName("music_sell_requests");
+      if (!mss5) return json_({ ok: true, items: [] });
+
+      var nRows    = mss5.getDataRange().getValues();
+      var nHeaders = nRows[0];
+      var nLiIdx    = nHeaders.indexOf("login_id");
+      var nStIdx    = nHeaders.indexOf("status");
+      var nPriceIdx = nHeaders.indexOf("price_usdt");
+      var nTitleIdx = nHeaders.indexOf("title");
+      var nEpIdx    = nHeaders.indexOf("ep_granted_at");
+      var nNotiIdx  = nHeaders.indexOf("notified_at");
+
+      // notified_at 列がなければ追加
+      if (nNotiIdx === -1) {
+        mss5.getRange(1, nHeaders.length + 1).setValue("notified_at");
+        nNotiIdx = nHeaders.length;
+      }
+
+      var items = [];
+      for (var ni = 1; ni < nRows.length; ni++) {
+        var rowLi    = str_(nRows[ni][nLiIdx]);
+        var rowSt    = str_(nRows[ni][nStIdx]);
+        var rowNoti  = nNotiIdx !== -1 ? str_(nRows[ni][nNotiIdx]) : "";
+        var rowEpAt  = nEpIdx !== -1   ? str_(nRows[ni][nEpIdx])   : "";
+        // 対象: 同ユーザー・approved・EP付与済み・未通知
+        if (rowLi === notifyLoginId && rowSt === "approved" && rowEpAt && !rowNoti) {
+          items.push({
+            title:   str_(nRows[ni][nTitleIdx]),
+            ep:      Number(nRows[ni][nPriceIdx] || 0),
+          });
+          // notified_at を記録
+          mss5.getRange(ni + 1, nNotiIdx + 1).setValue(new Date().toISOString());
+        }
+      }
+      return json_({ ok: true, items: items });
     } catch(e) {
       return json_({ ok: false, error: String(e) });
     }

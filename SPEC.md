@@ -28,11 +28,16 @@
 17. [マーケットプレイス](#17-マーケットプレイス)
 18. [ミニゲーム（LIFAI Arcade）](#18-ミニゲームlifai-arcade)
 19. [ギフトシステム](#19-ギフトシステム)
-20. [LifaiCat（AIアシスタント）](#20-lifaicataiアシスタント)
-21. [テーマシステム（ダーク/ライト）](#21-テーマシステムダークライト)
-22. [管理者機能](#22-管理者機能)
-23. [セキュリティ設計](#23-セキュリティ設計)
-24. [データフロー図](#24-データフロー図)
+20. [楽曲売却申請](#20-楽曲売却申請)
+21. [LIFAI ラジオ](#21-lifai-ラジオ)
+22. [Narasu Agency（パートナープログラム）](#22-narasu-agencyパートナープログラム)
+23. [5000プログラム](#23-5000プログラム)
+24. [ギャラリー・作品ページ](#24-ギャラリー作品ページ)
+25. [LifaiCat（AIアシスタント）](#25-lifaicataiアシスタント)
+26. [テーマシステム（ダーク/ライト）](#26-テーマシステムダークライト)
+27. [管理者機能](#27-管理者機能)
+28. [セキュリティ設計](#28-セキュリティ設計)
+29. [データフロー図](#29-データフロー図)
 
 ---
 
@@ -1012,6 +1017,39 @@ GAS `admin_approve` → `{ ok: true, loginId, tempPassword }` または `{ ok: t
 
 ---
 
+### BGM生成
+
+BGMはボーカルなしのインストゥルメンタル音楽を生成するフロー。音楽生成（`/api/music`）とは独立したAPI。
+
+#### `POST /api/bgm/generate`
+**maxDuration:** 120秒
+
+| 項目 | 内容 |
+|---|---|
+| 認証 | `{ id: string, code: string }` 必須 |
+| リクエスト | `{ id, code, theme, genre, mood, duration?, bpm?, isPro? }` |
+| BP コスト | 通常: 80 BP（`BP_COSTS.music_bgm`）/ Pro: 150 BP（`BP_COSTS.music_bgm_pro`） |
+| duration | 通常: 120〜210秒ランダム / Pro: ユーザー指定（120〜210でクランプ） |
+| 成功レスポンス | `{ ok: true, predictionId: string, bpUsed: number }` |
+| Replicate model | `671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb`（minimax music-01） |
+
+**処理フロー:**
+1. BP残高チェック（GAS `get_balance`）
+2. BP差し引き（GAS `deduct_bp` + `adminKey`）← 生成**前**に確定
+3. GPT-4o-mini でムード雰囲気の英語説明生成（失敗時はフォールバック）
+4. Replicate に投げて predictionId を返す
+
+**GENRE_MAP / MOOD_MAP:**
+- 日本語ジャンル・ムードを英語キーワードに変換
+- 例: ポップ→`"pop"`、壮大→`"epic, grand, majestic, orchestral"`
+
+**プロンプト末尾固定サフィックス:** `"instrumental only, no vocals, no singing, background music, BGM, high quality, studio quality, clear mix"`
+
+#### `GET /api/bgm/status`
+`?id={predictionId}` — Replicate の予測状況をポーリング。完了時に音声URLを返す。
+
+---
+
 ### 曲作成（Song）
 
 #### `POST /api/song/start`
@@ -1615,9 +1653,28 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | `music_boost_subscribe` | POST | `/api/music-boost/subscribe` | Music Boost 新規契約・プラン変更（EP差引） |
 | `music_boost_cancel` | POST | `/api/music-boost/cancel` | Music Boost 解約 |
 | `music_boost_admin_list` | — | 管理者直呼び | 全ブースト一覧 |
+| `music_boost_get_info` | GET | `/api/music-boost/info` | アーティスト名・アルバム名取得 |
+| `music_boost_update_info` | PATCH | `/api/music-boost/info` | アーティスト名・アルバム名更新 |
+| `wallet_ledger_all` | GET | `/api/admin/wallet-ledger` | 全ユーザーのウォレット台帳取得（adminKey必須） |
+| `ref_reassign` | POST | `/api/admin/ref-reassign` | 紹介者の再割当（adminKey必須） |
 | `stake_bp` | POST | `/api/staking` (POST) | BP ステーキング開始 |
 | `claim_stake` | POST | `/api/staking` (PATCH) | ステーク満期受取 |
 | `get_stakes` | GET | `/api/staking` (GET) | ステーク一覧 + BP残高取得 |
+| `deduct_bp` | POST | `/api/bgm/generate` | BGM生成前に BP を差し引く（`adminKey` 必須） |
+| `gacha_spin` | POST | `/api/gacha` | ガチャ抽選（`is10: true` で10連） |
+| `market_buy` | POST | `/api/market/buy` | 商品購入（BP消費）|
+| `market_notify_purchase` | POST | `/api/market/buy`（fire-and-forget） | 購入通知（買い手に納品URL・売り手に通知） |
+| `sell_request` | POST | `/api/market/sell-request` | 出品者自身による売却申請 |
+| `music_sell_submit` | POST | `/api/apply-sell/submit` | 楽曲売却申請（EP価格・審査制） |
+| `narasu_agency_submit` | POST | `/api/narasu-agency/submit` | Narasu Agency パートナー申請送信 |
+| `narasu_pay_bp` | POST | `/api/narasu-agency/pay-bp` | Narasu Agency BP支払い |
+| `narasu_pay_ep` | POST | `/api/narasu-agency/pay-ep` | Narasu Agency EP支払い |
+| `get_radio_songs` | GET | `/api/radio?action=songs` | ラジオ楽曲一覧取得 |
+| `get_radio_status` | GET | `/api/radio?action=status` | ユーザーのラジオ受聴状況取得 |
+| `radio_start` | POST | `/api/radio` | ラジオ楽曲の視聴開始記録 |
+| `radio_submit` | POST | `/api/radio` | ラジオ視聴完了 + EP報酬付与 |
+| `rumble_status` | GET | `/api/minigames/rumble/status` | Rumble Arena 状況取得 |
+| `tap_batch_play` | POST | `/api/minigames/tap/batch-play` | タップバッチ処理（BP/EP報酬計算） |
 
 ### ステーキング仕様
 
@@ -1642,6 +1699,7 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 | 関数名 | トリガー | 内容 |
 |---|---|---|
 | `musicBoostAutoRenew_` | 毎日深夜0時（時間ベース） | 期限切れ Music Boost を自動更新。EP不足時は `expired` に変更 + メール通知 |
+| `createRumbleAutoEntryTrigger` | 週次（月曜） | Rumble Arena の参加登録・バトル処理自動実行 |
 
 ### GAS Sheets 構造
 
@@ -1781,7 +1839,202 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 
 ---
 
-## 20. LifaiCat（AIアシスタント）
+## 20. 楽曲売却申請
+
+**ページ:** `/apply-sell`
+
+**用途:** ユーザーが生成した楽曲をLIFAI運営に売却申請する。審査制。
+
+**フォーム入力項目:**
+
+| フィールド | 必須 | 説明 |
+|---|---|---|
+| 楽曲タイトル | ○ | 売却する楽曲の名前 |
+| 音楽ファイルURL | ○ | 楽曲の配信URL |
+| 希望売却価格（EP） | 任意 | デフォルト: 20 EP、現在相場: 20 EP |
+| メモ・補足 | 任意 | 楽曲の特徴・使用イメージなど |
+
+**API:** `POST /api/apply-sell/submit`
+
+| リクエスト | `{ loginId, title, musicUrl, priceUsd（EP値）, memo }` |
+|---|---|
+| GAS action | `music_sell_submit` |
+| GAS送信フィールド | `loginId`, `title`, `music_url`, `price_usdt`（フィールド名は内部的にUSDTのままだがEP値を渡す）, `memo` |
+| 成功レスポンス | `{ ok: true }` |
+| 審査結果 | 24〜48時間以内に可否を通知 |
+
+**注意:** 申請後「ご利用ありがとうございます。24時間〜48時間以内に売却申請の可否の返答が行われます。今しばらくお待ちください。」と表示。
+
+---
+
+## 21. LIFAI ラジオ
+
+**コンポーネント:** `components/RadioCard.tsx`（`/top` ダッシュボードに表示）
+
+**報酬:** `RADIO_REWARD_EP = 5 EP`（視聴1回あたり）
+
+**最低視聴時間:** `RADIO_MIN_SECONDS = 120秒`（2分）
+
+**1日の受聴上限（プラン別）:**
+
+| プラン | 上限 |
+|---|---|
+| free / plus / pro / priority / partner | 1日 1〜5回（`RADIO_DAILY_LIMITS` 参照） |
+
+**API: `GET /api/radio`**
+
+| クエリ | GAS action | 説明 |
+|---|---|---|
+| `?action=songs` | `get_radio_songs` | 楽曲一覧取得 |
+| `?action=status&loginId=xxx` | `get_radio_status` | ユーザーの受聴状況確認 |
+
+**API: `POST /api/radio`**
+
+| `action` フィールド | GAS action | 説明 |
+|---|---|---|
+| `"start"` + `{ loginId, song_id }` | `radio_start` | 楽曲の視聴開始を記録 |
+| `"submit"` + `{ loginId, mission_id, screenshot_note }` | `radio_submit` | 視聴完了 → EP報酬付与 |
+
+---
+
+## 22. Narasu Agency（パートナープログラム）
+
+**ページ:** `/narasu-agency`（ゲートページ → terms → form → confirm → complete）
+
+**ゲート認証:** パスワード `"nagoya01@"`（`NARASU_GATE_PASSWORD`）
+
+**ローカルストレージキー:**
+- `lifai_narasu_agency_draft_v1` — 申請フォームのドラフト
+- `lifai_narasu_gate_v1` — ゲート通過フラグ
+
+**規約バージョン:** `v0.2-draft`（`NARASU_TERMS_VERSION`）
+
+**フォーム入力項目:**
+
+| フィールド | 説明 |
+|---|---|
+| narasuLoginId | Narasu アカウントのログインID |
+| narasuPassword | Narasu アカウントのパスワード |
+| audioUrls | 音楽ファイルURLリスト（複数可） |
+| lyricsText | 歌詞テキスト（任意） |
+| jacketImageUrl | ジャケット画像URL（任意） |
+| jacketNote | ジャケット補足（任意） |
+| artistName | アーティスト名 |
+| note | 備考 |
+| agreedTermsVersion | 規約バージョン（`NARASU_TERMS_VERSION`） |
+| agreedAt | 同意日時 |
+
+**API:** `POST /api/narasu-agency/submit`
+
+| リクエスト | 上記フォームフィールド |
+|---|---|
+| GAS action | `narasu_agency_submit` |
+| 検証 | `narasuLoginId`・`narasuPassword` 必須、`audioUrls` 最低1件必須 |
+
+**支払いAPI:**
+- `POST /api/narasu-agency/pay-bp` — GAS action: `narasu_pay_bp`
+- `POST /api/narasu-agency/pay-ep` — GAS action: `narasu_pay_ep`
+
+---
+
+## 23. 5000プログラム
+
+**ページ:** `/5000`（独立したLP・購入フロー）
+
+**対象:** 別途5000プログラム参加者向けの入会フロー
+
+**プラン定義:**
+
+| PlanId | 金額（円） | 名称 | BP | EP換算 | ユニット数 | プール |
+|---|---|---|---|---|---|---|
+| `"500"` | 500 | Automation | 1,000 | 3EP=1円 | 0 | none |
+| `"2000"` | 2,000 | Core | 4,000 | 2.5EP=1円 | 2 | credit |
+| `"3000"` | 3,000 | Core | 8,000 | 2.5EP=1円 | 3 | credit |
+| `"5000"` | 5,000 | Infra | 10,000 | 2EP=1円 | 5 | total |
+
+**バッジ:** `"3000"` = RECOMMENDED / `"5000"` = MOST POPULAR
+
+**bp_cap（GAS実値）:**
+
+| plan | bp_cap |
+|---|---|
+| "500" | 1,000 |
+| "2000" | 4,000 |
+| "3000" | 8,000 |
+| "5000" | 10,000 |
+
+**関連API:**
+
+| パス | 説明 |
+|---|---|
+| `POST /api/5000/apply` | 申請送信 |
+| `POST /api/5000/nowpayments/create` | 決済インボイス作成 |
+| `POST /api/5000/nowpayments/ipn` | 決済Webhook |
+| `GET /api/5000/purchase-status` | 支払い状況確認 |
+| `POST /api/5000/admin/approve` | 管理者承認 |
+| `GET /api/5000/admin/list` | 申請一覧 |
+| `POST /api/5000/reset/resend` | リセットメール再送 |
+
+**ページ:**
+- `/5000` — LP（プラン選択）
+- `/5000/apply` — 申請フォーム
+- `/5000/confirm` — 確認画面
+- `/5000/login` — ログイン
+- `/5000/purchase-status` — 支払い状況確認
+- `/5000/admin` — 管理者画面
+
+---
+
+## 24. ギャラリー・作品ページ
+
+### ギャラリー (`/gallery`)
+
+**対象:** ログイン前のユーザー向け（認証不要）
+
+**用途:** LIFAI の全サービス（音楽・画像・記事・占い・ゲーム）のサンプルをまとめて閲覧できるショーケースページ。入会前の検討材料。
+
+**コンポーネント:**
+- `app/gallery/page.tsx` — メインページ
+- `app/gallery/WorksShowcase.tsx` — 作品一覧コンポーネント
+- `components/GalleryNav.tsx` — スティッキーナビゲーション
+- `components/WorkCard.tsx` — 個別作品カード
+- `data/works.ts` — 作品データ（`WORKS` 配列）
+
+**セクション（スティッキーナビ）:**
+
+| セクションID | 内容 |
+|---|---|
+| `#music` | 音楽生成サンプル・説明 |
+| `#image` | 画像生成サンプル（準備中） |
+| `#article` | note記事サンプル |
+| `#fortune` | 占いサンプル |
+| `#game` | ゲームサンプル |
+
+### 作品詳細 (`/works/[slug]`)
+
+**対象:** ログイン前のユーザー向け（認証不要）
+
+**データ:** `data/works.ts` の `WORKS` 配列から `slug` で特定
+
+**`Work` 型の主要フィールド:**
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `slug` | string | URLパラメータ |
+| `tab` | `"music" \| "image" \| "article"` | カテゴリ |
+| `title` | string | 作品タイトル |
+| `featured` | boolean? | 注目作品フラグ |
+| `preview` | `{ type, src, alt?, excerpt? }` | プレビュー（audio/image/text） |
+| `body` | string | 詳細本文 |
+| `howTo` | string | 生成方法の説明 |
+| `applications` | string[] | 活用シーン |
+| `relatedSlugs` | string[] | 関連作品 |
+
+**動的ルート:** `app/works/[slug]/page.tsx`
+
+---
+
+## 25. LifaiCat（AIアシスタント）
 
 **コンポーネント:**
 - `components/LifaiCat.tsx` — UIコンポーネント + Context Provider
@@ -1799,7 +2052,7 @@ GET/POST {GAS_WEBAPP_URL}?key={GAS_API_KEY}&action={action}&...params
 
 ---
 
-## 21. テーマシステム（ダーク/ライト）
+## 26. テーマシステム（ダーク/ライト）
 
 ### 実装方法
 
@@ -1831,7 +2084,7 @@ const { isDark, toggleTheme } = useTheme();
 
 ---
 
-## 22. 管理者機能
+## 27. 管理者機能
 
 **アクセス:** Basic Auth (`ADMIN_USER` / `ADMIN_PASS`)
 
@@ -1862,9 +2115,42 @@ const { isDark, toggleTheme } = useTheme();
 ### 音楽審査
 - `/api/admin/music-review` — 提出された楽曲の審査・承認
 
+### 財務管理 (`/admin/finance`)
+
+**アクセス:** Basic Auth 通過後、さらに追加パスワード認証が必要（`FINANCE_UNLOCK_PASS`）
+
+**認証フロー:**
+1. `/admin` → 「財務管理」ボタン → パスワード入力
+2. `POST /api/admin/finance-unlock` でHMACトークン生成 → `sessionStorage("finance_token")` に保存
+3. `/admin/finance` ページ表示時に `POST /api/admin/verify-finance-token` でトークン検証（TTL: 24時間）
+
+**タブ構成:**
+
+| タブ | コンポーネント | 内容 |
+|---|---|---|
+| ユーザー詳細 | `UsersTab` | 会員のウォレット残高・取引履歴 |
+| アフィリエイト | `AffiliateTab` | 紹介関係のドラッグ＆ドロップ再割当 |
+| 紹介ツリー | `TreeTab` | 紹介ツリー可視化 |
+
+**関連API:**
+
+| エンドポイント | GAS action | 説明 |
+|---|---|---|
+| `POST /api/admin/finance-unlock` | — | パスワード検証 → HMACトークン発行 |
+| `POST /api/admin/verify-finance-token` | — | トークン有効性検証（TTL: 24時間） |
+| `GET /api/admin/wallet-ledger` | `wallet_ledger_all` | 全ユーザーのウォレット台帳取得 |
+| `POST /api/admin/ref-reassign` | `ref_reassign` | 紹介者の再割当（`targetLoginId`, `newReferrerLoginId`, `note`） |
+
+**環境変数（追加）:**
+
+| 変数名 | 用途 |
+|---|---|
+| `FINANCE_UNLOCK_PASS` | 財務管理ページの追加パスワード |
+| `FINANCE_HMAC_SECRET` | トークン署名用シークレット |
+
 ---
 
-## 23. セキュリティ設計
+## 28. セキュリティ設計
 
 ### パスワード管理
 
@@ -1889,8 +2175,11 @@ const { isDark, toggleTheme } = useTheme();
 | `/api/market/create` | ユーザー認証（id + code） |
 | `/api/song/start` | ユーザー認証（id + code） |
 | `/api/gift/send` | ユーザー認証（id + code） |
-| `/gift/*` | ページパスワード（sessionStorage確認） |
+| `/gift/*` | ページパスワード `"nagoya01@"`（sessionStorage確認） |
+| `/narasu-agency/*` | ページパスワード `"nagoya01@"`（`lifai_narasu_gate_v1` フラグ） |
 | `/music-boost` | なし（パスワードロック廃止済み） |
+| `/admin/finance` | Basic Auth + HMACトークン（`FINANCE_UNLOCK_PASS` / `FINANCE_HMAC_SECRET`、TTL: 24時間） |
+| `/gallery`, `/works/*` | なし（公開ページ、認証不要） |
 
 ### テスト・デバッグ用
 
@@ -1899,9 +2188,29 @@ const { isDark, toggleTheme } = useTheme();
 | `GET /api/debug/env` | 環境変数の確認 |
 | `POST /api/nowpayments/ipn` + `x-test-ipn: 1` | IPN署名チェック回避 |
 
+### 監視・モニタリング API（`/api/monitor/`）
+
+管理者向けの内部監視エンドポイント。
+
+| エンドポイント | 用途 |
+|---|---|
+| `GET /api/monitor/health` | サービスヘルスチェック（バージョン・タイムスタンプ） |
+| `GET /api/monitor/wallet` | ウォレット全体サマリー |
+| `GET /api/monitor/wallet-details` | ウォレット詳細 |
+| `GET /api/monitor/market` | マーケット統計 |
+| `GET /api/monitor/music` | 音楽生成統計 |
+| `GET /api/monitor/bgm` | BGM生成統計 |
+| `GET /api/monitor/song` | 曲作成統計 |
+| `GET /api/monitor/games` | ゲーム統計 |
+| `GET /api/monitor/rumble-daily` | Rumble デイリー結果 |
+| `GET /api/monitor/rumble-weekly` | Rumble 週次集計 |
+| `GET /api/monitor/rumble-today` | Rumble 本日状況 |
+| `GET /api/monitor/rumble-spectator` | Rumble 観戦データ |
+| `GET /api/monitor/logs` | ログ一覧 |
+
 ---
 
-## 24. データフロー図
+## 29. データフロー図
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1930,17 +2239,23 @@ const { isDark, toggleTheme } = useTheme();
 │  ├── /gift                     ├── /api/note/*                  │
 │  ├── /note-generator           ├── /api/image/* (準備中)        │
 │  ├── /fortune                  ├── /api/cat-chat                │
-│  └── /image (準備中)           └── /api/bgm/*                  │
+│  ├── /apply-sell               ├── /api/apply-sell/*            │
+│  ├── /narasu-agency/*          ├── /api/narasu-agency/*         │
+│  ├── /5000/*                   ├── /api/5000/*                  │
+│  ├── /gallery                  ├── /api/bgm/*                   │
+│  ├── /works/[slug]             ├── /api/radio                   │
+│  └── /image (準備中)           ├── /api/music-boost/info        │
+│                                └── /api/monitor/*               │
 └──────────────────┬──────────────────────────────────────────────┘
                    │
       ┌────────────┼────────────────────┐
       │            │                    │
 ┌─────▼─────┐ ┌────▼─────┐ ┌───────────▼───────┐
 │    GAS    │ │NOWPayments│ │  Replicate /      │
-│ (Sheets)  │ │   API     │ │  OpenAI / S3      │
+│ (Sheets)  │ │   API     │ │  OpenAI GPT-4o   │
 └───────────┘ └──────────┘ └───────────────────┘
 ```
 
 ---
 
-*この仕様書は `C:\Users\unitu\aisalon` プロジェクトの全ファイルを解析して更新されました。*
+*この仕様書は `C:\Users\unitu\aisalon` プロジェクトの全ファイルを解析して更新されました（2026-04-27）。*

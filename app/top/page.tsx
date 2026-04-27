@@ -8,6 +8,7 @@ import { clearAuth, getAuth, getAuthSecret, type AuthState } from "../lib/auth";
 import { useLifaiCat } from "@/components/LifaiCat";
 import BPGrantModal from "@/components/BPGrantModal";
 import LoginBonusModal from "@/components/LoginBonusModal";
+import MusicSellApprovedModal from "@/components/MusicSellApprovedModal";
 import MissionCard from "@/components/MissionCard";
 import GachaModal from "@/components/GachaModal";
 import StakingModal from "@/components/StakingModal";
@@ -443,6 +444,9 @@ export default function AppHomePage() {
     streak: number;
   } | null>(null);
 
+  // 楽曲売却承認通知
+  const [musicSellApproved, setMusicSellApproved] = useState<{ title: string; ep: number }[] | null>(null);
+
   // BPガチャ
   const [showGacha, setShowGacha] = useState(false);
 
@@ -502,6 +506,20 @@ export default function AppHomePage() {
         .then((data) => {
           if (data.ok && data.bp_earned > 0) {
             setLoginBonus({ bp_earned: data.bp_earned, streak: data.streak });
+          }
+        })
+        .catch(() => {});
+
+      // 楽曲売却承認通知チェック
+      fetch("/api/apply-sell/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.ok && Array.isArray(data.items) && data.items.length > 0) {
+            setMusicSellApproved(data.items);
           }
         })
         .catch(() => {});
@@ -613,6 +631,15 @@ export default function AppHomePage() {
         streak={loginBonus.streak}
         onClose={() => {
           setLoginBonus(null);
+          setBalanceTrigger((n) => n + 1);
+        }}
+      />
+    )}
+    {musicSellApproved && (
+      <MusicSellApprovedModal
+        items={musicSellApproved}
+        onClose={() => {
+          setMusicSellApproved(null);
           setBalanceTrigger((n) => n + 1);
         }}
       />
