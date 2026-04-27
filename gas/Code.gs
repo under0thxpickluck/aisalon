@@ -786,6 +786,16 @@ function handle_(key, body) {
       "ref_share_pct",
       "ref_bonus_granted_at",
       "ref_bonus_amount",
+
+      // ✅ 紹介者情報（ツリー表示用）
+      "referrer_login_id",
+      "referrer_2_login_id",
+      "referrer_3_login_id",
+      "referrer_4_login_id",
+      "referrer_5_login_id",
+      "ref_path",
+      "affiliate_granted_at",
+      "my_ref_code",
     ]);
 
     values = sheet.getDataRange().getValues();
@@ -834,6 +844,16 @@ function handle_(key, body) {
       ref_share_pct: r[idx["ref_share_pct"]],
       ref_bonus_granted_at: r[idx["ref_bonus_granted_at"]],
       ref_bonus_amount: r[idx["ref_bonus_amount"]],
+
+      // ✅ 紹介者情報（ツリー表示用）
+      referrer_login_id:   r[idx["referrer_login_id"]]   ?? "",
+      referrer_2_login_id: r[idx["referrer_2_login_id"]] ?? "",
+      referrer_3_login_id: r[idx["referrer_3_login_id"]] ?? "",
+      referrer_4_login_id: r[idx["referrer_4_login_id"]] ?? "",
+      referrer_5_login_id: r[idx["referrer_5_login_id"]] ?? "",
+      ref_path:            r[idx["ref_path"]]            ?? "",
+      affiliate_granted_at: r[idx["affiliate_granted_at"]] ?? "",
+      my_ref_code:         r[idx["my_ref_code"]]         ?? "",
     }));
 
     return json_({ ok: true, items: items });
