@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
         prompt,
         model_version: "stereo-large",
         duration,
-        output_format: "mp3",
+        output_format: "wav",
         normalization_strategy: "peak",
       },
     }),
