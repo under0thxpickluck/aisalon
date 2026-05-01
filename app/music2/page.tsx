@@ -1470,10 +1470,10 @@ export default function Music2Page() {
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {downloadUrl && (
                     <button
-                      onClick={() => downloadAudio(downloadUrl, resultTitle, isBgmMode ? "mp3" : "wav")}
+                      onClick={() => downloadAudio(downloadUrl, resultTitle, "wav")}
                       className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
                     >
-                      {isBgmMode ? "MP3をダウンロード" : "WAVをダウンロード"}
+                      WAVをダウンロード
                     </button>
                   )}
                   <button
