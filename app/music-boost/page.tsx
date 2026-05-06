@@ -263,7 +263,7 @@ export default function MusicBoostPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (editingIndex === null || !userId || tracksSaving) return;
+    if (editingIndex === null || !userId || tracksSaving || !editArtist.trim()) return;
     const next = tracks.map((t, i) =>
       i === editingIndex ? { artist: editArtist.trim(), album: editAlbum.trim() } : t
     );
