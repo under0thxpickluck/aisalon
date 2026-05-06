@@ -4172,6 +4172,9 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
       };
     }
 
+    // ✅ INVARIANT: login_id は一度発行したら絶対に上書きしない。
+    // パスワードリセット・再承認・メール再送のいずれでも loginId は変わらない。
+    // 既存の login_id がある場合は読み取るだけで setValue は呼ばない。
     // login ID生成（既存仕様を維持）
     let loginId = str_(sheet.getRange(rowIndex, idx["login_id"] + 1).getValue());
     if (!loginId) {
