@@ -34,8 +34,21 @@ export async function PATCH(req: Request) {
   try { body = await req.json(); } catch {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
-  const { userId, artist, album } = body ?? {};
+  const { userId, artist, album, tracks } = body ?? {};
   if (!userId) return NextResponse.json({ ok: false, error: "userId_required" }, { status: 400 });
+
+  // tracks 配列が送られた場合は set_tracks アクションを使う
+  if (Array.isArray(tracks)) {
+    try {
+      return NextResponse.json(
+        await callGas({ action: "music_boost_set_tracks", key: GAS_API_KEY, userId, tracks })
+      );
+    } catch (err: any) {
+      return NextResponse.json({ ok: false, error: err?.message }, { status: 500 });
+    }
+  }
+
+  // 従来の artist/album 単体更新（後方互換）
   try {
     return NextResponse.json(
       await callGas({ action: "music_boost_update_info", key: GAS_API_KEY, userId, artist: artist ?? "", album: album ?? "" })
