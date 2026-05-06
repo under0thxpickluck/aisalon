@@ -6285,6 +6285,7 @@ function doPost(e) {
     if (action === 'music_boost_admin_list') return musicBoostAdminList_(body);
     if (action === 'music_boost_get_info')    return musicBoostGetInfo_(body);
     if (action === 'music_boost_update_info') return musicBoostUpdateInfo_(body);
+    if (action === 'music_boost_set_tracks')  return musicBoostSetTracks_(body);
     if (action === 'cat_log_create')     return catLogCreate_(body);
     if (action === 'cat_log_feedback')   return catLogFeedback_(body);
     if (action === 'cat_faq_list')       return catFaqList_(body);
@@ -9583,16 +9584,20 @@ function musicBoostGetInfo_(params) {
   var sheet  = getOrCreateSheet_();
   var values = getValuesSafe_(sheet);
   var header = values[0];
-  ensureCols_(sheet, header, ["music_boost_artist", "music_boost_album"]);
+  ensureCols_(sheet, header, ["music_boost_artist", "music_boost_album", "music_boost_tracks_json"]);
   values = getValuesSafe_(sheet);
   header = values[0];
   var idx = indexMap_(header);
   for (var i = 1; i < values.length; i++) {
     if (str_(values[i][idx["login_id"]]) === userId) {
+      var tracksRaw = str_(values[i][idx["music_boost_tracks_json"]] || "");
+      var tracks = [];
+      try { if (tracksRaw) tracks = JSON.parse(tracksRaw); } catch(e) {}
       return json_({
         ok:     true,
         artist: str_(values[i][idx["music_boost_artist"]] || ""),
         album:  str_(values[i][idx["music_boost_album"]]  || ""),
+        tracks: tracks,
       });
     }
   }
@@ -9617,6 +9622,37 @@ function musicBoostUpdateInfo_(params) {
       sheet.getRange(i + 1, idx["music_boost_artist"] + 1).setValue(artist);
       sheet.getRange(i + 1, idx["music_boost_album"]  + 1).setValue(album);
       return json_({ ok: true });
+    }
+  }
+  return json_({ ok: false, error: "user_not_found" });
+}
+// action: music_boost_set_tracks（楽曲リスト全置換）
+function musicBoostSetTracks_(params) {
+  var userId = String(params.userId || "");
+  var tracks = params.tracks;
+  if (!userId) return json_({ ok: false, error: "userId_required" });
+  if (!Array.isArray(tracks)) return json_({ ok: false, error: "tracks_must_be_array" });
+
+  // 各エントリを {artist: string, album: string} に正規化
+  var sanitized = tracks.map(function(t) {
+    return {
+      artist: String(t.artist || "").slice(0, 200),
+      album:  String(t.album  || "").slice(0, 200),
+    };
+  });
+
+  var sheet  = getOrCreateSheet_();
+  var values = getValuesSafe_(sheet);
+  var header = values[0];
+  ensureCols_(sheet, header, ["music_boost_tracks_json"]);
+  values = getValuesSafe_(sheet);
+  header = values[0];
+  var idx = indexMap_(header);
+
+  for (var i = 1; i < values.length; i++) {
+    if (str_(values[i][idx["login_id"]]) === userId) {
+      sheet.getRange(i + 1, idx["music_boost_tracks_json"] + 1).setValue(JSON.stringify(sanitized));
+      return json_({ ok: true, tracks: sanitized });
     }
   }
   return json_({ ok: false, error: "user_not_found" });
