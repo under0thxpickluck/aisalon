@@ -39,6 +39,9 @@ GAS actions (全一覧):
 | `reset_password` | `/api/auth/reset` | トークン検証→新パスワードのハッシュ保存 |
 | `reset_resend` | 管理者直呼び | リセットメール再送 |
 | `ref_tree_build` | 管理者メニュー | 紹介ツリーシートを再生成 |
+| `music_boost_get_info` | `/api/music-boost/info` (GET) | アーティスト・アルバム・tracksリストを返す |
+| `music_boost_update_info` | `/api/music-boost/info` (PATCH) | アーティスト・アルバム単体更新（後方互換） |
+| `music_boost_set_tracks` | `/api/music-boost/info` (PATCH) | 楽曲リスト（`tracks` 配列）を全置換保存 |
 
 ### GAS Sheets
 
@@ -60,6 +63,8 @@ GAS actions (全一覧):
 - **`login` action のステータス**: `approved` 以外は全て `{ reason: "pending" }` を返す（`pending_payment` / `pending_error` / `paid` も区別なし）。
 - **自動承認の許容誤差**: `payment_update` での自動承認は `expected_paid` の -2% まで許容（`TOLERANCE_PCT = 2`）。
 - **`getValuesSafe_` / `getSheetValuesSafe_`**: 同一処理の関数が2つ存在（`getValuesSafe_` を使うこと）。
+- **login_id は永続不変**: `approveRowCore_` 内で一度発行された `login_id` は絶対に上書きしない（パスワードリセット・再承認・メール再送のいずれでも変わらない）。`if (!loginId)` の判定でのみ新規発行する。
+- **Music Boost 楽曲データ**: `applies` シートの `music_boost_tracks_json` カラムに `[{"artist":"...","album":"..."}]` 形式のJSON文字列を保存。上限なし。`music_boost_artist` / `music_boost_album` カラムは後方互換のために残す。
 
 ### Payments: NOWPayments
 
