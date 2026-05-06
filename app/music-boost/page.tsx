@@ -107,10 +107,14 @@ export default function MusicBoostPage() {
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
   const [epBalance, setEpBalance]       = useState<number | null>(null);
   const [confirmPlan, setConfirmPlan]   = useState<typeof PLANS[number] | null>(null);
-  const [artist, setArtist]         = useState("");
-  const [album, setAlbum]           = useState("");
-  const [infoSaving, setInfoSaving] = useState(false);
-  const [infoLog, setInfoLog]       = useState("");
+  const [tracks, setTracks]           = useState<{artist: string; album: string}[]>([]);
+  const [newArtist, setNewArtist]     = useState("");
+  const [newAlbum, setNewAlbum]       = useState("");
+  const [tracksSaving, setTracksSaving] = useState(false);
+  const [tracksLog, setTracksLog]     = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editArtist, setEditArtist]   = useState("");
+  const [editAlbum, setEditAlbum]     = useState("");
 
   // チュートリアル初回表示チェック
   useEffect(() => {
@@ -147,7 +151,11 @@ export default function MusicBoostPage() {
     if (!userId || !status?.current_boost) return;
     fetch(`/api/music-boost/info?userId=${encodeURIComponent(userId)}`)
       .then(r => r.json())
-      .then(d => { if (d.ok) { setArtist(d.artist ?? ""); setAlbum(d.album ?? ""); } })
+      .then(d => {
+        if (d.ok) {
+          setTracks(Array.isArray(d.tracks) ? d.tracks : []);
+        }
+      })
       .catch(() => {});
   }, [userId, status]);
 
@@ -193,23 +201,93 @@ export default function MusicBoostPage() {
     finally { setBusy(false); }
   };
 
-  const handleSaveInfo = async () => {
-    if (infoSaving) return;
-    setInfoSaving(true);
-    setInfoLog("変更を保存しています...");
+  const handleAddTrack = async () => {
+    if (!userId || tracksSaving || !newArtist.trim()) return;
+    const next = [...tracks, { artist: newArtist.trim(), album: newAlbum.trim() }];
+    setTracksSaving(true);
+    setTracksLog("保存中...");
     try {
       const res  = await fetch("/api/music-boost/info", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, artist, album }),
+        body: JSON.stringify({ userId, tracks: next }),
       });
       const data = await res.json();
-      setInfoLog(data.ok ? "✅ 保存しました" : "❌ 保存に失敗しました");
+      if (data.ok) {
+        setTracks(next);
+        setNewArtist("");
+        setNewAlbum("");
+        setTracksLog("✅ 追加しました");
+      } else {
+        setTracksLog("❌ 保存に失敗しました");
+      }
     } catch {
-      setInfoLog("❌ 通信エラー");
+      setTracksLog("❌ 通信エラー");
     } finally {
-      setInfoSaving(false);
-      setTimeout(() => setInfoLog(""), 2000);
+      setTracksSaving(false);
+      setTimeout(() => setTracksLog(""), 2000);
+    }
+  };
+
+  const handleDeleteTrack = async (index: number) => {
+    if (!userId || tracksSaving) return;
+    const next = tracks.filter((_, i) => i !== index);
+    setTracksSaving(true);
+    setTracksLog("削除中...");
+    try {
+      const res  = await fetch("/api/music-boost/info", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, tracks: next }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setTracks(next);
+        if (editingIndex === index) setEditingIndex(null);
+        setTracksLog("✅ 削除しました");
+      } else {
+        setTracksLog("❌ 削除に失敗しました");
+      }
+    } catch {
+      setTracksLog("❌ 通信エラー");
+    } finally {
+      setTracksSaving(false);
+      setTimeout(() => setTracksLog(""), 2000);
+    }
+  };
+
+  const handleStartEdit = (index: number) => {
+    setEditingIndex(index);
+    setEditArtist(tracks[index].artist);
+    setEditAlbum(tracks[index].album);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingIndex === null || !userId || tracksSaving) return;
+    const next = tracks.map((t, i) =>
+      i === editingIndex ? { artist: editArtist.trim(), album: editAlbum.trim() } : t
+    );
+    setTracksSaving(true);
+    setTracksLog("保存中...");
+    try {
+      const res  = await fetch("/api/music-boost/info", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, tracks: next }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setTracks(next);
+        setEditingIndex(null);
+        setTracksLog("✅ 保存しました");
+      } else {
+        setTracksLog("❌ 保存に失敗しました");
+      }
+    } catch {
+      setTracksLog("❌ 通信エラー");
+    } finally {
+      setTracksSaving(false);
+      setTimeout(() => setTracksLog(""), 2000);
     }
   };
 
@@ -371,37 +449,107 @@ export default function MusicBoostPage() {
         {status?.current_boost && (
           <div className={`w-full md:w-72 md:shrink-0 ${th.card} border ${th.cardBorder} rounded-2xl p-5`}>
             <h2 className="font-bold text-sm mb-4">🎵 配信楽曲情報</h2>
-            <div className="space-y-3">
+
+            {/* 登録済みリスト */}
+            <div className="space-y-2 mb-4">
+              {tracks.length === 0 && (
+                <p className={`text-xs ${th.faint}`}>まだ楽曲が登録されていません</p>
+              )}
+              {tracks.map((t, i) => (
+                <div key={i} className={`rounded-lg border ${th.cardBorder} p-2`}>
+                  {editingIndex === i ? (
+                    /* インライン編集モード */
+                    <div className="space-y-1.5">
+                      <input
+                        type="text"
+                        value={editArtist}
+                        onChange={e => setEditArtist(e.target.value)}
+                        placeholder="アーティスト名"
+                        className={`w-full rounded border px-2 py-1 text-xs ${th.inputBg}`}
+                      />
+                      <input
+                        type="text"
+                        value={editAlbum}
+                        onChange={e => setEditAlbum(e.target.value)}
+                        placeholder="アルバム名"
+                        className={`w-full rounded border px-2 py-1 text-xs ${th.inputBg}`}
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          onClick={handleSaveEdit}
+                          disabled={tracksSaving || !editArtist.trim()}
+                          className="flex-1 py-1 rounded bg-gradient-to-r from-purple-600 to-blue-600 text-xs font-bold text-white disabled:opacity-50 transition"
+                        >
+                          保存
+                        </button>
+                        <button
+                          onClick={() => setEditingIndex(null)}
+                          disabled={tracksSaving}
+                          className={`px-3 py-1 rounded text-xs ${th.disabledBtn} transition`}
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 通常表示モード */
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold truncate">{t.artist}</p>
+                        <p className={`text-xs ${th.muted} truncate`}>{t.album || "—"}</p>
+                      </div>
+                      <button
+                        onClick={() => handleStartEdit(i)}
+                        disabled={tracksSaving}
+                        className={`shrink-0 text-xs px-2 py-1 rounded ${th.disabledBtn} hover:bg-blue-500/20 hover:text-blue-400 transition disabled:opacity-40`}
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTrack(i)}
+                        disabled={tracksSaving}
+                        className={`shrink-0 text-xs px-2 py-1 rounded ${th.disabledBtn} hover:bg-red-500/20 hover:text-red-400 transition disabled:opacity-40`}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* 追加フォーム */}
+            <div className="space-y-2">
               <div>
-                <label className={`text-xs ${th.muted} block mb-1`}>アーティスト名</label>
+                <label className={`text-xs ${th.muted} block mb-1`}>アーティスト名 *</label>
                 <input
                   type="text"
-                  value={artist}
-                  onChange={e => setArtist(e.target.value)}
+                  value={newArtist}
+                  onChange={e => setNewArtist(e.target.value)}
                   placeholder="例: 山田太郎"
                   className={`w-full rounded-lg border px-3 py-2 text-sm ${th.inputBg}`}
                 />
               </div>
               <div>
-                <label className={`text-xs ${th.muted} block mb-1`}>楽曲名</label>
+                <label className={`text-xs ${th.muted} block mb-1`}>アルバム名</label>
                 <input
                   type="text"
-                  value={album}
-                  onChange={e => setAlbum(e.target.value)}
+                  value={newAlbum}
+                  onChange={e => setNewAlbum(e.target.value)}
                   placeholder="例: 夜明けのメロディ"
                   className={`w-full rounded-lg border px-3 py-2 text-sm ${th.inputBg}`}
                 />
               </div>
               <button
-                onClick={handleSaveInfo}
-                disabled={infoSaving}
+                onClick={handleAddTrack}
+                disabled={tracksSaving || !newArtist.trim()}
                 className="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50"
               >
-                {infoSaving ? "保存中..." : "編集完了"}
+                {tracksSaving ? "処理中..." : "+ 追加する"}
               </button>
-              {infoLog && (
-                <p className={`text-xs text-center ${infoLog.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>
-                  {infoLog}
+              {tracksLog && (
+                <p className={`text-xs text-center ${tracksLog.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>
+                  {tracksLog}
                 </p>
               )}
             </div>
