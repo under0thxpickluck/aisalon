@@ -217,7 +217,7 @@ export default function MusicBoostPage() {
 
   return (
     <div className={`min-h-screen ${th.page} px-4 py-8 mx-auto transition-all ${status?.current_boost ? "max-w-3xl" : "max-w-lg"}`}>
-      <div className={`${status?.current_boost ? "flex gap-8 items-start" : ""}`}>
+      <div className={`${status?.current_boost ? "flex flex-col md:flex-row gap-6 md:gap-8 items-start" : ""}`}>
       <div className={status?.current_boost ? "flex-1 min-w-0" : ""}>
       <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
       {/* ヘッダー */}
@@ -369,7 +369,7 @@ export default function MusicBoostPage() {
         </div>{/* left column */}
 
         {status?.current_boost && (
-          <div className={`w-72 shrink-0 ${th.card} border ${th.cardBorder} rounded-2xl p-5`}>
+          <div className={`w-full md:w-72 md:shrink-0 ${th.card} border ${th.cardBorder} rounded-2xl p-5`}>
             <h2 className="font-bold text-sm mb-4">🎵 配信楽曲情報</h2>
             <div className="space-y-3">
               <div>
