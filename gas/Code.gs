@@ -3264,8 +3264,10 @@ function handle_(key, body) {
 
     if (!id || !code) return json_({ ok: false, reason: "invalid" });
 
-    // ✅ 必要列保証（壊さない）
-    ensureCols_(sheet, header, [
+    // ✅ 必要列保証（壊さない）—— ensureCols_ の前に header_rd を取得
+    let values_rd = sheet.getDataRange().getValues();
+    let header_rd = values_rd[0];
+    ensureCols_(sheet, header_rd, [
       "login_id",
       "pw_hash",
       "email",
@@ -3275,9 +3277,9 @@ function handle_(key, body) {
       "referrer_login_id",
       "my_ref_code",
     ]);
-
-    let values_rd = sheet.getDataRange().getValues();
-    let header_rd = values_rd[0];
+    // ensureCols_ 後に再取得（列追加があった場合に idx を最新化）
+    values_rd = sheet.getDataRange().getValues();
+    header_rd = values_rd[0];
     const idx_rd = indexMap_(header_rd);
     const rows_rd = values_rd.slice(1);
 
@@ -3307,13 +3309,14 @@ function handle_(key, body) {
 
     if (!myLoginId) return json_({ ok: false, reason: "invalid" });
 
-    // 自分が紹介した人（referrer_login_id == myLoginId）を収集
+    // 自分が紹介した人（referrer_login_id == myLoginId かつ approved）を収集
     const referrals = [];
     for (let i = 0; i < rows_rd.length; i++) {
       const r = rows_rd[i];
       if (str_(r[idx_rd["referrer_login_id"]]) !== myLoginId) continue;
       const refLoginId = str_(r[idx_rd["login_id"]]);
       if (!refLoginId) continue;
+      if (str_(r[idx_rd["status"]]) !== "approved") continue;
       const approvedAt = r[idx_rd["approved_at"]];
       referrals.push({
         login_id: refLoginId,
