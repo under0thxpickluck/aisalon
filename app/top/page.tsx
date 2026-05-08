@@ -163,21 +163,21 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
   );
 }
 
-/**
- * ✅ 紹介コード表示（/api/me を叩いて my_ref_code を取得）
- * - auth から id/code を拾ってPOST
- * - 取得した紹介URLをコピーできる
- * - 失敗しても壊さない（UIで理由を出す）
- */
-function ReferralCard({ auth }: { auth: AuthState }) {
-  const [open, setOpen] = useState(false);
-  const [refCode, setRefCode] = useState<string>("");
-  const [refUrl, setRefUrl] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [err, setErr] = useState<string>("");
-  const [copied, setCopied] = useState<string>("");
+type ReferralDashboardData = {
+  my_ref_code: string;
+  referrals: { login_id: string; plan: string; approved_at: string }[];
+  bonuses: { ts: string; kind: string; amount: number; memo: string }[];
+  total_bonus: number;
+};
 
-  const [secretReady, setSecretReady] = useState<string>("");
+function ReferralDashboardCard({ auth }: { auth: AuthState }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<ReferralDashboardData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState<"code" | "url" | "">("");
+  const [secretReady, setSecretReady] = useState("");
+  const [fetched, setFetched] = useState(false);
 
   useEffect(() => {
     const s = getAuthSecret();
@@ -192,103 +192,85 @@ function ReferralCard({ auth }: { auth: AuthState }) {
     }
   }, [auth]);
 
-  useEffect(() => {
+  const fetchDashboard = useCallback(async () => {
+    if (fetched) return;
+
     const id =
       (auth as any)?.id ||
       (auth as any)?.loginId ||
       (auth as any)?.login_id ||
       (auth as any)?.email ||
       "";
+    const code = secretReady || getAuthSecret() || "";
 
-    const code =
-      secretReady ||
-      getAuthSecret() ||
-      (auth as any)?.code ||
-      (auth as any)?.pw ||
-      (auth as any)?.password ||
-      (auth as any)?.token ||
-      "";
+    if (!id) { setErr("no_id"); setLoading(false); return; }
+    if (!code) { setErr("no_code_in_auth"); setLoading(false); return; }
 
-    // baseUrl（コピー用リンクのドメイン）
-    // envはクライアントで読めない場合があるので、locationでフォールバック
-    const base =
-      (typeof window !== "undefined" && window.location?.origin) ? window.location.origin : "";
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await fetch("/api/referral/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ id, code }),
+      });
+      const json: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
 
-    // group=5000 ユーザーは /5000、それ以外は /purchase に refCode をつける
-    const is5000 = (auth as any)?.group === "5000";
-    const purchasePath = is5000 ? "/5000" : "/purchase";
-    const buildShare = (rc: string) => {
-      if (!base) return `${purchasePath}?refCode=${encodeURIComponent(rc)}`;
-      return `${base}${purchasePath}?refCode=${encodeURIComponent(rc)}`;
-    };
-
-    if (!id) {
-      setLoading(false);
-      setErr("no_id");
-      return;
-    }
-    if (!code) {
-      // ここが出る場合：getAuth() が code を保持していない
-      // → その場合は /api/me が叩けないので、まず auth 保存側の設計を揃える必要がある
-      setLoading(false);
-      setErr("no_code_in_auth");
-      return;
-    }
-
-    (async () => {
-      setLoading(true);
-      setErr("");
-      try {
-        const r = await fetch("/api/me", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({ id, code, group: (auth as any)?.group || "" }),
-        });
-
-        const data: any = await r.json().catch(() => ({ ok: false, error: "not_json" }));
-
-        if (!data?.ok) {
-          const reason = String(data?.reason || "");
-          setErr(reason || String(data?.error || "failed"));
-          setLoading(false);
-          return;
-        }
-
-        const me = data?.me;
-        const rc = String(me?.my_ref_code || "");
-        if (!rc) {
-          setErr("no_ref_code_returned");
-          setLoading(false);
-          return;
-        }
-
-        setRefCode(rc);
-        setRefUrl(buildShare(rc));
-        setLoading(false);
-      } catch (e: any) {
-        setErr(String(e));
-        setLoading(false);
+      if (!json?.ok) {
+        setErr(json?.reason || json?.error || "failed");
+        return;
       }
-    })();
-  }, [auth, secretReady]);
+
+      setData(json.dashboard);
+      setFetched(true);
+    } catch (e: any) {
+      setErr(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [auth, secretReady, fetched]);
+
+  const handleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && !fetched) fetchDashboard();
+  };
 
   const copy = async (text: string, kind: "code" | "url") => {
+    if (!text) return;
     try {
-      if (!text) return;
       await navigator.clipboard.writeText(text);
       setCopied(kind);
       setTimeout(() => setCopied(""), 1200);
-    } catch (e: any) {
+    } catch {
       setErr("clipboard_failed");
     }
   };
+
+  const base = typeof window !== "undefined" ? window.location.origin : "";
+  const is5000 = (auth as any)?.group === "5000";
+  const purchasePath = is5000 ? "/5000" : "/purchase";
+  const refCode = data?.my_ref_code || "";
+  const refUrl = refCode ? `${base}${purchasePath}?refCode=${encodeURIComponent(refCode)}` : "";
+
+  const formatDate = (iso: string) => {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
+    } catch {
+      return iso;
+    }
+  };
+
+  const formatAmount = (n: number) =>
+    "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="mt-4 rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(2,6,23,.08)] overflow-hidden">
       {/* プルタブ */}
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={handleOpen}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition"
       >
         <span className="text-xs font-extrabold text-slate-700">あなたの紹介コード</span>
@@ -297,11 +279,12 @@ function ReferralCard({ auth }: { auth: AuthState }) {
 
       {open && (
         <div className="px-4 pb-4 border-t border-slate-100">
+
+          {/* ① 紹介コード & リンクコピー */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between pt-3">
             <p className="text-xs text-slate-500">
               お友達を紹介する際は下記コードをお使いください。詳しい内容は『紹介プログラムページ』まで。
             </p>
-
             <div className="flex flex-wrap items-center gap-2">
               {loading ? (
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -316,7 +299,6 @@ function ReferralCard({ auth }: { auth: AuthState }) {
                   取得できません
                 </span>
               )}
-
               <button
                 onClick={() => copy(refCode, "code")}
                 disabled={!refCode}
@@ -329,7 +311,6 @@ function ReferralCard({ auth }: { auth: AuthState }) {
               >
                 {copied === "code" ? "コピーしました" : "コードをコピー"}
               </button>
-
               <button
                 onClick={() => copy(refUrl, "url")}
                 disabled={!refUrl}
@@ -345,7 +326,7 @@ function ReferralCard({ auth }: { auth: AuthState }) {
             </div>
           </div>
 
-          {refUrl ? (
+          {refUrl && (
             <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="text-[10px] font-bold text-slate-500">共有リンク</p>
               <p className="mt-1 break-all text-xs font-semibold text-slate-700">{refUrl}</p>
@@ -353,18 +334,90 @@ function ReferralCard({ auth }: { auth: AuthState }) {
                 紹介コードは登録後に紐づけることはできません。
               </p>
             </div>
-          ) : null}
+          )}
 
-          {err ? (
+          {err && !loading && (
             <p className="mt-3 text-[11px] font-semibold text-rose-600">
               エラー: {err}
-              {err === "no_code_in_auth" ? (
-                <span className="ml-2 text-slate-500">
-                  （getAuth() が code を保持していない可能性。）
-                </span>
-              ) : null}
+              {err === "no_code_in_auth" && (
+                <span className="ml-2 text-slate-500">（認証情報が不足しています。再ログインをお試しください。）</span>
+              )}
             </p>
-          ) : null}
+          )}
+
+          {/* ② サマリー（データ取得後のみ） */}
+          {data && (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-bold text-slate-500">紹介した人</p>
+                  <p className="mt-1 text-xl font-extrabold text-slate-900">{data.referrals.length} 人</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-bold text-slate-500">紹介報酬合計</p>
+                  <p className="mt-1 text-xl font-extrabold text-slate-900">{formatAmount(data.total_bonus)}</p>
+                </div>
+              </div>
+
+              {/* ③ 紹介した人リスト */}
+              <div className="mt-4">
+                <p className="text-xs font-extrabold text-slate-700 mb-2">紹介した人</p>
+                {data.referrals.length === 0 ? (
+                  <p className="text-xs text-slate-400">まだ紹介した人はいません</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-bold text-slate-600">login ID</th>
+                          <th className="px-3 py-2 text-left font-bold text-slate-600">プラン</th>
+                          <th className="px-3 py-2 text-left font-bold text-slate-600">入会日</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.referrals.map((r, i) => (
+                          <tr key={r.login_id + i} className="border-t border-slate-100">
+                            <td className="px-3 py-2 font-mono text-slate-800">{r.login_id}</td>
+                            <td className="px-3 py-2 text-slate-700">${r.plan}</td>
+                            <td className="px-3 py-2 text-slate-600">{formatDate(r.approved_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* ④ 報酬履歴 */}
+              <div className="mt-4">
+                <p className="text-xs font-extrabold text-slate-700 mb-2">報酬履歴</p>
+                {data.bonuses.length === 0 ? (
+                  <p className="text-xs text-slate-400">まだ報酬履歴はありません</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-bold text-slate-600">日時</th>
+                          <th className="px-3 py-2 text-right font-bold text-slate-600">金額</th>
+                          <th className="px-3 py-2 text-left font-bold text-slate-600">メモ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.bonuses.map((b, i) => (
+                          <tr key={b.ts + i} className="border-t border-slate-100">
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{formatDate(b.ts)}</td>
+                            <td className="px-3 py-2 text-right font-bold text-emerald-700">{formatAmount(b.amount)}</td>
+                            <td className="px-3 py-2 text-slate-500 text-[10px] break-all">{b.memo || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -796,7 +849,7 @@ export default function AppHomePage() {
           />
 
           {/* 紹介コード（折りたたみ、デフォルト非表示） */}
-          <ReferralCard auth={auth} />
+          <ReferralDashboardCard auth={auth} />
 
 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             問い合わせはTOPページにございます。
