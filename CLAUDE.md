@@ -42,6 +42,7 @@ GAS actions (全一覧):
 | `music_boost_get_info` | `/api/music-boost/info` (GET) | アーティスト・アルバム・tracksリストを返す |
 | `music_boost_update_info` | `/api/music-boost/info` (PATCH) | アーティスト・アルバム単体更新（後方互換） |
 | `music_boost_set_tracks` | `/api/music-boost/info` (PATCH) | 楽曲リスト（`tracks` 配列）を全置換保存 |
+| `my_referral_dashboard` | `/api/referral/dashboard` (POST) | 自分が紹介した人リスト＋報酬履歴・合計を返す |
 
 ### GAS Sheets
 
