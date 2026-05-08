@@ -849,7 +849,7 @@ export default function AppHomePage() {
           />
 
           {/* 紹介コード（折りたたみ、デフォルト非表示） */}
-          <ReferralDashboardCard auth={auth} />
+          {/* <ReferralDashboardCard auth={auth} /> */}
 
 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             問い合わせはTOPページにございます。
