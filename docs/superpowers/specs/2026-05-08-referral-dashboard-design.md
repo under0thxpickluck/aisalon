@@ -228,3 +228,37 @@ export const dynamic = "force-dynamic";
 - 紹介報酬のリアルタイム計算・再計算
 - 紹介コードの変更機能
 - push 通知・メール通知
+
+---
+
+## 実装状況（2026-05-08）
+
+### 完了タスク
+
+| タスク | ファイル | コミット | 備考 |
+|--------|---------|---------|------|
+| GAS `my_referral_dashboard` action 追加 | `gas/Code.gs` | `5b66cc3` | |
+| Next.js プロキシルート新規作成 | `app/api/referral/dashboard/route.ts` | `272d588` | |
+| `/top` UI を `ReferralDashboardCard` に置き換え | `app/top/page.tsx` | `eb60134` | |
+| CLAUDE.md GAS actions テーブル更新 | `CLAUDE.md` | `a6091c8` | |
+
+### 実装時の修正事項（設計からの差分）
+
+#### GAS: `ensureCols_` 呼び出し順序
+設計書のコード例では `ensureCols_` を `sheet.getDataRange().getValues()` より前に呼んでいたが、実際には先にデータを取得してヘッダーを `ensureCols_` に渡す必要がある。  
+修正: `values_rd` / `header_rd` を取得 → `ensureCols_(sheet, header_rd, [...])` → 再フェッチ（`ensureCols_` でカラムが追加された場合に対応）。
+
+#### GAS: referrals に `approved` 以外を含めない
+設計書では `referrer_login_id == myLoginId` のフィルターのみ記載されていたが、`pending_payment` 等の未承認ユーザーを除外する必要がある。  
+修正: referrals 収集ループ内に `if (status !== "approved") continue;` を追加。
+
+#### API ルート: TypeScript 型ナローイング
+`Extract<GasDashboardResponse, { ok: false }>` の二重キャストは不要。  
+修正: `if (!gasRes.ok)` で discriminated union を自然にナローイングするよう変更。
+
+### 残り作業
+
+| 作業 | 担当 | 内容 |
+|------|------|------|
+| GAS デプロイ | ユーザー（手動） | script.google.com で `gas/Code.gs` を最新版にデプロイ |
+| E2E テスト | ユーザー | `/top` の紹介カードを展開し、各セクションが正常に表示されることを確認 |
