@@ -3254,6 +3254,116 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // my_referral_dashboard（自分が紹介した人リスト + 報酬履歴）
+  // - me action と同じ認証（id + code の HMAC-SHA256 照合）
+  // - approved のみデータを返す
+  // =========================================================
+  if (action === "my_referral_dashboard") {
+    const id = str_(body.id);
+    const code = str_(body.code);
+
+    if (!id || !code) return json_({ ok: false, reason: "invalid" });
+
+    // ✅ 必要列保証（壊さない）
+    ensureCols_(sheet, header, [
+      "login_id",
+      "pw_hash",
+      "email",
+      "status",
+      "plan",
+      "approved_at",
+      "referrer_login_id",
+      "my_ref_code",
+    ]);
+
+    let values_rd = sheet.getDataRange().getValues();
+    let header_rd = values_rd[0];
+    const idx_rd = indexMap_(header_rd);
+    const rows_rd = values_rd.slice(1);
+
+    // 認証（me と同じ）
+    let myLoginId = "";
+    let myRefCode = "";
+
+    for (let i = 0; i < rows_rd.length; i++) {
+      const r = rows_rd[i];
+      const loginId = str_(r[idx_rd["login_id"]]);
+      const email = str_(r[idx_rd["email"]]);
+      if (id !== loginId && id !== email) continue;
+
+      const status = str_(r[idx_rd["status"]]);
+      if (status !== "approved") return json_({ ok: false, reason: "pending" });
+
+      const pwHashSaved = str_(r[idx_rd["pw_hash"]]);
+      if (!loginId || !pwHashSaved) return json_({ ok: false, reason: "invalid" });
+
+      const pwHashInput = hmacSha256Hex_(SECRET, loginId + ":" + code);
+      if (pwHashInput !== pwHashSaved) return json_({ ok: false, reason: "invalid" });
+
+      myLoginId = loginId;
+      myRefCode = str_(r[idx_rd["my_ref_code"]]);
+      break;
+    }
+
+    if (!myLoginId) return json_({ ok: false, reason: "invalid" });
+
+    // 自分が紹介した人（referrer_login_id == myLoginId）を収集
+    const referrals = [];
+    for (let i = 0; i < rows_rd.length; i++) {
+      const r = rows_rd[i];
+      if (str_(r[idx_rd["referrer_login_id"]]) !== myLoginId) continue;
+      const refLoginId = str_(r[idx_rd["login_id"]]);
+      if (!refLoginId) continue;
+      const approvedAt = r[idx_rd["approved_at"]];
+      referrals.push({
+        login_id: refLoginId,
+        plan: str_(r[idx_rd["plan"]]),
+        approved_at: approvedAt ? new Date(approvedAt).toISOString() : "",
+      });
+    }
+
+    // wallet_ledger からボーナス履歴取得
+    const ss_rd = SpreadsheetApp.getActiveSpreadsheet();
+    const ledger_rd = ss_rd.getSheetByName("wallet_ledger");
+    const bonuses = [];
+    let total_bonus = 0;
+
+    if (ledger_rd) {
+      const ledValues = getValuesSafe_(ledger_rd);
+      if (ledValues.length >= 2) {
+        const lHeader = ledValues[0];
+        const lIdx = indexMap_(lHeader);
+        const lRows = ledValues.slice(1);
+        const BONUS_KINDS = ["referral_bonus", "referral_entry"];
+        for (let i = 0; i < lRows.length; i++) {
+          const r = lRows[i];
+          const kind = str_(r[lIdx["kind"]]);
+          const lid = str_(r[lIdx["login_id"]]);
+          if (lid !== myLoginId) continue;
+          if (!BONUS_KINDS.includes(kind)) continue;
+          const amount = Number(r[lIdx["amount"]] || 0);
+          const ts = r[lIdx["ts"]];
+          bonuses.push({
+            ts: ts ? new Date(ts).toISOString() : "",
+            kind: kind,
+            amount: amount,
+            memo: str_(r[lIdx["memo"]]),
+          });
+          total_bonus += amount;
+        }
+      }
+    }
+
+    return json_({
+      ok: true,
+      my_ref_code: myRefCode,
+      referrals: referrals,
+      bonuses: bonuses,
+      total_bonus: total_bonus,
+    });
+  }
+
+  // =========================================================
   // login（approved/pending/invalid + pw_hash照合）
   // =========================================================
   if (action === "login") {
@@ -9181,6 +9291,8 @@ function rumbleRunNow_(params) {
   var parsed = (result && typeof result.getContent === "function")
     ? JSON.parse(result.getContent())
     : (typeof result === "string" ? JSON.parse(result) : result);
+  // バトルログも生成する（rumbleDailyLotteryTrigger_ と同じフローにする）
+  rumbleSpectator_({ date: today });
   return json_({ ok: parsed.ok !== false, date: today, distributed: parsed.distributed, error: parsed.error });
 }
 
