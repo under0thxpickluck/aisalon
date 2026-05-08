@@ -92,6 +92,7 @@ async function callGasDashboard(
     const res = await fetch(url.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      // GAS action: my_referral_dashboard
       body: JSON.stringify({ action: "my_referral_dashboard", id, code }),
       signal: controller.signal,
       cache: "no-store",
@@ -156,22 +157,16 @@ export async function POST(req: Request) {
   }
 
   if (!gasRes.ok) {
-    const reason = (gasRes as Extract<GasDashboardResponse, { ok: false }>).reason;
-
-    if (reason === "pending" || reason === "invalid") {
+    if (gasRes.reason === "pending" || gasRes.reason === "invalid") {
       return NextResponse.json(
-        { ok: false, reason },
+        { ok: false, reason: gasRes.reason },
         { status: 200, headers: { "Cache-Control": "no-store" } }
       );
     }
+    return jsonError(502, { ok: false, error: gasRes.error || "unknown_error" });
   }
 
-  const errMsg =
-    !gasRes.ok
-      ? (gasRes as Extract<GasDashboardResponse, { ok: false }>).error
-      : undefined;
-
-  return jsonError(502, { ok: false, error: errMsg || "unknown_error" });
+  return jsonError(502, { ok: false, error: "unknown_error" });
 }
 
 export async function GET() {
