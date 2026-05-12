@@ -163,16 +163,9 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
   );
 }
 
-type ReferralDashboardData = {
-  my_ref_code: string;
-  referrals: { login_id: string; plan: string; approved_at: string }[];
-  bonuses: { ts: string; kind: string; amount: number; memo: string }[];
-  total_bonus: number;
-};
-
 function ReferralDashboardCard({ auth }: { auth: AuthState }) {
   const [open, setOpen] = useState(false);
-  const [data, setData] = useState<ReferralDashboardData | null>(null);
+  const [refCode, setRefCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState<"code" | "url" | "">("");
@@ -192,7 +185,7 @@ function ReferralDashboardCard({ auth }: { auth: AuthState }) {
     }
   }, [auth]);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchRefCode = useCallback(async () => {
     if (fetched) return;
 
     const id =
@@ -209,7 +202,7 @@ function ReferralDashboardCard({ auth }: { auth: AuthState }) {
     setLoading(true);
     setErr("");
     try {
-      const r = await fetch("/api/referral/dashboard", {
+      const r = await fetch("/api/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -222,7 +215,7 @@ function ReferralDashboardCard({ auth }: { auth: AuthState }) {
         return;
       }
 
-      setData(json.dashboard);
+      setRefCode(json.me?.my_ref_code || "");
       setFetched(true);
     } catch (e: any) {
       setErr(String(e));
@@ -234,7 +227,7 @@ function ReferralDashboardCard({ auth }: { auth: AuthState }) {
   const handleOpen = () => {
     const next = !open;
     setOpen(next);
-    if (next && !fetched) fetchDashboard();
+    if (next && !fetched) fetchRefCode();
   };
 
   const copy = async (text: string, kind: "code" | "url") => {
@@ -251,20 +244,7 @@ function ReferralDashboardCard({ auth }: { auth: AuthState }) {
   const base = typeof window !== "undefined" ? window.location.origin : "";
   const is5000 = (auth as any)?.group === "5000";
   const purchasePath = is5000 ? "/5000" : "/purchase";
-  const refCode = data?.my_ref_code || "";
   const refUrl = refCode ? `${base}${purchasePath}?refCode=${encodeURIComponent(refCode)}` : "";
-
-  const formatDate = (iso: string) => {
-    if (!iso) return "—";
-    try {
-      return new Date(iso).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
-    } catch {
-      return iso;
-    }
-  };
-
-  const formatAmount = (n: number) =>
-    "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="mt-4 rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_50px_rgba(2,6,23,.08)] overflow-hidden">
@@ -345,79 +325,20 @@ function ReferralDashboardCard({ auth }: { auth: AuthState }) {
             </p>
           )}
 
-          {/* ② サマリー（データ取得後のみ） */}
-          {data && (
-            <>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
-                  <p className="text-[10px] font-bold text-slate-500">紹介した人</p>
-                  <p className="mt-1 text-xl font-extrabold text-slate-900">{data.referrals.length} 人</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
-                  <p className="text-[10px] font-bold text-slate-500">紹介報酬合計</p>
-                  <p className="mt-1 text-xl font-extrabold text-slate-900">{formatAmount(data.total_bonus)}</p>
-                </div>
+          {/* ② サマリー・履歴（調整中） */}
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 opacity-40 select-none pointer-events-none">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center">
+                <p className="text-[10px] font-bold text-slate-500">紹介した人</p>
+                <p className="mt-1 text-xl font-extrabold text-slate-400">— 人</p>
               </div>
-
-              {/* ③ 紹介した人リスト */}
-              <div className="mt-4">
-                <p className="text-xs font-extrabold text-slate-700 mb-2">紹介した人</p>
-                {data.referrals.length === 0 ? (
-                  <p className="text-xs text-slate-400">まだ紹介した人はいません</p>
-                ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-bold text-slate-600">login ID</th>
-                          <th className="px-3 py-2 text-left font-bold text-slate-600">プラン</th>
-                          <th className="px-3 py-2 text-left font-bold text-slate-600">入会日</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.referrals.map((r, i) => (
-                          <tr key={r.login_id + i} className="border-t border-slate-100">
-                            <td className="px-3 py-2 font-mono text-slate-800">{r.login_id}</td>
-                            <td className="px-3 py-2 text-slate-700">${r.plan}</td>
-                            <td className="px-3 py-2 text-slate-600">{formatDate(r.approved_at)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center">
+                <p className="text-[10px] font-bold text-slate-500">紹介報酬合計</p>
+                <p className="mt-1 text-xl font-extrabold text-slate-400">$—</p>
               </div>
-
-              {/* ④ 報酬履歴 */}
-              <div className="mt-4">
-                <p className="text-xs font-extrabold text-slate-700 mb-2">報酬履歴</p>
-                {data.bonuses.length === 0 ? (
-                  <p className="text-xs text-slate-400">まだ報酬履歴はありません</p>
-                ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-bold text-slate-600">日時</th>
-                          <th className="px-3 py-2 text-right font-bold text-slate-600">金額</th>
-                          <th className="px-3 py-2 text-left font-bold text-slate-600">メモ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.bonuses.map((b, i) => (
-                          <tr key={b.ts + i} className="border-t border-slate-100">
-                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{formatDate(b.ts)}</td>
-                            <td className="px-3 py-2 text-right font-bold text-emerald-700">{formatAmount(b.amount)}</td>
-                            <td className="px-3 py-2 text-slate-500 text-[10px] break-all">{b.memo || "—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+            </div>
+            <p className="mt-3 text-center text-xs text-slate-400">紹介履歴・報酬履歴は準備中です</p>
+          </div>
         </div>
       )}
     </div>
@@ -849,7 +770,7 @@ export default function AppHomePage() {
           />
 
           {/* 紹介コード（折りたたみ、デフォルト非表示） */}
-          {/* <ReferralDashboardCard auth={auth} /> */}
+          <ReferralDashboardCard auth={auth} />
 
 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             問い合わせはTOPページにございます。
