@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const ALLOWED_HOSTS = ["replicate.delivery"];
 
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const rawUrl   = searchParams.get("url") ?? "";
   const filename = searchParams.get("filename") || "lifai_song.wav";
+  const safeFilename = filename.replace(/["\\\r\n]/g, "");
 
   if (!rawUrl)            return NextResponse.json({ error: "missing_url" },       { status: 400 });
   if (!isAllowed(rawUrl)) return NextResponse.json({ error: "disallowed_origin" }, { status: 403 });
@@ -30,10 +32,15 @@ export async function GET(req: Request) {
 
   if (!upstream.ok) return new NextResponse(null, { status: upstream.status });
 
+  const upstreamType = upstream.headers.get("Content-Type") ?? "";
+  const contentType = ["audio/wav", "audio/mpeg", "audio/mp3", "audio/x-wav"].includes(upstreamType)
+    ? upstreamType
+    : "audio/wav";
+
   return new NextResponse(upstream.body, {
     headers: {
-      "Content-Type":        upstream.headers.get("Content-Type") ?? "audio/wav",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Type":        contentType,
+      "Content-Disposition": `attachment; filename="${safeFilename}"`,
       "Cache-Control":       "no-store",
     },
   });
