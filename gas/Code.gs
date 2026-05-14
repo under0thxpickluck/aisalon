@@ -3158,6 +3158,100 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // ✅ user_reset_request（ユーザー自身によるパスワード再設定申請）
+  // - adminKey不要（ユーザー向け公開エンドポイント）
+  // - id は login_id or email を許容
+  // - status が approved の人のみメール送信（安全）
+  // - 存在しない・未承認でも ok:true を返す（ユーザー列挙攻撃対策）
+  // - メイン applies シート → 5000シートの順で検索
+  // - reset_token/reset_expires を再発行し reset_used_at をクリアして送信
+  // =========================================================
+  if (action === "user_reset_request") {
+    const id_urr = str_(body.id);
+    if (!id_urr) return json_({ ok: true });
+
+    let values_urr = sheet.getDataRange().getValues();
+    let header_urr = values_urr[0];
+
+    ensureCols_(sheet, header_urr, [
+      "email", "status", "login_id",
+      "reset_token", "reset_expires", "reset_used_at", "reset_sent_at",
+    ]);
+
+    values_urr = sheet.getDataRange().getValues();
+    header_urr = values_urr[0];
+    const idx_urr = indexMap_(header_urr);
+    const rows_urr = values_urr.slice(1);
+
+    let hitRow_urr = 0;
+    let targetSheet_urr = sheet;
+    let targetIdx_urr = idx_urr;
+    let plan_urr = "";
+
+    for (let i = 0; i < rows_urr.length; i++) {
+      const loginId = str_(rows_urr[i][idx_urr["login_id"]]);
+      const email   = str_(rows_urr[i][idx_urr["email"]]);
+      if (id_urr === loginId || id_urr === email) {
+        hitRow_urr = i + 2;
+        break;
+      }
+    }
+
+    // メインで見つからなければ 5000 シートも検索
+    if (!hitRow_urr) {
+      const ssId_urr = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_5000_ID");
+      if (ssId_urr) {
+        const sheet5000_urr = SpreadsheetApp.openById(ssId_urr).getSheetByName("applies");
+        if (sheet5000_urr) {
+          ensureCols_(sheet5000_urr, sheet5000_urr.getDataRange().getValues()[0], [
+            "email", "status", "login_id",
+            "reset_token", "reset_expires", "reset_used_at", "reset_sent_at",
+          ]);
+          const vals5_urr = sheet5000_urr.getDataRange().getValues();
+          const hdr5_urr  = vals5_urr[0];
+          const idx5_urr  = indexMap_(hdr5_urr);
+          const rows5_urr = vals5_urr.slice(1);
+          for (let i = 0; i < rows5_urr.length; i++) {
+            const loginId = str_(rows5_urr[i][idx5_urr["login_id"]]);
+            const email   = str_(rows5_urr[i][idx5_urr["email"]]);
+            if (id_urr === loginId || id_urr === email) {
+              hitRow_urr = i + 2;
+              targetSheet_urr = sheet5000_urr;
+              targetIdx_urr   = idx5_urr;
+              plan_urr        = "5000";
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!hitRow_urr) return json_({ ok: true });
+
+    const status_urr = str_(targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["status"] + 1).getValue());
+    if (status_urr !== "approved") return json_({ ok: true });
+
+    const loginId_urr = str_(targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["login_id"] + 1).getValue());
+    const email_urr   = str_(targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["email"]    + 1).getValue());
+    if (!loginId_urr || !email_urr) return json_({ ok: true });
+
+    const token_urr   = genResetToken_();
+    const expires_urr = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["reset_token"]   + 1).setValue(token_urr);
+    targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["reset_expires"] + 1).setValue(expires_urr);
+    targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["reset_used_at"] + 1).setValue("");
+
+    const myRefCode_urr = targetIdx_urr["my_ref_code"] !== undefined
+      ? str_(targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["my_ref_code"] + 1).getValue())
+      : "";
+    sendResetMail_(email_urr, loginId_urr, token_urr, myRefCode_urr, plan_urr);
+    targetSheet_urr.getRange(hitRow_urr, targetIdx_urr["reset_sent_at"] + 1).setValue(new Date());
+
+    return json_({ ok: true });
+  }
+
+  // =========================================================
   // me（ログイン情報 + 紹介コード情報を返す）
   // - Nextの /api/me から 叩く用の中継API対応
   // - login と同じ認証（approvedのみPW照合OK）

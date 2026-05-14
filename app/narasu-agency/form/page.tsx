@@ -193,7 +193,7 @@ export default function NarasuFormPage() {
 
             {/* アーティスト名 */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <p className="text-xs font-bold text-slate-500">申請アーティスト名 <span className="text-slate-400 font-normal">（任意）</span></p>
+              <p className="text-xs font-bold text-slate-500">申請アーティスト名</p>
               <div>
                 <label className={labelCls}>アーティスト名</label>
                 <input
@@ -228,7 +228,7 @@ export default function NarasuFormPage() {
 
             {/* アルバム情報 */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <p className="text-xs font-bold text-slate-500">アルバム名 <span className="text-slate-400 font-normal">（任意）</span></p>
+              <p className="text-xs font-bold text-slate-500">アルバム名</p>
               <div>
                 <label className={labelCls}>アルバム名</label>
                 <input

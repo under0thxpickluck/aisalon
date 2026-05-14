@@ -55,8 +55,8 @@ async function downloadAudio(url: string) {
   URL.revokeObjectURL(a.href);
 }
 
-function downloadLyrics(text: string) {
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+function downloadLyrics(text: string, bom = false) {
+  const blob = new Blob([bom ? "﻿" + text : text], { type: "text/plain;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `lifai_lyrics_${Date.now()}.txt`;
@@ -409,14 +409,6 @@ export default function MusicStandardPage() {
                 >
                   WAVをダウンロード
                 </button>
-                {lyrics && (
-                  <button
-                    onClick={() => downloadLyrics(lyrics)}
-                    className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
-                  >
-                    歌詞をダウンロード
-                  </button>
-                )}
                 <button
                   onClick={handleReset}
                   className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-xs font-extrabold text-white transition hover:opacity-90"
@@ -424,6 +416,22 @@ export default function MusicStandardPage() {
                   もう一度生成する
                 </button>
               </div>
+              {lyrics && (
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    onClick={() => downloadLyrics(lyrics, false)}
+                    className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                  >
+                    歌詞をダウンロード（iPhone用）
+                  </button>
+                  <button
+                    onClick={() => downloadLyrics(lyrics, true)}
+                    className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                  >
+                    歌詞をダウンロード（Android用）
+                  </button>
+                </div>
+              )}
 
               {/* 歌詞折りたたみ表示 */}
               {lyrics && (

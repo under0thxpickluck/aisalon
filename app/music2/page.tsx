@@ -1513,43 +1513,83 @@ export default function Music2Page() {
                 {/* 歌詞ダウンロード */}
                 {displayLyrics && (
                   <div className="mt-3 flex flex-col gap-2">
-                    <button
-                      onClick={() => {
-                        const blob = new Blob(
-                          [`${resultTitle}\n\n${displayLyrics}`],
-                          { type: "text/plain;charset=utf-8" }
-                        );
-                        const a = document.createElement("a");
-                        a.href = URL.createObjectURL(blob);
-                        a.download = `lyrics-display-${jobId || "song"}.txt`;
-                        a.click();
-                        URL.revokeObjectURL(a.href);
-                      }}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      📄 歌詞をダウンロード（表示用）
-                    </button>
-                    {distributionLyrics ? (
+                    <div className="flex flex-col gap-1.5 sm:flex-row">
                       <button
                         onClick={() => {
                           const blob = new Blob(
-                            [`${resultTitle}\n\n${distributionLyrics}`],
+                            [`${resultTitle}\n\n${displayLyrics}`],
                             { type: "text/plain;charset=utf-8" }
                           );
                           const a = document.createElement("a");
                           a.href = URL.createObjectURL(blob);
-                          a.download = `lyrics-distribution-${jobId || "song"}.txt`;
+                          a.download = `lyrics-display-${jobId || "song"}.txt`;
                           a.click();
                           URL.revokeObjectURL(a.href);
                         }}
-                        className={`w-full rounded-2xl border px-4 py-2.5 text-xs font-semibold transition ${
-                          distributionReady
-                            ? "border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
-                            : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
-                        }`}
+                        className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
-                        {distributionReady ? "✅ 配信用歌詞をダウンロード" : "📋 配信用歌詞をダウンロード（要確認）"}
+                        📄 歌詞ダウンロード 表示用（iPhone）
                       </button>
+                      <button
+                        onClick={() => {
+                          const blob = new Blob(
+                            ["﻿" + `${resultTitle}\n\n${displayLyrics}`],
+                            { type: "text/plain;charset=utf-8" }
+                          );
+                          const a = document.createElement("a");
+                          a.href = URL.createObjectURL(blob);
+                          a.download = `lyrics-display-${jobId || "song"}.txt`;
+                          a.click();
+                          URL.revokeObjectURL(a.href);
+                        }}
+                        className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        📄 歌詞ダウンロード 表示用（Android）
+                      </button>
+                    </div>
+                    {distributionLyrics ? (
+                      <div className="flex flex-col gap-1.5 sm:flex-row">
+                        <button
+                          onClick={() => {
+                            const blob = new Blob(
+                              [`${resultTitle}\n\n${distributionLyrics}`],
+                              { type: "text/plain;charset=utf-8" }
+                            );
+                            const a = document.createElement("a");
+                            a.href = URL.createObjectURL(blob);
+                            a.download = `lyrics-distribution-${jobId || "song"}.txt`;
+                            a.click();
+                            URL.revokeObjectURL(a.href);
+                          }}
+                          className={`flex-1 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition ${
+                            distributionReady
+                              ? "border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+                              : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                          }`}
+                        >
+                          {distributionReady ? "✅ 配信用歌詞（iPhone）" : "📋 配信用歌詞（iPhone・要確認）"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            const blob = new Blob(
+                              ["﻿" + `${resultTitle}\n\n${distributionLyrics}`],
+                              { type: "text/plain;charset=utf-8" }
+                            );
+                            const a = document.createElement("a");
+                            a.href = URL.createObjectURL(blob);
+                            a.download = `lyrics-distribution-${jobId || "song"}.txt`;
+                            a.click();
+                            URL.revokeObjectURL(a.href);
+                          }}
+                          className={`flex-1 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition ${
+                            distributionReady
+                              ? "border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+                              : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                          }`}
+                        >
+                          {distributionReady ? "✅ 配信用歌詞（Android）" : "📋 配信用歌詞（Android・要確認）"}
+                        </button>
+                      </div>
                     ) : (
                       <div className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-center text-xs font-semibold text-red-600">
                         🚫 配信用歌詞：品質確認が必要なため提出前に手動確認が必要です
