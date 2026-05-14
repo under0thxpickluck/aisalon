@@ -1620,20 +1620,13 @@ export default function Music2Page() {
                     </button>
                     {entry.lyrics && (
                       <button
-                        onClick={() => {
-                          const blob = new Blob(
-                            [`${entry.title}\n\n${entry.lyrics}`],
-                            { type: "text/plain;charset=utf-8" }
-                          );
-                          const a = document.createElement("a");
-                          a.href = URL.createObjectURL(blob);
-                          a.download = `${entry.title || "lyrics"}_lyrics.txt`;
-                          a.click();
-                          URL.revokeObjectURL(a.href);
-                        }}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50 transition"
+                        onClick={() => shareOrDownloadText(
+                          `${entry.title}\n\n${entry.lyrics}`,
+                          `${entry.title || "lyrics"}_lyrics.txt`
+                        )}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-600 active:bg-slate-50 transition"
                       >
-                        歌詞
+                        📄 歌詞
                       </button>
                     )}
                     <button
