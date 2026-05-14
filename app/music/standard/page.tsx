@@ -81,7 +81,7 @@ export default function MusicStandardPage() {
   }, [router]);
 
   useEffect(() => {
-    if (lyrics) setEditedLyrics(lyrics);
+    setEditedLyrics(lyrics ?? "");
   }, [lyrics]);
 
   function appendMood(mood: string) {
@@ -236,6 +236,7 @@ export default function MusicStandardPage() {
     setErrorMsg(null);
     setLyrics(null);
     setLyricsOpen(false);
+    setEditingLyrics(false);
     setReleaseModalOpen(false);
   }
 
