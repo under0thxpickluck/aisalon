@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { shareOrDownloadAudio, shareOrDownloadText } from "@/app/lib/music-download";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth } from "../../lib/auth";
@@ -45,24 +46,6 @@ function musicError(code: "MUSIC-001" | "MUSIC-002" | "MUSIC-003"): string {
   return `エラーが発生しました（エラーコード: ${code}）\n公式LINEにお問い合わせください。`;
 }
 
-async function downloadAudio(url: string) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `lifai_music_${Date.now()}.wav`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function downloadLyrics(text: string, bom = false) {
-  const blob = new Blob([bom ? "﻿" + text : text], { type: "text/plain;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `lifai_lyrics_${Date.now()}.txt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
 
 export default function MusicStandardPage() {
   const router = useRouter();
@@ -80,6 +63,8 @@ export default function MusicStandardPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [editingLyrics, setEditingLyrics] = useState(false);
+  const [editedLyrics, setEditedLyrics] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -94,6 +79,10 @@ export default function MusicStandardPage() {
       }
     };
   }, [router]);
+
+  useEffect(() => {
+    if (lyrics) setEditedLyrics(lyrics);
+  }, [lyrics]);
 
   function appendMood(mood: string) {
     setPrompt((prev) => {
@@ -404,50 +393,87 @@ export default function MusicStandardPage() {
 
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <button
-                  onClick={() => downloadAudio(outputUrl)}
-                  className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                  onClick={() => shareOrDownloadAudio(outputUrl, "lifai_music.wav")}
+                  className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition active:bg-indigo-100"
                 >
-                  WAVをダウンロード
+                  📤 WAVを保存 / シェア
                 </button>
                 <button
                   onClick={handleReset}
-                  className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-xs font-extrabold text-white transition hover:opacity-90"
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-extrabold text-white transition active:opacity-80"
                 >
                   もう一度生成する
                 </button>
               </div>
               {lyrics && (
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <div className="mt-2">
                   <button
-                    onClick={() => downloadLyrics(lyrics, false)}
-                    className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                    onClick={() => shareOrDownloadText(editedLyrics, `lifai_lyrics_${Date.now()}.txt`)}
+                    className="w-full rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition active:bg-indigo-100"
                   >
-                    歌詞をダウンロード（iPhone用）
-                  </button>
-                  <button
-                    onClick={() => downloadLyrics(lyrics, true)}
-                    className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
-                  >
-                    歌詞をダウンロード（Android用）
+                    📄 歌詞を保存 / シェア
                   </button>
                 </div>
               )}
 
-              {/* 歌詞折りたたみ表示 */}
+              {/* 歌詞折りたたみ + 編集 */}
               {lyrics && (
                 <div className="mt-3 overflow-hidden rounded-2xl border border-indigo-200 bg-white">
                   <button
-                    onClick={() => setLyricsOpen((v) => !v)}
-                    className="flex w-full items-center justify-between px-4 py-3 text-xs font-bold text-indigo-700 hover:bg-indigo-50 transition"
+                    onClick={() => { setLyricsOpen((v) => !v); setEditingLyrics(false); }}
+                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-bold text-indigo-700 active:bg-indigo-50 transition"
                   >
-                    <span>歌詞を見る</span>
-                    <span className="text-[10px]">{lyricsOpen ? "▲ 閉じる" : "▼ 開く"}</span>
+                    <span>歌詞を見る / 編集</span>
+                    <span className="text-[11px]">{lyricsOpen ? "▲ 閉じる" : "▼ 開く"}</span>
                   </button>
                   {lyricsOpen && (
                     <div className="border-t border-indigo-100 px-4 pb-4 pt-3">
-                      <p className="whitespace-pre-line text-xs leading-relaxed text-slate-700">
-                        {lyrics}
-                      </p>
+                      {editingLyrics ? (
+                        <>
+                          <div className="mb-3 flex gap-2">
+                            <button
+                              onClick={() => setEditingLyrics(false)}
+                              className="flex-1 rounded-2xl bg-indigo-600 py-3 text-sm font-semibold text-white active:opacity-80"
+                            >
+                              ✅ 保存
+                            </button>
+                            <button
+                              onClick={() => { setEditedLyrics(lyrics ?? ""); setEditingLyrics(false); }}
+                              className="flex-1 rounded-2xl border border-slate-300 py-3 text-sm font-semibold text-slate-600 active:bg-slate-100"
+                            >
+                              ✕ キャンセル
+                            </button>
+                          </div>
+                          <textarea
+                            value={editedLyrics}
+                            onChange={(e) => {
+                              setEditedLyrics(e.target.value);
+                              e.target.style.height = "auto";
+                              e.target.style.height = e.target.scrollHeight + "px";
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.height = "auto";
+                              e.target.style.height = e.target.scrollHeight + "px";
+                            }}
+                            className="w-full rounded-xl border border-indigo-200 p-3 leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                            style={{ fontSize: "16px", minHeight: "180px", resize: "none" }}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="mb-2 flex justify-end">
+                            <button
+                              onClick={() => setEditingLyrics(true)}
+                              className="rounded-xl border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-600 active:bg-indigo-50"
+                            >
+                              ✏️ 編集
+                            </button>
+                          </div>
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                            {editedLyrics}
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
