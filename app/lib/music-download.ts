@@ -36,9 +36,10 @@ export async function shareOrDownloadAudio(
   const a = document.createElement("a");
   a.href = proxyUrl;
   a.download = filename;
-  document.body.appendChild(a);
+  const target = document.body ?? document.documentElement;
+  target.appendChild(a);
   a.click();
-  document.body.removeChild(a);
+  target.removeChild(a);
 }
 
 /**
@@ -66,11 +67,13 @@ export async function shareOrDownloadText(
     }
   }
 
+  const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
+  a.href = blobUrl;
   a.download = filename;
-  document.body.appendChild(a);
+  const target = document.body ?? document.documentElement;
+  target.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
+  target.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
 }
