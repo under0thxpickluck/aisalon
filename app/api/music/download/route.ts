@@ -3,7 +3,21 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const ALLOWED_HOSTS = ["replicate.delivery"];
+// 許可ホストをモジュール初期化時に一度だけ構築する。
+// replicate.delivery は固定。CLOUDFLARE_R2_PUBLIC_URL と MERGE_SERVER_URL が設定されていれば
+// そのホストも許可することで、Songモード(R2)とstandard/proモード(マージサーバー)のダウンロードを通す。
+const ALLOWED_HOSTS: string[] = (() => {
+  const hosts = ["replicate.delivery"];
+  const extras = [
+    process.env.CLOUDFLARE_R2_PUBLIC_URL,
+    process.env.MERGE_SERVER_URL,
+  ];
+  for (const u of extras) {
+    if (!u) continue;
+    try { hosts.push(new URL(u).hostname); } catch {}
+  }
+  return hosts;
+})();
 
 function isAllowed(raw: string): boolean {
   try {
