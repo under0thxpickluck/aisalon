@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { shareOrDownloadAudio, shareOrDownloadText } from "@/app/lib/music-download";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, getAuthSecret, setAuth } from "../../lib/auth";
@@ -198,25 +199,6 @@ function musicError(code: "MUSIC-001" | "MUSIC-002" | "MUSIC-003"): string {
   return `エラーが発生しました（エラーコード: ${code}）\n公式LINEにお問い合わせください。`;
 }
 
-async function downloadAudio(url: string) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `lifai_music_pro_${Date.now()}.wav`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function downloadLyrics(text: string, bom = false) {
-  const blob = new Blob([bom ? "﻿" + text : text], { type: "text/plain;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `lifai_lyrics_pro_${Date.now()}.txt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 export default function MusicProPage() {
   const router = useRouter();
   const [planChecked, setPlanChecked] = useState(false);
@@ -249,6 +231,8 @@ export default function MusicProPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [editingLyrics, setEditingLyrics] = useState(false);
+  const [editedLyrics, setEditedLyrics] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -306,6 +290,10 @@ export default function MusicProPage() {
       }
     };
   }, [router]);
+
+  useEffect(() => {
+    setEditedLyrics(lyrics ?? "");
+  }, [lyrics]);
 
   function appendMood(mood: string) {
     setPrompt((prev) => {
@@ -491,6 +479,7 @@ export default function MusicProPage() {
     setErrorMsg(null);
     setLyrics(null);
     setLyricsOpen(false);
+    setEditingLyrics(false);
     setReleaseModalOpen(false);
     setWaveformType("サイン波");
     setHumanizeLevel("中（自然な揺れ）");
@@ -955,58 +944,104 @@ export default function MusicProPage() {
 
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <button
-                  onClick={() => downloadAudio(outputUrl)}
-                  className="flex-1 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition hover:opacity-80"
+                  onClick={() => shareOrDownloadAudio(outputUrl, "lifai_music_pro.wav")}
+                  className="flex-1 rounded-2xl border px-4 py-3 text-sm font-semibold transition active:opacity-70"
                   style={{ backgroundColor: C.inner, borderColor: C.gold, color: C.gold }}
                 >
-                  WAVをダウンロード
+                  📤 WAVを保存 / シェア
                 </button>
                 <button
                   onClick={handleReset}
-                  className="flex-1 rounded-2xl px-4 py-2.5 text-xs font-extrabold transition hover:opacity-90"
+                  className="flex-1 rounded-2xl px-4 py-3 text-sm font-extrabold transition active:opacity-80"
                   style={{ background: `linear-gradient(to right, ${C.gold}, ${C.goldDark})`, color: "#000" }}
                 >
                   もう一度生成する
                 </button>
               </div>
               {lyrics && (
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <div className="mt-2">
                   <button
-                    onClick={() => downloadLyrics(lyrics, false)}
-                    className="flex-1 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition hover:opacity-80"
+                    onClick={() => shareOrDownloadText(editedLyrics, `lifai_lyrics_pro_${Date.now()}.txt`)}
+                    className="w-full rounded-2xl border px-4 py-3 text-sm font-semibold transition active:opacity-70"
                     style={{ backgroundColor: C.inner, borderColor: C.gold, color: C.gold }}
                   >
-                    歌詞をダウンロード（iPhone用）
-                  </button>
-                  <button
-                    onClick={() => downloadLyrics(lyrics, true)}
-                    className="flex-1 rounded-2xl border px-4 py-2.5 text-xs font-semibold transition hover:opacity-80"
-                    style={{ backgroundColor: C.inner, borderColor: C.gold, color: C.gold }}
-                  >
-                    歌詞をダウンロード（Android用）
+                    📄 歌詞を保存 / シェア
                   </button>
                 </div>
               )}
 
-              {/* 歌詞折りたたみ */}
+              {/* 歌詞折りたたみ + 編集 */}
               {lyrics && (
                 <div
                   className="mt-3 overflow-hidden rounded-2xl border"
                   style={{ backgroundColor: C.inner, borderColor: C.border }}
                 >
                   <button
-                    onClick={() => setLyricsOpen((v) => !v)}
-                    className="flex w-full items-center justify-between px-4 py-3 text-xs font-bold transition hover:opacity-80"
+                    onClick={() => { setLyricsOpen((v) => !v); setEditingLyrics(false); }}
+                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-bold transition active:opacity-70"
                     style={{ color: C.gold }}
                   >
-                    <span>歌詞を見る</span>
-                    <span className="text-[10px]">{lyricsOpen ? "▲ 閉じる" : "▼ 開く"}</span>
+                    <span>歌詞を見る / 編集</span>
+                    <span className="text-[11px]">{lyricsOpen ? "▲ 閉じる" : "▼ 開く"}</span>
                   </button>
                   {lyricsOpen && (
                     <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: C.border }}>
-                      <p className="whitespace-pre-line text-xs leading-relaxed" style={{ color: C.textSecondary }}>
-                        {lyrics}
-                      </p>
+                      {editingLyrics ? (
+                        <>
+                          <div className="mb-3 flex gap-2">
+                            <button
+                              onClick={() => setEditingLyrics(false)}
+                              className="flex-1 rounded-2xl py-3 text-sm font-semibold text-black active:opacity-80"
+                              style={{ background: `linear-gradient(to right, ${C.gold}, ${C.goldDark})` }}
+                            >
+                              ✅ 保存
+                            </button>
+                            <button
+                              onClick={() => { setEditedLyrics(lyrics ?? ""); setEditingLyrics(false); }}
+                              className="flex-1 rounded-2xl border py-3 text-sm font-semibold active:opacity-70"
+                              style={{ borderColor: C.border, color: C.textSecondary, backgroundColor: C.section }}
+                            >
+                              ✕ キャンセル
+                            </button>
+                          </div>
+                          <textarea
+                            value={editedLyrics}
+                            onChange={(e) => {
+                              setEditedLyrics(e.target.value);
+                              e.target.style.height = "auto";
+                              e.target.style.height = e.target.scrollHeight + "px";
+                            }}
+                            onFocus={(e) => {
+                              e.target.style.height = "auto";
+                              e.target.style.height = e.target.scrollHeight + "px";
+                            }}
+                            className="w-full rounded-xl border p-3 leading-relaxed outline-none"
+                            style={{
+                              fontSize: "16px",
+                              minHeight: "180px",
+                              resize: "none",
+                              borderColor: C.gold,
+                              backgroundColor: C.bg,
+                              color: C.textPrimary,
+                            }}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="mb-2 flex justify-end">
+                            <button
+                              onClick={() => setEditingLyrics(true)}
+                              className="rounded-xl border px-4 py-2 text-sm font-semibold active:opacity-70"
+                              style={{ borderColor: C.gold, color: C.gold, backgroundColor: C.inner }}
+                            >
+                              ✏️ 編集
+                            </button>
+                          </div>
+                          <p className="whitespace-pre-line text-sm leading-relaxed" style={{ color: C.textSecondary }}>
+                            {editedLyrics}
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
