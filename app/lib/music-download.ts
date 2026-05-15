@@ -2,27 +2,46 @@
 
 /**
  * iOS/Android/Desktop 対応 音声保存/シェア
- * 1. プロキシ経由でファイルを取得・検証（0バイトや失敗は即エラー表示）
- * 2. Web Share API with File (iOS 15+ / Android Chrome 75+) → ネイティブシェアシート
- * 3. Fallback: Blob URL ダウンロード（同一オリジンのため download 属性が有効）
+ * 1. 直接フェッチ（R2・Replicate は CORS 対応のため多くの場合成功）
+ * 2. 直接失敗時はサーバープロキシ経由でフェッチ
+ * 3. Web Share API with File (iOS 15+ / Android Chrome 75+) → ネイティブシェアシート
+ * 4. Fallback: Blob URL ダウンロード
  */
 export async function shareOrDownloadAudio(
   url: string,
   filename: string
 ): Promise<void> {
+  const mimeType = filename.toLowerCase().endsWith(".mp3") ? "audio/mpeg" : "audio/wav";
   const proxyUrl =
     `/api/music/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
 
-  // ── Step 1: ファイル取得・検証 ──────────────────────────────────
+  // ── Step 1: 直接フェッチ ──────────────────────────────────────
   let blob: Blob | null = null;
   try {
-    const res = await fetch(proxyUrl);
+    const res = await fetch(url, { cache: "no-store" });
     if (res.ok) {
-      const b = await res.blob();
-      if (b.size > 0) blob = b;
+      const buf = await res.arrayBuffer();
+      if (buf.byteLength > 0) {
+        blob = new Blob([buf], { type: mimeType });
+      }
     }
   } catch {
-    // ネットワークエラー → blob は null のまま
+    // CORS エラーなど → プロキシへ
+  }
+
+  // ── Step 2: プロキシ経由フェッチ ─────────────────────────────
+  if (!blob) {
+    try {
+      const res = await fetch(proxyUrl);
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength > 0) {
+          blob = new Blob([buf], { type: mimeType });
+        }
+      }
+    } catch {
+      // ネットワークエラー
+    }
   }
 
   if (!blob) {
@@ -30,10 +49,10 @@ export async function shareOrDownloadAudio(
     return;
   }
 
-  // ── Step 2: Web Share API（iOS / Android）──────────────────────
+  // ── Step 3: Web Share API（iOS / Android）──────────────────────
   if (typeof navigator !== "undefined" && "share" in navigator) {
     try {
-      const file = new File([blob], filename, { type: blob.type || "audio/wav" });
+      const file = new File([blob], filename, { type: mimeType });
       const nav = navigator as any;
       if (nav.canShare && nav.canShare({ files: [file] })) {
         await navigator.share({ files: [file] } as any);
@@ -45,7 +64,7 @@ export async function shareOrDownloadAudio(
     }
   }
 
-  // ── Step 3: Blob URL ダウンロード（Desktop / share非対応環境）──
+  // ── Step 4: Blob URL ダウンロード（Desktop / share非対応環境）──
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = blobUrl;
