@@ -32,7 +32,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const rawUrl   = searchParams.get("url") ?? "";
   const filename = searchParams.get("filename") || "lifai_song.wav";
-  const safeFilename = filename.replace(/["\\\r\n]/g, "");
+  // HTTP ヘッダーは ASCII のみ有効（日本語等は ByteString エラーになる）
+  // RFC 5987 に従い ASCII フォールバック + UTF-8 エンコード両方を指定
+  const asciiFilename = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\\r\n]/g, "");
+  const encodedFilename = encodeURIComponent(filename);
 
   if (!rawUrl)            return NextResponse.json({ error: "missing_url" },       { status: 400 });
   if (!isAllowed(rawUrl)) return NextResponse.json({ error: "disallowed_origin" }, { status: 403 });
@@ -54,7 +57,7 @@ export async function GET(req: Request) {
   return new NextResponse(upstream.body, {
     headers: {
       "Content-Type":        contentType,
-      "Content-Disposition": `attachment; filename="${safeFilename}"`,
+      "Content-Disposition": `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedFilename}`,
       "Cache-Control":       "no-store",
     },
   });
