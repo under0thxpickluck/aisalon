@@ -34,7 +34,7 @@ export async function GET(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({ action: "rumble_daily_result", date }),
+      body: JSON.stringify({ action: "rumble_daily_result", key: gasKey, date }),
     });
     const data = await res.json().catch(() => null);
     if (!data?.ok) return pendingFallback(date);

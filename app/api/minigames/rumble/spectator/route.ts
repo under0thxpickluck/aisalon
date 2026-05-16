@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({ action: "rumble_spectator", userId, date }),
+      body: JSON.stringify({ action: "rumble_spectator", key: gasKey, userId, date }),
     });
     return NextResponse.json(await res.json().catch(() => ({ ok: false, error: "invalid_response" })));
   } catch {

@@ -589,6 +589,7 @@ export default function RumblePage() {
       if (data.ok) {
         localStorage.setItem(`rumble_entered_${userId}`, getTodayJst());
         setLocalEnteredToday(true);
+        setBpBalance(prev => prev !== null ? Math.max(0, prev - 100) : null);
         setStatus(prev => prev ? { ...prev, entered_today: true, today_score: data.score, today_rp: data.rp, week_rp: prev.week_rp + data.rp } : prev);
         setMsg("🎉 参加完了！スコアは18:50に公開されます");
       } else {

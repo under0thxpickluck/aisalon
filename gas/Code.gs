@@ -1568,6 +1568,310 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // ✅ ref_backfill_from_refcode（管理：ref_codeから紹介者を一括バックフィル）
+  // 条件: ref_code が入っていて referrer_login_id が空の行のみ対象
+  // 既存の紹介者設定は一切上書きしない
+  // =========================================================
+  if (action === "ref_backfill_from_refcode") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const bfSheet  = getOrCreateSheet_();
+    const bfValues = getValuesSafe_(bfSheet);
+    const bfHeader = bfValues[0];
+    const bfIdx    = indexMap_(bfHeader);
+
+    const needCols = ["ref_code", "referrer_login_id", "my_ref_code", "login_id", "ref_path"];
+    for (let i = 0; i < needCols.length; i++) {
+      if (bfIdx[needCols[i]] === undefined) {
+        return json_({ ok: false, error: "missing_column_" + needCols[i] });
+      }
+    }
+
+    // my_ref_code → { login_id, ref2〜ref5 } のルックアップマップを事前構築
+    const myRefMap = {};
+    for (let ri = 1; ri < bfValues.length; ri++) {
+      const r   = bfValues[ri];
+      const mrc = str_(r[bfIdx["my_ref_code"]]);
+      if (mrc) {
+        myRefMap[mrc] = {
+          login_id: str_(r[bfIdx["login_id"]]),
+          ref2: bfIdx["referrer_login_id"]   !== undefined ? str_(r[bfIdx["referrer_login_id"]])   : "",
+          ref3: bfIdx["referrer_2_login_id"] !== undefined ? str_(r[bfIdx["referrer_2_login_id"]]) : "",
+          ref4: bfIdx["referrer_3_login_id"] !== undefined ? str_(r[bfIdx["referrer_3_login_id"]]) : "",
+          ref5: bfIdx["referrer_4_login_id"] !== undefined ? str_(r[bfIdx["referrer_4_login_id"]]) : "",
+        };
+      }
+    }
+
+    let updated   = 0;
+    let skipped   = 0;
+    let unmatched = 0;
+
+    for (let ri = 1; ri < bfValues.length; ri++) {
+      const r              = bfValues[ri];
+      const refCode        = str_(r[bfIdx["ref_code"]]);
+      const existingRef1   = str_(r[bfIdx["referrer_login_id"]]);
+
+      if (!refCode) continue;
+
+      if (existingRef1) {
+        skipped++;
+        continue;
+      }
+
+      const referrer = myRefMap[refCode];
+      if (!referrer || !referrer.login_id) {
+        unmatched++;
+        continue;
+      }
+
+      const ref1 = referrer.login_id;
+      const ref2 = referrer.ref2 || "";
+      const ref3 = referrer.ref3 || "";
+      const ref4 = referrer.ref4 || "";
+      const ref5 = referrer.ref5 || "";
+      const path =
+        ref1 +
+        (ref2 ? " > " + ref2 : "") +
+        (ref3 ? " > " + ref3 : "") +
+        (ref4 ? " > " + ref4 : "") +
+        (ref5 ? " > " + ref5 : "");
+
+      const rowIndex = ri + 1;
+      bfSheet.getRange(rowIndex, bfIdx["referrer_login_id"] + 1).setValue(ref1);
+      if (bfIdx["referrer_2_login_id"] !== undefined) {
+        bfSheet.getRange(rowIndex, bfIdx["referrer_2_login_id"] + 1).setValue(ref2);
+      }
+      if (bfIdx["referrer_3_login_id"] !== undefined) {
+        bfSheet.getRange(rowIndex, bfIdx["referrer_3_login_id"] + 1).setValue(ref3);
+      }
+      if (bfIdx["referrer_4_login_id"] !== undefined) {
+        bfSheet.getRange(rowIndex, bfIdx["referrer_4_login_id"] + 1).setValue(ref4);
+      }
+      if (bfIdx["referrer_5_login_id"] !== undefined) {
+        bfSheet.getRange(rowIndex, bfIdx["referrer_5_login_id"] + 1).setValue(ref5);
+      }
+      bfSheet.getRange(rowIndex, bfIdx["ref_path"] + 1).setValue(path);
+
+      const loginId = str_(r[bfIdx["login_id"]]);
+      const email   = bfIdx["email"] !== undefined ? str_(r[bfIdx["email"]]) : "";
+      appendRefEvent_({
+        new_login_id:  loginId,
+        new_email:     email,
+        used_ref_code: refCode,
+        ref1_login_id: ref1,
+        ref2_login_id: ref2,
+        ref3_login_id: ref3,
+        note:          "ref_backfill_from_refcode",
+      });
+
+      updated++;
+    }
+
+    SpreadsheetApp.flush();
+    return json_({ ok: true, updated: updated, skipped: skipped, unmatched: unmatched });
+  }
+
+  // =========================================================
+  // ✅ affiliate_monthly_summary（管理：月次アフィリエイト集計）
+  // adminKey + month(YYYY-MM) を受け取り、紹介者別EP集計を返す（読み取り専用）
+  // 日付フォールバック: approved_at → auto_approved_at → paid_at
+  // =========================================================
+  if (action === "affiliate_monthly_summary") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+
+    const monthStr = str_(body.month);
+    if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) {
+      return json_({ ok: false, error: "invalid_month_format" });
+    }
+
+    // 対象月の JST 範囲を UTC Date に変換
+    const parts = monthStr.split("-");
+    const yyyy  = Number(parts[0]);
+    const mm    = Number(parts[1]);
+    const startUtc = new Date(Date.UTC(yyyy, mm - 1, 1, -9, 0, 0));  // 月初00:00 JST
+    const endUtc   = new Date(Date.UTC(yyyy, mm,     1, -9, 0, 0));  // 翌月初00:00 JST（exclusive）
+
+    const settings  = getSystemSettings_();
+    const usdToJpy  = settings.usdToJpy;
+    const epPerJpy  = settings.epPerJpy;
+    const initRates = settings.rates;           // [10, 5, 2, 2, 1]
+    const ccRates   = [5, 2.5, 1, 1, 0.5];     // 内部CC決済レート（Phase 2用）
+
+    const amSheet  = getOrCreateSheet_();
+    const amValues = getValuesSafe_(amSheet);
+    const amHeader = amValues[0];
+    const amIdx    = indexMap_(amHeader);
+
+    const refCols = [
+      "referrer_login_id",
+      "referrer_2_login_id",
+      "referrer_3_login_id",
+      "referrer_4_login_id",
+      "referrer_5_login_id",
+    ];
+
+    // referrer ごとの集計マップ
+    const referrerMap = {};
+
+    const ensureReferrer = function(loginId) {
+      if (!referrerMap[loginId]) {
+        referrerMap[loginId] = {
+          login_id: loginId,
+          levels: [1,2,3,4,5].map(function(lvl) {
+            return {
+              level:           lvl,
+              initial_usd:     0,
+              initial_ep:      0,
+              cc_usd:          0,
+              cc_ep:           0,
+              total_ep:        0,
+              initial_sources: [],
+              cc_sources:      [],
+            };
+          }),
+        };
+      }
+      return referrerMap[loginId];
+    };
+
+    // --- 初回入金の集計（applies シートを走査）---
+    for (let ri = 1; ri < amValues.length; ri++) {
+      const r      = amValues[ri];
+      const status = str_(r[amIdx["status"]]);
+      if (status !== "approved") continue;
+
+      // 日付フォールバック: approved_at → auto_approved_at → paid_at
+      let effectiveDate = null;
+      const dateCols = ["approved_at", "auto_approved_at", "paid_at"];
+      for (let dc = 0; dc < dateCols.length; dc++) {
+        const col = dateCols[dc];
+        if (amIdx[col] === undefined) continue;
+        const raw = r[amIdx[col]];
+        if (!raw) continue;
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) { effectiveDate = d; break; }
+      }
+      if (!effectiveDate) continue;
+      if (effectiveDate < startUtc || effectiveDate >= endUtc) continue;
+
+      // 決済金額
+      let amountUsd = 0;
+      if (amIdx["expected_paid"] !== undefined) {
+        amountUsd = parseMoneyLike_(r[amIdx["expected_paid"]]);
+      }
+      if (!amountUsd && amIdx["plan"] !== undefined) {
+        amountUsd = planToExpectedPaid_(str_(r[amIdx["plan"]]));
+      }
+      if (!amountUsd) continue;
+
+      const childLoginId = str_(r[amIdx["login_id"]]);
+      const amountJpy    = amountUsd * usdToJpy;
+
+      for (let lvl = 0; lvl < 5; lvl++) {
+        const colName    = refCols[lvl];
+        if (amIdx[colName] === undefined) continue;
+        const refLoginId = str_(r[amIdx[colName]]);
+        if (!refLoginId) continue;
+
+        const ratePct  = initRates[lvl];
+        const rewardEp = Math.floor(amountJpy * ratePct / 100 * epPerJpy);
+
+        const entry = ensureReferrer(refLoginId);
+        entry.levels[lvl].initial_usd += amountUsd;
+        entry.levels[lvl].initial_ep  += rewardEp;
+        entry.levels[lvl].total_ep    += rewardEp;
+        if (childLoginId && entry.levels[lvl].initial_sources.indexOf(childLoginId) === -1) {
+          entry.levels[lvl].initial_sources.push(childLoginId);
+        }
+      }
+    }
+
+    // --- Phase 2: CC決済の集計（wallet_ledger の kind="cc_payment"）---
+    // ※ Stripe / CC決済実装後にコメントアウトを解除する
+    /*
+    const wlSheet  = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("wallet_ledger");
+    if (wlSheet) {
+      const wlValues = getValuesSafe_(wlSheet);
+      const wlHeader = wlValues[0];
+      const wlIdx    = indexMap_(wlHeader);
+      for (let ri = 1; ri < wlValues.length; ri++) {
+        const r    = wlValues[ri];
+        const kind = str_(r[wlIdx["kind"]]);
+        if (kind !== "cc_payment") continue;
+        const tsRaw = r[wlIdx["ts"]];
+        if (!tsRaw) continue;
+        const ts = new Date(tsRaw);
+        if (isNaN(ts.getTime())) continue;
+        if (ts < startUtc || ts >= endUtc) continue;
+        const payerLoginId = str_(r[wlIdx["login_id"]]);
+        const amountUsd    = parseMoneyLike_(r[wlIdx["amount"]]);
+        if (!amountUsd || !payerLoginId) continue;
+        // 支払者の referrer チェーンを applies から引く
+        for (let ai = 1; ai < amValues.length; ai++) {
+          if (str_(amValues[ai][amIdx["login_id"]]) !== payerLoginId) continue;
+          const amountJpy = amountUsd * usdToJpy;
+          for (let lvl = 0; lvl < 5; lvl++) {
+            const colName    = refCols[lvl];
+            if (amIdx[colName] === undefined) continue;
+            const refLoginId = str_(amValues[ai][amIdx[colName]]);
+            if (!refLoginId) continue;
+            const ratePct  = ccRates[lvl];
+            const rewardEp = Math.floor(amountJpy * ratePct / 100 * epPerJpy);
+            const entry    = ensureReferrer(refLoginId);
+            entry.levels[lvl].cc_usd   += amountUsd;
+            entry.levels[lvl].cc_ep    += rewardEp;
+            entry.levels[lvl].total_ep += rewardEp;
+            if (entry.levels[lvl].cc_sources.indexOf(payerLoginId) === -1) {
+              entry.levels[lvl].cc_sources.push(payerLoginId);
+            }
+          }
+          break;
+        }
+      }
+    }
+    */
+
+    // 集計マップを配列に変換（合計EP降順）
+    const amReferrers = Object.keys(referrerMap).map(function(k) {
+      const r = referrerMap[k];
+      const totInitUsd = r.levels.reduce(function(s,l){ return s + l.initial_usd; }, 0);
+      const totInitEp  = r.levels.reduce(function(s,l){ return s + l.initial_ep;  }, 0);
+      const totCcUsd   = r.levels.reduce(function(s,l){ return s + l.cc_usd;      }, 0);
+      const totCcEp    = r.levels.reduce(function(s,l){ return s + l.cc_ep;       }, 0);
+      return Object.assign({}, r, {
+        total_initial_usd: totInitUsd,
+        total_initial_ep:  totInitEp,
+        total_cc_usd:      totCcUsd,
+        total_cc_ep:       totCcEp,
+        total_ep:          totInitEp + totCcEp,
+      });
+    }).sort(function(a, b){ return b.total_ep - a.total_ep; });
+
+    const amSummary = {
+      total_initial_usd: amReferrers.reduce(function(s,r){ return s + r.total_initial_usd; }, 0),
+      total_initial_ep:  amReferrers.reduce(function(s,r){ return s + r.total_initial_ep;  }, 0),
+      total_cc_usd:      amReferrers.reduce(function(s,r){ return s + r.total_cc_usd;      }, 0),
+      total_cc_ep:       amReferrers.reduce(function(s,r){ return s + r.total_cc_ep;       }, 0),
+      total_ep:          amReferrers.reduce(function(s,r){ return s + r.total_ep;           }, 0),
+      referrer_count:    amReferrers.length,
+    };
+
+    return json_({
+      ok:          true,
+      month:       monthStr,
+      usd_to_jpy:  usdToJpy,
+      ep_per_jpy:  epPerJpy,
+      referrers:   amReferrers,
+      summary:     amSummary,
+    });
+  }
+
+  // =========================================================
   // ✅ send_test_mail（管理：メール送信テスト）
   // adminKey + to アドレスが必要。デプロイ後のMailApp動作確認用。
   // curl などから: ?action=send_test_mail&key=...&adminKey=...&to=xxx@yyy.com
@@ -4292,7 +4596,10 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
       "referrer_login_id",
       "referrer_2_login_id",
       "referrer_3_login_id",
+      "referrer_4_login_id",   // 5段拡張
+      "referrer_5_login_id",   // 5段拡張
       "ref_path",
+      "affiliate_granted_at",  // 将来の自動付与用冪等ガード
 
       // ✅ BP/EP付与（今回追加：壊さない）
       "bp_balance",
@@ -4396,7 +4703,7 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
       sheet.getRange(rowIndex, idx["my_ref_code"] + 1).setValue(myRefCode);
     }
 
-    // ✅ 入力された紹介コードから、最大3段の紹介者を確定（MLMではなく追跡用）
+    // ✅ 入力された紹介コードから、最大5段の紹介者を確定（5段拡張・壊さない）
     const usedRefCode = str_(sheet.getRange(rowIndex, idx["ref_code"] + 1).getValue());
     const bind = resolveRefChain_(sheet, header, usedRefCode);
 
@@ -4404,17 +4711,31 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
       sheet.getRange(rowIndex, idx["referrer_login_id"] + 1).setValue(bind.ref1_login_id);
       sheet.getRange(rowIndex, idx["referrer_2_login_id"] + 1).setValue(bind.ref2_login_id || "");
       sheet.getRange(rowIndex, idx["referrer_3_login_id"] + 1).setValue(bind.ref3_login_id || "");
+      if (idx["referrer_4_login_id"] !== undefined) {
+        sheet.getRange(rowIndex, idx["referrer_4_login_id"] + 1).setValue(bind.ref4_login_id || "");
+      }
+      if (idx["referrer_5_login_id"] !== undefined) {
+        sheet.getRange(rowIndex, idx["referrer_5_login_id"] + 1).setValue(bind.ref5_login_id || "");
+      }
 
       const path =
-        (bind.ref1_login_id ? bind.ref1_login_id : "") +
-        (bind.ref2_login_id ? " > " + bind.ref2_login_id : "") +
-        (bind.ref3_login_id ? " > " + bind.ref3_login_id : "");
+        (bind.ref1_login_id                    ? bind.ref1_login_id                           : "") +
+        (bind.ref2_login_id                    ? " > " + bind.ref2_login_id                   : "") +
+        (bind.ref3_login_id                    ? " > " + bind.ref3_login_id                   : "") +
+        ((bind.ref4_login_id || "")            ? " > " + (bind.ref4_login_id || "")           : "") +
+        ((bind.ref5_login_id || "")            ? " > " + (bind.ref5_login_id || "")           : "");
       sheet.getRange(rowIndex, idx["ref_path"] + 1).setValue(path);
     } else {
       // 紹介コードが無い/無効ならクリア（壊さない）
       sheet.getRange(rowIndex, idx["referrer_login_id"] + 1).setValue("");
       sheet.getRange(rowIndex, idx["referrer_2_login_id"] + 1).setValue("");
       sheet.getRange(rowIndex, idx["referrer_3_login_id"] + 1).setValue("");
+      if (idx["referrer_4_login_id"] !== undefined) {
+        sheet.getRange(rowIndex, idx["referrer_4_login_id"] + 1).setValue("");
+      }
+      if (idx["referrer_5_login_id"] !== undefined) {
+        sheet.getRange(rowIndex, idx["referrer_5_login_id"] + 1).setValue("");
+      }
       sheet.getRange(rowIndex, idx["ref_path"] + 1).setValue("");
     }
 
@@ -4866,41 +5187,55 @@ function sendResetMail_(to, loginId, token, myRefCode, plan) {
 // ==============================
 
 function resolveRefChain_(sheet, header, usedRefCode) {
-  // usedRefCode (= ref_code) から、ref1/ref2/ref3 を特定して返す
-  // 仕様：my_ref_code が一致する行 = 紹介者(1段目)
-  // 2段目/3段目は紹介者行の referrer_* を引き継ぐ（MLMではなく追跡用）
-  if (!usedRefCode) {
-    return { ref1_login_id: "", ref2_login_id: "", ref3_login_id: "" };
-  }
+  // usedRefCode (= ref_code) から、ref1〜ref5 を特定して返す（5段対応・循環防止付き）
+  // 後方互換: ref1/ref2/ref3 は従来通り返す。ref4/ref5 を追加。
+  const empty = { ref1_login_id: "", ref2_login_id: "", ref3_login_id: "", ref4_login_id: "", ref5_login_id: "" };
+  if (!usedRefCode) return empty;
 
-  // ✅ 既存は getDataRange() だったが、巨大DataRange対策として getValuesSafe_ を利用（壊さない）
   const values = getValuesSafe_(sheet);
-  const h = values[0];
+  if (!values || values.length < 2) return empty;
+  const h   = values[0];
   const idx = indexMap_(h);
-  const rows = values.slice(1);
 
-  // 必要列が無ければ安全に空で返す（壊さない）
-  if (idx["my_ref_code"] === undefined || idx["login_id"] === undefined) {
-    return { ref1_login_id: "", ref2_login_id: "", ref3_login_id: "" };
-  }
+  if (idx["my_ref_code"] === undefined || idx["login_id"] === undefined) return empty;
 
+  // ref_code → 紹介者(ref1) の login_id を検索
   let ref1 = "";
-  let ref2 = "";
-  let ref3 = "";
-
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    if (str_(r[idx["my_ref_code"]]) === usedRefCode) {
-      ref1 = str_(r[idx["login_id"]]);
-
-      // 2〜3段は親の値を引き継ぐ（なければ空）
-      ref2 = idx["referrer_login_id"] !== undefined ? str_(r[idx["referrer_login_id"]]) : "";
-      ref3 = idx["referrer_2_login_id"] !== undefined ? str_(r[idx["referrer_2_login_id"]]) : "";
+  for (let i = 1; i < values.length; i++) {
+    if (str_(values[i][idx["my_ref_code"]]) === usedRefCode) {
+      ref1 = str_(values[i][idx["login_id"]]);
       break;
     }
   }
+  if (!ref1) return empty;
 
-  return { ref1_login_id: ref1, ref2_login_id: ref2, ref3_login_id: ref3 };
+  // ref1 の親を辿って chain を組み立てる（最大4回・循環防止）
+  const chain   = [ref1];
+  const visited = {};
+  visited[ref1]  = true;
+  let cur        = ref1;
+
+  for (let depth = 0; depth < 4; depth++) {
+    let parent = "";
+    for (let i = 1; i < values.length; i++) {
+      if (str_(values[i][idx["login_id"]]) === cur) {
+        parent = idx["referrer_login_id"] !== undefined ? str_(values[i][idx["referrer_login_id"]]) : "";
+        break;
+      }
+    }
+    if (!parent || visited[parent]) break;
+    visited[parent] = true;
+    chain.push(parent);
+    cur = parent;
+  }
+
+  return {
+    ref1_login_id: chain[0] || "",
+    ref2_login_id: chain[1] || "",
+    ref3_login_id: chain[2] || "",
+    ref4_login_id: chain[3] || "",
+    ref5_login_id: chain[4] || "",
+  };
 }
 
 function appendRefEvent_(o) {
@@ -4974,6 +5309,38 @@ function getSecrets_() {
   const SECRET = props.getProperty("SECRET_KEY") || "LIFAITOMAKEMONEY";
   const ADMIN_SECRET = props.getProperty("ADMIN_SECRET") || "CHANGE_ME_ADMIN_123";
   return { SECRET: SECRET, ADMIN_SECRET: ADMIN_SECRET };
+}
+
+// ==============================
+// system_settings シートからレート設定を読み取る
+// シートが存在しない場合はデフォルト値を返す（壊さない）
+// ==============================
+function getSystemSettings_() {
+  try {
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("system_settings");
+    if (!sheet) {
+      return { usdToJpy: 145, epPerJpy: 4, rates: [10, 5, 2, 2, 1] };
+    }
+    const values   = sheet.getDataRange().getValues();
+    const settings = {};
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][0]) settings[String(values[i][0])] = values[i][1];
+    }
+    return {
+      usdToJpy: Number(settings["usd_to_jpy"]      || 145),
+      epPerJpy: Number(settings["ep_per_jpy"]       || 4),
+      rates: [
+        Number(settings["affiliate_rate_1"] || 10),
+        Number(settings["affiliate_rate_2"] || 5),
+        Number(settings["affiliate_rate_3"] || 2),
+        Number(settings["affiliate_rate_4"] || 2),
+        Number(settings["affiliate_rate_5"] || 1),
+      ],
+    };
+  } catch (e) {
+    return { usdToJpy: 145, epPerJpy: 4, rates: [10, 5, 2, 2, 1] };
+  }
 }
 
 function getOrCreateSheet_() {

@@ -62,6 +62,8 @@ export default function TreeTab() {
   const [feedback,  setFeedback]  = useState<string | null>(null);
   const [dragId,    setDragId]    = useState<string | null>(null);
   const [overId,    setOverId]    = useState<string | null>(null);
+  const [backfillBusy,   setBackfillBusy]   = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true); setErr(null);
@@ -80,6 +82,22 @@ export default function TreeTab() {
   useEffect(() => { load(); }, [load]);
 
   const rows = useMemo(() => buildRows(users, rootId), [users, rootId]);
+
+  const handleBackfill = async () => {
+    setBackfillBusy(true);
+    setBackfillResult(null);
+    try {
+      const res = await fetch("/api/admin/ref-backfill", { method: "POST", cache: "no-store" });
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.error ?? "backfill_failed");
+      setBackfillResult(`✅ ${json.updated}件更新、${json.skipped}スキップ（設定済み）、${json.unmatched}件不一致（ref_code未登録）`);
+      load();
+    } catch (e: any) {
+      setBackfillResult(`❌ ${e?.message ?? String(e)}`);
+    } finally {
+      setBackfillBusy(false);
+    }
+  };
 
   const handleConfirm = async () => {
     if (!modal) return;
@@ -136,7 +154,23 @@ export default function TreeTab() {
         )}
         <span className="text-xs text-zinc-500">{rows.length} 件</span>
         <span className="text-xs text-zinc-500">ドラッグ＆ドロップで紹介者変更</span>
+        <button
+          onClick={handleBackfill}
+          disabled={backfillBusy}
+          className="rounded-lg border border-zinc-600 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {backfillBusy ? "処理中…" : "🔗 refcodeから紹介者を更新"}
+        </button>
       </div>
+
+      {backfillResult && (
+        <div className={[
+          "mb-4 rounded-lg px-4 py-2 text-sm font-bold",
+          backfillResult.startsWith("✅") ? "bg-emerald-900/50 text-emerald-300" : "bg-red-900/50 text-red-300",
+        ].join(" ")}>
+          {backfillResult}
+        </div>
+      )}
 
       {feedback && (
         <div className={[

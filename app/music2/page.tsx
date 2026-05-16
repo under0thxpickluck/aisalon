@@ -1510,7 +1510,7 @@ export default function Music2Page() {
                         {editingLyrics ? (
                           <div className="flex gap-2">
                             <button
-                              onClick={() => setEditingLyrics(false)}
+                              onClick={() => { setDisplayLyrics(editedDisplayLyrics); setEditingLyrics(false); }}
                               className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white active:opacity-80"
                             >
                               ✅ 保存

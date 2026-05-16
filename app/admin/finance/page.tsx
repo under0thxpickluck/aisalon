@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import UsersTab from "./UsersTab";
 import AffiliateTab from "./AffiliateTab";
 import TreeTab from "./TreeTab";
+import MonthlyTab from "./MonthlyTab";
 
-type Tab = "users" | "affiliate" | "tree";
+type Tab = "users" | "affiliate" | "tree" | "monthly";
 
 export default function FinancePage() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function FinancePage() {
     { key: "users",     label: "ユーザー詳細" },
     { key: "affiliate", label: "アフィリエイト" },
     { key: "tree",      label: "紹介ツリー" },
+    { key: "monthly",   label: "月次集計" },
   ];
 
   return (
@@ -77,6 +79,7 @@ export default function FinancePage() {
         {activeTab === "users"     && <UsersTab />}
         {activeTab === "affiliate" && <AffiliateTab />}
         {activeTab === "tree"      && <TreeTab />}
+        {activeTab === "monthly"   && <MonthlyTab />}
       </div>
     </main>
   );
