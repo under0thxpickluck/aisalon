@@ -16,7 +16,7 @@ export const maxDuration = 120; // R2アップロード（ダウンロード+転
 
 // Replicateから取得したBGM音声をCloudflare R2に保存して永続URLを返す。
 // R2 env vars が未設定またはアップロード失敗の場合は null を返す（呼び元でReplicateURLにフォールバック）。
-async function tryUploadBgmToR2(replicateUrl: string, predictionId: string): Promise<string | null> {
+async function uploadBufferToR2(body: Buffer, predictionId: string): Promise<string | null> {
   const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
   const accessKey = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
   const secretKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
@@ -26,10 +26,6 @@ async function tryUploadBgmToR2(replicateUrl: string, predictionId: string): Pro
   if (!accountId || !accessKey || !secretKey || !bucket || !publicUrl) return null;
 
   try {
-    const audioRes = await fetch(replicateUrl, { cache: "no-store" });
-    if (!audioRes.ok) return null;
-    const audioBuffer = await audioRes.arrayBuffer();
-
     const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
     const s3 = new S3Client({
       region:      "auto",
@@ -41,7 +37,7 @@ async function tryUploadBgmToR2(replicateUrl: string, predictionId: string): Pro
     await s3.send(new PutObjectCommand({
       Bucket:      bucket,
       Key:         key,
-      Body:        Buffer.from(audioBuffer),
+      Body:        body,
       ContentType: "audio/wav",
     }));
 
@@ -53,33 +49,22 @@ async function tryUploadBgmToR2(replicateUrl: string, predictionId: string): Pro
   }
 }
 
-async function uploadFileToR2(filePath: string, predictionId: string): Promise<string | null> {
-  const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
-  const accessKey = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-  const secretKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-  const bucket    = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-  const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
-
-  if (!accountId || !accessKey || !secretKey || !bucket || !publicUrl) return null;
-
+async function tryUploadBgmToR2(replicateUrl: string, predictionId: string): Promise<string | null> {
   try {
-    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
-    const s3 = new S3Client({
-      region:      "auto",
-      endpoint:    `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
-    });
+    const audioRes = await fetch(replicateUrl, { cache: "no-store" });
+    if (!audioRes.ok) return null;
+    const buf = Buffer.from(await audioRes.arrayBuffer());
+    return await uploadBufferToR2(buf, predictionId);
+  } catch (err: any) {
+    console.error("[bgm/status] R2 upload failed:", err?.message);
+    return null;
+  }
+}
 
-    const key = `bgm/${predictionId}/output.wav`;
-    await s3.send(new PutObjectCommand({
-      Bucket:      bucket,
-      Key:         key,
-      Body:        fs.readFileSync(filePath),
-      ContentType: "audio/wav",
-    }));
-
-    console.log(`[bgm/status] R2 upload succeeded: ${key}`);
-    return `${publicUrl}/${key}`;
+async function uploadFileToR2(filePath: string, predictionId: string): Promise<string | null> {
+  try {
+    const buf = await fs.promises.readFile(filePath);
+    return await uploadBufferToR2(buf, predictionId);
   } catch (err: any) {
     console.error("[bgm/status] R2 upload (file) failed:", err?.message);
     return null;
@@ -100,7 +85,7 @@ async function processAndUpload(
     const audioRes = await fetch(replicateUrl, { cache: "no-store" });
     if (!audioRes.ok) return null;
     const buf = await audioRes.arrayBuffer();
-    fs.writeFileSync(tmpIn, Buffer.from(buf));
+    await fs.promises.writeFile(tmpIn, Buffer.from(buf));
 
     const normalized = await normalizeLoudness(tmpIn);
     temps.push(normalized);
