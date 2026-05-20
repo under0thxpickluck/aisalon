@@ -56,10 +56,10 @@ const DURATION_OPTIONS = [
 ];
 
 const BGM_DURATION_OPTIONS = [
-  { label: "2分",    value: 120 },
-  { label: "2分半",  value: 150 },
-  { label: "3分",    value: 180 },
-  { label: "3分半",  value: 210 },
+  { label: "45秒",          value: 45 },
+  { label: "60秒（標準）",  value: 60 },
+  { label: "75秒",          value: 75 },
+  { label: "90秒",          value: 90 },
 ];
 
 const proChipBase     = "rounded-full border px-3 py-1 text-xs font-semibold transition";
@@ -264,6 +264,7 @@ export default function Music2Page() {
 
   // Pro 追加入力
   const [bpmHint, setBpmHint] = useState<number | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string>("");
   const [vocalStyle, setVocalStyle] = useState<string>("");
   const [vocalMood, setVocalMood] = useState<string>("");
   const [instruments, setInstruments] = useState<string[]>([]);
@@ -432,7 +433,7 @@ export default function Music2Page() {
     pollRef.current = setTimeout(poll, 3000);
   }, []);
 
-  const pollBgmUntilCompleted = useCallback((predictionId: string) => {
+  const pollBgmUntilCompleted = useCallback((predictionId: string, mode = "standard_loop") => {
     let ticks = 0;
     const MAX_TICKS = 120;
 
@@ -442,7 +443,7 @@ export default function Music2Page() {
       setProgress(Math.min(94, 15 + ticks * 0.65));
 
       try {
-        const res = await fetch(`/api/bgm/status?id=${encodeURIComponent(predictionId)}`, { cache: "no-store" });
+        const res = await fetch(`/api/bgm/status?id=${encodeURIComponent(predictionId)}&mode=${encodeURIComponent(mode)}`, { cache: "no-store" });
         const data = await res.json();
 
         if (!data.ok) {
@@ -541,6 +542,7 @@ export default function Music2Page() {
             genre,
             mood: moodStr,
             bpm: bpmHint ?? undefined,
+            key: selectedKey || undefined,
             duration: isPro && duration ? duration : undefined,
           }),
         });
@@ -563,7 +565,7 @@ export default function Music2Page() {
         setStageLabel("BGM生成中");
         setStep(2);
         setLoading(false);
-        pollBgmUntilCompleted(data.predictionId);
+        pollBgmUntilCompleted(data.predictionId, data.mode ?? "standard_loop");
         return;
       }
 
@@ -730,6 +732,7 @@ export default function Music2Page() {
     setAudioStage(null);
     setStageLabel(null);
     setBpmHint(null);
+    setSelectedKey("");
     setVocalStyle("");
     setVocalMood("");
     setInstruments([]);
@@ -1046,6 +1049,26 @@ export default function Music2Page() {
                       ))}
                     </div>
                   </div>
+                  {/* KEY 選択 */}
+                  <div className="mt-3">
+                    <label className={`block text-[11px] font-bold mb-1.5 ${isPro ? "text-violet-400" : "text-slate-600"}`}>
+                      KEY（任意）
+                    </label>
+                    <select
+                      value={selectedKey}
+                      onChange={(e) => setSelectedKey(e.target.value)}
+                      className={`w-full rounded-lg border px-3 py-2 text-sm ${
+                        isPro ? "border-violet-500/30 bg-[#12122a] text-white" : "border-slate-300 bg-white text-slate-800"
+                      }`}
+                    >
+                      <option value="">自動</option>
+                      {["C_major","G_major","D_major","A_major","F_major","A_minor","E_minor","D_minor","C_minor"].map((k) => (
+                        <option key={k} value={k}>
+                          {k.replace("_major"," major").replace("_minor"," minor")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {isPro && (
                     <div className="mt-4">
                       <label className="block text-[11px] font-bold text-violet-400 mb-1.5">曲の長さ</label>
@@ -1062,11 +1085,11 @@ export default function Music2Page() {
                           </button>
                         ))}
                       </div>
-                      <p className="mt-1.5 text-[10px] text-violet-400/50">未選択の場合はランダム（2〜3分半）</p>
+                      <p className="mt-1.5 text-[10px] text-violet-400/50">未選択の場合は60秒（最終出力は3分に自動拡張）</p>
                     </div>
                   )}
                   {!isPro && (
-                    <p className="mt-3 text-[10px] text-slate-400">長さはAIが自動で2〜3分半に設定します</p>
+                    <p className="mt-3 text-[10px] text-slate-400">シームレスループ対応BGM（約45秒生成、ブラウザでループ再生）</p>
                   )}
                 </div>
               )}
@@ -1411,7 +1434,19 @@ export default function Music2Page() {
                 )}
 
                 {/* オーディオプレイヤー */}
-                <audio controls src={audioUrl} className="mt-3 w-full" />
+                {isBgmMode ? (
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                        シームレスループ
+                      </span>
+                      <span className="text-xs text-slate-400">ループ再生中</span>
+                    </div>
+                    <audio controls loop src={audioUrl} className="w-full" />
+                  </div>
+                ) : (
+                  <audio controls src={audioUrl} className="mt-3 w-full" />
+                )}
 
                 {/* ジャケット画像生成 */}
                 {!isBgmMode && (
