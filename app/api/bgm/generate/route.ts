@@ -93,11 +93,18 @@ async function generateBgmAtmosphere(
   }
 }
 
+const KEY_LABEL: Record<string, string> = {
+  C_major: "C major",   G_major: "G major",   D_major: "D major",
+  A_major: "A major",   F_major: "F major",   A_minor: "A minor",
+  E_minor: "E minor",   D_minor: "D minor",   C_minor: "C minor",
+};
+
 function buildBgmPrompt(params: {
   theme: string;
   genre: string;
   mood: string;
   bpm?: number;
+  key?: string;
   atmosphere?: string;
 }): string {
   const parts: string[] = [];
@@ -105,7 +112,8 @@ function buildBgmPrompt(params: {
   if (params.mood)  parts.push(MOOD_MAP[params.mood] ?? params.mood);
   if (params.atmosphere) parts.push(params.atmosphere);
   if (params.theme) parts.push(params.theme);
-  if (params.bpm)   parts.push(`${params.bpm} BPM`);
+  if (params.bpm)  parts.push(`exactly ${params.bpm} BPM`);
+  if (params.key && KEY_LABEL[params.key])  parts.push(`${KEY_LABEL[params.key]} key`);
   parts.push("instrumental only, no vocals, no singing, background music, BGM");
   parts.push("high quality, studio quality, clear mix");
   return parts.filter(Boolean).join(", ");
@@ -139,6 +147,7 @@ export async function POST(req: NextRequest) {
     mood: string;
     duration?: number;
     bpm?: number;
+    key?: string;
   };
 
   const id = String(body.id ?? "");
@@ -215,13 +224,14 @@ export async function POST(req: NextRequest) {
     genre: body.genre ?? "",
     mood: body.mood ?? "",
     bpm: body.bpm,
+    key: body.key,
     atmosphere,
   });
 
-  // 通常: 120〜210秒のランダム。Pro: ユーザー指定（120〜210でクランプ）
+  // Standard: 45s fixed / Pro: user-specified 45-90s
   const duration = isPro
-    ? Math.min(Math.max(Number(body.duration ?? 120), 120), 210)
-    : 120 + Math.floor(Math.random() * 91); // 120〜210
+    ? Math.min(Math.max(Number(body.duration ?? 60), 45), 90)
+    : 45;
 
   const res = await fetch("https://api.replicate.com/v1/predictions", {
     method: "POST",
@@ -252,5 +262,10 @@ export async function POST(req: NextRequest) {
   }
 
   console.log("[bgm/generate] success:", { userId: id, predictionId: data.id, isPro, bpCost, duration, promptPreview: prompt.slice(0, 100) });
-  return NextResponse.json({ ok: true, predictionId: String(data.id), bpUsed: bpCost });
+  return NextResponse.json({
+    ok: true,
+    predictionId: String(data.id),
+    mode: isPro ? "pro_loop" : "standard_loop",
+    bpUsed: bpCost,
+  });
 }
