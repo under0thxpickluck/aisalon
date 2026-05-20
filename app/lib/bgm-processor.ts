@@ -29,7 +29,9 @@ export function getAudioDuration(filePath: string): Promise<number> {
   return new Promise((resolve, reject) => {
     Ffmpeg.ffprobe(filePath, (err, meta) => {
       if (err) return reject(err);
-      resolve(meta.format.duration ?? 0);
+      const dur = meta.format.duration;
+      if (dur == null || dur <= 0) return reject(new Error("invalid_duration"));
+      resolve(dur);
     });
   });
 }
@@ -47,12 +49,14 @@ export async function bakeLoop(inputPath: string, crossfadeSec = 4): Promise<str
   const bodyEnd = duration - crossfadeSec;
   const outputPath = tmpFile(".wav");
 
+  // Correct order: xfade (head-baked crossfade) THEN body
+  // When browser loops end→start: body ends cleanly, xfade plays (tail fades out as head fades in), body continues
   const filter = [
-    `[0]atrim=end=${bodyEnd}[body]`,
+    `[0]atrim=start=${crossfadeSec}:end=${bodyEnd}[body]`,
     `[0]atrim=start=${bodyEnd},afade=t=out:st=0:d=${crossfadeSec}[tail_fade]`,
-    `[0]atrim=duration=${crossfadeSec},afade=t=in:st=0:d=${crossfadeSec}[head_fade]`,
-    `[tail_fade][head_fade]amix=inputs=2:duration=longest[xfade]`,
-    `[body][xfade]concat=n=2:v=0:a=1[out]`,
+    `[0]atrim=end=${crossfadeSec},afade=t=in:st=0:d=${crossfadeSec}[head_fade]`,
+    `[tail_fade][head_fade]amix=inputs=2:weights=1 1:normalize=0[xfade]`,
+    `[xfade][body]concat=n=2:v=0:a=1[out]`,
   ].join(";");
 
   return new Promise((resolve, reject) => {
@@ -96,6 +100,7 @@ export async function extendLoop(
   targetSec = 180
 ): Promise<string> {
   const duration = await getAudioDuration(inputPath);
+  if (duration <= 0) throw new Error("invalid_duration");
   const repeatCount = Math.max(2, Math.ceil(targetSec / duration));
   const outputPath = tmpFile(".wav");
 
