@@ -6,3 +6,4 @@ dist/
 test_japanese2.mp3
 aisalon
 .worktrees/
+.claude/worktrees/
