@@ -1,4 +1,14 @@
 import { NextResponse } from "next/server";
+import {
+  normalizeLoudness,
+  bakeLoop,
+  applyProEffects,
+  extendLoop,
+  cleanupTmp,
+} from "@/app/lib/bgm-processor";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +53,47 @@ async function tryUploadBgmToR2(replicateUrl: string, predictionId: string): Pro
   }
 }
 
+type BgmMode = "standard_loop" | "pro_loop";
+
+async function processAndUpload(
+  replicateUrl: string,
+  predictionId: string,
+  mode: BgmMode
+): Promise<string | null> {
+  const tmpIn = path.join(os.tmpdir(), `bgm_raw_${predictionId}.wav`);
+  const temps: string[] = [tmpIn];
+
+  try {
+    const audioRes = await fetch(replicateUrl, { cache: "no-store" });
+    if (!audioRes.ok) return null;
+    const buf = await audioRes.arrayBuffer();
+    fs.writeFileSync(tmpIn, Buffer.from(buf));
+
+    const normalized = await normalizeLoudness(tmpIn);
+    temps.push(normalized);
+
+    const looped = await bakeLoop(normalized, 4);
+    temps.push(looped);
+
+    if (mode === "pro_loop") {
+      const effected = await applyProEffects(looped);
+      temps.push(effected);
+
+      const extended = await extendLoop(effected, 180);
+      temps.push(extended);
+
+      return await tryUploadBgmToR2(extended, predictionId);
+    }
+
+    return await tryUploadBgmToR2(looped, predictionId);
+  } catch (err: any) {
+    console.error("[bgm/status] processAndUpload failed:", err?.message);
+    return null;
+  } finally {
+    cleanupTmp(...temps);
+  }
+}
+
 export async function GET(req: Request) {
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
@@ -53,7 +104,8 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
+  const id   = searchParams.get("id");
+  const mode = (searchParams.get("mode") ?? "standard_loop") as BgmMode;
 
   if (!id) {
     return NextResponse.json({ ok: false, error: "id_required" }, { status: 400 });
@@ -74,35 +126,39 @@ export async function GET(req: Request) {
     }
 
     const status = String(data.status ?? "processing");
-    const rawOutput = data.output;
-    const outputUrl =
-      status === "succeeded" && rawOutput
-        ? typeof rawOutput === "string"
-          ? rawOutput
-          : Array.isArray(rawOutput) && rawOutput[0]
-            ? String(rawOutput[0])
-            : undefined
-        : undefined;
 
-    // 完成時：R2に保存して永続URLに差し替える。失敗時はReplicateURLのまま返す。
-    const finalUrl = outputUrl
-      ? ((await tryUploadBgmToR2(outputUrl, id)) ?? outputUrl)
+    if (status === "failed" || status === "canceled") {
+      return NextResponse.json({ ok: true, status: "failed", progress: 0, stage: "エラー" });
+    }
+
+    if (status !== "succeeded") {
+      return NextResponse.json({
+        ok: true,
+        status: "processing",
+        progress: status === "starting" ? 0.15 : 0.65,
+        stage: "BGM生成中",
+      });
+    }
+
+    const rawOutput = data.output;
+    const outputUrl = rawOutput
+      ? typeof rawOutput === "string" ? rawOutput
+        : Array.isArray(rawOutput) && rawOutput[0] ? String(rawOutput[0]) : undefined
       : undefined;
 
-    return NextResponse.json({
-      ok: true,
-      status,
-      progress:
-        status === "succeeded" ? 1 :
-        status === "failed" || status === "canceled" ? 0 :
-        status === "starting" ? 0.15 :
-        0.65,
-      stage:
-        status === "succeeded" ? "完成" :
-        status === "failed" || status === "canceled" ? "エラー" :
-        "BGM生成中",
-      ...(finalUrl ? { outputUrl: finalUrl } : {}),
-    });
+    if (!outputUrl) {
+      return NextResponse.json({ ok: true, status: "failed", progress: 0, stage: "エラー" });
+    }
+
+    console.log(`[bgm/status] post-process start: mode=${mode}`);
+    const finalUrl = await processAndUpload(outputUrl, id, mode);
+
+    if (!finalUrl) {
+      const fallback = (await tryUploadBgmToR2(outputUrl, id)) ?? outputUrl;
+      return NextResponse.json({ ok: true, status: "succeeded", progress: 1, stage: "完成", outputUrl: fallback });
+    }
+
+    return NextResponse.json({ ok: true, status: "succeeded", progress: 1, stage: "完成", outputUrl: finalUrl });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: String(e?.message ?? e) },
