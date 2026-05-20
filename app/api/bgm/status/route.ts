@@ -53,6 +53,39 @@ async function tryUploadBgmToR2(replicateUrl: string, predictionId: string): Pro
   }
 }
 
+async function uploadFileToR2(filePath: string, predictionId: string): Promise<string | null> {
+  const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
+  const accessKey = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+  const secretKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+  const bucket    = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+  const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+
+  if (!accountId || !accessKey || !secretKey || !bucket || !publicUrl) return null;
+
+  try {
+    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const s3 = new S3Client({
+      region:      "auto",
+      endpoint:    `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
+    });
+
+    const key = `bgm/${predictionId}/output.wav`;
+    await s3.send(new PutObjectCommand({
+      Bucket:      bucket,
+      Key:         key,
+      Body:        fs.readFileSync(filePath),
+      ContentType: "audio/wav",
+    }));
+
+    console.log(`[bgm/status] R2 upload succeeded: ${key}`);
+    return `${publicUrl}/${key}`;
+  } catch (err: any) {
+    console.error("[bgm/status] R2 upload (file) failed:", err?.message);
+    return null;
+  }
+}
+
 type BgmMode = "standard_loop" | "pro_loop";
 
 async function processAndUpload(
@@ -82,10 +115,10 @@ async function processAndUpload(
       const extended = await extendLoop(effected, 180);
       temps.push(extended);
 
-      return await tryUploadBgmToR2(extended, predictionId);
+      return await uploadFileToR2(extended, predictionId);
     }
 
-    return await tryUploadBgmToR2(looped, predictionId);
+    return await uploadFileToR2(looped, predictionId);
   } catch (err: any) {
     console.error("[bgm/status] processAndUpload failed:", err?.message);
     return null;
