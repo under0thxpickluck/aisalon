@@ -144,7 +144,7 @@ function MonthlyBonuses({ bonuses }: { bonuses: Bonus[] }) {
                     </thead>
                     <tbody>
                       {mb.map((b, i) => (
-                        <tr key={i} className="border-t border-slate-100">
+                        <tr key={b.ts + b.kind + i} className="border-t border-slate-100">
                           <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{formatDate(b.ts)}</td>
                           <td className="px-3 py-2 text-slate-700">{kindLabel(b.kind)}</td>
                           <td className="px-3 py-2 text-right font-bold text-emerald-700">{formatAmount(b.amount)}</td>
@@ -177,7 +177,7 @@ function ReferralTree({ referrals }: { referrals: Referral[] }) {
           </div>
           <div className="flex gap-4 mt-4 items-start justify-center flex-wrap">
             {referrals.map((r, i) => (
-              <div key={i} className="flex flex-col items-center">
+              <div key={r.login_id + i} className="flex flex-col items-center">
                 <div className="w-px h-4 bg-slate-300" />
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-mono text-slate-700">
                   {maskId(r.login_id)}
@@ -298,7 +298,7 @@ export default function ReferralAppPage() {
       setCopied(kind);
       setTimeout(() => setCopied(""), 1500);
     } catch {
-      setErr("clipboard_failed");
+      setErr("クリップボードへのコピーに失敗しました");
     }
   };
 
@@ -480,7 +480,7 @@ export default function ReferralAppPage() {
                   </thead>
                   <tbody>
                     {visibleReferrals.map((r, i) => (
-                      <tr key={i} className="border-t border-slate-100">
+                      <tr key={r.login_id + i} className="border-t border-slate-100">
                         <td className="px-3 py-2 font-mono text-slate-700">{maskId(r.login_id)}</td>
                         <td className="px-3 py-2 text-slate-700">${r.plan}</td>
                         <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{formatDate(r.approved_at)}</td>
