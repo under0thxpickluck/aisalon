@@ -227,7 +227,7 @@ function ReferralTree({ referrals }: { referrals: Referral[] }) {
 
 // ─── Password Gate ────────────────────────────────────────────────────────────
 
-const APP_PASSWORD = "nagoya01@";
+const APP_PASSWORD = "boss";
 const SESSION_KEY = "referral_app_authed";
 
 function PasswordGate({ onAuth }: { onAuth: () => void }) {
