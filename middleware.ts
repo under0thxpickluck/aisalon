@@ -13,12 +13,16 @@ function unauthorized(realm: string) {
 export function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
+  // /5000 系は全て OV (lifaiov.vercel.app) にリダイレクト
+  if (pathname === "/5000" || pathname.startsWith("/5000/") || pathname.startsWith("/api/5000/")) {
+    const ovUrl = `https://lifaiov.vercel.app${pathname}${req.nextUrl.search}`;
+    return NextResponse.redirect(ovUrl);
+  }
+
   // ✅ /admin, /api/admin をガード（/note-generator は BP 課金に移行）
   const isProtected =
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/api/admin") ||
-    pathname.startsWith("/5000/admin") ||
-    pathname.startsWith("/api/5000/admin");
+    pathname.startsWith("/api/admin");
   if (!isProtected) return NextResponse.next();
 
   const user = process.env.ADMIN_USER || "";
@@ -38,10 +42,10 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/5000",
+    "/5000/:path*",
+    "/api/5000/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
-    "/5000/admin/:path*",
-    "/5000/admin",
-    "/api/5000/admin/:path*",
   ],
 };
