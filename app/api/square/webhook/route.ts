@@ -92,8 +92,12 @@ export async function POST(req: Request) {
 
   // Square Orders API で reference_id を取得
   // reference_id = "{user_id}:{pack_id}:{bp_amount}" が埋め込まれている
+  // isTest=true の場合は payload.test_reference_id を直接使う（Orders API 呼び出しをスキップ）
   let referenceId: string | null = null;
-  if (accessToken) {
+  if (isTest && payload.test_reference_id) {
+    referenceId = String(payload.test_reference_id);
+    console.log("[Square Webhook] test mode: using test_reference_id", referenceId);
+  } else if (accessToken) {
     try {
       const orderRes = await fetch(`https://connect.squareup.com/v2/orders/${orderId}`, {
         headers: {
