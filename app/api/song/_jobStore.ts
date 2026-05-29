@@ -122,7 +122,10 @@ export async function createJob(
   bpLocked: number
 ): Promise<void> {
   const res = await callGas("create_music_job", { jobId, userId, prompt, bpLocked });
-  if (!res.ok) throw new Error(`create_music_job_failed: ${res.error ?? "unknown"}`);
+  if (!res.ok) {
+    console.error(`[JobStore] create_music_job failed for ${jobId}: ${JSON.stringify(res)}`);
+    throw new Error(`create_music_job failed: ${res.error ?? "unknown"}`);
+  }
 }
 
 export async function getJob(jobId: string): Promise<SongJob | null> {
@@ -135,7 +138,10 @@ export async function updateJob(
   jobId: string,
   fields: Partial<Omit<SongJob, "jobId">>
 ): Promise<void> {
-  await callGas("update_music_job", { jobId, fields });
+  const res = await callGas("update_music_job", { jobId, fields });
+  if (!res.ok) {
+    console.warn(`[JobStore] update_music_job failed for ${jobId}: ${JSON.stringify(res)}`);
+  }
 }
 
 // listUserJobs は今は未使用だがシグネチャ維持
