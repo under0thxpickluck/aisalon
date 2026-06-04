@@ -6990,16 +6990,18 @@ function doPost(e) {
         narasuSheet.appendRow([
           "request_id", "created_at", "status",
           "narasu_login_id", "narasu_password",
-          "audio_urls", "lyrics_text",
+          "audio_urls", "audio_titles", "lyrics_text",
           "jacket_image_url", "jacket_note",
-          "artist_name", "note",
+          "artist_name", "artist_name_kana", "artist_name_alpha", "artist_photo_url",
+          "album_name", "album_name_kana", "album_name_alpha",
+          "note",
           "agreed_terms_version", "agreed_at",
           "admin_memo",
           "login_id", "payment_status", "payment_method", "paid_at"
         ]);
       } else {
         var existingHeaders = narasuSheet.getRange(1, 1, 1, narasuSheet.getLastColumn()).getValues()[0].map(function(h) { return String(h); });
-        ["login_id", "payment_status", "payment_method", "paid_at"].forEach(function(col) {
+        ["audio_titles", "artist_name_kana", "artist_name_alpha", "artist_photo_url", "album_name", "album_name_kana", "album_name_alpha", "login_id", "payment_status", "payment_method", "paid_at"].forEach(function(col) {
           if (existingHeaders.indexOf(col) === -1) {
             narasuSheet.getRange(1, existingHeaders.length + 1).setValue(col);
             existingHeaders.push(col);
@@ -7008,26 +7010,33 @@ function doPost(e) {
       }
       var requestId = "NA-" + Date.now();
       var now = new Date().toISOString();
-      narasuSheet.appendRow([
-        requestId,
-        now,
-        "submitted",
-        str_(body.narasu_login_id),
-        str_(body.narasu_password),
-        str_(body.audio_urls),
-        str_(body.lyrics_text),
-        str_(body.jacket_image_url),
-        str_(body.jacket_note),
-        str_(body.artist_name),
-        str_(body.note),
-        str_(body.agreed_terms_version),
-        str_(body.agreed_at),
-        "",
-        str_(body.login_id),
-        "unpaid",
-        "",
-        ""
-      ]);
+      var headers2 = narasuSheet.getRange(1, 1, 1, narasuSheet.getLastColumn()).getValues()[0].map(function(h) { return String(h); });
+      var idx2 = {};
+      headers2.forEach(function(h, i) { idx2[h] = i; });
+      var newRow = new Array(headers2.length).fill("");
+      newRow[idx2["request_id"]]          = requestId;
+      newRow[idx2["created_at"]]          = now;
+      newRow[idx2["status"]]              = "submitted";
+      newRow[idx2["narasu_login_id"]]     = str_(body.narasu_login_id);
+      newRow[idx2["narasu_password"]]     = str_(body.narasu_password);
+      newRow[idx2["audio_urls"]]          = str_(body.audio_urls);
+      newRow[idx2["audio_titles"]]        = str_(body.audio_titles);
+      newRow[idx2["lyrics_text"]]         = str_(body.lyrics_text);
+      newRow[idx2["jacket_image_url"]]    = str_(body.jacket_image_url);
+      newRow[idx2["jacket_note"]]         = str_(body.jacket_note);
+      newRow[idx2["artist_name"]]         = str_(body.artist_name);
+      newRow[idx2["artist_name_kana"]]    = str_(body.artist_name_kana);
+      newRow[idx2["artist_name_alpha"]]   = str_(body.artist_name_alpha);
+      newRow[idx2["artist_photo_url"]]    = str_(body.artist_photo_url);
+      newRow[idx2["album_name"]]          = str_(body.album_name);
+      newRow[idx2["album_name_kana"]]     = str_(body.album_name_kana);
+      newRow[idx2["album_name_alpha"]]    = str_(body.album_name_alpha);
+      newRow[idx2["note"]]                = str_(body.note);
+      newRow[idx2["agreed_terms_version"]]= str_(body.agreed_terms_version);
+      newRow[idx2["agreed_at"]]           = str_(body.agreed_at);
+      newRow[idx2["login_id"]]            = str_(body.login_id);
+      newRow[idx2["payment_status"]]      = "unpaid";
+      narasuSheet.appendRow(newRow);
       Logger.log("[narasu_agency_submit] saved: " + requestId);
       return json_({ ok: true, requestId: requestId });
     } catch (e) {
