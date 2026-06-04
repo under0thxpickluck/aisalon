@@ -20,6 +20,14 @@ const BP_BONUS: Partial<Record<Plan, number>> = {
   "1000": 12000,
 };
 
+const EP_RATE: Partial<Record<Plan, string>> = {
+  "30": "4EP = 1円相当",
+  "50": "3.5EP = 1円相当",
+  "100": "3EP = 1円相当",
+  "500": "2.5EP = 1円相当",
+  "1000": "2EP = 1円相当",
+};
+
 type PlanDef = {
   id: Plan;
   priceLabel: string;
@@ -102,10 +110,12 @@ function PlanCard({
   plan,
   selected,
   onSelect,
+  epRate,
 }: {
   plan: PlanDef;
   selected: boolean;
   onSelect: () => void;
+  epRate?: string;
 }) {
   const isBest = plan.id === ("100" as Plan);
 
@@ -158,6 +168,11 @@ function PlanCard({
               {BP_BONUS[plan.id] ? (
                 <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-extrabold text-indigo-800">
                   {BP_BONUS[plan.id]}BP付与
+                </span>
+              ) : null}
+              {epRate ? (
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-extrabold text-emerald-800">
+                  {epRate}
                 </span>
               ) : null}
             </div>
@@ -343,7 +358,7 @@ export default function PurchaseJamPage() {
               ) : (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {PLANS.map((p) => (
-                    <PlanCard key={String(p.id)} plan={p} selected={draft.plan === p.id} onSelect={() => setPlan(p.id)} />
+                    <PlanCard key={String(p.id)} plan={p} selected={draft.plan === p.id} onSelect={() => setPlan(p.id)} epRate={EP_RATE[p.id]} />
                   ))}
                 </div>
               )}
