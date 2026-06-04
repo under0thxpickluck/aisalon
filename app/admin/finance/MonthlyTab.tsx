@@ -156,7 +156,7 @@ export default function MonthlyTab() {
 
           {/* 注記 */}
           <p className="mb-3 text-xs text-zinc-500">
-            CC決済（内部課金）列は Stripe 連携後に有効化されます。現在は表示のみ（—）。
+            CC決済列は Square BP購入のアフィリエイト報酬（管理者付与済み分）を集計します。
           </p>
 
           {/* テーブル */}
@@ -170,7 +170,7 @@ export default function MonthlyTab() {
                     <th className="px-3 py-2 font-bold">紹介者</th>
                     <th className="px-3 py-2 font-bold text-center">段</th>
                     <th className="px-3 py-2 font-bold text-right">初回入金(USD)</th>
-                    <th className="px-3 py-2 font-bold text-right">初回 分配EP<br/><span className="text-zinc-500 font-normal">（L1:10%〜L5:1%）</span></th>
+                    <th className="px-3 py-2 font-bold text-right">初回 分配EP<br/><span className="text-zinc-500 font-normal">（L1:20%）</span></th>
                     <th className="px-3 py-2 font-bold text-right text-zinc-600">CC決済(USD)</th>
                     <th className="px-3 py-2 font-bold text-right text-zinc-600">CC 分配EP<br/><span className="font-normal">（L1:5%〜L5:0.5%）</span></th>
                     <th className="px-3 py-2 font-bold text-right">合計EP</th>

@@ -1775,21 +1775,16 @@ function handle_(key, body) {
       const childLoginId = str_(r[amIdx["login_id"]]);
       const amountJpy    = amountUsd * usdToJpy;
 
-      for (let lvl = 0; lvl < 5; lvl++) {
-        const colName    = refCols[lvl];
-        if (amIdx[colName] === undefined) continue;
-        const refLoginId = str_(r[amIdx[colName]]);
-        if (!refLoginId) continue;
-
-        const ratePct  = initRates[lvl];
-        const rewardEp = Math.floor(amountJpy * ratePct / 100 * epPerJpy);
-
-        const entry = ensureReferrer(refLoginId);
-        entry.levels[lvl].initial_usd += amountUsd;
-        entry.levels[lvl].initial_ep  += rewardEp;
-        entry.levels[lvl].total_ep    += rewardEp;
-        if (childLoginId && entry.levels[lvl].initial_sources.indexOf(childLoginId) === -1) {
-          entry.levels[lvl].initial_sources.push(childLoginId);
+      // L1のみ 20% 固定（壊さない）
+      var refL1 = str_(r[amIdx["referrer_login_id"]]);
+      if (refL1) {
+        var rewardEpL1 = Math.floor(amountJpy * 20 / 100 * epPerJpy);
+        var entryL1 = ensureReferrer(refL1);
+        entryL1.levels[0].initial_usd += amountUsd;
+        entryL1.levels[0].initial_ep  += rewardEpL1;
+        entryL1.levels[0].total_ep    += rewardEpL1;
+        if (childLoginId && entryL1.levels[0].initial_sources.indexOf(childLoginId) === -1) {
+          entryL1.levels[0].initial_sources.push(childLoginId);
         }
       }
     }
@@ -4892,6 +4887,18 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
         bpGranted = true;
         bpAdded = Number.isFinite(g.bp) ? g.bp : 0;
         epAdded = Number.isFinite(g.ep) ? g.ep : 0;
+        // ✅ EP付与をwallet_ledgerに記録（壊さない）
+        if (epAdded > 0) {
+          try {
+            appendWalletLedger_({
+              kind:     "ep_grant",
+              login_id: loginId,
+              email:    email,
+              amount:   epAdded,
+              memo:     "plan:" + plan,
+            });
+          } catch (eg) {}
+        }
       } else {
         bpGranted = true;
         bpAdded = 0;
