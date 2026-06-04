@@ -48,7 +48,7 @@ export default function AffiliateTab() {
   }, []);
 
   const affiliateRows = useMemo(
-    () => ledger.filter(l => l.kind === "affiliate_reward")
+    () => ledger.filter(l => l.kind === "affiliate_reward" || l.kind === "cc_affiliate_reward")
          .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()),
     [ledger]
   );
