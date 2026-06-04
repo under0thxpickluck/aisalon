@@ -4649,6 +4649,38 @@ function handle_(key, body) {
   }
 
   // =========================================================
+  // music_sell_delete（管理：承認済み楽曲売却申請の行を物理削除）
+  // - approved 行のみ削除可能
+  // =========================================================
+  if (action === "music_sell_delete") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) return json_({ ok: false, error: "admin_unauthorized" });
+    try {
+      var delRequestId = str_(body.requestId);
+      if (!delRequestId) return json_({ ok: false, error: "missing_requestId" });
+      var ssDel  = SpreadsheetApp.getActiveSpreadsheet();
+      var mssDel = ssDel.getSheetByName("music_sell_requests");
+      if (!mssDel) return json_({ ok: false, error: "sheet_not_found" });
+      var delRows    = mssDel.getDataRange().getValues();
+      var delHeaders = delRows[0];
+      var delRidIdx  = delHeaders.indexOf("request_id");
+      var delStIdx   = delHeaders.indexOf("status");
+      if (delRidIdx === -1) return json_({ ok: false, error: "request_id_column_not_found" });
+      for (var di = 1; di < delRows.length; di++) {
+        if (str_(delRows[di][delRidIdx]) === delRequestId) {
+          if (str_(delRows[di][delStIdx]) !== "approved") {
+            return json_({ ok: false, error: "not_approved" });
+          }
+          mssDel.deleteRow(di + 1);
+          return json_({ ok: true });
+        }
+      }
+      return json_({ ok: false, error: "request_not_found" });
+    } catch(e) {
+      return json_({ ok: false, error: String(e) });
+    }
+  }
+
+  // =========================================================
   // music_sell_notify（承認済み・未通知の売却申請をユーザーに返し、notified_at を記録）
   // =========================================================
   if (action === "music_sell_notify") {
