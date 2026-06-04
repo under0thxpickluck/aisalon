@@ -1745,6 +1745,9 @@ function handle_(key, body) {
       const status = str_(r[amIdx["status"]]);
       if (status !== "approved") continue;
 
+      // 5000グループは集計対象外
+      if (amIdx["entry_source"] !== undefined && str_(r[amIdx["entry_source"]]) === "5000") continue;
+
       // 日付フォールバック: approved_at → auto_approved_at → paid_at
       let effectiveDate = null;
       const dateCols = ["approved_at", "auto_approved_at", "paid_at"];
