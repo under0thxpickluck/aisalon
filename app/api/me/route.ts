@@ -22,6 +22,7 @@ type GasMeResponse =
       referrer_login_id?: string;
       referrer_2_login_id?: string;
       referrer_3_login_id?: string;
+      ep_notification?: number;
     }
   | {
       ok: false;
@@ -97,15 +98,16 @@ async function callGasMe(gasUrl: string, gasKey: string, id: string, code: strin
     if (data && data.ok === true) {
       return {
         ok: true,
-        login_id: str(data.login_id),
-        email: str(data.email),
-        status: str(data.status),
-        plan: str(data.plan),
-        my_ref_code: str(data.my_ref_code),
-        ref_path: str(data.ref_path),
-        referrer_login_id: str(data.referrer_login_id),
+        login_id:            str(data.login_id),
+        email:               str(data.email),
+        status:              str(data.status),
+        plan:                str(data.plan),
+        my_ref_code:         str(data.my_ref_code),
+        ref_path:            str(data.ref_path),
+        referrer_login_id:   str(data.referrer_login_id),
         referrer_2_login_id: str(data.referrer_2_login_id),
         referrer_3_login_id: str(data.referrer_3_login_id),
+        ep_notification:     typeof data.ep_notification === "number" ? data.ep_notification : 0,
       };
     }
 
