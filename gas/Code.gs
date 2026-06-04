@@ -2112,7 +2112,97 @@ function handle_(key, body) {
     });
 
     Logger.log("[square_grant_bp] " + (isTest_sq ? "[TEST] " : "") + "granted " + bpAmount_sq + " BP to " + userId_sq + " payment:" + paymentId_sq + " bp:" + currentBp_sq + " -> " + newBp_sq);
+
+    // ✅ CC affiliate キューに積む（EP付与は管理者が手動実行）
+    try {
+      var amountCents_sq = Number(body.amount_cents || 0);
+      if (amountCents_sq > 0) {
+        var pendingSheet_sq = getOrCreateSheetByName_(
+          SpreadsheetApp.getActiveSpreadsheet(),
+          "cc_affiliate_pending",
+          ["ts","square_payment_id","payer_login_id","referrer_login_id",
+           "referrer_email","amount_usd","reward_ep","status","granted_at"]
+        );
+        var pendingData_sq = pendingSheet_sq.getDataRange().getValues();
+        var pendingIdx_sq  = indexMap_(pendingData_sq[0]);
+        var alreadyQueued  = false;
+        for (var pqi = 1; pqi < pendingData_sq.length; pqi++) {
+          if (str_(pendingData_sq[pqi][pendingIdx_sq["square_payment_id"]]) === paymentId_sq) {
+            alreadyQueued = true;
+            break;
+          }
+        }
+        if (!alreadyQueued) {
+          var buyerRefLoginId = "";
+          var buyerRefEmail   = "";
+          var sqValues_ref    = targetSheet_sq.getDataRange().getValues();
+          var sqHeader_ref    = sqValues_ref[0];
+          ensureCols_(targetSheet_sq, sqHeader_ref, ["login_id","referrer_login_id","email"]);
+          sqValues_ref  = targetSheet_sq.getDataRange().getValues();
+          sqHeader_ref  = sqValues_ref[0];
+          var sqIdx_ref = indexMap_(sqHeader_ref);
+          for (var rfi = 1; rfi < sqValues_ref.length; rfi++) {
+            if (str_(sqValues_ref[rfi][sqIdx_ref["login_id"]]) === userId_sq) {
+              buyerRefLoginId = str_(sqValues_ref[rfi][sqIdx_ref["referrer_login_id"]]);
+              break;
+            }
+          }
+          if (buyerRefLoginId) {
+            for (var rfe = 1; rfe < sqValues_ref.length; rfe++) {
+              if (str_(sqValues_ref[rfe][sqIdx_ref["login_id"]]) === buyerRefLoginId) {
+                buyerRefEmail = str_(sqValues_ref[rfe][sqIdx_ref["email"]]);
+                break;
+              }
+            }
+            var settings_sq  = getSystemSettings_();
+            var amountUsd_sq = amountCents_sq / 100;
+            var rewardEp_sq  = Math.floor(amountUsd_sq * settings_sq.usdToJpy * 0.05 * settings_sq.epPerJpy);
+            pendingSheet_sq.appendRow([
+              new Date(), paymentId_sq, userId_sq, buyerRefLoginId,
+              buyerRefEmail, amountUsd_sq, rewardEp_sq, "pending", ""
+            ]);
+            Logger.log("[cc_affiliate_queue] queued: payer=" + userId_sq
+              + " referrer=" + buyerRefLoginId + " ep=" + rewardEp_sq);
+          }
+        }
+      }
+    } catch (ecc) {
+      Logger.log("[cc_affiliate_queue] error: " + String(ecc));
+    }
+
     return json_({ ok: true, bp_before: currentBp_sq, bp_after: newBp_sq, isTest: isTest_sq });
+  }
+
+  // =========================================================
+  // cc_affiliate_pending_list（管理：CC付与待ちリスト取得）
+  // =========================================================
+  if (action === "cc_affiliate_pending_list") {
+    if (str_(body.adminKey) !== ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+    var pendingSheet_l = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("cc_affiliate_pending");
+    if (!pendingSheet_l) return json_({ ok: true, items: [] });
+    var pData_l    = pendingSheet_l.getDataRange().getValues();
+    var pHeaders_l = pData_l[0];
+    var pIdx_l     = indexMap_(pHeaders_l);
+    var items_l    = [];
+    for (var li = 1; li < pData_l.length; li++) {
+      var row_l    = pData_l[li];
+      var ts_l     = row_l[pIdx_l["ts"]];
+      var gAt_l    = row_l[pIdx_l["granted_at"]];
+      items_l.push({
+        square_payment_id: str_(row_l[pIdx_l["square_payment_id"]]),
+        payer_login_id:    str_(row_l[pIdx_l["payer_login_id"]]),
+        referrer_login_id: str_(row_l[pIdx_l["referrer_login_id"]]),
+        referrer_email:    str_(row_l[pIdx_l["referrer_email"]]),
+        amount_usd:        Number(row_l[pIdx_l["amount_usd"]] || 0),
+        reward_ep:         Number(row_l[pIdx_l["reward_ep"]]  || 0),
+        status:            str_(row_l[pIdx_l["status"]]),
+        ts:                ts_l  ? new Date(ts_l).toISOString()  : "",
+        granted_at:        gAt_l ? new Date(gAt_l).toISOString() : "",
+      });
+    }
+    return json_({ ok: true, items: items_l });
   }
 
   // =========================================================

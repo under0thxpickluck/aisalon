@@ -160,6 +160,7 @@ export async function POST(req: Request) {
           bp_amount: bpAmount,
           square_payment_id: paymentId,
           pack_id: packId,
+          amount_cents: amountCents ?? 0,
           note: `amount_cents:${amountCents} order_id:${orderId}`,
           isTest,
         }),
