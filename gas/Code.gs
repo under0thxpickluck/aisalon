@@ -4713,6 +4713,9 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
       // ✅ メールエラーログ（デバッグ用）
       "mail_error",
 
+      // ✅ 承認日（月次集計の基準日）
+      "approved_at",
+
       // ✅ 入口識別（5000ルートから入ったユーザーに "5000" を設定）
       "entry_source",
     ]);
@@ -4852,6 +4855,10 @@ function approveRowCore_(sheet, header, idx, rowIndex, note) {
     sheet.getRange(rowIndex, idx["reset_expires"] + 1).setValue(expires);
     sheet.getRange(rowIndex, idx["reset_used_at"] + 1).setValue("");
     sheet.getRange(rowIndex, idx["status"] + 1).setValue("approved");
+    if (idx["approved_at"] !== undefined) {
+      const existingApprovedAt = sheet.getRange(rowIndex, idx["approved_at"] + 1).getValue();
+      if (!existingApprovedAt) sheet.getRange(rowIndex, idx["approved_at"] + 1).setValue(new Date());
+    }
 
     // ✅ approved になった瞬間にBP/EPを付与（bp_granted_at で二重付与防止）（壊さない）
     let bpGranted = false;
