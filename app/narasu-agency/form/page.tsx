@@ -1,7 +1,7 @@
 // app/narasu-agency/form/page.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isGatePassed, loadDraft, saveDraft } from "@/lib/narasu-agency/storage";
 import { validateDraft, type ValidationErrors } from "@/lib/narasu-agency/validation";
@@ -41,6 +41,7 @@ export default function NarasuFormPage() {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set());
   const lifaiLoginIdRef = useRef("");
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     if (!isGatePassed()) { router.replace("/narasu-agency"); return; }
@@ -74,7 +75,7 @@ export default function NarasuFormPage() {
     });
   }
 
-  async function resolveTitle(id: string, url: string) {
+  const resolveTitle = useCallback(async (id: string, url: string) => {
     const trimmed = url.trim();
     if (!trimmed) return;
     setResolvingIds((prev) => new Set(prev).add(id));
@@ -99,6 +100,11 @@ export default function NarasuFormPage() {
     } finally {
       setResolvingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
     }
+  }, []);
+
+  function scheduleResolveTitle(id: string, url: string) {
+    clearTimeout(debounceTimers.current[id]);
+    debounceTimers.current[id] = setTimeout(() => resolveTitle(id, url), 800);
   }
 
   function addAudioUrl() {
@@ -206,8 +212,8 @@ export default function NarasuFormPage() {
                       <input
                         type="url"
                         value={entry.url}
-                        onChange={(e) => updateAudioUrl(entry.id, e.target.value)}
-                        onBlur={(e) => resolveTitle(entry.id, e.target.value)}
+                        onChange={(e) => { updateAudioUrl(entry.id, e.target.value); scheduleResolveTitle(entry.id, e.target.value); }}
+                        onBlur={(e) => { clearTimeout(debounceTimers.current[entry.id]); resolveTitle(entry.id, e.target.value); }}
                         className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                         placeholder={`音源URL ${idx + 1}`}
                       />

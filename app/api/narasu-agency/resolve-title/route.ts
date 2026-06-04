@@ -1,6 +1,19 @@
 // app/api/narasu-agency/resolve-title/route.ts
 import { NextResponse } from "next/server";
 
+// URLからsong IDセグメントを抽出（例: song_20260522_ROB3Y5）
+function extractSongId(url: string): string | null {
+  const m = url.match(/song_[A-Z0-9_]+/i);
+  return m ? m[0] : null;
+}
+
+function urlsMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  const idA = extractSongId(a);
+  const idB = extractSongId(b);
+  return !!(idA && idB && idA === idB);
+}
+
 export async function POST(req: Request) {
   try {
     const gasUrl = process.env.GAS_WEBAPP_URL;
@@ -29,7 +42,7 @@ export async function POST(req: Request) {
 
     const match = data.items.find(
       (item: { audioUrl?: string; downloadUrl?: string }) =>
-        item.audioUrl === url || item.downloadUrl === url
+        urlsMatch(item.audioUrl ?? "", url) || urlsMatch(item.downloadUrl ?? "", url)
     );
 
     return NextResponse.json({ ok: true, title: match?.title ?? null });
