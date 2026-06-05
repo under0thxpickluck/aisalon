@@ -140,6 +140,12 @@ export default function NarasuConfirmPage() {
                 <p className={valueCls}>{draft.albumNameAlpha}</p>
               </div>
             )}
+            {draft.artistPhotoUrl && (
+              <div className={rowCls}>
+                <p className={labelCls}>アーティスト写真URL</p>
+                <p className={valueCls}>{draft.artistPhotoUrl}</p>
+              </div>
+            )}
             {draft.note && (
               <div className={rowCls}>
                 <p className={labelCls}>補足事項</p>

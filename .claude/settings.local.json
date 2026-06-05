@@ -47,7 +47,15 @@
       "Skill(superpowers:writing-plans)",
       "Skill(superpowers:subagent-driven-development)",
       "Skill(superpowers:using-git-worktrees)",
-      "Skill(superpowers:finishing-a-development-branch)"
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Bash(cp \"C:\\\\Users\\\\unitu\\\\aisalon\\\\app\\\\api\\\\narasu-agency\\\\pay-bp\\\\route.ts\" \"C:\\\\Users\\\\unitu\\\\lifaiov\\\\app\\\\api\\\\narasu-agency\\\\pay-bp\\\\route.ts\")",
+      "Bash(cp \"C:\\\\Users\\\\unitu\\\\aisalon\\\\app\\\\api\\\\narasu-agency\\\\pay-ep\\\\route.ts\" \"C:\\\\Users\\\\unitu\\\\lifaiov\\\\app\\\\api\\\\narasu-agency\\\\pay-ep\\\\route.ts\")",
+      "Bash(cp \"C:\\\\Users\\\\unitu\\\\aisalon\\\\app\\\\api\\\\narasu-agency\\\\submit\\\\route.ts\" \"C:\\\\Users\\\\unitu\\\\lifaiov\\\\app\\\\api\\\\narasu-agency\\\\submit\\\\route.ts\")",
+      "Bash(cp \"C:\\\\Users\\\\unitu\\\\aisalon\\\\app\\\\narasu-agency\\\\confirm\\\\page.tsx\" \"C:\\\\Users\\\\unitu\\\\lifaiov\\\\app\\\\narasu-agency\\\\confirm\\\\page.tsx\")",
+      "Bash(cp \"C:\\\\Users\\\\unitu\\\\aisalon\\\\app\\\\narasu-agency\\\\complete\\\\page.tsx\" \"C:\\\\Users\\\\unitu\\\\lifaiov\\\\app\\\\narasu-agency\\\\complete\\\\page.tsx\")",
+      "PowerShell(head *)",
+      "Read(//mnt/c/Users/unitu/**)",
+      "Bash(npx --yes tsc --noEmit)"
     ]
   }
 }

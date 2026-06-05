@@ -21,10 +21,10 @@ function emptyDraft(): NarasuAgencyDraft {
     lyricsText: "",
     jacketImageUrl: "",
     jacketNote: "",
+    artistPhotoUrl: "",
     artistName: "",
     artistNameKana: "",
     artistNameAlpha: "",
-    artistPhotoUrl: "",
     albumName: "",
     albumNameKana: "",
     albumNameAlpha: "",
@@ -352,6 +352,19 @@ export default function NarasuFormPage() {
                 placeholder="https://drive.google.com/..."
               />
               {errors.jacketImageUrl && <p className={errorCls}>{errors.jacketImageUrl}</p>}
+            </div>
+
+            {/* アーティスト写真 */}
+            <div>
+              <label className={labelCls}>アーティスト写真URL <span className="text-slate-400 font-normal">（任意）</span></label>
+              <p className="mt-0.5 text-[11px] text-slate-400">Google ドライブ・Dropbox 等にアップロードした写真の共有URLを貼り付けてください</p>
+              <input
+                type="url"
+                value={draft.artistPhotoUrl}
+                onChange={(e) => update("artistPhotoUrl", e.target.value)}
+                className={inputCls}
+                placeholder="https://drive.google.com/..."
+              />
             </div>
 
             {/* 補足事項 */}
