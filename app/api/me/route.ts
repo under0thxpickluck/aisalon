@@ -145,8 +145,13 @@ export async function POST(req: Request) {
   const gasRes = await callGasMe(env.gasUrl, env.gasKey, id, code, group);
 
   if (gasRes.ok) {
+    const adminLogins = (process.env.ULTRA_ADMIN_LOGINS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const isUltraAdmin = adminLogins.includes(gasRes.login_id);
     return NextResponse.json(
-      { ok: true, me: gasRes },
+      { ok: true, me: { ...gasRes, isUltraAdmin } },
       { status: 200, headers: { "Cache-Control": "no-store" } }
     );
   }

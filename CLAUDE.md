@@ -121,6 +121,7 @@ ADMIN_PASS=
 NOWPAYMENTS_API_KEY=
 NOWPAYMENTS_IPN_SECRET=
 NEXT_PUBLIC_SITE_URL=
+ULTRA_ADMIN_LOGINS=        # カンマ区切りの loginId リスト（Ultra Music Mode の管理者のみアクセス可）
 ```
 
 ### 音楽生成 API のタイムアウト設定

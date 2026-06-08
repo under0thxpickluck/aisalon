@@ -6,6 +6,7 @@ export const BP_COSTS = {
   music_bgm_pro:   150,  // BGM生成（Pro）
   music_full:      100,  // フル生成（構成+音楽）
   music_full_pro:  250,  // Pro設定使用時のフル生成
+  music_ultra:     300,  // Ultra モード（歌詞持込・ボーカル指定）
 
   // note記事生成
   note_title:        3,  // タイトル生成

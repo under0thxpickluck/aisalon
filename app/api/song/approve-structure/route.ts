@@ -53,6 +53,9 @@ async function generateAudioAttempt(
   const { attemptNum = 1, maxChorusRepeats = 2 } = opts;
   const isPro = !!prompt.isPro;
 
+  console.log(`[Job ${jobId}][attempt${attemptNum}] singableLyrics from GAS: ${singableLyrics ? `${singableLyrics.length}chars → "${singableLyrics.slice(0, 80).replace(/\n/g, "\\n")}"` : "EMPTY/UNDEFINED ← 歌詞がGASから返ってきていない"}`);
+  console.log(`[Job ${jobId}][attempt${attemptNum}] prompt.vocalStyle: ${prompt.vocalStyle ?? "(none)"}, prompt.isPro: ${isPro}`);
+
   const rawTempPath   = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_raw.wav`);
   const finalTempPath = path.join(os.tmpdir(), `${jobId}_attempt${attemptNum}_final.wav`);
 
@@ -70,6 +73,10 @@ async function generateAudioAttempt(
   let audioBuffer: ArrayBuffer;
   try {
     const hasSingable = !!(singableLyrics && singableLyrics.trim().length > 0);
+    const vocalStyle = prompt.vocalStyle;
+    const vocalMode: "vocal" | "instrumental" =
+      vocalStyle === "ボーカルなし" ? "instrumental" : "vocal";
+
     const input: MusicGenerateInput = {
       prompt:            prompt.theme ?? prompt.genre ?? "",
       genre:             prompt.genre,
@@ -80,7 +87,8 @@ async function generateAudioAttempt(
       lyricsMode:        hasSingable ? "manual" : "auto",
       language:          prompt.language ?? "ja",
       durationTargetSec: isPro ? 180 : 150,
-      vocalMode:         "vocal",
+      vocalMode,
+      vocalStyle,
       structurePreset:   chooseStructurePreset(prompt.mood, isPro),
       moodTags:          prompt.moodTags ?? [],
       isPro,
@@ -263,15 +271,21 @@ async function runAsrAndQuality(
 
     console.log(`[merge][jobId=${jobId}] final_display source=${mergeResult.lyricsSource} len=${mergeResult.displayLyrics.length} preview=${mergeResult.displayLyrics.slice(0, 120)}`);
 
+    // manual歌詞（Ultraモード）の場合はユーザー提供歌詞を保持し、ASRでの上書きをしない
+    const isManualLyrics = job.lyricsSource === "manual";
+    if (isManualLyrics) {
+      console.log(`[Job ${jobId}][asr] lyricsSource=manual: skipping displayLyrics overwrite to preserve user lyrics`);
+    }
+
     await updateJob(jobId, {
       lyricsMatchScore:     compareResult.score,
       lyricsDiffJson:       compareResult.diffJson,
-      displayLyrics:        mergeResult.displayLyrics,
-      distributionLyrics:   mergeResult.distributionLyrics,
+      displayLyrics:        isManualLyrics ? (singable || mergeResult.displayLyrics) : mergeResult.displayLyrics,
+      distributionLyrics:   isManualLyrics ? (singable || mergeResult.distributionLyrics) : mergeResult.distributionLyrics,
       mergedLyrics:         mergeResult.mergedLyrics,
-      lyricsReviewRequired: gateResult.reviewRequired,
-      distributionReady:    gateResult.distributionReady,
-      lyricsSource:         mergeResult.lyricsSource,
+      lyricsReviewRequired: isManualLyrics ? false : gateResult.reviewRequired,
+      distributionReady:    isManualLyrics ? true  : gateResult.distributionReady,
+      lyricsSource:         isManualLyrics ? "manual" : mergeResult.lyricsSource,
       lyricsGateResult:     gateResult.gate,
       lyricsQualityScore:   qualityResult.lyricsQualityScore,
       repeatScore:          repeatResult.repeatScore,
@@ -429,7 +443,7 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
       status:      finalStatus,
       audioUrl:    usedFinalUrl,
       downloadUrl: usedFinalUrl,
-      bpFinal:     BP_COSTS.music_full,
+      bpFinal:     currentJob?.bpLocked ?? BP_COSTS.music_full,
       rightsLog:   updatedRightsLog,
     });
     console.log(`[Job ${jobId}] ${finalStatus} (gate=${finalGate}) with final: ${usedFinalUrl}`);
@@ -443,7 +457,7 @@ async function runAudioPipeline(job: SongJob, apiKey: string): Promise<void> {
       status:      finalStatus,
       audioUrl:    audioFinalUrl,
       downloadUrl: audioFinalUrl,
-      bpFinal:     BP_COSTS.music_full,
+      bpFinal:     currentJob?.bpLocked ?? BP_COSTS.music_full,
       rightsLog:   updatedRightsLog,
     });
     console.log(`[Job ${jobId}] ${finalStatus} (gate=${finalGate}) with raw fallback (${fallbackReason}): ${audioFinalUrl}`);
@@ -460,7 +474,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const { jobId, approved } = body ?? {};
+  const { jobId, approved, lyricsOverride } = body ?? {};
   if (!jobId)            return NextResponse.json({ ok: false, error: "jobId_required" },        { status: 400 });
   if (approved !== true) return NextResponse.json({ ok: false, error: "approved_must_be_true" }, { status: 400 });
 
@@ -499,9 +513,29 @@ export async function POST(req: Request) {
     rightsLog,
   });
 
-  const updatedJob = await getJob(String(jobId));
+  let updatedJob = await getJob(String(jobId));
   if (!updatedJob) {
     return NextResponse.json({ ok: false, error: "job_not_found" }, { status: 404 });
+  }
+
+  // lyricsOverride が提供されている場合（Ultraモード）: GAS の singableLyrics に依存せず直接上書き
+  const lyricsOverrideStr = typeof lyricsOverride === "string" ? lyricsOverride.trim() : "";
+  if (lyricsOverrideStr.length > 0) {
+    console.log(`[Job ${String(jobId)}][approve-structure] lyricsOverride applied: ${lyricsOverrideStr.length}chars → "${lyricsOverrideStr.slice(0, 80).replace(/\n/g, "\\n")}"`);
+    const overrideFields = {
+      singableLyrics:       lyricsOverrideStr,
+      masterLyrics:         lyricsOverrideStr,
+      displayLyrics:        lyricsOverrideStr,
+      distributionLyrics:   lyricsOverrideStr,
+      lyricsSource:         "manual" as const,
+      lyricsReviewRequired: false,
+      distributionReady:    true,
+      anchorWordsJson:      null,
+      hookLinesJson:        null,
+    };
+    updatedJob = { ...updatedJob, ...overrideFields };
+    // GAS にも永続化してクラッシュ後のリトライで歌詞が失われないようにする
+    await updateJob(String(jobId), overrideFields);
   }
 
   await runAudioPipeline(updatedJob, apiKey);

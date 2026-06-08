@@ -67,7 +67,7 @@ const proChipActive   = "border-violet-500 bg-violet-600 text-white";
 const proChipInactive = "border-[#3730a3] bg-[#1e1b4b] text-indigo-300 hover:border-violet-500 hover:text-violet-300";
 
 type Step = 0 | 1 | 2 | 3;
-type GenerationMode = "song" | "bgm";
+type GenerationMode = "song" | "bgm" | "ultra";
 
 type StructureData = {
   bpm: number;
@@ -209,6 +209,7 @@ export default function Music2Page() {
 
   // フォーム
   const [generationMode, setGenerationMode] = useState<GenerationMode>("song");
+  const [ultraEnabled,   setUltraEnabled]   = useState<boolean>(false);
   const [theme, setTheme] = useState("");
   const [genre, setGenre] = useState("");
   const [selectedMoods, setSelectedMoods] = useState<string[]>([]);
@@ -269,13 +270,16 @@ export default function Music2Page() {
   const [vocalMood, setVocalMood] = useState<string>("");
   const [instruments, setInstruments] = useState<string[]>([]);
   const [duration,    setDuration]    = useState<number | null>(null);
+  const [ultraLyrics,     setUltraLyrics]     = useState<string>("");
+  const [ultraVocalStyle, setUltraVocalStyle] = useState<string>("女性ボーカル");
 
   const isPro = plan !== null && PRO_PLANS.includes(plan);
 
   const isProSettingsActive =
     isPro && (!!bpmHint || !!vocalStyle || !!vocalMood || instruments.length > 0 || !!duration);
 
-  const isBgmMode = generationMode === "bgm";
+  const isBgmMode   = generationMode === "bgm";
+  const isUltraMode = generationMode === "ultra";
 
   // ── 認証チェック & プラン取得 ───────────────────────────────────────────
 
@@ -319,6 +323,7 @@ export default function Music2Page() {
         const data = await res.json().catch(() => ({ ok: false }));
         if (data?.ok && data?.me?.plan) {
           setPlan(String(data.me.plan));
+          setUltraEnabled(!!data.me.isUltraAdmin);
         } else {
           setPlan(cachedPlan || "");
         }
@@ -509,6 +514,100 @@ export default function Music2Page() {
     pollRef.current = setTimeout(poll, 2500);
   }, [genre, selectedMoods, theme]);
 
+  // ── Ultra モード: 構成確認ステップをスキップして直接生成 ──────────────────
+
+  async function handleUltraStart() {
+    const auth = getAuth();
+    const code = getAuthSecret();
+    const id   = (auth as any)?.id || (auth as any)?.loginId || "";
+    if (!auth || !code || !id) { router.replace("/login"); return; }
+    if (!theme.trim() || !genre || selectedMoods.length === 0) return;
+
+    stopPoll();
+    setLoading(true);
+    setErrorMsg(null);
+    setProgress(5);
+    setStageLabel("楽曲を準備しています…");
+
+    const moodStr = selectedMoods.join("・");
+
+    try {
+      const startRes = await fetch("/api/song/start", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          code,
+          theme:      theme.trim(),
+          genre,
+          mood:       moodStr,
+          isPro:      true,
+          vocalStyle: ultraVocalStyle || "女性ボーカル",
+          language:   "ja",
+          userLyrics: ultraLyrics.trim() || undefined,
+          isUltra:    true,
+        }),
+      });
+      const startData = await startRes.json();
+
+      if (!startData.ok) {
+        const msg =
+          startData.error === "insufficient_bp"
+            ? `BPが不足しています（現在: ${startData.bp ?? "?"}BP、必要: 300BP）`
+            : startData.error === "ultra_not_authorized"
+            ? "Ultraモードはまだ準備中です。"
+            : startData.error === "job_create_failed" || startData.error === "gas_job_create_failed"
+            ? "サーバー設定のエラーが発生しました。管理者に連絡してください。"
+            : `エラーが発生しました（${startData.error ?? "unknown"}）`;
+        setErrorMsg(msg);
+        setLoading(false);
+        return;
+      }
+
+      const jid = startData.jobId;
+      setJobId(jid);
+      setProgress(20);
+      setStageLabel("音楽を生成しています…");
+      setLoading(false);
+      setStep(2);
+
+      let fakeP = 20;
+      const fakeTimer = setInterval(() => {
+        fakeP = Math.min(88, fakeP + 0.25);
+        setProgress(fakeP);
+      }, 2000);
+
+      try {
+        const approveRes = await fetch("/api/song/approve-structure", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jobId:          jid,
+            approved:       true,
+            lyricsOverride: ultraLyrics.trim() || undefined,   // GASに依存せず直接渡す
+          }),
+        });
+        const approveData = await approveRes.json();
+
+        if (!approveData.ok && !approveData.alreadyInProgress) {
+          setErrorMsg(`エラー: ${approveData.error ?? "unknown"}${approveData.status ? ` (status: ${approveData.status})` : ""}`);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        setInfoMsg("接続が一時的に途切れました。生成は継続中です…");
+      } finally {
+        clearInterval(fakeTimer);
+      }
+
+      pollRef.current = setTimeout(() => {}, 0);
+      pollUntilCompleted(jid);
+    } catch {
+      setErrorMsg("ネットワークエラーが発生しました。");
+      setLoading(false);
+    }
+  }
+
   // ── Step 0: 曲を作る（構成生成まで一気に） ──────────────────────────────
 
   async function handleStart() {
@@ -577,7 +676,7 @@ export default function Music2Page() {
         body:    JSON.stringify({
           id, code, theme: theme.trim(), genre, mood: moodStr, isPro,
           bpmHint:     isPro && bpmHint                 ? bpmHint     : undefined,
-          vocalStyle:  isPro && vocalStyle               ? vocalStyle  : undefined,
+          vocalStyle:  vocalStyle                        || undefined,
           vocalMood:   isPro && vocalMood                ? vocalMood   : undefined,
           instruments: isPro && instruments.length > 0  ? instruments : undefined,
           duration:    isPro && duration                 ? duration    : undefined,
@@ -739,6 +838,8 @@ export default function Music2Page() {
     setVocalMood("");
     setInstruments([]);
     setDuration(null);
+    setUltraLyrics("");
+    setUltraVocalStyle("女性ボーカル");
   }
 
   // ── ムード切り替え ────────────────────────────────────────────────────────
@@ -908,7 +1009,7 @@ export default function Music2Page() {
           </div>
 
           <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
-            {step === 0 && (isBgmMode ? "BGMを作る" : "新しい曲を作る")}
+            {step === 0 && (isUltraMode ? "Ultra で曲を作る ✨" : isBgmMode ? "BGMを作る" : "新しい曲を作る")}
             {step === 1 && "構成案を確認"}
             {step === 2 && (isBgmMode ? "BGMを生成しています…" : "曲を生成しています…")}
             {step === 3 && (isBgmMode ? "BGMが完成しました！" : "曲が完成しました！")}
@@ -921,43 +1022,57 @@ export default function Music2Page() {
           ════════════════════════════════════════════════════ */}
           {step === 0 && (
             <>
-              <div className="mt-5 grid grid-cols-2 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+              <div className="mt-5 grid grid-cols-3 rounded-2xl border border-slate-200 bg-slate-50 p-1">
                 {([
-                  { value: "song", label: "曲生成", sub: "歌詞・構成あり" },
-                  { value: "bgm", label: "BGM生成", sub: "ボーカルなし｜試験運転中" },
-                ] as const).map((item) => (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => {
-                      if (item.value !== generationMode) {
-                        setBpmHint(null);
-                        setVocalStyle("");
-                        setVocalMood("");
-                        setInstruments([]);
-                        setDuration(null);
-                      }
-                      setGenerationMode(item.value);
-                      setErrorMsg(null);
-                      setProgress(0);
-                    }}
-                    disabled={loading}
-                    className={[
-                      "rounded-xl px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
-                      generationMode === item.value
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800",
-                    ].join(" ")}
-                  >
-                    <span className="block text-sm font-extrabold">{item.label}</span>
-                    <span className="mt-0.5 block text-[10px] font-semibold">{item.sub}</span>
-                  </button>
-                ))}
+                  { value: "song",  label: "曲生成",    sub: "歌詞・構成あり",              adminOnly: false },
+                  { value: "bgm",   label: "BGM生成",   sub: "ボーカルなし｜試験運転中",    adminOnly: false },
+                  { value: "ultra", label: "Ultra ✨",  sub: ultraEnabled ? "歌詞持込・ボーカル指定" : "準備中", adminOnly: true },
+                ] as const).map((item) => {
+                  const isLocked = item.adminOnly && !ultraEnabled;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => {
+                        if (isLocked) return;
+                        if (item.value !== generationMode) {
+                          setBpmHint(null);
+                          setVocalStyle("");
+                          setVocalMood("");
+                          setInstruments([]);
+                          setDuration(null);
+                        }
+                        setGenerationMode(item.value);
+                        setErrorMsg(null);
+                        setProgress(0);
+                      }}
+                      disabled={loading || isLocked}
+                      title={isLocked ? "現在準備中です" : undefined}
+                      className={[
+                        "rounded-xl px-3 py-2 text-left transition",
+                        isLocked
+                          ? "cursor-not-allowed opacity-40"
+                          : "disabled:cursor-not-allowed disabled:opacity-60",
+                        generationMode === item.value
+                          ? "bg-white text-slate-900 shadow-sm"
+                          : "text-slate-500 hover:text-slate-800",
+                      ].join(" ")}
+                    >
+                      <span className="block text-sm font-extrabold">{item.label}</span>
+                      <span className="mt-0.5 block text-[10px] font-semibold">
+                        {item.sub}
+                        {isLocked && <span className="ml-1 rounded bg-slate-200 px-1 py-0.5 text-[8px] font-bold text-slate-400">準備中</span>}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               <p className="mt-2 text-sm text-slate-600">
                 {isBgmMode
                   ? "テーマ・ジャンル・雰囲気を選ぶと、ボーカルなしのBGMを生成します。"
+                  : isUltraMode
+                  ? "歌詞を自分で書き、ボーカルタイプを指定して高品質な楽曲を生成します。歌詞は省略可（省略時はAI自動生成）。"
                   : "テーマ・ジャンル・雰囲気を選ぶと、AIが構成を提案してから曲を生成します。"}
               </p>
 
@@ -1096,8 +1211,89 @@ export default function Music2Page() {
                 </div>
               )}
 
+              {/* Ultra 入力セクション */}
+              {isUltraMode && (
+                <div className="mt-5 rounded-[18px] border border-indigo-200 bg-indigo-50 p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm">✨</span>
+                    <span className="text-[11px] font-black tracking-widest text-indigo-600">ULTRA SETTINGS</span>
+                  </div>
+
+                  {/* ボーカルタイプ */}
+                  <div className="mb-4">
+                    <label className="block text-[11px] font-bold text-indigo-700 mb-1.5">
+                      ボーカルタイプ
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["女性ボーカル", "男性ボーカル", "混声", "ボーカルなし"].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => {
+                            setUltraVocalStyle(v);
+                            if (v === "ボーカルなし") setUltraLyrics("");
+                          }}
+                          className={[
+                            chipBase,
+                            ultraVocalStyle === v ? chipActive : chipInactive,
+                            "disabled:cursor-not-allowed disabled:opacity-50",
+                          ].join(" ")}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 歌詞テキストエリア（ボーカルなし以外） */}
+                  {ultraVocalStyle !== "ボーカルなし" && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-indigo-700 mb-1">
+                        歌詞
+                        <span className="ml-2 text-[10px] font-normal text-indigo-400">任意 — 空欄の場合はAIが自動生成</span>
+                      </label>
+                      <p className="mb-2 text-[10px] text-indigo-400 leading-relaxed">
+                        [Verse] [Chorus] [Bridge] の形式で書くと曲の構成に反映されやすくなります。
+                      </p>
+                      <textarea
+                        value={ultraLyrics}
+                        onChange={(e) => setUltraLyrics(e.target.value)}
+                        disabled={loading}
+                        placeholder={"[Verse]\n春の風が吹いて\n新しい朝が来る\n\n[Chorus]\n君と歩いた道\nずっと忘れない"}
+                        rows={10}
+                        className="w-full rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60 font-mono"
+                      />
+                      <p className="mt-1 text-right text-[10px] text-indigo-400">
+                        {ultraLyrics.length} 文字
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ボーカルタイプ（通常Songモード、非Proのみ。Proは下のPRO SETTINGSに含まれる） */}
+              {!isBgmMode && !isUltraMode && !isPro && (
+                <div className="mt-5">
+                  <label className="block text-xs font-bold text-slate-700">ボーカルタイプ</label>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {VOCAL_STYLES.map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => setVocalStyle(vocalStyle === v ? "" : v)}
+                        className={[chipBase, vocalStyle === v ? chipActive : chipInactive, "disabled:cursor-not-allowed disabled:opacity-50"].join(" ")}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Pro追加設定（isPro === true の場合のみ表示） */}
-              {isPro && !isBgmMode && (
+              {isPro && !isBgmMode && !isUltraMode && (
                 <div className="mt-5 rounded-[18px] border border-violet-500/30 bg-[#0d0d1a] p-4 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
                   {/* ヘッダー */}
                   <div className="flex items-center gap-2 mb-4">
@@ -1217,9 +1413,11 @@ export default function Music2Page() {
               <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
                 <span className="text-xs font-bold text-indigo-700">必要BP</span>
                 <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
-                  {isBgmMode ? (isPro ? "150 BP" : "80 BP") : isProSettingsActive ? "250 BP" : "100 BP"}
+                  {isUltraMode ? "300 BP" : isBgmMode ? (isPro ? "150 BP" : "80 BP") : isProSettingsActive ? "250 BP" : "100 BP"}
                 </span>
-                {isBgmMode ? (
+                {isUltraMode ? (
+                  <span className="ml-auto text-[11px] text-indigo-500">✨ 歌詞持込・ボーカル指定・高品質生成</span>
+                ) : isBgmMode ? (
                   <span className="ml-auto text-[11px] text-indigo-500">{isPro ? "🎛️ Pro BGM（時間指定）" : "2〜3分半のBGMをランダム生成"}</span>
                 ) : isPro ? (
                   isProSettingsActive ? (
@@ -1233,7 +1431,17 @@ export default function Music2Page() {
               </div>
 
               {/* ローディング中のプログレス */}
-              {loading && <ProgressBar label={isBgmMode ? "BGM生成を開始しています…" : "楽曲構成を生成しています…"} />}
+              {loading && (
+                <ProgressBar
+                  label={
+                    isUltraMode
+                      ? (stageLabel ?? "楽曲を生成しています…")
+                      : isBgmMode
+                      ? "BGM生成を開始しています…"
+                      : "楽曲構成を生成しています…"
+                  }
+                />
+              )}
 
               {/* リリース・申請案内 */}
               {!isBgmMode && (
@@ -1265,13 +1473,13 @@ export default function Music2Page() {
               {/* 生成ボタン */}
               <div className="mt-4">
                 <button
-                  onClick={handleStart}
+                  onClick={isUltraMode ? handleUltraStart : handleStart}
                   disabled={!canStart}
                   className={btnPrimary}
                 >
                   {loading
-                    ? isBgmMode ? "BGM生成を開始中…" : "構成を生成中…"
-                    : isBgmMode ? "BGMを生成する" : "曲を作る"}
+                    ? isUltraMode ? "生成を開始中…" : isBgmMode ? "BGM生成を開始中…" : "構成を生成中…"
+                    : isUltraMode ? "✨ Ultra で生成する (300BP)" : isBgmMode ? "BGMを生成する" : "曲を作る"}
                 </button>
                 {!canStart && !loading && (
                   <p className="mt-2 text-center text-[11px] text-slate-400">
@@ -1424,7 +1632,7 @@ export default function Music2Page() {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? (isPro ? 150 : 80) : (isProSettingsActive ? 250 : 100)}BP</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? (isPro ? 150 : 80) : isUltraMode ? 300 : (isProSettingsActive ? 250 : 100)}BP</p>
 
                 {/* 品質警告 */}
                 {!isBgmMode && (lyricsReviewRequired || !distributionReady) && audioUrl && (

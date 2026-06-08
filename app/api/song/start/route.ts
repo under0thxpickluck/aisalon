@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const { id, code, theme, genre, mood, isPro, bpmHint, vocalStyle, vocalMood, language } = body ?? {};
+  const { id, code, theme, genre, mood, isPro, bpmHint, vocalStyle, vocalMood, language, userLyrics, isUltra } = body ?? {};
   const instruments = Array.isArray(body.instruments) ? (body.instruments as string[]) : [];
   const duration    = body.duration ? Number(body.duration) : undefined;
 
@@ -162,15 +162,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "balance_check_failed" }, { status: 502 });
   }
 
-  // Pro設定が1つでも使われているか判定
-  const isProSettingsUsed = !!isPro && !!(
+  const isUltraMode = !!isUltra;
+
+  // Ultra モードは admin のみ利用可能
+  if (isUltraMode) {
+    const adminLogins = (process.env.ULTRA_ADMIN_LOGINS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!adminLogins.includes(String(id))) {
+      return NextResponse.json({ ok: false, error: "ultra_not_authorized" }, { status: 403 });
+    }
+  }
+
+  // Pro設定が1つでも使われているか判定（Ultraは専用コストなので除外）
+  const isProSettingsUsed = !isUltraMode && !!isPro && !!(
     body.bpmHint ||
     body.vocalStyle ||
     body.vocalMood ||
     instruments.length > 0 ||
     duration
   );
-  const bpCost = isProSettingsUsed ? BP_COSTS.music_full_pro : BP_COSTS.music_full;
+  const bpCost = isUltraMode
+    ? BP_COSTS.music_ultra
+    : isProSettingsUsed
+    ? BP_COSTS.music_full_pro
+    : BP_COSTS.music_full;
 
   if (bp < bpCost) {
     return NextResponse.json({ ok: false, error: "insufficient_bp", bp }, { status: 400 });
@@ -190,7 +207,7 @@ export async function POST(req: Request) {
         theme:       String(theme),
         genre:       String(genre),
         mood:        String(mood),
-        isPro:       !!isPro,
+        isPro:       isUltraMode ? true : !!isPro,   // Ultra は常にPro品質プロンプトを使用
         bpmHint:     bpmHint ? Number(bpmHint) : undefined,
         vocalStyle:  vocalStyle ? String(vocalStyle) : undefined,
         vocalMood:   vocalMood ? String(vocalMood) : undefined,
@@ -282,6 +299,23 @@ export async function POST(req: Request) {
       hookLinesJson:        JSON.stringify(hookLines),
       generationAttempt:    1,
     });
+  }
+
+  // Ultraモード: userLyricsが提供された場合はAI生成歌詞を上書き
+  const userLyricsStr = typeof userLyrics === "string" ? userLyrics.trim() : "";
+  if (isUltraMode && userLyricsStr.length > 0) {
+    await updateJob(jobId, {
+      masterLyrics:         userLyricsStr,
+      singableLyrics:       userLyricsStr,
+      displayLyrics:        userLyricsStr,
+      distributionLyrics:   userLyricsStr,
+      lyricsSource:         "manual",
+      lyricsReviewRequired: false,
+      distributionReady:    true,
+      anchorWordsJson:      null,
+      hookLinesJson:        null,
+    });
+    console.log(`[Job ${jobId}][ultra] user lyrics applied: ${userLyricsStr.length} chars → "${userLyricsStr.slice(0, 80).replace(/\n/g, "\\n")}"`);
   }
 
   const completedJob = await getJob(jobId);
