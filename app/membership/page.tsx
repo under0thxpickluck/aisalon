@@ -26,11 +26,11 @@ const PLAN_BP_CAP: Record<string, number> = {
 };
 
 const BP_PACKS = [
-  { id: "s",   label: "S",   price: 750,   bp: 500,   tag: null,      color: "border-white/10",    squareUrl: "https://square.link/u/psdQz6zG" },
-  { id: "m",   label: "M",   price: 1500,  bp: 1200,  tag: null,      color: "border-white/10",    squareUrl: "https://square.link/u/Pqma4c0e" },
-  { id: "l",   label: "L",   price: 3000,  bp: 2600,  tag: null,      color: "border-white/10",    squareUrl: "https://square.link/u/t9rI14uZ" },
-  { id: "xl",  label: "XL",  price: 7500,  bp: 7000,  tag: "おすすめ",  color: "border-purple-500",  squareUrl: "https://square.link/u/V5rWWucX" },
-  { id: "xxl", label: "XXL", price: 15000, bp: 16000, tag: "最大効率", color: "border-yellow-500",  squareUrl: "https://square.link/u/xjZ3lkH4" },
+  { id: "s",   label: "S",   price: 1200,  bp: 500,   tag: null,      color: "border-white/10",    squareUrl: "https://square.link/u/psdQz6zG" },
+  { id: "m",   label: "M",   price: 2400,  bp: 1200,  tag: null,      color: "border-white/10",    squareUrl: "https://square.link/u/Pqma4c0e" },
+  { id: "l",   label: "L",   price: 4800,  bp: 2600,  tag: null,      color: "border-white/10",    squareUrl: "https://square.link/u/t9rI14uZ" },
+  { id: "xl",  label: "XL",  price: 12000, bp: 7000,  tag: "おすすめ",  color: "border-purple-500",  squareUrl: "https://square.link/u/V5rWWucX" },
+  { id: "xxl", label: "XXL", price: 24000, bp: 16000, tag: "最大効率", color: "border-yellow-500",  squareUrl: "https://square.link/u/xjZ3lkH4" },
 ];
 
 type MemberStatus = {
