@@ -174,11 +174,11 @@ function ArrowDown() {
 export default function ReferralPage() {
   const planRows = useMemo<PlanRow[]>(
     () => [
-      { plan: "40", label: "ENTRY", maxRefPerMonth: "2人まで", epCapPerMonth: "2,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "—" },
-      { plan: "67", label: "BUILDER", maxRefPerMonth: "5人まで", epCapPerMonth: "4,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "3EP=1円" },
-      { plan: "134", label: "AUTOMATION", maxRefPerMonth: "10人まで", epCapPerMonth: "8,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2.5EP=1円" },
-      { plan: "667", label: "CORE", maxRefPerMonth: "上限なし", epCapPerMonth: "15,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2EP=1円" },
-      { plan: "1334", label: "INFRA", maxRefPerMonth: "上限なし", epCapPerMonth: "30,000円相当まで", epRateNormal: "4EP=1円", epRateMax: "2EP=1円" },
+      { plan: "40",   label: "ENTRY",      maxRefPerMonth: "2人まで",   epCapPerMonth: "2,000円相当まで",  epRateNormal: "4EP=1円",   epRateMax: "—" },
+      { plan: "67",   label: "BUILDER",    maxRefPerMonth: "5人まで",   epCapPerMonth: "4,000円相当まで",  epRateNormal: "3.5EP=1円", epRateMax: "—" },
+      { plan: "134",  label: "AUTOMATION", maxRefPerMonth: "10人まで",  epCapPerMonth: "8,000円相当まで",  epRateNormal: "3EP=1円",   epRateMax: "—" },
+      { plan: "667",  label: "CORE",       maxRefPerMonth: "上限なし",  epCapPerMonth: "15,000円相当まで", epRateNormal: "2.5EP=1円", epRateMax: "—" },
+      { plan: "1334", label: "INFRA",      maxRefPerMonth: "上限なし",  epCapPerMonth: "30,000円相当まで", epRateNormal: "2EP=1円",   epRateMax: "—" },
     ],
     []
   );
@@ -428,6 +428,9 @@ export default function ReferralPage() {
                 <Badge tone="amber">月の上限あり</Badge>
                 <Badge tone="indigo">単層（1段）</Badge>
               </div>
+              <p className="mt-3 text-xs text-slate-500 leading-relaxed">
+                ※ 付与されるEP数は紹介者プランのEPレートに基づきます。上位プランほど少ないEP数で同等の円換算価値を受け取ります（例：CORE/INFRAは2EP=1円換算で付与）。
+              </p>
             </Card>
           </div>
 

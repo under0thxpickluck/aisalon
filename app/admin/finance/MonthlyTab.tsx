@@ -21,6 +21,7 @@ type ReferrerSummary = {
   total_cc_usd: number;
   total_cc_ep: number;
   total_ep: number;
+  ep_per_jpy?: number;
 };
 
 type SummaryData = {
@@ -66,7 +67,7 @@ function fmtEp(v: number): string {
   return v === 0 ? "0 EP" : `${v.toLocaleString()} EP`;
 }
 
-const INIT_RATES = [10, 5, 2, 2, 1];
+const INIT_RATES = [20, 5, 2, 2, 1];
 const CC_RATES   = [5, 2.5, 1, 1, 0.5];
 
 export default function MonthlyTab() {
@@ -189,6 +190,9 @@ export default function MonthlyTab() {
                         <td className="px-3 py-2 font-mono font-bold text-zinc-200">
                           <span className="mr-1 text-zinc-500">{isOpen ? "▼" : "▶"}</span>
                           {r.login_id}
+                          {r.ep_per_jpy != null && (
+                            <span className="ml-2 text-[10px] font-normal text-zinc-500">{r.ep_per_jpy}EP/円</span>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-center text-zinc-400">合計</td>
                         <td className="px-3 py-2 text-right text-zinc-300 font-bold">{fmtUsd(r.total_initial_usd)}</td>

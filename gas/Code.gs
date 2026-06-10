@@ -1707,6 +1707,14 @@ function handle_(key, body) {
     const amHeader = amValues[0];
     const amIdx    = indexMap_(amHeader);
 
+    // login_id → plan のルックアップマップ（プラン別EPレート計算用）
+    const loginPlanMap = {};
+    for (let pi = 1; pi < amValues.length; pi++) {
+      var pid = str_(amValues[pi][amIdx["login_id"]]);
+      var ppl = str_(amValues[pi][amIdx["plan"]]);
+      if (pid) loginPlanMap[pid] = ppl;
+    }
+
     const refCols = [
       "referrer_login_id",
       "referrer_2_login_id",
@@ -1721,7 +1729,8 @@ function handle_(key, body) {
     const ensureReferrer = function(loginId) {
       if (!referrerMap[loginId]) {
         referrerMap[loginId] = {
-          login_id: loginId,
+          login_id:   loginId,
+          ep_per_jpy: null,
           levels: [1,2,3,4,5].map(function(lvl) {
             return {
               level:           lvl,
@@ -1775,11 +1784,14 @@ function handle_(key, body) {
       const childLoginId = str_(r[amIdx["login_id"]]);
       const amountJpy    = amountUsd * usdToJpy;
 
-      // L1のみ 20% 固定（壊さない）
+      // L1のみ 20% 固定（プラン別EPレート適用）
       var refL1 = str_(r[amIdx["referrer_login_id"]]);
       if (refL1) {
-        var rewardEpL1 = Math.floor(amountJpy * 20 / 100 * epPerJpy);
-        var entryL1 = ensureReferrer(refL1);
+        var refL1Plan   = loginPlanMap[refL1] || "";
+        var refL1EpRate = getEpPerJpy_(refL1Plan);
+        var rewardEpL1  = Math.floor(amountJpy * 20 / 100 * refL1EpRate);
+        var entryL1     = ensureReferrer(refL1);
+        entryL1.ep_per_jpy = refL1EpRate;
         entryL1.levels[0].initial_usd += amountUsd;
         entryL1.levels[0].initial_ep  += rewardEpL1;
         entryL1.levels[0].total_ep    += rewardEpL1;
@@ -5786,6 +5798,15 @@ function getSystemSettings_() {
   } catch (e) {
     return { usdToJpy: 145, epPerJpy: 4, rates: [10, 5, 2, 2, 1] };
   }
+}
+
+// ==============================
+// プラン別 EP/JPY レート（紹介EP付与計算用）
+// Starter=4, Builder=3.5, Automation=3, Core=2.5, Infra=2
+// ==============================
+function getEpPerJpy_(plan) {
+  var map = { "40": 4, "67": 3.5, "134": 3, "667": 2.5, "1334": 2 };
+  return map[String(plan)] || 4;
 }
 
 function getOrCreateSheet_() {
