@@ -37,6 +37,11 @@ type SummaryData = {
     total_ep: number;
     referrer_count: number;
   };
+  debug_info?: {
+    approved_in_month: number;
+    no_ref_code: number;
+    no_referrer_id: number;
+  };
 };
 
 function currentMonth(): string {
@@ -130,6 +135,11 @@ export default function MonthlyTab() {
         {data && (
           <span className="text-xs text-zinc-500">
             {fmtMonth(data.month)} の集計 ／ 換算: 1 USD = {data.usd_to_jpy} 円 × {data.ep_per_jpy} EP/円
+          </span>
+        )}
+        {data?.debug_info && data.debug_info.no_referrer_id > 0 && (
+          <span className="rounded-lg bg-yellow-900/40 px-3 py-1.5 text-xs text-yellow-400">
+            ⚠ 紹介コードあり・紹介者未解決: {data.debug_info.no_referrer_id} 件 → TreeタブでBackfill実行を推奨
           </span>
         )}
       </div>

@@ -1752,6 +1752,10 @@ function handle_(key, body) {
     };
 
     // --- 初回入金の集計（applies シートを走査）---
+    var debugApprovedInMonth = 0;
+    var debugNoRefCode       = 0;
+    var debugNoReferrer      = 0;
+
     for (let ri = 1; ri < amValues.length; ri++) {
       const r      = amValues[ri];
       const status = str_(r[amIdx["status"]]);
@@ -1774,6 +1778,8 @@ function handle_(key, body) {
       if (!effectiveDate) continue;
       if (effectiveDate < startUtc || effectiveDate >= endUtc) continue;
 
+      debugApprovedInMonth++;
+
       // 決済金額
       let amountUsd = 0;
       if (amIdx["expected_paid"] !== undefined) {
@@ -1786,9 +1792,16 @@ function handle_(key, body) {
 
       const childLoginId = str_(r[amIdx["login_id"]]);
       const amountJpy    = amountUsd * usdToJpy;
+      const usedRef      = amIdx["ref_code"] !== undefined ? str_(r[amIdx["ref_code"]]) : "";
+      const refL1        = amIdx["referrer_login_id"] !== undefined ? str_(r[amIdx["referrer_login_id"]]) : "";
+
+      if (!usedRef) {
+        debugNoRefCode++;
+      } else if (!refL1) {
+        debugNoReferrer++;
+      }
 
       // L1のみ 20% 固定（プラン別EPレート適用）
-      var refL1 = str_(r[amIdx["referrer_login_id"]]);
       if (refL1) {
         var refL1Plan   = loginPlanMap[refL1] || "";
         var refL1EpRate = getEpPerJpy_(refL1Plan);
@@ -1868,6 +1881,11 @@ function handle_(key, body) {
       ep_per_jpy:  epPerJpy,
       referrers:   amReferrers,
       summary:     amSummary,
+      debug_info: {
+        approved_in_month: debugApprovedInMonth,
+        no_ref_code:       debugNoRefCode,
+        no_referrer_id:    debugNoReferrer,
+      },
     });
   }
 
@@ -5809,10 +5827,11 @@ function getSystemSettings_() {
 
 // ==============================
 // プラン別 EP/JPY レート（紹介EP付与計算用）
+// plan列に格納されるID: "30"=Starter, "50"=Builder, "100"=Automation, "500"=Core, "1000"=Infra
 // Starter=4, Builder=3.5, Automation=3, Core=2.5, Infra=2
 // ==============================
 function getEpPerJpy_(plan) {
-  var map = { "40": 4, "67": 3.5, "134": 3, "667": 2.5, "1334": 2 };
+  var map = { "30": 4, "50": 3.5, "100": 3, "500": 2.5, "1000": 2 };
   return map[String(plan)] || 4;
 }
 
