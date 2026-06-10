@@ -1590,19 +1590,22 @@ function handle_(key, body) {
     }
 
     // my_ref_code → { login_id, ref2〜ref5 } のルックアップマップを事前構築
+    // カスタムコード（現在の my_ref_code）と デフォルトコード（"R-" + login_id）の両方を登録
     const myRefMap = {};
     for (let ri = 1; ri < bfValues.length; ri++) {
       const r   = bfValues[ri];
       const mrc = str_(r[bfIdx["my_ref_code"]]);
-      if (mrc) {
-        myRefMap[mrc] = {
-          login_id: str_(r[bfIdx["login_id"]]),
-          ref2: bfIdx["referrer_login_id"]   !== undefined ? str_(r[bfIdx["referrer_login_id"]])   : "",
-          ref3: bfIdx["referrer_2_login_id"] !== undefined ? str_(r[bfIdx["referrer_2_login_id"]]) : "",
-          ref4: bfIdx["referrer_3_login_id"] !== undefined ? str_(r[bfIdx["referrer_3_login_id"]]) : "",
-          ref5: bfIdx["referrer_4_login_id"] !== undefined ? str_(r[bfIdx["referrer_4_login_id"]]) : "",
-        };
-      }
+      const lid = str_(r[bfIdx["login_id"]]);
+      const entry = {
+        login_id: lid,
+        ref2: bfIdx["referrer_login_id"]   !== undefined ? str_(r[bfIdx["referrer_login_id"]])   : "",
+        ref3: bfIdx["referrer_2_login_id"] !== undefined ? str_(r[bfIdx["referrer_2_login_id"]]) : "",
+        ref4: bfIdx["referrer_3_login_id"] !== undefined ? str_(r[bfIdx["referrer_3_login_id"]]) : "",
+        ref5: bfIdx["referrer_4_login_id"] !== undefined ? str_(r[bfIdx["referrer_4_login_id"]]) : "",
+      };
+      if (mrc) myRefMap[mrc] = entry;
+      // デフォルトコード（"R-" + login_id）も登録（コード変更後の後方互換）
+      if (lid) myRefMap["R-" + lid] = entry;
     }
 
     let updated   = 0;
@@ -5657,10 +5660,14 @@ function resolveRefChain_(sheet, header, usedRefCode) {
   if (idx["my_ref_code"] === undefined || idx["login_id"] === undefined) return empty;
 
   // ref_code → 紹介者(ref1) の login_id を検索
+  // 1. my_ref_code で完全一致（カスタムコード対応）
+  // 2. "R-" + login_id で一致（デフォルトコードから変更された場合の後方互換）
   let ref1 = "";
   for (let i = 1; i < values.length; i++) {
-    if (str_(values[i][idx["my_ref_code"]]) === usedRefCode) {
-      ref1 = str_(values[i][idx["login_id"]]);
+    const mrc = str_(values[i][idx["my_ref_code"]]);
+    const lid = str_(values[i][idx["login_id"]]);
+    if (mrc === usedRefCode || ("R-" + lid === usedRefCode)) {
+      ref1 = lid;
       break;
     }
   }
