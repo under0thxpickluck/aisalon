@@ -4507,7 +4507,7 @@ function handle_(key, body) {
         narasuSheet.appendRow([
           "request_id", "created_at", "status",
           "narasu_login_id", "narasu_password",
-          "audio_urls", "lyrics_text",
+          "audio_urls", "audio_titles", "audio_lyrics", "lyrics_text",
           "jacket_image_url", "jacket_note",
           "artist_name", "note",
           "agreed_terms_version", "agreed_at",
@@ -4515,15 +4515,15 @@ function handle_(key, body) {
           "login_id", "payment_status", "payment_method", "paid_at",
           "artist_name_kana", "artist_name_alpha",
           "album_name", "album_name_kana", "album_name_alpha",
-          "audio_titles", "artist_photo_url"
+          "artist_photo_url"
         ]);
       } else {
         // 既存シートに不足列を追加
         var existingHeaders = narasuSheet.getRange(1, 1, 1, narasuSheet.getLastColumn()).getValues()[0].map(function(h) { return String(h); });
-        ["login_id", "payment_status", "payment_method", "paid_at",
+        ["audio_titles", "audio_lyrics", "login_id", "payment_status", "payment_method", "paid_at",
          "artist_name_kana", "artist_name_alpha",
          "album_name", "album_name_kana", "album_name_alpha",
-         "audio_titles", "artist_photo_url"].forEach(function(col) {
+         "artist_photo_url"].forEach(function(col) {
           if (existingHeaders.indexOf(col) === -1) {
             narasuSheet.getRange(1, existingHeaders.length + 1).setValue(col);
             existingHeaders.push(col);
@@ -4539,6 +4539,8 @@ function handle_(key, body) {
         str_(body.narasu_login_id),
         str_(body.narasu_password),
         str_(body.audio_urls),
+        str_(body.audio_titles),
+        str_(body.audio_lyrics),
         str_(body.lyrics_text),
         str_(body.jacket_image_url),
         str_(body.jacket_note),
@@ -4556,7 +4558,6 @@ function handle_(key, body) {
         str_(body.album_name),
         str_(body.album_name_kana),
         str_(body.album_name_alpha),
-        str_(body.audio_titles),
         str_(body.artist_photo_url)
       ]);
       Logger.log("[narasu_agency_submit] saved: " + requestId);
