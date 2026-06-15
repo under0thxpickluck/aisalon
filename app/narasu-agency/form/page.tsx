@@ -12,7 +12,7 @@ import { getAuth } from "@/app/lib/auth";
 const MAX_AUDIO_ENTRIES = 15;
 
 function newAudioEntry(): AudioUrlEntry {
-  return { id: crypto.randomUUID(), url: "", title: "" };
+  return { id: crypto.randomUUID(), url: "", title: "", lyrics: "" };
 }
 
 function emptyDraft(): NarasuAgencyDraft {
@@ -72,6 +72,14 @@ export default function NarasuFormPage() {
   function updateAudioTitle(id: string, title: string) {
     setDraft((prev) => {
       const next = { ...prev, audioUrls: prev.audioUrls.map((e) => e.id === id ? { ...e, title } : e) };
+      saveDraft(next);
+      return next;
+    });
+  }
+
+  function updateAudioLyrics(id: string, lyrics: string) {
+    setDraft((prev) => {
+      const next = { ...prev, audioUrls: prev.audioUrls.map((e) => e.id === id ? { ...e, lyrics } : e) };
       saveDraft(next);
       return next;
     });
@@ -152,6 +160,15 @@ export default function NarasuFormPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-extrabold text-slate-900">narasu代理申請フォーム</h1>
           <p className="mt-1 text-sm text-slate-600">必要事項を入力してください。音源URLは複数追加できます。</p>
+
+          {/* 重要なお知らせ */}
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-1.5">
+            <p className="text-xs font-extrabold text-amber-800">申請前にご確認ください</p>
+            <ul className="space-y-1 text-xs text-amber-700 leading-relaxed list-disc list-inside">
+              <li>LIFAI運営がnarasuに<b>下書き保存</b>を行います。その後、<b>ご自身でnarasuにログインして本申請を上げてください。</b></li>
+              <li>本申請時にnarasu側で<b>別途申請費用が発生</b>します（LIFAI代行費用とは別）。</li>
+            </ul>
+          </div>
 
           <div className="mt-6 space-y-5">
             {/* narasuアカウント情報 */}
@@ -236,11 +253,23 @@ export default function NarasuFormPage() {
                         value={entry.title ?? ""}
                         onChange={(e) => updateAudioTitle(entry.id, e.target.value)}
                         className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                        placeholder="曲名（URLを貼ると自動入力）"
+                        placeholder="曲名（必須・URLを貼ると自動入力）"
                       />
                       {resolvingIds.has(entry.id) && (
                         <span className="text-xs text-slate-400 animate-pulse">取得中…</span>
                       )}
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-500 mb-1">歌詞<span className="text-rose-500"> *</span></p>
+                      <p className="text-[11px] text-slate-400 mb-1 leading-relaxed">
+                        歌詞はLIFAI運営が簡易的に確認しますが、表現・言い回しの細かいチェックは対応範囲外です。<b>事前にご自身でご確認ください。</b>
+                      </p>
+                      <textarea
+                        value={entry.lyrics ?? ""}
+                        onChange={(e) => updateAudioLyrics(entry.id, e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-800 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 h-28 resize-none"
+                        placeholder="この曲の歌詞を入力してください（必須）"
+                      />
                     </div>
                   </div>
                 ))}
@@ -263,6 +292,11 @@ export default function NarasuFormPage() {
             {/* アーティスト名 */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
               <p className="text-xs font-bold text-slate-500">申請アーティスト名（必須）</p>
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-3 space-y-1.5 text-xs text-indigo-700 leading-relaxed">
+                <p>💡 <b>一人のアーティストを集中して育てるのがおすすめです。</b>複数のアーティスト名に分散させるより、同一ブランドを強化した方が効果的です。</p>
+                <p>🎵 <b>曲調はなるべく揃えましょう。</b>同じアーティストで曲のジャンルやテイストを統一すると、ファンがつきやすくなります。</p>
+                <p>📁 <b>過去に申請したことがあるアーティストは、同じ名前で申請してください。</b>既存のアーティストページにアルバムを追加する形で対応します。</p>
+              </div>
               <div>
                 <label className={labelCls}>アーティスト名<span className="text-rose-500"> *</span></label>
                 <input
@@ -299,6 +333,7 @@ export default function NarasuFormPage() {
               <div>
                 <label className={labelCls}>アーティスト写真URL <span className="text-slate-400 font-normal">（任意）</span></label>
                 <p className="mt-0.5 text-[11px] text-slate-400">Google ドライブ・Dropbox 等にアップロードした写真の共有URLを貼り付けてください</p>
+                <p className="mt-0.5 text-[11px] font-semibold text-amber-600">⚠️ 写真がない場合、narasu審査の通過率が下がる可能性があります。できる限りご用意ください。</p>
                 <input
                   type="url"
                   value={draft.artistPhotoUrl}
@@ -359,19 +394,6 @@ export default function NarasuFormPage() {
                 placeholder="https://drive.google.com/..."
               />
               {errors.jacketImageUrl && <p className={errorCls}>{errors.jacketImageUrl}</p>}
-            </div>
-
-            {/* アーティスト写真 */}
-            <div>
-              <label className={labelCls}>アーティスト写真URL <span className="text-slate-400 font-normal">（任意）</span></label>
-              <p className="mt-0.5 text-[11px] text-slate-400">Google ドライブ・Dropbox 等にアップロードした写真の共有URLを貼り付けてください</p>
-              <input
-                type="url"
-                value={draft.artistPhotoUrl}
-                onChange={(e) => update("artistPhotoUrl", e.target.value)}
-                className={inputCls}
-                placeholder="https://drive.google.com/..."
-              />
             </div>
 
             {/* 補足事項 */}

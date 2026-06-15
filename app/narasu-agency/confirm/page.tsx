@@ -77,15 +77,12 @@ export default function NarasuConfirmPage() {
                 <div key={e.id} className="mt-1">
                   <p className={valueCls}>{i + 1}. {e.url}</p>
                   {e.title && <p className="text-xs text-slate-500 mt-0.5 ml-3">曲名: {e.title}</p>}
+                  <p className="text-xs text-slate-500 mt-0.5 ml-3">
+                    歌詞: {e.lyrics?.trim() ? `あり（${e.lyrics.trim().length}文字）` : <span className="text-rose-500">なし</span>}
+                  </p>
                 </div>
               ))}
             </div>
-            {draft.lyricsText && (
-              <div className={rowCls}>
-                <p className={labelCls}>歌詞</p>
-                <p className={valueCls + " whitespace-pre-wrap"}>{draft.lyricsText}</p>
-              </div>
-            )}
             {draft.jacketImageUrl && (
               <div className={rowCls}>
                 <p className={labelCls}>ジャケット画像URL</p>
@@ -122,6 +119,7 @@ export default function NarasuConfirmPage() {
                 <p className={valueCls}>{draft.artistPhotoUrl}</p>
               </div>
             )}
+            {/* 重複 artistPhotoUrl は削除済み */}
             {draft.albumName && (
               <div className={rowCls}>
                 <p className={labelCls}>アルバム名</p>
@@ -138,12 +136,6 @@ export default function NarasuConfirmPage() {
               <div className={rowCls}>
                 <p className={labelCls}>アルバム名（アルファベット）</p>
                 <p className={valueCls}>{draft.albumNameAlpha}</p>
-              </div>
-            )}
-            {draft.artistPhotoUrl && (
-              <div className={rowCls}>
-                <p className={labelCls}>アーティスト写真URL</p>
-                <p className={valueCls}>{draft.artistPhotoUrl}</p>
               </div>
             )}
             {draft.note && (
