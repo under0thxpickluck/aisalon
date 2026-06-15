@@ -4515,7 +4515,7 @@ function handle_(key, body) {
           "login_id", "payment_status", "payment_method", "paid_at",
           "artist_name_kana", "artist_name_alpha",
           "album_name", "album_name_kana", "album_name_alpha",
-          "song_titles", "artist_photo_url"
+          "audio_titles", "artist_photo_url"
         ]);
       } else {
         // 既存シートに不足列を追加
@@ -4523,7 +4523,7 @@ function handle_(key, body) {
         ["login_id", "payment_status", "payment_method", "paid_at",
          "artist_name_kana", "artist_name_alpha",
          "album_name", "album_name_kana", "album_name_alpha",
-         "song_titles", "artist_photo_url"].forEach(function(col) {
+         "audio_titles", "artist_photo_url"].forEach(function(col) {
           if (existingHeaders.indexOf(col) === -1) {
             narasuSheet.getRange(1, existingHeaders.length + 1).setValue(col);
             existingHeaders.push(col);
@@ -4556,7 +4556,7 @@ function handle_(key, body) {
         str_(body.album_name),
         str_(body.album_name_kana),
         str_(body.album_name_alpha),
-        str_(body.song_titles),
+        str_(body.audio_titles),
         str_(body.artist_photo_url)
       ]);
       Logger.log("[narasu_agency_submit] saved: " + requestId);
