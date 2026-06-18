@@ -12764,3 +12764,554 @@ function createRumbleAutoEntryTrigger() {
     .create();
   Logger.log('[createRumbleAutoEntryTrigger] 毎日6時のトリガーを登録しました');
 }
+
+// ============================================================
+// LOOTIFY HP 連携アクション（loofityja HP用 — 既存コード不変）
+// ============================================================
+// 追加アクション一覧:
+//   lootify_login               - セッショントークン発行（aisalon認証基盤を使用）
+//   lootify_me                  - セッショントークン検証 + ユーザー情報返却
+//   lootify_logout              - ログアウト（ステートレスのためno-op）
+//   create_aisalon_sell_request - EP→USDT換金申請作成
+//   get_aisalon_sell_requests   - 換金申請一覧取得
+//   update_aisalon_deposit_status - デポジットステータス更新（api_key認証）
+//   get_aisalon_wallets         - プラットフォームウォレット一覧取得
+//   check_aisalon_gift_deposits - GiftEP入金確認（api_key認証）
+//   consume_aisalon_gift_deposits - GiftEP入金を消費済みにする（api_key認証）
+// ============================================================
+
+// セッショントークン = base64(loginId + ":" + pwHash) — ステートレス
+function lootifyDecodeSession_(token) {
+  try {
+    var decoded = Utilities.newBlob(Utilities.base64Decode(token)).getDataAsString();
+    var sep = decoded.indexOf(":");
+    if (sep < 0) return null;
+    return { loginId: decoded.substring(0, sep), pwHash: decoded.substring(sep + 1) };
+  } catch(e) {
+    return null;
+  }
+}
+
+function lootifyVerifySession_(token) {
+  var parts = lootifyDecodeSession_(token);
+  if (!parts) return null;
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  if (!sheet) return null;
+  var values = sheet.getDataRange().getValues();
+  var header = values[0];
+  var idx = indexMap_(header);
+  if (idx["login_id"] === undefined || idx["pw_hash"] === undefined) return null;
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    if (str_(r[idx["login_id"]]) === parts.loginId) {
+      if (str_(r[idx["pw_hash"]]) === parts.pwHash && str_(r[idx["status"]]) === "approved") {
+        return { loginId: parts.loginId, email: str_(r[idx["email"]]), row: r, idx: idx };
+      }
+      return null;
+    }
+  }
+  return null;
+}
+
+function handle_lootify_login_(body) {
+  var secrets = getSecrets_();
+  var SECRET = secrets.SECRET;
+  var id = str_(body.email || body.id);
+  var password = str_(body.password || body.code);
+  if (!id || !password) return { ok: false, code: "MISSING_CREDENTIALS", message: "IDとパスワードを入力してください" };
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("applies");
+  if (!sheet) return { ok: false, code: "SHEET_ERROR", message: "システムエラー" };
+  var values = sheet.getDataRange().getValues();
+  var header = values[0];
+  var idx = indexMap_(header);
+
+  var hit = null;
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    var loginId = str_(r[idx["login_id"]]);
+    var email = str_(r[idx["email"]]);
+    if (id === loginId || id === email) { hit = r; break; }
+  }
+  if (!hit) return { ok: false, code: "USER_NOT_FOUND", message: "ユーザーが見つかりません" };
+
+  var status = str_(hit[idx["status"]]);
+  if (status !== "approved") return { ok: false, code: "PENDING", message: "アカウントが承認待ちです" };
+
+  var loginId = str_(hit[idx["login_id"]]);
+  var pwHashSaved = str_(hit[idx["pw_hash"]]);
+  var inputHash = hmacSha256Hex_(SECRET, loginId + ":" + password);
+  if (inputHash !== pwHashSaved) return { ok: false, code: "INVALID_PASSWORD", message: "パスワードが正しくありません" };
+
+  var sessionToken = Utilities.base64Encode(loginId + ":" + pwHashSaved);
+  var nameVal = idx["name"] !== undefined ? str_(hit[idx["name"]]) : "";
+  return {
+    ok: true, code: "OK", message: "",
+    data: {
+      session_token: sessionToken,
+      id: loginId,
+      email: str_(hit[idx["email"]]),
+      display_name: nameVal,
+      first_name: nameVal,
+      last_name: "",
+      country: "",
+      phone: "",
+      email_verified: true,
+      wallet_address: "",
+    }
+  };
+}
+
+function handle_lootify_me_(body) {
+  var token = str_(body.session_token);
+  if (!token) return { ok: false, code: "MISSING_TOKEN", message: "セッショントークンが必要です" };
+  var user = lootifyVerifySession_(token);
+  if (!user) return { ok: false, code: "INVALID_TOKEN", message: "セッションが無効です" };
+  var nameVal = user.idx["name"] !== undefined ? str_(user.row[user.idx["name"]]) : "";
+  return {
+    ok: true, code: "OK", message: "",
+    data: {
+      id: user.loginId,
+      email: user.email,
+      display_name: nameVal,
+      first_name: nameVal,
+      last_name: "",
+      country: "",
+      phone: "",
+      email_verified: true,
+      wallet_address: "",
+    }
+  };
+}
+
+function getAisalonSellRequestsSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("aisalon_sell_requests");
+  if (!sheet) {
+    sheet = ss.insertSheet("aisalon_sell_requests");
+    sheet.appendRow([
+      "request_id", "login_id", "lifai_plan",
+      "ep_amount", "ep_rate_jpy", "usdt_rate_jpy",
+      "gross_usdt", "fee_usdt", "net_usdt",
+      "payout_network", "payout_wallet", "platform_wallet",
+      "status", "created_at",
+      "received_ep", "shortfall_ep", "deposit_ids", "source_login_ids", "confirmed_at"
+    ]);
+  }
+  return sheet;
+}
+
+function getAisalonWalletSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("aisalon_wallets");
+  if (!sheet) {
+    sheet = ss.insertSheet("aisalon_wallets");
+    sheet.appendRow(["slot", "login_id", "label", "active"]);
+  }
+  return sheet;
+}
+
+function handle_create_aisalon_sell_request_(body) {
+  var token = str_(body.session_token);
+  if (!token) return { ok: false, code: "MISSING_TOKEN", message: "セッショントークンが必要です" };
+  var user = lootifyVerifySession_(token);
+  if (!user) return { ok: false, code: "INVALID_TOKEN", message: "セッションが無効です" };
+
+  var requestId = str_(body.request_id);
+  var lifaiPlan = str_(body.lifai_plan);
+  var epAmount = num_(body.ep_amount);
+  var epRateJpy = num_(body.ep_rate_jpy);
+  var usdtRateJpy = num_(body.usdt_rate_jpy);
+  var grossUsdt = num_(body.gross_usdt);
+  var feeUsdt = num_(body.fee_usdt);
+  var netUsdt = num_(body.net_usdt);
+  var payoutNetwork = str_(body.payout_network);
+  var payoutWallet = str_(body.payout_wallet);
+
+  if (!requestId || !lifaiPlan || epAmount < 1) {
+    return { ok: false, code: "INVALID_PARAMS", message: "パラメータが不正です" };
+  }
+
+  var sheet = getAisalonSellRequestsSheet_();
+  var rows = sheet.getDataRange().getValues();
+  var header = rows[0];
+  var idx = indexMap_(header);
+
+  // 既存オープン申請チェック
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    if (str_(r[idx["login_id"]]) === user.loginId) {
+      var st = str_(r[idx["status"]]);
+      if (st !== "入金確認済み" && st !== "キャンセル") {
+        return { ok: false, code: "OPEN_REQUEST_EXISTS", message: "処理中の申請があります", data: { request_id: str_(r[idx["request_id"]]) } };
+      }
+    }
+  }
+
+  // プラットフォームウォレット（運営login_id）を取得
+  var walletSheet = getAisalonWalletSheet_();
+  var walletRows = walletSheet.getDataRange().getValues();
+  var platformWallet = "";
+  if (walletRows.length >= 2) {
+    var wHeader = walletRows[0];
+    var wIdx = indexMap_(wHeader);
+    var slotCount = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
+    var activeWallets = walletRows.slice(1).filter(function(r) {
+      return wIdx["active"] !== undefined ? String(r[wIdx["active"]]) === "true" || r[wIdx["active"]] === true : true;
+    });
+    if (activeWallets.length > 0) {
+      var slot = slotCount % activeWallets.length;
+      platformWallet = wIdx["login_id"] !== undefined ? str_(activeWallets[slot][wIdx["login_id"]]) : "";
+    }
+  }
+
+  sheet.appendRow([
+    requestId, user.loginId, lifaiPlan,
+    epAmount, epRateJpy, usdtRateJpy,
+    grossUsdt, feeUsdt, netUsdt,
+    payoutNetwork, payoutWallet, platformWallet,
+    "申請中", new Date().toISOString(),
+    0, 0, "", "", ""
+  ]);
+
+  return { ok: true, code: "OK", message: "", data: { request_id: requestId, platform_wallet: platformWallet } };
+}
+
+function handle_get_aisalon_sell_requests_(body) {
+  var token = str_(body.session_token);
+  if (!token) return { ok: false, code: "MISSING_TOKEN", message: "セッショントークンが必要です" };
+  var user = lootifyVerifySession_(token);
+  if (!user) return { ok: false, code: "INVALID_TOKEN", message: "セッションが無効です" };
+
+  var sheet = getAisalonSellRequestsSheet_();
+  var rows = sheet.getDataRange().getValues();
+  var header = rows[0];
+  var idx = indexMap_(header);
+  var requests = [];
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    if (str_(r[idx["login_id"]]) !== user.loginId) continue;
+    requests.push({
+      request_id: str_(r[idx["request_id"]]),
+      lifai_plan: str_(r[idx["lifai_plan"]]),
+      ep_amount: num_(r[idx["ep_amount"]]),
+      net_usdt: num_(r[idx["net_usdt"]]),
+      payout_network: str_(r[idx["payout_network"]]),
+      platform_wallet: str_(r[idx["platform_wallet"]]),
+      status: str_(r[idx["status"]]),
+      created_at: str_(r[idx["created_at"]]),
+      received_ep: num_(r[idx["received_ep"]]),
+      shortfall_ep: num_(r[idx["shortfall_ep"]]),
+      confirmed_at: str_(r[idx["confirmed_at"]]),
+    });
+  }
+  return { ok: true, code: "OK", message: "", data: { requests: requests, wallet_address: "" } };
+}
+
+function handle_update_aisalon_deposit_status_(body) {
+  var secrets = getSecrets_();
+  var apiKey = str_(body.api_key);
+  var lootifyKey = PropertiesService.getScriptProperties().getProperty("LOOTIFY_API_KEY") || secrets.ADMIN_SECRET;
+  if (!apiKey || apiKey !== lootifyKey) return { ok: false, code: "UNAUTHORIZED", message: "APIキーが不正です" };
+
+  var requestId = str_(body.request_id);
+  if (!requestId) return { ok: false, code: "MISSING_REQUEST_ID", message: "request_idが必要です" };
+
+  var sheet = getAisalonSellRequestsSheet_();
+  var rows = sheet.getDataRange().getValues();
+  var header = rows[0];
+  var idx = indexMap_(header);
+
+  for (var i = 1; i < rows.length; i++) {
+    if (str_(rows[i][idx["request_id"]]) !== requestId) continue;
+    if (body.status !== undefined) sheet.getRange(i + 1, idx["status"] + 1).setValue(str_(body.status));
+    if (body.received_ep !== undefined) sheet.getRange(i + 1, idx["received_ep"] + 1).setValue(num_(body.received_ep));
+    if (body.shortfall_ep !== undefined) sheet.getRange(i + 1, idx["shortfall_ep"] + 1).setValue(num_(body.shortfall_ep));
+    if (body.deposit_ids !== undefined) sheet.getRange(i + 1, idx["deposit_ids"] + 1).setValue(JSON.stringify(body.deposit_ids));
+    if (body.source_login_ids !== undefined) sheet.getRange(i + 1, idx["source_login_ids"] + 1).setValue(JSON.stringify(body.source_login_ids));
+    if (body.confirmed_at !== undefined) sheet.getRange(i + 1, idx["confirmed_at"] + 1).setValue(str_(body.confirmed_at));
+    return { ok: true, code: "OK", message: "", data: { request_id: requestId } };
+  }
+  return { ok: false, code: "NOT_FOUND", message: "申請が見つかりません" };
+}
+
+function handle_get_aisalon_wallets_() {
+  var sheet = getAisalonWalletSheet_();
+  var rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return { ok: true, code: "OK", message: "", data: { wallets: [] } };
+  var header = rows[0];
+  var idx = indexMap_(header);
+  var wallets = rows.slice(1).map(function(r, i) {
+    return {
+      slot: num_(r[idx["slot"]]) || i,
+      wallet_address: str_(r[idx["login_id"]]),
+      label: str_(r[idx["label"]]),
+    };
+  });
+  return { ok: true, code: "OK", message: "", data: { wallets: wallets } };
+}
+
+function handle_check_aisalon_gift_deposits_(body) {
+  var secrets = getSecrets_();
+  var apiKey = str_(body.api_key);
+  var lootifyKey = PropertiesService.getScriptProperties().getProperty("LOOTIFY_API_KEY") || secrets.ADMIN_SECRET;
+  if (!apiKey || apiKey !== lootifyKey) return { ok: false, error: "unauthorized" };
+
+  var platformLoginId = str_(body.platform_login_id);
+  if (!platformLoginId) return { ok: false, error: "missing_platform_login_id" };
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var txSheet = ss.getSheetByName("gift_transactions");
+  if (!txSheet) return { ok: true, deposits: [] };
+
+  var txValues = getValuesSafe_(txSheet);
+  if (txValues.length < 2) return { ok: true, deposits: [] };
+
+  var tHeader = txValues[0];
+  var tIdx = indexMap_(tHeader);
+
+  var deposits = [];
+  txValues.slice(1).forEach(function(row) {
+    var toUser = str_(row[tIdx["to_user"]]);
+    if (toUser !== platformLoginId) return;
+    var status = str_(row[tIdx["status"]]);
+    if (status !== "completed" && !str_(row[tIdx["consumed_by"] !== undefined ? tIdx["consumed_by"] : -1])) return;
+    var consumedBy = tIdx["consumed_by"] !== undefined ? str_(row[tIdx["consumed_by"]]) : "";
+    deposits.push({
+      deposit_id: str_(row[tIdx["id"]]),
+      from_login_id: str_(row[tIdx["from_user"]]),
+      amount: num_(row[tIdx["amount"]]),
+      status: consumedBy ? "consumed" : "pending",
+      created_at: str_(row[tIdx["created_at"]]),
+      consumed_by: consumedBy || null,
+    });
+  });
+
+  return { ok: true, deposits: deposits };
+}
+
+function handle_consume_aisalon_gift_deposits_(body) {
+  var secrets = getSecrets_();
+  var apiKey = str_(body.api_key);
+  var lootifyKey = PropertiesService.getScriptProperties().getProperty("LOOTIFY_API_KEY") || secrets.ADMIN_SECRET;
+  if (!apiKey || apiKey !== lootifyKey) return { ok: false, error: "unauthorized" };
+
+  var platformLoginId = str_(body.platform_login_id);
+  var depositIds = Array.isArray(body.deposit_ids) ? body.deposit_ids.map(String) : [];
+  var consumedBy = str_(body.consumed_by);
+  if (!platformLoginId || depositIds.length === 0 || !consumedBy) {
+    return { ok: false, error: "missing_params" };
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var txSheet = ss.getSheetByName("gift_transactions");
+  if (!txSheet) return { ok: false, error: "gift_transactions_sheet_not_found" };
+
+  var tHeader = txSheet.getRange(1, 1, 1, txSheet.getLastColumn()).getValues()[0];
+  var tIdx = indexMap_(tHeader);
+
+  // consumed_by 列がなければ追加
+  if (tIdx["consumed_by"] === undefined) {
+    var newCol = txSheet.getLastColumn() + 1;
+    txSheet.getRange(1, newCol).setValue("consumed_by");
+    tIdx["consumed_by"] = newCol - 1;
+  }
+
+  var txValues = txSheet.getDataRange().getValues();
+  var consumed = 0;
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: "lock_timeout" }; }
+
+  try {
+    for (var i = 1; i < txValues.length; i++) {
+      var row = txValues[i];
+      if (str_(row[tIdx["to_user"]]) !== platformLoginId) continue;
+      var rowId = str_(row[tIdx["id"]]);
+      if (depositIds.indexOf(rowId) < 0) continue;
+      var existingConsumedBy = tIdx["consumed_by"] !== undefined ? str_(row[tIdx["consumed_by"]]) : "";
+      if (existingConsumedBy) continue; // 既に消費済み
+      txSheet.getRange(i + 1, tIdx["consumed_by"] + 1).setValue(consumedBy);
+      consumed++;
+    }
+  } finally {
+    lock.releaseLock();
+  }
+
+  return { ok: true, consumed: consumed };
+}
+
+// ---- doPost への lootify ルーティング追加 ----
+// 注: 既存の doPost は上で定義済み。このブロックは最後に定義された doPost が有効になるため、
+//     既存の doPost を直接上書きする。以下は lootify アクションを追加した最終 doPost。
+// ============================================================
+// ⚠️ 下記 doPost は既存の全ルーティングを引き継ぎ、lootify 系を追加したもの
+// ============================================================
+function doPost(e) {
+  try {
+    var key = pickKey_(e);
+    var body = JSON.parse(e && e.postData && e.postData.contents ? e.postData.contents : "{}");
+    var action = str_(body.action);
+
+    // lootify HP 専用アクション
+    if (action === "lootify_login")  return json_(handle_lootify_login_(body));
+    if (action === "lootify_me")     return json_(handle_lootify_me_(body));
+    if (action === "lootify_logout") return json_({ ok: true, code: "OK", message: "" });
+    if (action === "create_aisalon_sell_request")  return json_(handle_create_aisalon_sell_request_(body));
+    if (action === "get_aisalon_sell_requests")    return json_(handle_get_aisalon_sell_requests_(body));
+    if (action === "update_aisalon_deposit_status") return json_(handle_update_aisalon_deposit_status_(body));
+    if (action === "get_aisalon_wallets")           return json_(handle_get_aisalon_wallets_());
+    if (action === "check_aisalon_gift_deposits")   return json_(handle_check_aisalon_gift_deposits_(body));
+    if (action === "consume_aisalon_gift_deposits") return json_(handle_consume_aisalon_gift_deposits_(body));
+
+    // 既存ルーティング（元の doPost と同一）
+    if (action && action.startsWith("market_")) return handleMarket_(key, body);
+    if (action && action.startsWith("gift_"))   return handleGift_(key, body);
+    if (action === "sell_request")      return json_(handle_sell_request_(body));
+    if (action === "get_sell_requests") return json_(handle_get_sell_requests_(body));
+    if (action === "grant_bp_for_sell") return json_(handle_grant_bp_for_sell_(body));
+    if (action === "get_pending_bp")    return json_(handle_get_pending_bp_(body));
+    if (action === "claim_pending_bp")  return json_(handle_claim_pending_bp_(body));
+    if (action === "create_music_job")  return createMusicJob_(body);
+    if (action === "get_music_job")     return getMusicJob_(body);
+    if (action === "update_music_job")  return updateMusicJob_(body);
+    if (action === "tap_play")    return tapPlay_(body);
+    if (action === "tap_status")  return tapStatus_(body);
+    if (action === "tap_ranking") return tapRanking_(body);
+    if (action === "tap_ticker")     return tapTicker_(body);
+    if (action === "tap_batch_play") return tapBatchPlay_(body);
+    if (action === "rumble_entry")   return rumbleEntry_(body);
+    if (action === "rumble_ranking") return rumbleRanking_(body);
+    if (action === "rumble_status")  return rumbleStatus_(body);
+    if (action === "rumble_gacha")   return rumbleGacha_(body);
+    if (action === "rumble_equipment")       return rumbleEquipment_(body);
+    if (action === "rumble_equip")           return rumbleEquip_(body);
+    if (action === "rumble_reward_distribute") return rumbleRewardDistribute_(body);
+    if (action === "rumble_dismantle")       return rumbleDismantle_(body);
+    if (action === "rumble_enhance")         return rumbleEnhance_(body);
+    if (action === "rumble_my_rank_context") return rumbleMyRankContext_(body);
+    if (action === "rumble_shard_status")    return rumbleShardStatus_(body);
+    if (action === "rumble_set_display_name") return rumbleSetDisplayName_(body);
+    if (action === "rumble_spectator")       return rumbleSpectator_(body);
+    if (action === "rumble_daily_lottery")   return rumbleDailyLottery_(body);
+    if (action === "rumble_daily_result")    return rumbleDailyResult_(body);
+    if (action === "rumble_force_entry")     return rumbleForceEntry_(body);
+    if (action === "rumble_force_start")     return rumbleForceStart_(body);
+    if (action === "rumble_run_now")         return rumbleRunNow_(body);
+    if (action === "music_boost_status")     return musicBoostStatus_(body);
+    if (action === "music_boost_subscribe")  return musicBoostSubscribe_(body);
+    if (action === "music_boost_cancel")     return musicBoostCancel_(body);
+    if (action === "music_boost_admin_list") return musicBoostAdminList_(body);
+    if (action === "music_boost_get_info")   return musicBoostGetInfo_(body);
+    if (action === "music_boost_update_info") return musicBoostUpdateInfo_(body);
+    if (action === "music_boost_set_tracks") return musicBoostSetTracks_(body);
+    if (action === "cat_log_create")     return catLogCreate_(body);
+    if (action === "cat_log_feedback")   return catLogFeedback_(body);
+    if (action === "cat_faq_list")       return catFaqList_(body);
+    if (action === "cat_unknown_upsert") return catUnknownUpsert_(body);
+    if (action === "bp_lock")        return imageBpLock_(body);
+    if (action === "bp_commit")      return imageBpCommit_(body);
+    if (action === "bp_refund")      return imageBpRefund_(body);
+    if (action === "image_log")      return imageLog_(body);
+    if (action === "image_history")  return imageHistory_(body);
+    if (action === "music_history_save") return musicHistorySave_(body);
+    if (action === "music_history_list") return musicHistoryList_(body);
+    if (action === "monitor_song_stats")          return json_(monitorSongStats_());
+    if (action === "monitor_games_stats")         return json_(monitorGamesStats_());
+    if (action === "monitor_market_stats")        return json_(monitorMarketStats_());
+    if (action === "monitor_wallet_stats")        return json_(monitorWalletStats_());
+    if (action === "monitor_boost_subscribers")   return json_(monitorBoostSubscribers_());
+    if (action === "monitor_rumble_today")        return json_(monitorRumbleToday_());
+    if (action === "monitor_rumble_daily")        return json_(monitorRumbleDaily_());
+    if (action === "monitor_rumble_weekly")       return json_(monitorRumbleWeekly_());
+    if (action === "monitor_rumble_spectator")    return json_(monitorRumbleSpectator_());
+
+    // narasu代理申請（既存doPostから引き継ぎ）
+    if (action === "narasu_agency_submit") {
+      try {
+        var narasuSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("narasu_agency");
+        if (!narasuSheet) {
+          narasuSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("narasu_agency");
+          narasuSheet.appendRow([
+            "request_id","created_at","status","narasu_login_id","narasu_password",
+            "audio_urls","audio_titles","lyrics_text","jacket_image_url","jacket_note",
+            "artist_name","artist_name_kana","artist_name_alpha","artist_photo_url",
+            "album_name","album_name_kana","album_name_alpha","note",
+            "agreed_terms_version","agreed_at","admin_memo",
+            "login_id","payment_status","payment_method","paid_at",
+            "song_titles"
+          ]);
+        } else {
+          var eh = narasuSheet.getRange(1,1,1,narasuSheet.getLastColumn()).getValues()[0].map(function(h){return String(h);});
+          ["audio_titles","artist_name_kana","artist_name_alpha","artist_photo_url","album_name","album_name_kana","album_name_alpha","login_id","payment_status","payment_method","paid_at"].forEach(function(col){
+            if(eh.indexOf(col)<0){narasuSheet.getRange(1,eh.length+1).setValue(col);eh.push(col);}
+          });
+        }
+        var requestId = "NA-" + Date.now();
+        var now = new Date().toISOString();
+        var nHeaders = narasuSheet.getRange(1,1,1,narasuSheet.getLastColumn()).getValues()[0].map(function(h){return String(h);});
+        var nIdx = {}; nHeaders.forEach(function(h,i){nIdx[h]=i;});
+        var newRow = new Array(nHeaders.length).fill("");
+        if(nIdx["request_id"]!==undefined)newRow[nIdx["request_id"]]=requestId;
+        if(nIdx["created_at"]!==undefined)newRow[nIdx["created_at"]]=now;
+        if(nIdx["status"]!==undefined)newRow[nIdx["status"]]="submitted";
+        if(nIdx["narasu_login_id"]!==undefined)newRow[nIdx["narasu_login_id"]]=str_(body.narasu_login_id);
+        if(nIdx["narasu_password"]!==undefined)newRow[nIdx["narasu_password"]]=str_(body.narasu_password);
+        if(nIdx["audio_urls"]!==undefined)newRow[nIdx["audio_urls"]]=str_(body.audio_urls);
+        if(nIdx["audio_titles"]!==undefined)newRow[nIdx["audio_titles"]]=str_(body.audio_titles);
+        if(nIdx["lyrics_text"]!==undefined)newRow[nIdx["lyrics_text"]]=str_(body.lyrics_text);
+        if(nIdx["jacket_image_url"]!==undefined)newRow[nIdx["jacket_image_url"]]=str_(body.jacket_image_url);
+        if(nIdx["jacket_note"]!==undefined)newRow[nIdx["jacket_note"]]=str_(body.jacket_note);
+        if(nIdx["artist_name"]!==undefined)newRow[nIdx["artist_name"]]=str_(body.artist_name);
+        if(nIdx["artist_name_kana"]!==undefined)newRow[nIdx["artist_name_kana"]]=str_(body.artist_name_kana);
+        if(nIdx["artist_name_alpha"]!==undefined)newRow[nIdx["artist_name_alpha"]]=str_(body.artist_name_alpha);
+        if(nIdx["artist_photo_url"]!==undefined)newRow[nIdx["artist_photo_url"]]=str_(body.artist_photo_url);
+        if(nIdx["album_name"]!==undefined)newRow[nIdx["album_name"]]=str_(body.album_name);
+        if(nIdx["album_name_kana"]!==undefined)newRow[nIdx["album_name_kana"]]=str_(body.album_name_kana);
+        if(nIdx["album_name_alpha"]!==undefined)newRow[nIdx["album_name_alpha"]]=str_(body.album_name_alpha);
+        if(nIdx["note"]!==undefined)newRow[nIdx["note"]]=str_(body.note);
+        if(nIdx["agreed_terms_version"]!==undefined)newRow[nIdx["agreed_terms_version"]]=str_(body.agreed_terms_version);
+        if(nIdx["agreed_at"]!==undefined)newRow[nIdx["agreed_at"]]=str_(body.agreed_at);
+        if(nIdx["login_id"]!==undefined)newRow[nIdx["login_id"]]=str_(body.login_id);
+        if(nIdx["payment_status"]!==undefined)newRow[nIdx["payment_status"]]="unpaid";
+        narasuSheet.appendRow(newRow);
+        return json_({ ok: true, requestId: requestId });
+      } catch(ex) {
+        return json_({ ok: false, error: String(ex) });
+      }
+    }
+    if (action === "narasu_agency_update_payment") {
+      try {
+        var naSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("narasu_agency");
+        if (!naSheet) return json_({ ok: false, error: "sheet_not_found" });
+        var reqId = str_(body.request_id);
+        var payMethod = str_(body.payment_method);
+        if (!reqId || !payMethod) return json_({ ok: false, error: "missing_params" });
+        var naHeaders = naSheet.getRange(1,1,1,naSheet.getLastColumn()).getValues()[0].map(function(h){return String(h);});
+        ["login_id","payment_status","payment_method","paid_at"].forEach(function(col){
+          if(naHeaders.indexOf(col)<0){naSheet.getRange(1,naHeaders.length+1).setValue(col);naHeaders.push(col);}
+        });
+        var naIdx = {}; naHeaders.forEach(function(h,i){naIdx[h]=i;});
+        var naData = naSheet.getDataRange().getValues();
+        for (var ni = 1; ni < naData.length; ni++) {
+          if (String(naData[ni][naIdx["request_id"]]) === reqId) {
+            var rowNum = ni + 1;
+            var nowTs = new Date().toISOString();
+            if(naIdx["payment_status"]!==undefined)naSheet.getRange(rowNum,naIdx["payment_status"]+1).setValue("paid");
+            if(naIdx["payment_method"]!==undefined)naSheet.getRange(rowNum,naIdx["payment_method"]+1).setValue(payMethod);
+            if(naIdx["paid_at"]!==undefined)naSheet.getRange(rowNum,naIdx["paid_at"]+1).setValue(nowTs);
+            if(naIdx["login_id"]!==undefined&&str_(body.login_id))naSheet.getRange(rowNum,naIdx["login_id"]+1).setValue(str_(body.login_id));
+            return json_({ ok: true, requestId: reqId });
+          }
+        }
+        return json_({ ok: false, error: "request_not_found" });
+      } catch(ex) {
+        return json_({ ok: false, error: String(ex) });
+      }
+    }
+
+    // 既存の handle_ にフォールスルー
+    return handle_(key, body);
+  } catch(err) {
+    return json_({ ok: false, error: String(err) });
+  }
+}
