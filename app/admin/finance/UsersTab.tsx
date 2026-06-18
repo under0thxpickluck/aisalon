@@ -25,6 +25,7 @@ type AdminUser = {
   referrer_5_login_id?: string;
   ref_path?: string;
   affiliate_granted_at?: string;
+  gacha_rate_preset?: string;
   [k: string]: any;
 };
 
@@ -64,6 +65,76 @@ export default function UsersTab() {
   const [err,      setErr]      = useState<string | null>(null);
   const [query,    setQuery]    = useState("");
   const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [notifySubject, setNotifySubject] = useState("");
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [notifySending, setNotifySending] = useState(false);
+  const [notifyMsg, setNotifyMsg] = useState<string | null>(null);
+  const [gachaPreset, setGachaPreset] = useState("normal");
+  const [gachaPresetSending, setGachaPresetSending] = useState(false);
+  const [gachaPresetMsg, setGachaPresetMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNotifySubject("");
+    setNotifyMessage("");
+    setNotifyMsg(null);
+    setGachaPreset(selected?.gacha_rate_preset ?? "normal");
+    setGachaPresetMsg(null);
+  }, [selected]);
+
+  const onSendNotify = async () => {
+    if (!selected) return;
+    if (!notifySubject.trim() || !notifyMessage.trim()) {
+      setNotifyMsg("❌ 件名と本文を入力してください");
+      return;
+    }
+    if (!window.confirm(`${selected.email || selected.login_id} 宛にお知らせを送信します。よろしいですか？`)) {
+      return;
+    }
+    setNotifySending(true);
+    setNotifyMsg(null);
+    try {
+      const r = await fetch("/api/admin/notify-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId: selected.login_id, subject: notifySubject.trim(), message: notifyMessage.trim() }),
+      });
+      const j = await r.json().catch(() => null);
+      if (j?.ok) {
+        setNotifyMsg("✅ 送信しました");
+        setNotifySubject("");
+        setNotifyMessage("");
+      } else {
+        setNotifyMsg(`❌ 送信失敗: ${String(j?.error ?? "unknown_error")}`);
+      }
+    } catch (e: any) {
+      setNotifyMsg(`❌ 通信エラー: ${String(e?.message ?? e)}`);
+    } finally {
+      setNotifySending(false);
+    }
+  };
+
+  const onApplyGachaPreset = async () => {
+    if (!selected) return;
+    setGachaPresetSending(true);
+    setGachaPresetMsg(null);
+    try {
+      const r = await fetch("/api/admin/set-gacha-preset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId: selected.login_id, preset: gachaPreset }),
+      });
+      const j = await r.json().catch(() => null);
+      if (j?.ok) {
+        setGachaPresetMsg("✅ 適用しました");
+      } else {
+        setGachaPresetMsg(`❌ 失敗: ${String(j?.error ?? "unknown_error")}`);
+      }
+    } catch (e: any) {
+      setGachaPresetMsg(`❌ 通信エラー: ${String(e?.message ?? e)}`);
+    } finally {
+      setGachaPresetSending(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -186,6 +257,71 @@ export default function UsersTab() {
             <Row label="プラン"       value={selected.plan} />
             <Row label="ステータス"   value={selected.status} />
             <Row label="登録日時"     value={fmt(selected.created_at)} />
+          </section>
+
+          <section className="mb-4">
+            <p className="mb-2 text-xs font-bold text-zinc-400 uppercase tracking-wide">アカウント操作</p>
+            <div className="mb-4">
+              <p className="mb-1 text-xs text-zinc-400">個別お知らせ送信</p>
+              <input
+                type="text"
+                placeholder="件名"
+                value={notifySubject}
+                onChange={e => setNotifySubject(e.target.value)}
+                className="mb-2 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+              />
+              <textarea
+                placeholder="本文"
+                value={notifyMessage}
+                onChange={e => setNotifyMessage(e.target.value)}
+                rows={4}
+                className="mb-2 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none resize-none"
+              />
+              <button
+                onClick={onSendNotify}
+                disabled={notifySending}
+                className="w-full rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-600 disabled:opacity-50"
+              >
+                {notifySending ? "送信中..." : "メールを送信"}
+              </button>
+              {notifyMsg && (
+                <p className={clsx(
+                  "mt-2 text-xs",
+                  notifyMsg.startsWith("✅") ? "text-emerald-400" : "text-red-400"
+                )}>
+                  {notifyMsg}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-xs text-zinc-400">ガチャ確率プリセット</p>
+              <div className="flex gap-2">
+                <select
+                  value={gachaPreset}
+                  onChange={e => setGachaPreset(e.target.value)}
+                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-white focus:border-amber-500 focus:outline-none"
+                >
+                  <option value="normal">normal（通常）</option>
+                  <option value="lucky">lucky（高レア2倍）</option>
+                  <option value="super_lucky">super_lucky（最高優遇）</option>
+                </select>
+                <button
+                  onClick={onApplyGachaPreset}
+                  disabled={gachaPresetSending}
+                  className="rounded-lg bg-purple-700 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-purple-600 disabled:opacity-50"
+                >
+                  {gachaPresetSending ? "適用中..." : "適用"}
+                </button>
+              </div>
+              {gachaPresetMsg && (
+                <p className={clsx(
+                  "mt-2 text-xs",
+                  gachaPresetMsg.startsWith("✅") ? "text-emerald-400" : "text-red-400"
+                )}>
+                  {gachaPresetMsg}
+                </p>
+              )}
+            </div>
           </section>
 
           <section className="mb-4">
