@@ -7638,6 +7638,8 @@ function doPost(e) {
       return json_({ ok: false, error: String(e) });
     }
   }
+    if (action === 'check_aisalon_gift_deposits')   return checkAisalonGiftDeposits_(body);
+    if (action === 'consume_aisalon_gift_deposits') return consumeAisalonGiftDeposits_(body);
     return handle_(key, body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -12763,4 +12765,94 @@ function createRumbleAutoEntryTrigger() {
     .atHour(6) // JST 6:00（GASはプロジェクトタイムゾーン基準）
     .create();
   Logger.log('[createRumbleAutoEntryTrigger] 毎日6時のトリガーを登録しました');
+}
+
+// ==============================
+// Lootify 連携: GiftEP入金確認・消費
+// ==============================
+
+function getLootifySecret_() {
+  return PropertiesService.getScriptProperties().getProperty('LOOTIFY_API_KEY') || '';
+}
+
+/**
+ * Lootifyからの入金確認リクエスト。
+ * to_user が platform_login_id に一致し、consumed_by が空 or 本申請IDの gift_transactions を返す。
+ */
+function checkAisalonGiftDeposits_(body) {
+  var expected = getLootifySecret_();
+  if (!expected || str_(body.api_key) !== expected) {
+    return json_({ ok: false, error: 'unauthorized' });
+  }
+  var platformLoginId = str_(body.platform_login_id);
+  if (!platformLoginId) return json_({ ok: false, error: 'missing_platform_login_id' });
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var txSheet = giftGetSheet_(ss, 'gift_transactions');
+  ensureCols_(txSheet, txSheet.getRange(1, 1, 1, txSheet.getLastColumn()).getValues()[0], ['consumed_by', 'consumed_at']);
+  var values = getValuesSafe_(txSheet);
+  if (values.length < 2) return json_({ ok: true, deposits: [] });
+
+  var idx = indexMap_(values[0]);
+  var deposits = [];
+  values.slice(1).forEach(function(row) {
+    if (str_(row[idx['to_user']]) !== platformLoginId) return;
+    if (str_(row[idx['status']]) !== 'completed') return;
+    var consumedBy = idx['consumed_by'] !== undefined ? str_(row[idx['consumed_by']]) : '';
+    deposits.push({
+      deposit_id:    str_(row[idx['id']]),
+      from_login_id: str_(row[idx['from_user']]),
+      amount:        num_(row[idx['amount']]),
+      status:        consumedBy ? 'consumed' : 'pending',
+      created_at:    str_(row[idx['created_at']]),
+      consumed_by:   consumedBy,
+    });
+  });
+  return json_({ ok: true, deposits: deposits });
+}
+
+/**
+ * Lootifyからの消費マークリクエスト。
+ * 指定 deposit_ids の consumed_by / consumed_at を書き込む。冪等（既消費はスキップ）。
+ */
+function consumeAisalonGiftDeposits_(body) {
+  var expected = getLootifySecret_();
+  if (!expected || str_(body.api_key) !== expected) {
+    return json_({ ok: false, error: 'unauthorized' });
+  }
+  var platformLoginId = str_(body.platform_login_id);
+  var consumedBy = str_(body.consumed_by);
+  var depositIds = Array.isArray(body.deposit_ids) ? body.deposit_ids.map(function(d) { return str_(d); }) : [];
+  if (!platformLoginId || !consumedBy || depositIds.length === 0) {
+    return json_({ ok: false, error: 'missing_fields' });
+  }
+
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return json_({ ok: false, error: 'busy' }); }
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var txSheet = giftGetSheet_(ss, 'gift_transactions');
+    var header = txSheet.getRange(1, 1, 1, txSheet.getLastColumn()).getValues()[0];
+    ensureCols_(txSheet, header, ['consumed_by', 'consumed_at']);
+    var freshHeader = txSheet.getRange(1, 1, 1, txSheet.getLastColumn()).getValues()[0];
+    var idx = indexMap_(freshHeader);
+    var values = getValuesSafe_(txSheet);
+    var now = new Date().toISOString();
+    var consumed = 0;
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i];
+      if (str_(row[idx['to_user']]) !== platformLoginId) continue;
+      if (depositIds.indexOf(str_(row[idx['id']])) === -1) continue;
+      var curConsumedBy = idx['consumed_by'] !== undefined ? str_(row[idx['consumed_by']]) : '';
+      if (curConsumedBy && curConsumedBy !== consumedBy) continue; // 別申請で消費済み → スキップ
+      if (!curConsumedBy) {
+        txSheet.getRange(i + 1, idx['consumed_by'] + 1).setValue(consumedBy);
+        txSheet.getRange(i + 1, idx['consumed_at'] + 1).setValue(now);
+        consumed++;
+      }
+    }
+    return json_({ ok: true, consumed: consumed });
+  } finally {
+    lock.releaseLock();
+  }
 }
