@@ -7638,6 +7638,7 @@ function doPost(e) {
       return json_({ ok: false, error: String(e) });
     }
   }
+    if (action === 'ep_send_to_lfw')                return json_(epSendToLfw_(key, body));
     if (action === 'check_aisalon_gift_deposits')   return checkAisalonGiftDeposits_(body);
     if (action === 'consume_aisalon_gift_deposits') return consumeAisalonGiftDeposits_(body);
     return handle_(key, body);
@@ -12777,7 +12778,7 @@ function getLootifySecret_() {
 
 /**
  * Lootifyからの入金確認リクエスト。
- * to_user が platform_login_id に一致し、consumed_by が空 or 本申請IDの gift_transactions を返す。
+ * lfw_address が platform_login_id に一致する lfw_deposits を返す。
  */
 function checkAisalonGiftDeposits_(body) {
   var expected = getLootifySecret_();
@@ -12788,32 +12789,32 @@ function checkAisalonGiftDeposits_(body) {
   if (!platformLoginId) return json_({ ok: false, error: 'missing_platform_login_id' });
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var txSheet = giftGetSheet_(ss, 'gift_transactions');
-  ensureCols_(txSheet, txSheet.getRange(1, 1, 1, txSheet.getLastColumn()).getValues()[0], ['consumed_by', 'consumed_at']);
-  var values = getValuesSafe_(txSheet);
+  var depSheet = ss.getSheetByName('lfw_deposits');
+  if (!depSheet) return json_({ ok: true, deposits: [] });
+
+  var values = depSheet.getDataRange().getValues();
   if (values.length < 2) return json_({ ok: true, deposits: [] });
 
   var idx = indexMap_(values[0]);
   var deposits = [];
-  values.slice(1).forEach(function(row) {
-    if (str_(row[idx['to_user']]) !== platformLoginId) return;
-    if (str_(row[idx['status']]) !== 'completed') return;
-    var consumedBy = idx['consumed_by'] !== undefined ? str_(row[idx['consumed_by']]) : '';
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    if (str_(row[idx['lfw_address']]) !== platformLoginId) continue;
     deposits.push({
-      deposit_id:    str_(row[idx['id']]),
-      from_login_id: str_(row[idx['from_user']]),
+      deposit_id:    str_(row[idx['deposit_id']]),
+      from_login_id: str_(row[idx['from_login_id']]),
       amount:        num_(row[idx['amount']]),
-      status:        consumedBy ? 'consumed' : 'pending',
+      status:        str_(row[idx['status']]),
       created_at:    str_(row[idx['created_at']]),
-      consumed_by:   consumedBy,
+      consumed_by:   idx['consumed_by'] !== undefined ? str_(row[idx['consumed_by']]) : '',
     });
-  });
+  }
   return json_({ ok: true, deposits: deposits });
 }
 
 /**
  * Lootifyからの消費マークリクエスト。
- * 指定 deposit_ids の consumed_by / consumed_at を書き込む。冪等（既消費はスキップ）。
+ * 指定 deposit_ids の consumed_by / consumed_at / status を lfw_deposits に書き込む。冪等（既消費はスキップ）。
  */
 function consumeAisalonGiftDeposits_(body) {
   var expected = getLootifySecret_();
@@ -12831,27 +12832,110 @@ function consumeAisalonGiftDeposits_(body) {
   try { lock.waitLock(10000); } catch(e) { return json_({ ok: false, error: 'busy' }); }
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var txSheet = giftGetSheet_(ss, 'gift_transactions');
-    var header = txSheet.getRange(1, 1, 1, txSheet.getLastColumn()).getValues()[0];
-    ensureCols_(txSheet, header, ['consumed_by', 'consumed_at']);
-    var freshHeader = txSheet.getRange(1, 1, 1, txSheet.getLastColumn()).getValues()[0];
-    var idx = indexMap_(freshHeader);
-    var values = getValuesSafe_(txSheet);
+    var depSheet = ss.getSheetByName('lfw_deposits');
+    if (!depSheet) return json_({ ok: false, error: 'no_deposit_sheet' });
+
+    var values = depSheet.getDataRange().getValues();
+    if (values.length < 2) return json_({ ok: false, error: 'no_deposits' });
+
+    var header = values[0];
+    ensureCols_(depSheet, header, ['consumed_by', 'consumed_at']);
+    var idx = indexMap_(depSheet.getRange(1, 1, 1, depSheet.getLastColumn()).getValues()[0]);
+
     var now = new Date().toISOString();
     var consumed = 0;
     for (var i = 1; i < values.length; i++) {
       var row = values[i];
-      if (str_(row[idx['to_user']]) !== platformLoginId) continue;
-      if (depositIds.indexOf(str_(row[idx['id']])) === -1) continue;
-      var curConsumedBy = idx['consumed_by'] !== undefined ? str_(row[idx['consumed_by']]) : '';
-      if (curConsumedBy && curConsumedBy !== consumedBy) continue; // 別申請で消費済み → スキップ
-      if (!curConsumedBy) {
-        txSheet.getRange(i + 1, idx['consumed_by'] + 1).setValue(consumedBy);
-        txSheet.getRange(i + 1, idx['consumed_at'] + 1).setValue(now);
-        consumed++;
-      }
+      if (str_(row[idx['lfw_address']]) !== platformLoginId) continue;
+      if (depositIds.indexOf(str_(row[idx['deposit_id']])) === -1) continue;
+      if (str_(row[idx['status']]) !== 'pending') continue;
+      depSheet.getRange(i + 1, idx['consumed_by'] + 1).setValue(consumedBy);
+      depSheet.getRange(i + 1, idx['consumed_at'] + 1).setValue(now);
+      depSheet.getRange(i + 1, idx['status'] + 1).setValue('consumed');
+      consumed++;
     }
     return json_({ ok: true, consumed: consumed });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================
+// LFW Deposit System（LoofityJaとのEP連携）
+// ============================================================
+
+function epSendToLfw_(key, body) {
+  var secrets = getSecrets_();
+  if (key !== secrets.SECRET) return { ok: false, error: "unauthorized" };
+
+  var id = str_(body.id);
+  var code = str_(body.code);
+  if (!id || !code) return { ok: false, error: "missing_auth" };
+
+  var lfwAddress = str_(body.lfw_address);
+  var amount = num_(body.amount);
+
+  if (!lfwAddress || !/^LFW-[A-Z0-9]{6}$/.test(lfwAddress)) {
+    return { ok: false, error: "invalid_lfw_address" };
+  }
+  if (amount < 1) return { ok: false, error: "amount_must_be_positive" };
+  if (amount % 1 !== 0) return { ok: false, error: "amount_must_be_integer" };
+
+  var user = mktAuth_(secrets.SECRET, id, code);
+  if (!user.ok) return { ok: false, error: "auth_failed", reason: user.reason };
+
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(8000); } catch(e) { return { ok: false, error: "lock_timeout" }; }
+
+  try {
+    var senderData = mktGetUserByLoginId_(user.login_id);
+    if (!senderData || senderData.ep_balance < amount) {
+      return { ok: false, error: "insufficient_ep", ep_balance: senderData ? senderData.ep_balance : 0 };
+    }
+
+    var debitResult = mktAdjustEp_(user.login_id, user.email, -amount, "lfw_send", "to=" + lfwAddress);
+    if (!debitResult || !debitResult.ok) {
+      return { ok: false, error: "ep_debit_failed" };
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var depSheet = getOrCreateSheetByName_(ss, "lfw_deposits", [
+      "deposit_id", "from_login_id", "lfw_address", "amount", "status", "created_at"
+    ]);
+
+    var nowIso = new Date().toISOString();
+    var depositId = "LFW-DEP-" + Utilities.getUuid().replace(/-/g, "").substring(0, 12).toUpperCase();
+    depSheet.appendRow([
+      depositId,
+      user.login_id,
+      lfwAddress,
+      amount,
+      "pending",
+      nowIso,
+    ]);
+
+    try {
+      var txSheet = giftGetSheet_(ss, "gift_transactions");
+      txSheet.appendRow([
+        depositId,
+        user.login_id,
+        lfwAddress,
+        amount,
+        nowIso,
+        "",
+        "completed",
+        "LoofityJa EP送金",
+        "",
+      ]);
+    } catch(e) {}
+
+    return {
+      ok: true,
+      deposit_id: depositId,
+      lfw_address: lfwAddress,
+      amount: amount,
+      ep_balance: debitResult.new_balance,
+    };
   } finally {
     lock.releaseLock();
   }
