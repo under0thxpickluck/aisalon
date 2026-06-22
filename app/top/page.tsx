@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { computeRaised } from "../lib/presale";
 import { clearAuth, getAuth, getAuthSecret, type AuthState } from "../lib/auth";
 import { useLifaiCat } from "@/components/LifaiCat";
 import BPGrantModal from "@/components/BPGrantModal";
 import LoginBonusModal from "@/components/LoginBonusModal";
+import { LoadingCat } from "@/components/LoadingCat";
 import MusicSellApprovedModal from "@/components/MusicSellApprovedModal";
 import MissionCard from "@/components/MissionCard";
 import GachaModal from "@/components/GachaModal";
@@ -441,7 +443,7 @@ export default function AppHomePage() {
   };
 
   // ✅ 認証判定が終わるまで一瞬も中身を描画しない（チラ見え防止）
-  if (auth === null) return null;
+  if (auth === null) return <LoadingCat />;
 
   const loginId =
     (auth as any)?.loginId ??
@@ -522,15 +524,28 @@ export default function AppHomePage() {
     )}
 
     {/* アプリ詳細ポップアップ */}
+    <AnimatePresence>
     {selectedApp && (
       <>
         {/* オーバーレイ */}
-        <div
+        <motion.div
+          key="overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           className="fixed inset-0 z-40 bg-black/60"
           onClick={() => setSelectedApp(null)}
         />
         {/* スライドアップシート */}
-        <div className="fixed inset-x-0 bottom-0 z-50 max-w-sm mx-auto rounded-t-3xl bg-zinc-900 p-6 shadow-2xl">
+        <motion.div
+          key="sheet"
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 28, stiffness: 300 }}
+          className="fixed inset-x-0 bottom-0 z-50 max-w-sm mx-auto rounded-t-3xl bg-zinc-900 p-6 shadow-2xl"
+        >
           <div className="flex flex-col items-center gap-3 text-center">
             <div className={`w-20 h-20 rounded-3xl bg-gradient-to-br ${selectedApp.color} flex items-center justify-center text-4xl shadow-lg`}>
               {selectedApp.icon}
@@ -570,9 +585,10 @@ export default function AppHomePage() {
               </Link>
             )}
           </div>
-        </div>
+        </motion.div>
       </>
     )}
+    </AnimatePresence>
 
     <main className="min-h-screen text-slate-900">
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
@@ -615,17 +631,25 @@ export default function AppHomePage() {
           {/* ✅ アプリグリッド（LINEミニアプリ風 4列） */}
           <div className="mt-6">
             <p className="mb-3 text-xs font-extrabold text-slate-700">アプリ</p>
-            <div className="grid grid-cols-4 gap-3 px-2">
+            <motion.div
+              className="grid grid-cols-4 gap-3 px-2"
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }}
+            >
               {apps.map((app) => (
-                <button
+                <motion.button
                   key={app.id}
+                  variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+                  transition={{ duration: 0.3 }}
+                  whileTap={app.disabled ? undefined : { scale: 0.92 }}
                   onClick={() => { if (app.disabled) return; setSelectedApp(app); }}
                   className="flex flex-col items-center gap-1 focus:outline-none"
-                  style={{ cursor: app.disabled ? "not-allowed" : "pointer", opacity: app.disabled ? 0.6 : 1 }}
+                  style={{ cursor: app.disabled ? "not-allowed" : "pointer" }}
                 >
-                  <div className="relative">
+                  <div className="relative" style={{ opacity: app.disabled ? 0.6 : 1 }}>
                     <div
-                      className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${app.color} flex items-center justify-center text-2xl shadow-md active:scale-95 transition`}
+                      className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${app.color} flex items-center justify-center text-2xl shadow-md`}
                     >
                       {app.icon}
                     </div>
@@ -635,12 +659,12 @@ export default function AppHomePage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-zinc-600 text-center leading-tight">
+                  <span className="text-[11px] text-zinc-600 text-center leading-tight" style={{ opacity: app.disabled ? 0.6 : 1 }}>
                     {app.label}
                   </span>
-                </button>
+                </motion.button>
               ))}
-            </div>
+            </motion.div>
           </div>
 
           <MissionCard

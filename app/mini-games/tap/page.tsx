@@ -3,6 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "../../lib/useTheme";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { motion, useReducedMotion } from "framer-motion";
+import { TapFloatText } from "@/components/animations/TapFloatText";
+import { LoadingCat } from "@/components/LoadingCat";
 
 type TapStatus = {
   today_taps:      number;
@@ -96,6 +99,8 @@ export default function TapMiningPage() {
   const floatIdRef          = useRef(0);
   const comboTimerRef       = useRef<NodeJS.Timeout | null>(null);
   const feverIntervalRef    = useRef<NodeJS.Timeout | null>(null);
+
+  const reduced = useReducedMotion();
 
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
@@ -325,6 +330,8 @@ export default function TapMiningPage() {
   const comboMultiplier    = combo >= 100 ? 1.5 : combo >= 50 ? 1.2 : combo >= 20 ? 1.1 : 1.0;
   const effectiveRemaining = optimisticRemaining ?? (status?.taps_remaining ?? 0);
 
+  if (!status) return <LoadingCat />;
+
   return (
     <div className={`min-h-screen ${th.page}${rareEffect ? " animate-pulse" : ""}`}>
     {/* グリッド外：fixed要素（モーダル・ticker） */}
@@ -423,33 +430,27 @@ export default function TapMiningPage() {
 
       {/* メインタップボタン */}
       <div className="relative flex items-center justify-center my-8">
-        {floats.map(f => (
-          <div
-            key={f.id}
-            className={`absolute text-sm font-bold ${f.color} pointer-events-none animate-bounce`}
-            style={{ left: `${f.x}%`, top: "-20px" }}
-          >
-            {f.text}
-          </div>
-        ))}
-        <button
+        <TapFloatText items={floats} />
+        <motion.button
           onClick={handleTap}
           disabled={!userId || !status || effectiveRemaining <= 0}
+          animate={reduced ? {} : { scale: isTapping ? 0.88 : 1 }}
+          whileHover={(!userId || !status || effectiveRemaining <= 0) || reduced ? {} : { scale: 1.05 }}
+          transition={{ type: "spring", damping: 14, stiffness: 420 }}
           className={`
-            w-48 h-48 rounded-full font-black text-2xl transition-all duration-100 select-none
-            ${isTapping ? "scale-90" : "scale-100"}
+            w-48 h-48 rounded-full font-black text-2xl select-none
             ${fever
               ? "bg-gradient-to-br from-red-500 to-orange-500 shadow-[0_0_40px_rgba(239,68,68,0.8)]"
               : "bg-gradient-to-br from-purple-600 to-blue-600 shadow-[0_0_30px_rgba(99,102,241,0.5)]"
             }
-            ${(!userId || !status || effectiveRemaining <= 0) ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:scale-105 active:scale-90"}
+            ${(!userId || !status || effectiveRemaining <= 0) ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
           `}
         >
           {effectiveRemaining <= 0 ? "🔒" : "⛏️"}
           <div className="text-sm font-normal mt-1">
             {effectiveRemaining <= 0 ? "明日また来てね" : "TAP!"}
           </div>
-        </button>
+        </motion.button>
       </div>
 
       {/* 上限メッセージ */}
