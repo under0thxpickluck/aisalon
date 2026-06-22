@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { LoadingCat } from '@/components/LoadingCat';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Question {
@@ -553,11 +554,7 @@ export default function FortunePage() {
     <div className="min-h-screen bg-black text-white">
 
       {/* ── Loading ─────────────────────────────────────────────────────── */}
-      {view === 'loading' && (
-        <div className="flex flex-col items-center justify-center min-h-screen">
-          <p className="text-white/60">読み込み中…</p>
-        </div>
-      )}
+      {view === 'loading' && <LoadingCat />}
 
       {/* ── Home ────────────────────────────────────────────────────────── */}
       {view === 'home' && (

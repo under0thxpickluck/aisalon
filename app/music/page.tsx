@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LoadingCat } from "@/components/LoadingCat";
 import { getAuth, getAuthSecret } from "../lib/auth";
 
 const PRO_PLANS = ["500", "1000"];
@@ -66,13 +67,7 @@ export default function MusicPage() {
 
   const isPro = approvedFallback || (plan !== null && PRO_PLANS.includes(plan));
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-slate-500">読み込み中…</p>
-      </main>
-    );
-  }
+  if (loading) return <LoadingCat />;
 
   return (
     <main className="min-h-screen text-slate-900">

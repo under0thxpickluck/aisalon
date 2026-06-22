@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAuth, getAuthSecret } from "../../lib/auth";
+import { LoadingCat } from "@/components/LoadingCat";
 import { useLifaiCat } from "@/components/LifaiCat";
 
 type MarketItem = {
@@ -329,13 +330,7 @@ export default function ItemDetailPage() {
     boxSizing: "border-box",
   };
 
-  if (loading) {
-    return (
-      <main style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", background: "#0B1220" }}>
-        <p style={{ fontSize: 13, color: "rgba(234,240,255,0.4)" }}>読み込み中…</p>
-      </main>
-    );
-  }
+  if (loading) return <LoadingCat />;
 
   if (error || !item) {
     return (
