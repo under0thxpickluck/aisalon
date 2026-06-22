@@ -1452,7 +1452,13 @@ export default function Music2Page() {
                       href="/music-release-guide"
                       className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-100"
                     >
-                      🎵 リリース申請方法を見る
+                      🎵 リリースガイド
+                    </Link>
+                    <Link
+                      href="/album-guide"
+                      className="flex-1 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 text-center transition hover:bg-indigo-50"
+                    >
+                      💿 アルバムの作り方
                     </Link>
                     <Link
                       href="/apply-sell"
@@ -1727,7 +1733,13 @@ export default function Music2Page() {
                         href="/music-release-guide"
                         className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-50"
                       >
-                        🎵 リリースガイドを見る
+                        🎵 リリースガイド
+                      </Link>
+                      <Link
+                        href="/album-guide"
+                        className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-semibold text-indigo-700 text-center transition hover:bg-indigo-50"
+                      >
+                        💿 アルバムの作り方
                       </Link>
                       <Link
                         href="/apply-sell"
