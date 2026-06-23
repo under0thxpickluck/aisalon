@@ -6,7 +6,7 @@ export default function PrivacyPage() {
   const router = useRouter();
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
+    <main className="min-h-screen bg-neutral-50 dark:bg-gray-800 text-neutral-900 dark:text-white dark:text-white">
       <div className="mx-auto max-w-3xl px-6 py-16">
 
         {/* 上部：タイトル＋戻る */}
@@ -18,18 +18,18 @@ export default function PrivacyPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            className="text-sm font-medium text-neutral-600 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-white"
           >
             戻る
           </button>
         </div>
 
         {/* 本文カード */}
-        <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-black/5">
-          <div className="space-y-10 text-sm leading-relaxed text-neutral-700">
+        <div className="rounded-2xl bg-white dark:bg-gray-900 p-8 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+          <div className="space-y-10 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 1. 取得する情報
               </h2>
               <ul className="list-disc space-y-1 pl-6">
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 2. 利用目的
               </h2>
               <ul className="list-disc space-y-1 pl-6">
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 3. 第三者提供
               </h2>
               <p>
@@ -62,7 +62,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 4. データ管理
               </h2>
               <p>
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 5. 改定
               </h2>
               <p>
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 6. 運営主体および連絡先
               </h2>
               <p>運営主体：LIFAI運営事務局</p>
@@ -97,13 +97,13 @@ export default function PrivacyPage() {
                   LIFAI公式LINE
                 </a>
               </p>
-              <p className="mt-2 text-xs text-neutral-500">
+              <p className="mt-2 text-xs text-neutral-500 dark:text-slate-400">
                 ※返信保証はありません。順次対応いたします。
               </p>
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 7. 外部サービスへの業務委託
               </h2>
               <p>
@@ -115,7 +115,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 8. 開示・訂正・削除等の請求
               </h2>
               <p>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-3 text-lg font-semibold text-neutral-900 dark:text-white">
                 9. Cookieおよびアクセス情報
               </h2>
               <p>

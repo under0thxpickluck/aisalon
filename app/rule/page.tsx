@@ -113,26 +113,26 @@ LIFAI 利用規約
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-neutral-50">
+    <main className="min-h-screen bg-neutral-50 dark:bg-gray-800">
       <section className="mx-auto max-w-4xl px-4 py-12">
-        <div className="rounded-2xl bg-white p-6 shadow-sm md:p-10">
+        <div className="rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-sm md:p-10">
           <div className="mb-6 flex items-center justify-between gap-4">
-            <h1 className="text-xl font-bold text-neutral-900 md:text-2xl">
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white md:text-2xl">
               利用規約
             </h1>
             <Link
               href="/"
-              className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+              className="text-sm font-medium text-neutral-600 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-white"
             >
               戻る
             </Link>
           </div>
 
-          <p className="mb-4 text-sm text-neutral-600">
+          <p className="mb-4 text-sm text-neutral-600 dark:text-slate-400">
             最終更新：2026年
           </p>
 
-          <pre className="whitespace-pre-wrap break-words rounded-xl bg-neutral-50 p-4 text-sm leading-6 text-neutral-900">
+          <pre className="whitespace-pre-wrap break-words rounded-xl bg-neutral-50 dark:bg-gray-800 p-4 text-sm leading-6 text-neutral-900 dark:text-white">
             {TERMS}
           </pre>
         </div>

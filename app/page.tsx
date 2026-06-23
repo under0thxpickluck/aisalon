@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-white text-slate-900">
+    <main className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-white dark:from-[#070A12] dark:via-[#0b1022] dark:to-[#070A12] text-slate-900 dark:text-white">
       <div className="mx-auto max-w-[920px] px-4 py-10">
         {/* ===== ヘッダー ===== */}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -14,7 +14,7 @@ export default function HomePage() {
               <img
                 src="/logo.png"
                 alt="LIFAI"
-                className="h-12 w-12 rounded-2xl border border-slate-200 bg-white shadow-sm object-contain"
+                className="h-12 w-12 rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm object-contain"
               />
               <div>
                 <div className="text-lg font-bold">LIFAI</div>
@@ -25,7 +25,7 @@ export default function HomePage() {
             {/* スマホではログインだけを右に */}
             <Link
               href="/login"
-              className="md:hidden rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-100 transition"
+              className="md:hidden rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-gray-700 transition dark:text-white"
             >
               ログイン
             </Link>
@@ -42,7 +42,7 @@ export default function HomePage() {
 
             <Link
               href="/vision"
-              className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm hover:bg-white hover:border-slate-300 transition"
+              className="group inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-gray-600 bg-white/70 dark:bg-gray-800/70 px-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-200 shadow-sm hover:bg-white dark:hover:bg-gray-800 hover:border-slate-300 transition"
               aria-label="もっと詳しく（ビジョンページへ）"
             >
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100 group-hover:bg-indigo-100 transition">
@@ -54,7 +54,7 @@ export default function HomePage() {
             {/* PCではログインもここに出す */}
             <Link
               href="/login"
-              className="hidden md:inline-flex rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold hover:bg-slate-100 transition"
+              className="hidden md:inline-flex rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-gray-700 transition dark:text-white"
             >
               ログイン
             </Link>
@@ -76,7 +76,7 @@ export default function HomePage() {
             <span className="text-indigo-600">学びを収益に変える場所</span>
           </h1>
 
-          <p className="mt-6 text-slate-600 max-w-xl mx-auto leading-relaxed">
+          <p className="mt-6 text-slate-600 dark:text-slate-400 max-w-xl mx-auto leading-relaxed">
             LIFAIは、AIを使って「生活を豊かにする力」を身につけるための
             実践型オンラインサロンです。
           </p>
@@ -93,14 +93,14 @@ export default function HomePage() {
 
           <Link
             href="/login"
-            className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 py-4 text-base font-semibold text-slate-800 hover:bg-slate-100 transition"
+            className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-4 text-base font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-700 transition"
           >
             すでにIDをお持ちの方はこちら
           </Link>
         </div>
 
         {/* ===== 始め方 ===== */}
-        <div className="relative mt-16 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
+        <div className="relative mt-16 rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 shadow-sm overflow-hidden">
           {/* 背景ロゴ */}
           <img
             src="/logo.png"
@@ -111,7 +111,7 @@ export default function HomePage() {
           <div className="relative z-10">
             <div className="text-lg font-bold mb-4">はじめ方</div>
 
-            <div className="space-y-3 text-slate-700 text-sm leading-relaxed">
+            <div className="space-y-3 text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
               <div>① 権利購入（仮想通貨）</div>
               <div>② 申請フォーム入力</div>
               <div>③ 承認後ログインID発行</div>
@@ -121,36 +121,36 @@ export default function HomePage() {
         </div>
 
         {/* ===== 承認待ち ===== */}
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-lg font-bold mb-2">承認待ちの場合</div>
-          <p className="text-sm text-slate-600 leading-relaxed">
+        <div className="mt-6 rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 shadow-sm">
+          <div className="text-lg font-bold mb-2 dark:text-white">承認待ちの場合</div>
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             現在確認中の可能性があります。通常は数時間〜24時間以内に対応いたします。
           </p>
         </div>
 
         {/* ===== フッター：リンク & お問い合わせ ===== */}
-        <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mt-10 rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* リンク群 */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <Link href="/invest" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+              <Link href="/invest" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white underline-offset-4 hover:underline">
                 広告主様専用
               </Link>
 
-              <Link href="/rule" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+              <Link href="/rule" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white underline-offset-4 hover:underline">
                 利用規約
               </Link>
 
-              <Link href="/referral" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+              <Link href="/referral" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white underline-offset-4 hover:underline">
                 紹介プログラム
               </Link>
 
               {/* ✅ 追加 */}
-              <Link href="/privacy" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+              <Link href="/privacy" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white underline-offset-4 hover:underline">
                 プライバシーポリシー
               </Link>
 
-              <Link href="/tokushoho" className="text-slate-600 hover:text-slate-900 underline-offset-4 hover:underline">
+              <Link href="/tokushoho" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white underline-offset-4 hover:underline">
                 特定商取引法に基づく表記
               </Link>
             </div>

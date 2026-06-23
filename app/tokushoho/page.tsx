@@ -6,7 +6,7 @@ export default function TokushohoPage() {
   const router = useRouter();
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
+    <main className="min-h-screen bg-neutral-50 dark:bg-gray-800 text-neutral-900 dark:text-white dark:text-white">
       <div className="mx-auto max-w-3xl px-6 py-16">
         {/* 上部：タイトル＋戻る */}
         <div className="mb-10 flex items-start justify-between gap-4">
@@ -17,24 +17,24 @@ export default function TokushohoPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="text-sm font-medium text-neutral-600 hover:text-neutral-900"
+            className="text-sm font-medium text-neutral-600 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-white"
           >
             戻る
           </button>
         </div>
 
         {/* 本文カード */}
-        <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-black/5">
-          <div className="space-y-8 text-sm leading-relaxed text-neutral-700">
+        <div className="rounded-2xl bg-white dark:bg-gray-900 p-8 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+          <div className="space-y-8 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 販売事業者
               </h2>
               <p>LIFAI運営事務局</p>
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 お問い合わせ
               </h2>
               <p>メール：lifai.official@gmail.com</p>
@@ -52,14 +52,14 @@ export default function TokushohoPage() {
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 販売価格
               </h2>
               <p>各プランページに表示されたUSDT価格</p>
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 支払方法
               </h2>
               <p>
@@ -69,14 +69,14 @@ export default function TokushohoPage() {
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 役務提供時期
               </h2>
               <p>送金確認および承認完了時点より開始</p>
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 提供内容
               </h2>
               <p>
@@ -88,7 +88,7 @@ export default function TokushohoPage() {
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 返品・返金について
               </h2>
               <p>
@@ -102,7 +102,7 @@ export default function TokushohoPage() {
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 クーリングオフについて
               </h2>
               <p>
@@ -112,7 +112,7 @@ export default function TokushohoPage() {
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 仮想通貨決済に関する注意事項
               </h2>
               <p>
@@ -123,7 +123,7 @@ export default function TokushohoPage() {
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 表現および再現性
               </h2>
               <p>
@@ -133,7 +133,7 @@ export default function TokushohoPage() {
             </section>
 
             <section>
-              <h2 className="mb-2 text-lg font-semibold text-neutral-900">
+              <h2 className="mb-2 text-lg font-semibold text-neutral-900 dark:text-white">
                 運営主体の変更
               </h2>
               <p>

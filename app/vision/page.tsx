@@ -171,10 +171,10 @@ function ProgressBar({ valuePct }: { valuePct: number }) {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-2xl bg-white/70 backdrop-blur-md ring-1 ring-zinc-200 shadow-sm p-4">
-      <div className="text-xs text-zinc-500">{label}</div>
-      <div className="mt-1 text-xl font-semibold text-zinc-900">{value}</div>
-      {sub ? <div className="mt-1 text-xs text-zinc-500">{sub}</div> : null}
+    <div className="rounded-2xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-md ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-4">
+      <div className="text-xs text-zinc-500 dark:text-slate-400">{label}</div>
+      <div className="mt-1 text-xl font-semibold text-zinc-900 dark:text-white">{value}</div>
+      {sub ? <div className="mt-1 text-xs text-zinc-500 dark:text-slate-400">{sub}</div> : null}
     </div>
   );
 }
@@ -183,7 +183,7 @@ function SectionHeader({ title, desc }: { title: string; desc?: ReactNode }) {
   return (
     <div className="mb-4">
       <h2 className="text-xl font-bold">{title}</h2>
-      {desc ? <p className="mt-2 text-sm text-zinc-600">{desc}</p> : null}
+      {desc ? <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">{desc}</p> : null}
     </div>
   );
 }
@@ -283,7 +283,7 @@ export default function VisionPage() {
     "linear-gradient(to bottom, rgba(24,24,27,0.14) 1px, transparent 1px)";
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white via-zinc-50 to-white text-zinc-900">
+    <main className="min-h-screen bg-gradient-to-b from-white via-zinc-50 to-white dark:from-[#070A12] dark:via-[#0b1022] dark:to-[#070A12] text-zinc-900 dark:text-white dark:text-white">
       {/* subtle grid */}
       <div
         aria-hidden="true"
@@ -303,12 +303,12 @@ export default function VisionPage() {
               alt="LIFAI"
               width={40}
               height={40}
-              className="rounded-xl ring-1 ring-zinc-200"
+              className="rounded-xl ring-1 ring-zinc-200 dark:ring-gray-700"
               priority
             />
             <div className="leading-tight">
               <div className="text-sm font-semibold">LIFAI</div>
-              <div className="text-xs text-zinc-500">AI副業 実践環境</div>
+              <div className="text-xs text-zinc-500 dark:text-slate-400">AI副業 実践環境</div>
             </div>
           </Link>
 
@@ -321,7 +321,7 @@ export default function VisionPage() {
             </Link>
             <Link
               href="/apply"
-              className="rounded-xl bg-white/70 px-4 py-2 text-sm font-semibold ring-1 ring-zinc-200 shadow-sm hover:bg-white"
+              className="rounded-xl bg-white/70 dark:bg-gray-800/70 px-4 py-2 text-sm font-semibold ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm hover:bg-white"
             >
               参加申請
             </Link>
@@ -331,37 +331,37 @@ export default function VisionPage() {
         {/* hero */}
         <section className="mt-10 grid gap-8 md:grid-cols-[1.2fr_0.8fr] items-center">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs ring-1 ring-zinc-200">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/70 dark:bg-gray-800/70 px-3 py-1 text-xs ring-1 ring-zinc-200 dark:ring-gray-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-zinc-700">進捗公開中</span>
+              <span className="text-zinc-700 dark:text-slate-300">進捗公開中</span>
             </div>
 
             <h1 className="mt-4 text-3xl md:text-4xl font-bold tracking-tight">
               そのままだと、
-              <span className="text-zinc-900">「知ってるだけ」</span>で終わる。
+              <span className="text-zinc-900 dark:text-white">「知ってるだけ」</span>で終わる。
               <br />
               <span className="bg-gradient-to-r from-indigo-600 via-sky-600 to-cyan-600 bg-clip-text text-transparent">
                 実際に回せる“副業の実践環境”がないと、伸びない。
               </span>
             </h1>
 
-            <p className="mt-4 text-sm md:text-base text-zinc-600 leading-relaxed">
+            <p className="mt-4 text-sm md:text-base text-zinc-600 dark:text-slate-400 leading-relaxed">
               情報は増え続けるのに、時間だけが減っていく。
               <br />
               「何をやればいいか分からない」「続かない」「成果が出ない」──その詰まりを、
-              <span className="font-semibold text-zinc-800">“体験 → 型 → 実践”</span>でほどきます。
+              <span className="font-semibold text-zinc-800 dark:text-slate-200">“体験 → 型 → 実践”</span>でほどきます。
               <br />
-              LIFAIは、学習ではなく<span className="font-semibold text-zinc-800">“実行”を積み上げる場所</span>です。
+              LIFAIは、学習ではなく<span className="font-semibold text-zinc-800 dark:text-slate-200">“実行”を積み上げる場所</span>です。
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/70 ring-1 ring-zinc-200 px-3 py-1 text-xs">
+              <span className="rounded-full bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs">
                 情報だけで終わる不安を解消
               </span>
-              <span className="rounded-full bg-white/70 ring-1 ring-zinc-200 px-3 py-1 text-xs">
+              <span className="rounded-full bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs">
                 “型”があるから迷わない
               </span>
-              <span className="rounded-full bg-white/70 ring-1 ring-zinc-200 px-3 py-1 text-xs">
+              <span className="rounded-full bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs">
                 VPS/GPUで実際に回して前に進む
               </span>
             </div>
@@ -372,7 +372,7 @@ export default function VisionPage() {
         {/* vision block (inserted) */}
         {/* 🔥 Vision Image Block */}
         <section className="mt-14">
-          <div className="rounded-3xl overflow-hidden ring-1 ring-zinc-200 shadow-sm bg-white/70">
+          <div className="rounded-3xl overflow-hidden ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm bg-white/70 dark:bg-gray-800/70">
             <Image
               src="/thema.png"
               alt="LIFAI Vision"
@@ -388,7 +388,7 @@ export default function VisionPage() {
               ただの副業サロンではありません。
             </h2>
 
-            <p className="mt-6 text-base md:text-lg text-zinc-600 leading-relaxed">
+            <p className="mt-6 text-base md:text-lg text-zinc-600 dark:text-slate-400 leading-relaxed">
               1人の挑戦が、環境を強くし、
               <br />
               環境が強くなるほど、参加者の成果が出やすくなる。
@@ -396,7 +396,7 @@ export default function VisionPage() {
               その積み上げが、やがて企業に提供できる基盤になる。
             </p>
 
-            <p className="mt-6 text-sm text-zinc-500">
+            <p className="mt-6 text-sm text-zinc-500 dark:text-slate-400">
               ※これは約束ではなく構想です。進捗と共に段階的に公開していきます。
             </p>
           </div>
@@ -410,7 +410,7 @@ export default function VisionPage() {
             desc="LIFAIは“体験して終わり”ではなく、体験をそのまま副業の実践に繋げます。"
           />
           {/* key visual: service */}
-          <div className="mt-4 rounded-3xl overflow-hidden ring-1 ring-zinc-200 shadow-sm bg-white/70">
+          <div className="mt-4 rounded-3xl overflow-hidden ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm bg-white/70 dark:bg-gray-800/70">
             <Image
               src="/sarvice.png"
               alt="LIFAI service overview"
@@ -419,24 +419,24 @@ export default function VisionPage() {
               className="w-full h-auto"
             />
           </div>
-          <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+          <div className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
             <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-stretch">
               {flowSteps.map((s, idx) => (
                 <div key={s.title} className="contents">
-                  <div className="rounded-3xl bg-white/60 ring-1 ring-zinc-200/80 p-4">
+                  <div className="rounded-3xl bg-white/60 dark:bg-gray-800/60 ring-1 ring-zinc-200 dark:ring-gray-700/80 p-4">
                     <div className="flex items-center gap-3">
                       <div className="h-11 w-11 rounded-2xl bg-zinc-900 text-white flex items-center justify-center text-lg">
                         {s.icon}
                       </div>
                       <div>
                         <div className="text-sm font-semibold">{s.title}</div>
-                        <div className="text-xs text-zinc-500">（ここがポイント）</div>
+                        <div className="text-xs text-zinc-500 dark:text-slate-400">（ここがポイント）</div>
                       </div>
                     </div>
-                    <div className="mt-3 text-sm text-zinc-600 leading-relaxed">{s.desc}</div>
+                    <div className="mt-3 text-sm text-zinc-600 dark:text-slate-400 leading-relaxed">{s.desc}</div>
                     <ul className="mt-3 space-y-1">
                       {s.points.map((p, i) => (
-                        <li key={i} className="text-xs text-zinc-700">
+                        <li key={i} className="text-xs text-zinc-700 dark:text-slate-300">
                           ・{p}
                         </li>
                       ))}
@@ -448,9 +448,9 @@ export default function VisionPage() {
               ))}
             </div>
 
-            <div className="mt-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 ring-1 ring-zinc-200 p-4">
+            <div className="mt-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 ring-1 ring-zinc-200 dark:ring-gray-700 p-4">
               <div className="text-sm font-semibold">ここが安心ポイント</div>
-              <div className="mt-1 text-sm text-zinc-600">
+              <div className="mt-1 text-sm text-zinc-600 dark:text-slate-400">
                 「体験」→「型」→「実践」まで道があるので、年齢や経験に関係なく進めます。
                 <br />
                 難しい言葉より、まず“動くもの”を触る設計です。
@@ -460,42 +460,42 @@ export default function VisionPage() {
         </section>
 
         {/* 🌱 Credit → インフラ基金 → GPU/AIBOT 還元の橋渡し */}
-        <div className="mt-6 rounded-3xl bg-gradient-to-r from-emerald-50 via-sky-50 to-indigo-50 ring-1 ring-zinc-200 shadow-sm p-6">
+        <div className="mt-6 rounded-3xl bg-gradient-to-r from-emerald-50 via-sky-50 to-indigo-50 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-sm font-semibold text-zinc-900">みんなのクレジットが、環境になる。</div>
-              <div className="mt-1 text-sm text-zinc-600 leading-relaxed">
+              <div className="text-sm font-semibold text-zinc-900 dark:text-white">みんなのクレジットが、環境になる。</div>
+              <div className="mt-1 text-sm text-zinc-600 dark:text-slate-400 leading-relaxed">
                 LIFAIのクレジットは「消費して終わり」ではなく、
-                <span className="font-semibold text-zinc-800">インフラ基金</span>として積み上がります。
-                その基金で<span className="font-semibold text-zinc-800">GPU</span>や<span className="font-semibold text-zinc-800">AIBOT</span>の導入を進め、
-                将来的に<span className="font-semibold text-zinc-800">“みんなの実践環境”として還元</span>していきます。
+                <span className="font-semibold text-zinc-800 dark:text-slate-200">インフラ基金</span>として積み上がります。
+                その基金で<span className="font-semibold text-zinc-800 dark:text-slate-200">GPU</span>や<span className="font-semibold text-zinc-800 dark:text-slate-200">AIBOT</span>の導入を進め、
+                将来的に<span className="font-semibold text-zinc-800 dark:text-slate-200">“みんなの実践環境”として還元</span>していきます。
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/80 ring-1 ring-zinc-200 px-3 py-1 text-xs text-zinc-700">
+              <span className="rounded-full bg-white/80 dark:bg-gray-800/80 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs text-zinc-700 dark:text-slate-300">
                 クレジット
               </span>
               <span className="text-zinc-400">→</span>
-              <span className="rounded-full bg-white/80 ring-1 ring-zinc-200 px-3 py-1 text-xs text-zinc-700">
+              <span className="rounded-full bg-white/80 dark:bg-gray-800/80 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs text-zinc-700 dark:text-slate-300">
                 インフラ基金
               </span>
               <span className="text-zinc-400">→</span>
-              <span className="rounded-full bg-white/80 ring-1 ring-zinc-200 px-3 py-1 text-xs text-zinc-700">
+              <span className="rounded-full bg-white/80 dark:bg-gray-800/80 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs text-zinc-700 dark:text-slate-300">
                 GPU / VPS
               </span>
               <span className="text-zinc-400">→</span>
-              <span className="rounded-full bg-white/80 ring-1 ring-zinc-200 px-3 py-1 text-xs text-zinc-700">
+              <span className="rounded-full bg-white/80 dark:bg-gray-800/80 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs text-zinc-700 dark:text-slate-300">
                 AIBOT
               </span>
               <span className="text-zinc-400">→</span>
-              <span className="rounded-full bg-white/80 ring-1 ring-zinc-200 px-3 py-1 text-xs text-zinc-700">
+              <span className="rounded-full bg-white/80 dark:bg-gray-800/80 ring-1 ring-zinc-200 dark:ring-gray-700 px-3 py-1 text-xs text-zinc-700 dark:text-slate-300">
                 みんなへ還元
               </span>
             </div>
           </div>
 
-          <div className="mt-4 text-xs text-zinc-500">
+          <div className="mt-4 text-xs text-zinc-500 dark:text-slate-400">
             ※配当や金融商品ではなく、体験と実践のための「環境整備」に使います（進捗は段階的に公開）。
           </div>
         </div>
@@ -511,7 +511,7 @@ export default function VisionPage() {
             desc="“GPU=難しい”をやめます。要は「重いAIを速く動かせる環境」です。"
           />
           {/* key visual: GPU */}
-          <div className="mt-4 rounded-3xl overflow-hidden ring-1 ring-zinc-200 shadow-sm bg-white/70">
+          <div className="mt-4 rounded-3xl overflow-hidden ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm bg-white/70 dark:bg-gray-800/70">
             <Image
               src="/gpu.png"
               alt="GPU rendering"
@@ -529,9 +529,9 @@ export default function VisionPage() {
               { t: "アプリ制作", d: "PWA/LP/自動ツールを作って販売" },
               { t: "学び→収益化", d: "学ぶだけで終わらせず“売れる形”へ" },
             ].map((x) => (
-              <div key={x.t} className="rounded-2xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-4">
+              <div key={x.t} className="rounded-2xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-4">
                 <div className="text-sm font-semibold">{x.t}</div>
-                <div className="mt-1 text-sm text-zinc-600">{x.d}</div>
+                <div className="mt-1 text-sm text-zinc-600 dark:text-slate-400">{x.d}</div>
               </div>
             ))}
           </div>
@@ -539,23 +539,23 @@ export default function VisionPage() {
 
 
           <div className="mt-6 grid gap-3 md:grid-cols-2">
-            <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+            <div className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
               <div className="text-sm font-semibold">参加が増えるほど、環境が強くなる（イメージ）</div>
-              <div className="mt-2 text-xs text-zinc-500">※これは目安の図です（実際の強化は進捗・コスト・運用状況で調整）</div>
-              <div className="mt-4 rounded-2xl bg-white/60 ring-1 ring-zinc-200/80 p-3 text-zinc-800">
+              <div className="mt-2 text-xs text-zinc-500 dark:text-slate-400">※これは目安の図です（実際の強化は進捗・コスト・運用状況で調整）</div>
+              <div className="mt-4 rounded-2xl bg-white/60 dark:bg-gray-800/60 ring-1 ring-zinc-200 dark:ring-gray-700/80 p-3 text-zinc-800 dark:text-slate-200">
                 <MiniLineChart points={growthForecast} />
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+            <div className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
               <div className="text-sm font-semibold">“払った以上の価値”はどう作る？</div>
-              <div className="mt-2 text-sm text-zinc-600 leading-relaxed">
+              <div className="mt-2 text-sm text-zinc-600 dark:text-slate-400 leading-relaxed">
                 LIFAIは金融ではありません。なので「配当」ではなく、
                 <span className="font-semibold">体験価値（無料枠・優遇・イベント・環境拡張）</span>で“価値”を作ります。
               </div>
               <ul className="mt-4 space-y-2">
                 {["無料枠の拡張（VPS/GPU）", "全員参加の“無料デー”や解放イベント", "テンプレ/ワークフローの無償公開枠", "環境が強いほど、作れるものが増える（＝副業が進む）"].map((t, i) => (
-                  <li key={i} className="text-sm text-zinc-700">
+                  <li key={i} className="text-sm text-zinc-700 dark:text-slate-300">
                     ・{t}
                   </li>
                 ))}
@@ -567,20 +567,20 @@ export default function VisionPage() {
         {/* loop diagram */}
         <section className="mt-12">
           <SectionHeader title="みんなで育つ仕組み（ワクワクの正体）" desc="“参加するほど環境が強くなる”を、わかりやすく1枚にしました。" />
-          <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+          <div className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
             <div className="grid gap-3 md:grid-cols-4">
               {loopItems.map((x) => (
-                <div key={x.title} className="rounded-3xl bg-white/60 ring-1 ring-zinc-200/80 p-4">
+                <div key={x.title} className="rounded-3xl bg-white/60 dark:bg-gray-800/60 ring-1 ring-zinc-200 dark:ring-gray-700/80 p-4">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-2xl bg-zinc-900 text-white flex items-center justify-center">{x.icon}</div>
                     <div className="text-sm font-semibold">{x.title}</div>
                   </div>
-                  <div className="mt-2 text-sm text-zinc-600">{x.desc}</div>
+                  <div className="mt-2 text-sm text-zinc-600 dark:text-slate-400">{x.desc}</div>
                 </div>
               ))}
             </div>
             {/* key visual: AI assistant concept */}
-            <div className="mt-4 rounded-3xl overflow-hidden ring-1 ring-zinc-200 shadow-sm bg-white/70">
+            <div className="mt-4 rounded-3xl overflow-hidden ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm bg-white/70 dark:bg-gray-800/70">
               <Image
                 src="/aiimage.png"
                 alt="AI assistant concept"
@@ -589,9 +589,9 @@ export default function VisionPage() {
                 className="w-full h-auto"
               />
             </div>
-            <div className="mt-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 ring-1 ring-zinc-200 p-4">
+            <div className="mt-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 ring-1 ring-zinc-200 dark:ring-gray-700 p-4">
               <div className="text-sm font-semibold">ポイント</div>
-              <div className="mt-1 text-sm text-zinc-600">
+              <div className="mt-1 text-sm text-zinc-600 dark:text-slate-400">
                 “環境が強い＝できることが増える” → “副業が進む” → “また参加が増える”。<br />
                 この循環を“透明な進捗”で運用します。
               </div>
@@ -607,13 +607,13 @@ export default function VisionPage() {
             {milestones.map((m) => {
               const pct = (growth.fundUSD / m.amountUSD) * 100;
               return (
-                <div key={m.amountUSD} className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+                <div key={m.amountUSD} className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
                   <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-2">
                     <div>
-                      <div className="text-xs text-zinc-500">目標 ${formatUSD(m.amountUSD)}</div>
+                      <div className="text-xs text-zinc-500 dark:text-slate-400">目標 ${formatUSD(m.amountUSD)}</div>
                       <div className="text-base font-semibold">{m.title}</div>
                     </div>
-                    <div className="text-xs text-zinc-500">進捗 {Math.floor(clamp(pct, 0, 100))}%</div>
+                    <div className="text-xs text-zinc-500 dark:text-slate-400">進捗 {Math.floor(clamp(pct, 0, 100))}%</div>
                   </div>
 
                   <div className="mt-3">
@@ -622,13 +622,13 @@ export default function VisionPage() {
 
                   <ul className="mt-4 grid gap-2 md:grid-cols-3">
                     {m.bullets.map((b, i) => (
-                      <li key={i} className="rounded-2xl bg-white/60 ring-1 ring-zinc-200/80 px-3 py-2 text-sm text-zinc-700">
+                      <li key={i} className="rounded-2xl bg-white/60 dark:bg-gray-800/60 ring-1 ring-zinc-200 dark:ring-gray-700/80 px-3 py-2 text-sm text-zinc-700 dark:text-slate-300">
                         {b}
                       </li>
                     ))}
                   </ul>
 
-                  <div className="mt-4 text-xs text-zinc-500">※目標は運用状況に応じて調整する場合があります（透明性は維持します）</div>
+                  <div className="mt-4 text-xs text-zinc-500 dark:text-slate-400">※目標は運用状況に応じて調整する場合があります（透明性は維持します）</div>
                 </div>
               );
             })}
@@ -648,39 +648,39 @@ export default function VisionPage() {
           />
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+            <div className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
               <div className="text-sm font-semibold">使い道の例</div>
               <div className="mt-3 divide-y divide-zinc-200/70">
                 {credit.examples.map((e) => (
                   <div key={e.name} className="flex items-center justify-between py-3">
-                    <div className="text-sm text-zinc-800">
+                    <div className="text-sm text-zinc-800 dark:text-slate-200">
                       {e.name}
-                      <div className="text-xs text-zinc-500">{e.note}</div>
+                      <div className="text-xs text-zinc-500 dark:text-slate-400">{e.note}</div>
                     </div>
-                    <div className="text-sm font-semibold text-zinc-900">{e.cost}クレ</div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-white">{e.cost}クレ</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+            <div className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
               <div className="text-sm font-semibold">安心のために</div>
               <ul className="mt-3 space-y-2">
                 {credit.notes.map((n, i) => (
-                  <li key={i} className="text-sm text-zinc-700">・{n}</li>
+                  <li key={i} className="text-sm text-zinc-700 dark:text-slate-300">・{n}</li>
                 ))}
               </ul>
 
-              <div className="mt-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 ring-1 ring-zinc-200 p-4">
+              <div className="mt-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 ring-1 ring-zinc-200 dark:ring-gray-700 p-4">
                 <div className="text-sm font-semibold">毎日の繰り返しを価値に</div>
-                <div className="mt-1 text-sm text-zinc-600">
+                <div className="mt-1 text-sm text-zinc-600 dark:text-slate-400">
                   参加無料の「デイリーチャレンジ」や「抽選イベント」で +5クレなど。
                   <br />
                   “作業”ではなく、楽しさと継続の仕掛けにします。
                 </div>
               </div>
 
-              <div className="mt-4 text-xs text-zinc-500">※EPやBPの価値は『LIFAIとは』のページをご確認ください。</div>
+              <div className="mt-4 text-xs text-zinc-500 dark:text-slate-400">※EPやBPの価値は『LIFAIとは』のページをご確認ください。</div>
             </div>
           </div>
         </section>
@@ -690,17 +690,17 @@ export default function VisionPage() {
           <SectionHeader title="副業って結局、何をするの？（具体例）" desc="年齢問わずイメージできるように、代表的な“収益化の形”を置きます。" />
           <div className="grid gap-3 md:grid-cols-3">
             {earningModels.map((m) => (
-              <div key={m.title} className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+              <div key={m.title} className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
                 <div className="text-sm font-semibold">{m.title}</div>
-                <div className="mt-1 text-xs text-zinc-500">{m.target}</div>
+                <div className="mt-1 text-xs text-zinc-500 dark:text-slate-400">{m.target}</div>
                 <ol className="mt-4 space-y-2">
                   {m.steps.map((s, i) => (
-                    <li key={i} className="text-sm text-zinc-700">
+                    <li key={i} className="text-sm text-zinc-700 dark:text-slate-300">
                       <span className="font-semibold">{i + 1}.</span> {s}
                     </li>
                   ))}
                 </ol>
-                <div className="mt-4 text-xs text-zinc-500">※ {m.note}</div>
+                <div className="mt-4 text-xs text-zinc-500 dark:text-slate-400">※ {m.note}</div>
               </div>
             ))}
           </div>
@@ -716,17 +716,17 @@ export default function VisionPage() {
               { n: "2", t: "環境で動かす", d: "VPS/GPUで“実際に回す”ところまで体験" },
               { n: "3", t: "販売・収益化", d: "ワークフロー販売/受託/外部案件へ繋げる" },
             ].map((s) => (
-              <div key={s.n} className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+              <div key={s.n} className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-2xl bg-zinc-900 text-white flex items-center justify-center font-bold">{s.n}</div>
                   <div className="text-sm font-semibold">{s.t}</div>
                 </div>
-                <div className="mt-3 text-sm text-zinc-600">{s.d}</div>
+                <div className="mt-3 text-sm text-zinc-600 dark:text-slate-400">{s.d}</div>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 rounded-2xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-4">
+          <div className="mt-4 rounded-2xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-4">
             <div className="text-sm font-semibold">不安になりやすいポイント（先に潰します）</div>
             <div className="mt-2 grid gap-2 md:grid-cols-3">
               {[
@@ -734,9 +734,9 @@ export default function VisionPage() {
                 { q: "何から始める？", a: "まず“テンプレ1本”で体験から" },
                 { q: "損しない？", a: "外部換金なし＝トラブルを避けやすい設計" },
               ].map((x) => (
-                <div key={x.q} className="rounded-2xl bg-white/60 ring-1 ring-zinc-200/80 p-3">
-                  <div className="text-xs text-zinc-500">Q. {x.q}</div>
-                  <div className="mt-1 text-sm text-zinc-700">A. {x.a}</div>
+                <div key={x.q} className="rounded-2xl bg-white/60 dark:bg-gray-800/60 ring-1 ring-zinc-200 dark:ring-gray-700/80 p-3">
+                  <div className="text-xs text-zinc-500 dark:text-slate-400">Q. {x.q}</div>
+                  <div className="mt-1 text-sm text-zinc-700 dark:text-slate-300">A. {x.a}</div>
                 </div>
               ))}
             </div>
@@ -747,10 +747,10 @@ export default function VisionPage() {
         <section className="mt-12">
           <SectionHeader title="これからどうなる？（ロードマップ）" desc="約束ではなく“目標/構想”として公開し、進捗と一緒に更新します。" />
 
-          <div className="rounded-3xl bg-white/70 ring-1 ring-zinc-200 shadow-sm p-5">
+          <div className="rounded-3xl bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 shadow-sm p-5">
             <div className="grid gap-3">
               {roadmap.map((r, idx) => (
-                <div key={idx} className="rounded-3xl bg-white/60 ring-1 ring-zinc-200/80 p-4">
+                <div key={idx} className="rounded-3xl bg-white/60 dark:bg-gray-800/60 ring-1 ring-zinc-200 dark:ring-gray-700/80 p-4">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div className="flex items-center gap-3">
                       <div className="rounded-full bg-zinc-900 text-white px-3 py-1 text-xs font-semibold">{r.when}</div>
@@ -759,19 +759,19 @@ export default function VisionPage() {
                     {r.tags?.length ? (
                       <div className="flex flex-wrap gap-2">
                         {r.tags.map((t) => (
-                          <span key={t} className="rounded-full bg-white/70 ring-1 ring-zinc-200 px-2 py-0.5 text-xs text-zinc-600">
+                          <span key={t} className="rounded-full bg-white/70 dark:bg-gray-800/70 ring-1 ring-zinc-200 dark:ring-gray-700 px-2 py-0.5 text-xs text-zinc-600 dark:text-slate-400">
                             {t}
                           </span>
                         ))}
                       </div>
                     ) : null}
                   </div>
-                  <div className="mt-2 text-sm text-zinc-600">{r.desc}</div>
+                  <div className="mt-2 text-sm text-zinc-600 dark:text-slate-400">{r.desc}</div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 text-xs text-zinc-500">
+            <div className="mt-4 text-xs text-zinc-500 dark:text-slate-400">
               ※「企業向け提供→還元」は、配当のような金融ではなく “体験価値（無料枠/優遇/イベント）” の強化として扱います。
             </div>
           </div>
@@ -785,7 +785,7 @@ export default function VisionPage() {
               <div className="mt-2 text-sm text-white/80">進捗・目標・何が起きるかを公開して、安心して参加できる場所にします。</div>
             </div>
             <div className="flex gap-2">
-              <Link href="/purchase" className="rounded-xl bg-white text-zinc-900 px-5 py-3 text-sm font-semibold shadow-sm hover:bg-zinc-100">
+              <Link href="/purchase" className="rounded-xl bg-white text-zinc-900 dark:text-white px-5 py-3 text-sm font-semibold shadow-sm hover:bg-zinc-100">
                 クレジット購入へ
               </Link>
               <Link href="/apply" className="rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/20 hover:bg-white/15">
@@ -795,7 +795,7 @@ export default function VisionPage() {
           </div>
         </section>
 
-        <footer className="mt-10 pb-10 text-center text-xs text-zinc-500">© {new Date().getFullYear()} LIFAI</footer>
+        <footer className="mt-10 pb-10 text-center text-xs text-zinc-500 dark:text-slate-400">© {new Date().getFullYear()} LIFAI</footer>
       </div>
     </main>
   );
