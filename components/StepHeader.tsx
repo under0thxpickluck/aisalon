@@ -15,14 +15,14 @@ export function StepHeader({
 
   return (
     <div className="mb-4">
-      <div className="text-xs font-bold tracking-widest text-violet-200/90">
+      <div className="text-xs font-bold tracking-widest text-violet-600 dark:text-violet-200/90">
         STEP {step} / {total}
       </div>
 
-      <div className="mt-1 text-2xl font-extrabold tracking-tight text-white">{title}</div>
-      {subtitle ? <div className="mt-1 text-sm text-slate-300/80">{subtitle}</div> : null}
+      <div className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">{title}</div>
+      {subtitle ? <div className="mt-1 text-sm text-slate-500 dark:text-slate-300/80">{subtitle}</div> : null}
 
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
         <div
           className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400"
           style={{ width: `${pct}%` }}

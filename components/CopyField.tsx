@@ -13,9 +13,9 @@ export function CopyField({ label, value }: { label: string; value: string }) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/10 p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-white">{label}</div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-white">{label}</div>
 
         <button
           type="button"
@@ -26,7 +26,7 @@ export function CopyField({ label, value }: { label: string; value: string }) {
         </button>
       </div>
 
-      <div className="mt-3 select-all break-all rounded-xl bg-black/25 px-3 py-2 text-xs text-slate-100">
+      <div className="mt-3 select-all break-all rounded-xl bg-black/10 dark:bg-black/25 px-3 py-2 text-xs text-slate-700 dark:text-slate-100">
         {value}
       </div>
     </div>

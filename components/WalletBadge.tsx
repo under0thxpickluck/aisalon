@@ -57,7 +57,7 @@ export function WalletBadge() {
   }, [loginId]);
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+    <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-2 text-sm text-slate-900 dark:text-white">
       <div className="font-semibold">BP: {bp}</div>
       <div className="opacity-70">/</div>
       <div className="font-semibold">EP: {ep}</div>

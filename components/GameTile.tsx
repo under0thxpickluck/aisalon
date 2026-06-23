@@ -14,7 +14,7 @@ type Props = {
 
 export function GameTile({ href, title, subtitle, icon, badge, disabled }: Props) {
   const base =
-    "group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_20px_70px_rgba(0,0,0,.35)] backdrop-blur-xl transition";
+    "group relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-5 shadow-[0_20px_70px_rgba(0,0,0,.35)] backdrop-blur-xl transition";
   const hover = disabled ? "" : "hover:bg-white/10 hover:-translate-y-[1px] active:scale-[0.99]";
 
   const content = (
@@ -34,8 +34,8 @@ export function GameTile({ href, title, subtitle, icon, badge, disabled }: Props
         </div>
 
         <div className="min-w-0">
-          <div className="text-base font-extrabold text-white">{title}</div>
-          {subtitle ? <div className="mt-1 text-xs text-slate-300/80">{subtitle}</div> : null}
+          <div className="text-base font-extrabold text-slate-900 dark:text-white">{title}</div>
+          {subtitle ? <div className="mt-1 text-xs text-slate-600 dark:text-slate-300/80">{subtitle}</div> : null}
         </div>
       </div>
     </div>
