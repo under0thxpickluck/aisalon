@@ -902,24 +902,24 @@ export default function Music2Page() {
 
   const chipBase    = "rounded-full border px-3 py-1 text-xs font-semibold transition";
   const chipActive  = "border-indigo-500 bg-indigo-600 text-white";
-  const chipInactive = "border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700";
+  const chipInactive = "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-zinc-400 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700";
 
   const btnPrimary =
     "w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(99,102,241,.25)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
   const btnSecondary =
-    "rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50";
+    "rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-zinc-300 transition hover:bg-slate-50 dark:hover:bg-white/10";
   const btnDanger =
-    "rounded-2xl border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50";
+    "rounded-2xl border border-rose-200 dark:border-rose-900 bg-white dark:bg-white/5 px-4 py-2.5 text-xs font-semibold text-rose-600 dark:text-rose-400 transition hover:bg-rose-50 dark:hover:bg-rose-950/30";
 
   // ── プログレスバー ────────────────────────────────────────────────────────
 
   const ProgressBar = ({ label }: { label: string }) => (
     <div className="mt-4">
-      <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+      <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-zinc-400">
         <span>{label}</span>
         <span>{Math.round(progress)}%</span>
       </div>
-      <div className="relative mt-2 h-2 w-full rounded-full border border-slate-200 bg-slate-100">
+      <div className="relative mt-2 h-2 w-full rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5">
         <div
           className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
           style={{ width: `${progress}%` }}
@@ -938,8 +938,8 @@ export default function Music2Page() {
 
   const ErrorBox = () =>
     errorMsg ? (
-      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-        <p className="text-sm font-semibold text-rose-700">{errorMsg}</p>
+      <div className="mt-4 rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/50 px-4 py-3">
+        <p className="text-sm font-semibold text-rose-700 dark:text-rose-400">{errorMsg}</p>
         <button onClick={handleFullReset} className={`mt-3 ${btnDanger}`}>
           最初からやり直す
         </button>
@@ -952,8 +952,8 @@ export default function Music2Page() {
 
 
   return (
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)] dark:bg-none dark:bg-[#070A12]" />
 
       <div className="mx-auto max-w-[1100px] px-4 py-10 lg:flex lg:gap-5 lg:items-start">
         {/* 左サイドバー（共通） */}
@@ -963,17 +963,17 @@ export default function Music2Page() {
 
         {/* メインカード */}
         <div className="flex-1 min-w-0">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)] dark:shadow-[0_26px_70px_rgba(0,0,0,.6)]">
 
           {/* ヘッダー */}
           <div className="flex items-center gap-3">
             <Link
               href="/top"
-              className="rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/10"
             >
               ← ホーム
             </Link>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-zinc-400">
               <span className="text-base">🎵</span>
               音楽生成 NEW
             </div>
@@ -1008,7 +1008,7 @@ export default function Music2Page() {
             </button>
           </div>
 
-          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             {step === 0 && (isUltraMode ? "Ultra で曲を作る ✨" : isBgmMode ? "BGMを作る" : "新しい曲を作る")}
             {step === 1 && "構成案を確認"}
             {step === 2 && (isBgmMode ? "BGMを生成しています…" : "曲を生成しています…")}
@@ -1022,7 +1022,7 @@ export default function Music2Page() {
           ════════════════════════════════════════════════════ */}
           {step === 0 && (
             <>
-              <div className="mt-5 grid grid-cols-3 rounded-2xl border border-slate-200 bg-slate-50 p-1">
+              <div className="mt-5 grid grid-cols-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-1">
                 {([
                   { value: "song",  label: "曲生成",    sub: "歌詞・構成あり",              adminOnly: false },
                   { value: "bgm",   label: "BGM生成",   sub: "ボーカルなし｜試験運転中",    adminOnly: false },
@@ -1054,21 +1054,21 @@ export default function Music2Page() {
                           ? "cursor-not-allowed opacity-40"
                           : "disabled:cursor-not-allowed disabled:opacity-60",
                         generationMode === item.value
-                          ? "bg-white text-slate-900 shadow-sm"
-                          : "text-slate-500 hover:text-slate-800",
+                          ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm"
+                          : "text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200",
                       ].join(" ")}
                     >
                       <span className="block text-sm font-extrabold">{item.label}</span>
                       <span className="mt-0.5 block text-[10px] font-semibold">
                         {item.sub}
-                        {isLocked && <span className="ml-1 rounded bg-slate-200 px-1 py-0.5 text-[8px] font-bold text-slate-400">準備中</span>}
+                        {isLocked && <span className="ml-1 rounded bg-slate-200 dark:bg-zinc-700 px-1 py-0.5 text-[8px] font-bold text-slate-400 dark:text-zinc-500">準備中</span>}
                       </span>
                     </button>
                   );
                 })}
               </div>
 
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
                 {isBgmMode
                   ? "テーマ・ジャンル・雰囲気を選ぶと、ボーカルなしのBGMを生成します。"
                   : isUltraMode
@@ -1077,14 +1077,14 @@ export default function Music2Page() {
               </p>
 
               {isBgmMode && (
-                <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+                <p className="mt-2 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
                   ⚠ BGM生成は現在試験運転中です。成果物の品質を保証することはできません。ご留意のうえご利用ください。
                 </p>
               )}
 
               {/* テーマ */}
               <div className="mt-6">
-                <label className="block text-xs font-bold text-slate-700">
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">
                   テーマ <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -1093,13 +1093,13 @@ export default function Music2Page() {
                   onChange={(e) => setTheme(e.target.value)}
                   disabled={loading}
                   placeholder="例: 夏の終わり、新しい出会い、宇宙の旅…"
-                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+                  className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3 text-sm text-slate-800 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
                 />
               </div>
 
               {/* ジャンル */}
               <div className="mt-5">
-                <label className="block text-xs font-bold text-slate-700">
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">
                   ジャンル <span className="text-rose-500">*</span>
                 </label>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1119,9 +1119,9 @@ export default function Music2Page() {
 
               {/* 雰囲気 */}
               <div className="mt-5">
-                <label className="block text-xs font-bold text-slate-700">
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">
                   雰囲気 <span className="text-rose-500">*</span>
-                  <span className="ml-2 text-[10px] font-normal text-slate-400">複数選択可</span>
+                  <span className="ml-2 text-[10px] font-normal text-slate-400 dark:text-zinc-500">複数選択可</span>
                 </label>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {MOODS.map((m) => (
@@ -1140,16 +1140,16 @@ export default function Music2Page() {
 
               {/* BGM設定 */}
               {isBgmMode && (
-                <div className={`mt-5 rounded-[18px] border p-4 ${isPro ? "border-violet-500/30 bg-[#0d0d1a]" : "border-slate-200 bg-slate-50"}`}>
+                <div className={`mt-5 rounded-[18px] border p-4 ${isPro ? "border-violet-500/30 bg-[#0d0d1a] dark:bg-[#0d0d1a]" : "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5"}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">🎚️</span>
-                    <span className={`text-[11px] font-black tracking-widest ${isPro ? "text-violet-400" : "text-slate-600"}`}>BGM SETTINGS</span>
+                    <span className={`text-[11px] font-black tracking-widest ${isPro ? "text-violet-400" : "text-slate-600 dark:text-zinc-400"}`}>BGM SETTINGS</span>
                     {isPro && (
                       <span className="ml-auto rounded-full bg-gradient-to-r from-violet-600 to-indigo-500 px-2.5 py-0.5 text-[9px] font-bold text-white">PRO</span>
                     )}
                   </div>
                   <div className="mt-4">
-                    <label className={`block text-[11px] font-bold mb-1.5 ${isPro ? "text-violet-400" : "text-slate-600"}`}>BPM目安</label>
+                    <label className={`block text-[11px] font-bold mb-1.5 ${isPro ? "text-violet-400" : "text-slate-600 dark:text-zinc-400"}`}>BPM目安</label>
                     <div className="flex flex-wrap gap-1.5">
                       {BPM_OPTIONS.map((opt) => (
                         <button
@@ -1168,14 +1168,14 @@ export default function Music2Page() {
                   </div>
                   {/* KEY 選択 */}
                   <div className="mt-3">
-                    <label className={`block text-[11px] font-bold mb-1.5 ${isPro ? "text-violet-400" : "text-slate-600"}`}>
+                    <label className={`block text-[11px] font-bold mb-1.5 ${isPro ? "text-violet-400" : "text-slate-600 dark:text-zinc-400"}`}>
                       KEY（任意）
                     </label>
                     <select
                       value={selectedKey}
                       onChange={(e) => setSelectedKey(e.target.value)}
                       className={`w-full rounded-lg border px-3 py-2 text-sm ${
-                        isPro ? "border-violet-500/30 bg-[#12122a] text-white" : "border-slate-300 bg-white text-slate-800"
+                        isPro ? "border-violet-500/30 bg-[#12122a] text-white" : "border-slate-300 dark:border-white/10 bg-white dark:bg-white/5 text-slate-800 dark:text-zinc-200"
                       }`}
                     >
                       <option value="">自動</option>
@@ -1206,22 +1206,22 @@ export default function Music2Page() {
                     </div>
                   )}
                   {!isPro && (
-                    <p className="mt-3 text-[10px] text-slate-400">シームレスループ対応BGM（約45秒生成、ブラウザでループ再生）</p>
+                    <p className="mt-3 text-[10px] text-slate-400 dark:text-zinc-500">シームレスループ対応BGM（約45秒生成、ブラウザでループ再生）</p>
                   )}
                 </div>
               )}
 
               {/* Ultra 入力セクション */}
               {isUltraMode && (
-                <div className="mt-5 rounded-[18px] border border-indigo-200 bg-indigo-50 p-4">
+                <div className="mt-5 rounded-[18px] border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40 p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-sm">✨</span>
-                    <span className="text-[11px] font-black tracking-widest text-indigo-600">ULTRA SETTINGS</span>
+                    <span className="text-[11px] font-black tracking-widest text-indigo-600 dark:text-indigo-400">ULTRA SETTINGS</span>
                   </div>
 
                   {/* ボーカルタイプ */}
                   <div className="mb-4">
-                    <label className="block text-[11px] font-bold text-indigo-700 mb-1.5">
+                    <label className="block text-[11px] font-bold text-indigo-700 dark:text-indigo-400 mb-1.5">
                       ボーカルタイプ
                     </label>
                     <div className="flex flex-wrap gap-1.5">
@@ -1249,11 +1249,11 @@ export default function Music2Page() {
                   {/* 歌詞テキストエリア（ボーカルなし以外） */}
                   {ultraVocalStyle !== "ボーカルなし" && (
                     <div>
-                      <label className="block text-[11px] font-bold text-indigo-700 mb-1">
+                      <label className="block text-[11px] font-bold text-indigo-700 dark:text-indigo-400 mb-1">
                         歌詞
-                        <span className="ml-2 text-[10px] font-normal text-indigo-400">任意 — 空欄の場合はAIが自動生成</span>
+                        <span className="ml-2 text-[10px] font-normal text-indigo-400 dark:text-indigo-500">任意 — 空欄の場合はAIが自動生成</span>
                       </label>
-                      <p className="mb-2 text-[10px] text-indigo-400 leading-relaxed">
+                      <p className="mb-2 text-[10px] text-indigo-400 dark:text-indigo-500 leading-relaxed">
                         [Verse] [Chorus] [Bridge] の形式で書くと曲の構成に反映されやすくなります。
                       </p>
                       <textarea
@@ -1262,9 +1262,9 @@ export default function Music2Page() {
                         disabled={loading}
                         placeholder={"[Verse]\n春の風が吹いて\n新しい朝が来る\n\n[Chorus]\n君と歩いた道\nずっと忘れない"}
                         rows={10}
-                        className="w-full rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-300 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60 font-mono"
+                        className="w-full rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-white/5 px-4 py-3 text-sm text-slate-800 dark:text-zinc-200 placeholder:text-slate-300 dark:placeholder:text-zinc-600 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60 font-mono"
                       />
-                      <p className="mt-1 text-right text-[10px] text-indigo-400">
+                      <p className="mt-1 text-right text-[10px] text-indigo-400 dark:text-indigo-500">
                         {ultraLyrics.length} 文字
                       </p>
                     </div>
@@ -1275,7 +1275,7 @@ export default function Music2Page() {
               {/* ボーカルタイプ（通常Songモード、非Proのみ。Proは下のPRO SETTINGSに含まれる） */}
               {!isBgmMode && !isUltraMode && !isPro && (
                 <div className="mt-5">
-                  <label className="block text-xs font-bold text-slate-700">ボーカルタイプ</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">ボーカルタイプ</label>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {VOCAL_STYLES.map((v) => (
                       <button
@@ -1410,8 +1410,8 @@ export default function Music2Page() {
               )}
 
               {/* BP表示 */}
-              <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                <span className="text-xs font-bold text-indigo-700">必要BP</span>
+              <div className="mt-5 flex items-center gap-2 rounded-2xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3">
+                <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">必要BP</span>
                 <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
                   {isUltraMode ? "300 BP" : isBgmMode ? (isPro ? "150 BP" : "80 BP") : isProSettingsActive ? "250 BP" : "100 BP"}
                 </span>
@@ -1445,12 +1445,12 @@ export default function Music2Page() {
 
               {/* リリース・申請案内 */}
               {!isBgmMode && (
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[11px] font-bold text-slate-500 mb-2">📋 作った曲はリリース・売却できます</p>
+                <div className="mt-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 mb-2">📋 作った曲はリリース・売却できます</p>
                   <div className="flex flex-col gap-1.5 sm:flex-row">
                     <Link
                       href="/music-release-guide"
-                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-100"
+                      className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-zinc-300 text-center transition hover:bg-slate-100 dark:hover:bg-white/10"
                     >
                       🎵 リリースガイド
                     </Link>
@@ -1462,14 +1462,14 @@ export default function Music2Page() {
                     </Link>
                     <Link
                       href="/apply-sell"
-                      className="flex-1 rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
+                      className="flex-1 rounded-xl border border-violet-200 dark:border-violet-900 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-violet-700 dark:text-violet-400 text-center transition hover:bg-violet-50 dark:hover:bg-violet-950/30"
                     >
                       💰 売却申請はこちら
                     </Link>
                   </div>
                   <Link
                     href="/narasu-agency"
-                    className="mt-1.5 block w-full rounded-xl border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
+                    className="mt-1.5 block w-full rounded-xl border border-teal-200 dark:border-teal-900 bg-white dark:bg-white/5 px-3 py-2 text-xs font-semibold text-teal-700 dark:text-teal-400 text-center transition hover:bg-teal-50 dark:hover:bg-teal-950/30"
                   >
                     📋 narasu配信代理申請（代行サービス）
                   </Link>
@@ -1488,7 +1488,7 @@ export default function Music2Page() {
                     : isUltraMode ? "✨ Ultra で生成する (300BP)" : isBgmMode ? "BGMを生成する" : "曲を作る"}
                 </button>
                 {!canStart && !loading && (
-                  <p className="mt-2 text-center text-[11px] text-slate-400">
+                  <p className="mt-2 text-center text-[11px] text-slate-400 dark:text-zinc-600">
                     テーマ・ジャンル・雰囲気をすべて選択してください
                   </p>
                 )}
@@ -1501,37 +1501,37 @@ export default function Music2Page() {
           ════════════════════════════════════════════════════ */}
           {step === 1 && !loading && structureData && (
             <>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
                 AIが楽曲構成を提案しました。確認してから「これで曲を作る」を押してください。
               </p>
 
               <div className="mt-5 space-y-3">
                 {/* タイトル */}
-                <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                  <p className="text-[10px] font-bold text-indigo-500">タイトル</p>
-                  <p className="mt-1 text-base font-extrabold text-slate-900">{structureData.title}</p>
+                <div className="rounded-2xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3">
+                  <p className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400">タイトル</p>
+                  <p className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">{structureData.title}</p>
                 </div>
 
                 {/* BPM / Key */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[10px] font-bold text-slate-500">BPM</p>
-                    <p className="mt-1 text-lg font-extrabold text-slate-900">{structureData.bpm}</p>
+                  <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">BPM</p>
+                    <p className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">{structureData.bpm}</p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[10px] font-bold text-slate-500">Key</p>
-                    <p className="mt-1 text-lg font-extrabold text-slate-900">{structureData.key}</p>
+                  <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">Key</p>
+                    <p className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">{structureData.key}</p>
                   </div>
                 </div>
 
                 {/* セクション */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[10px] font-bold text-slate-500">セクション構成</p>
+                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">セクション構成</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {structureData.sections.map((s, i) => (
                       <span
                         key={i}
-                        className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-700"
+                        className="rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:text-zinc-300"
                       >
                         {s}
                       </span>
@@ -1541,9 +1541,9 @@ export default function Music2Page() {
 
                 {/* hookSummary */}
                 {structureData.hookSummary && (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[10px] font-bold text-slate-500">サビのポイント</p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-700">{structureData.hookSummary}</p>
+                  <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">サビのポイント</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-700 dark:text-zinc-300">{structureData.hookSummary}</p>
                   </div>
                 )}
               </div>
@@ -1577,7 +1577,7 @@ export default function Music2Page() {
           ════════════════════════════════════════════════════ */}
           {step === 2 && (
             <>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
                 {isBgmMode
                   ? "AIがBGMを生成しています。完成までこのページを閉じずにお待ちください。"
                   : "AIが曲を生成しています。完成まで約8分かかります。このページを閉じずにお待ちください。"}
@@ -1585,8 +1585,8 @@ export default function Music2Page() {
 
               <ProgressBar label={stageLabel ?? (isBgmMode ? "BGMを生成しています…" : "音楽を生成しています…")} />
 
-              <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                <p className="text-xs font-semibold leading-relaxed text-indigo-700">
+              <div className="mt-4 rounded-2xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3">
+                <p className="text-xs font-semibold leading-relaxed text-indigo-700 dark:text-indigo-300">
                   {stageLabel
                     ? stageLabel
                     : audioStage === "intro"   ? "イントロ生成中... (1/4)"
@@ -1602,8 +1602,8 @@ export default function Music2Page() {
               </div>
 
               {infoMsg && (
-                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                  <p className="text-xs font-semibold text-amber-700">{infoMsg}</p>
+                <div className="mt-3 rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">{infoMsg}</p>
                 </div>
               )}
             </>
@@ -1614,14 +1614,14 @@ export default function Music2Page() {
           ════════════════════════════════════════════════════ */}
           {step === 3 && audioUrl && (
             <>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
                 {isBgmMode ? "BGMが完成しました！再生・ダウンロードできます。" : "曲が完成しました！再生・ダウンロードできます。"}
               </p>
 
-              <div className="mt-5 rounded-[20px] border border-indigo-100 bg-indigo-50 p-4">
+              <div className="mt-5 rounded-[20px] border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/40 p-4">
                 {/* タイトル + 品質バッジ（SONGモードのみ） */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-extrabold text-slate-900">{resultTitle}</p>
+                  <p className="text-sm font-extrabold text-slate-900 dark:text-white">{resultTitle}</p>
                   {!isBgmMode && lyricsGateResult === "pass" && (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                       ✓ 品質 良好
@@ -1638,12 +1638,12 @@ export default function Music2Page() {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-slate-500">使用BP：{isBgmMode ? (isPro ? 150 : 80) : isUltraMode ? 300 : (isProSettingsActive ? 250 : 100)}BP</p>
+                <p className="mt-0.5 text-[11px] text-slate-500 dark:text-zinc-400">使用BP：{isBgmMode ? (isPro ? 150 : 80) : isUltraMode ? 300 : (isProSettingsActive ? 250 : 100)}BP</p>
 
                 {/* 品質警告 */}
                 {!isBgmMode && (lyricsReviewRequired || !distributionReady) && audioUrl && (
-                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                    <p className="text-[11px] font-semibold text-amber-800">
+                  <div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
+                    <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-400">
                       ⚠ この曲は歌詞一致または反復に問題があるため、配信提出前に確認してください。
                     </p>
                   </div>
@@ -1666,9 +1666,9 @@ export default function Music2Page() {
 
                 {/* ジャケット画像生成 */}
                 {!isBgmMode && (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+                  <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-3">
                     <div className="flex flex-col gap-3 sm:flex-row">
-                      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:w-28 sm:shrink-0">
+                      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 sm:w-28 sm:shrink-0">
                         {jacketImageUrl ? (
                           <img
                             src={jacketImageUrl}
@@ -1676,14 +1676,14 @@ export default function Music2Page() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-3xl text-slate-300">
+                          <div className="flex h-full w-full items-center justify-center text-3xl text-slate-300 dark:text-zinc-600">
                             ♪
                           </div>
                         )}
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col justify-center">
-                        <p className="text-xs font-extrabold text-slate-900">ジャケット画像</p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                        <p className="text-xs font-extrabold text-slate-900 dark:text-white">ジャケット画像</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-zinc-400">
                           曲のテーマ・ジャンル・雰囲気からアルバムカバーを生成します。
                         </p>
                         {jacketError && (
@@ -1712,7 +1712,7 @@ export default function Music2Page() {
                         downloadUrl,
                         `${resultTitle || "lifai_song"}.wav`
                       )}
-                      className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition active:bg-indigo-100"
+                      className="flex-1 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-white/5 px-4 py-3 text-sm font-semibold text-indigo-700 dark:text-indigo-300 transition active:bg-indigo-100 dark:active:bg-indigo-900/30"
                     >
                       📤 WAVを保存 / シェア
                     </button>
@@ -1731,7 +1731,7 @@ export default function Music2Page() {
                     <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                       <Link
                         href="/music-release-guide"
-                        className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 text-center transition hover:bg-slate-50"
+                        className="flex-1 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-zinc-300 text-center transition hover:bg-slate-50 dark:hover:bg-white/10"
                       >
                         🎵 リリースガイド
                       </Link>
@@ -1743,14 +1743,14 @@ export default function Music2Page() {
                       </Link>
                       <Link
                         href="/apply-sell"
-                        className="flex-1 rounded-2xl border border-violet-200 bg-white px-4 py-2.5 text-xs font-semibold text-violet-700 text-center transition hover:bg-violet-50"
+                        className="flex-1 rounded-2xl border border-violet-200 dark:border-violet-900 bg-white dark:bg-white/5 px-4 py-2.5 text-xs font-semibold text-violet-700 dark:text-violet-400 text-center transition hover:bg-violet-50 dark:hover:bg-violet-950/30"
                       >
                         💰 売却申請
                       </Link>
                     </div>
                     <Link
                       href="/narasu-agency"
-                      className="mt-2 block w-full rounded-2xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-semibold text-teal-700 text-center transition hover:bg-teal-50"
+                      className="mt-2 block w-full rounded-2xl border border-teal-200 dark:border-teal-900 bg-white dark:bg-white/5 px-4 py-2.5 text-xs font-semibold text-teal-700 dark:text-teal-400 text-center transition hover:bg-teal-50 dark:hover:bg-teal-950/30"
                     >
                       📋 narasu配信代理申請（代行サービス）
                     </Link>
@@ -1761,9 +1761,9 @@ export default function Music2Page() {
                 {displayLyrics && (
                   <div className="mt-3 flex flex-col gap-2">
                     {/* 表示用歌詞 インライン編集 */}
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5">
                       <div className="flex items-center justify-between px-4 py-3">
-                        <span className="text-sm font-bold text-slate-600">歌詞（表示用）</span>
+                        <span className="text-sm font-bold text-slate-600 dark:text-zinc-300">歌詞（表示用）</span>
                         {editingLyrics ? (
                           <div className="flex gap-2">
                             <button
@@ -1774,7 +1774,7 @@ export default function Music2Page() {
                             </button>
                             <button
                               onClick={() => { setEditedDisplayLyrics(displayLyrics); setEditingLyrics(false); }}
-                              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 active:bg-slate-100"
+                              className="rounded-xl border border-slate-300 dark:border-white/10 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-zinc-400 active:bg-slate-100 dark:active:bg-white/5"
                             >
                               ✕
                             </button>
@@ -1782,13 +1782,13 @@ export default function Music2Page() {
                         ) : (
                           <button
                             onClick={() => setEditingLyrics(true)}
-                            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 active:bg-slate-100"
+                            className="rounded-xl border border-slate-300 dark:border-white/10 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-zinc-400 active:bg-slate-100 dark:active:bg-white/5"
                           >
                             ✏️ 編集
                           </button>
                         )}
                       </div>
-                      <div className="border-t border-slate-100 px-4 pb-3 pt-2">
+                      <div className="border-t border-slate-100 dark:border-white/10 px-4 pb-3 pt-2">
                         {editingLyrics ? (
                           <textarea
                             value={editedDisplayLyrics}
@@ -1801,11 +1801,11 @@ export default function Music2Page() {
                               e.target.style.height = "auto";
                               e.target.style.height = e.target.scrollHeight + "px";
                             }}
-                            className="w-full rounded-xl border border-indigo-200 p-3 leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                            className="w-full rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 p-3 leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                             style={{ fontSize: "16px", minHeight: "180px", resize: "none" }}
                           />
                         ) : (
-                          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-zinc-300">
                             {editedDisplayLyrics}
                           </p>
                         )}
@@ -1818,7 +1818,7 @@ export default function Music2Page() {
                         `${resultTitle}\n\n${editedDisplayLyrics}`,
                         `lyrics-display-${jobId || "song"}.txt`
                       )}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition active:bg-slate-100"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-zinc-300 transition active:bg-slate-100 dark:active:bg-white/10"
                     >
                       📄 歌詞を保存 / シェア（表示用）
                     </button>
@@ -1832,14 +1832,14 @@ export default function Music2Page() {
                         )}
                         className={`w-full rounded-2xl border px-4 py-3 text-sm font-semibold transition active:opacity-70 ${
                           distributionReady
-                            ? "border-violet-200 bg-white text-violet-700"
-                            : "border-slate-200 bg-slate-50 text-slate-500"
+                            ? "border-violet-200 dark:border-violet-900 bg-white dark:bg-white/5 text-violet-700 dark:text-violet-400"
+                            : "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-zinc-400"
                         }`}
                       >
                         {distributionReady ? "✅ 配信用歌詞を保存 / シェア" : "📋 配信用歌詞を保存 / シェア（要確認）"}
                       </button>
                     ) : (
-                      <div className="w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-600">
+                      <div className="w-full rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-center text-sm font-semibold text-red-600 dark:text-red-400">
                         🚫 配信用歌詞：品質確認が必要なため提出前に手動確認が必要です
                       </div>
                     )}
@@ -1854,16 +1854,16 @@ export default function Music2Page() {
         {history.length > 0 && (
           <div className="mt-8">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-extrabold text-slate-700">🎵 生成ログ（{history.length}件）</h2>
-              <p className="text-[11px] text-slate-400">ログは31日後に自動的に削除されます</p>
+              <h2 className="text-sm font-extrabold text-slate-700 dark:text-zinc-300">🎵 生成ログ（{history.length}件）</h2>
+              <p className="text-[11px] text-slate-400 dark:text-zinc-500">ログは31日後に自動的に削除されます</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {history.map((entry) => (
-                <div key={entry.jobId} className="rounded-[18px] border border-slate-200 bg-white p-3.5 shadow-sm">
-                  <p className="text-[12px] font-bold text-slate-800 truncate" title={entry.title}>
+                <div key={entry.jobId} className="rounded-[18px] border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-3.5 shadow-sm">
+                  <p className="text-[12px] font-bold text-slate-800 dark:text-zinc-200 truncate" title={entry.title}>
                     {entry.title || "無題"}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-slate-400">{formatDate(entry.createdAt)}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-400 dark:text-zinc-500">{formatDate(entry.createdAt)}</p>
                   <audio controls src={entry.audioUrl} className="mt-2 w-full" style={{ height: "32px" }} />
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button
@@ -1871,7 +1871,7 @@ export default function Music2Page() {
                         entry.downloadUrl,
                         `${entry.title || "lifai_song"}.${entry.downloadUrl?.includes(".mp3") ? "mp3" : "wav"}`
                       )}
-                      className="rounded-lg border border-indigo-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-indigo-600 active:bg-indigo-50 transition"
+                      className="rounded-lg border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-white/5 px-2.5 py-2 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 active:bg-indigo-50 dark:active:bg-indigo-900/20 transition"
                     >
                       📤 {entry.downloadUrl?.includes(".mp3") ? "MP3" : "WAV"}
                     </button>
@@ -1881,7 +1881,7 @@ export default function Music2Page() {
                           `${entry.title}\n\n${entry.lyrics}`,
                           `${entry.title || "lyrics"}_lyrics.txt`
                         )}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-semibold text-slate-600 active:bg-slate-50 transition"
+                        className="rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-2.5 py-2 text-[11px] font-semibold text-slate-600 dark:text-zinc-400 active:bg-slate-50 dark:active:bg-white/10 transition"
                       >
                         📄 歌詞
                       </button>
@@ -1895,8 +1895,8 @@ export default function Music2Page() {
                       }}
                       className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold transition ${
                         copiedJobId === entry.jobId
-                          ? "border-green-300 bg-green-50 text-green-600"
-                          : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                          ? "border-green-300 bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400"
+                          : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/10"
                       }`}
                     >
                       {copiedJobId === entry.jobId ? "コピー済み✓" : "URLコピー"}
@@ -1908,7 +1908,7 @@ export default function Music2Page() {
           </div>
         )}
 
-        <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-zinc-600">© LIFAI</div>
       </div>
     </div>
 
@@ -1922,7 +1922,7 @@ export default function Music2Page() {
         }}
       >
         <div
-          className="relative w-full max-w-sm rounded-[24px] bg-white p-7 shadow-2xl"
+          className="relative w-full max-w-sm rounded-[24px] bg-white dark:bg-zinc-900 border dark:border-white/10 p-7 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* スライドインジケーター */}
@@ -1932,7 +1932,7 @@ export default function Music2Page() {
                 key={i}
                 className={[
                   "h-1.5 rounded-full transition-all",
-                  i === tutorialStep ? "w-6 bg-indigo-500" : "w-1.5 bg-slate-200",
+                  i === tutorialStep ? "w-6 bg-indigo-500" : "w-1.5 bg-slate-200 dark:bg-zinc-700",
                 ].join(" ")}
               />
             ))}
@@ -1941,10 +1941,10 @@ export default function Music2Page() {
           {/* コンテンツ */}
           <div className="text-center">
             <div className="text-4xl mb-3">{TUTORIAL_SLIDES[tutorialStep].icon}</div>
-            <h2 className="text-base font-extrabold text-slate-900 mb-2">
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white mb-2">
               {TUTORIAL_SLIDES[tutorialStep].title}
             </h2>
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
               {TUTORIAL_SLIDES[tutorialStep].body}
             </p>
           </div>
@@ -1955,7 +1955,7 @@ export default function Music2Page() {
               <button
                 type="button"
                 onClick={() => setTutorialStep(tutorialStep - 1)}
-                className="flex-1 rounded-2xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                className="flex-1 rounded-2xl border border-slate-200 dark:border-white/10 py-2.5 text-sm font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/5 transition"
               >
                 ← 戻る
               </button>
@@ -1989,7 +1989,7 @@ export default function Music2Page() {
               localStorage.setItem(TUTORIAL_KEY, "1");
               setTutorialStep(null);
             }}
-            className="mt-3 w-full text-center text-xs text-slate-400 hover:text-slate-600 transition"
+            className="mt-3 w-full text-center text-xs text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 transition"
           >
             スキップ
           </button>

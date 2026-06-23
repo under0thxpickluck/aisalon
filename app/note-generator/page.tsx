@@ -149,45 +149,45 @@ export default function NoteGeneratorPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-white">
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <Link href="/top" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3">
+          <Link href="/top" className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 mb-3">
             ← LIFAIに戻る
           </Link>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-800">note記事ジェネレーター</h1>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">note記事ジェネレーター</h1>
             <button
               type="button"
               onClick={() => setTutorialStep(0)}
               title="使い方を見る"
-              className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 bg-white text-xs font-bold text-gray-500 hover:border-purple-400 hover:bg-purple-50 hover:text-purple-600 transition"
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 text-xs font-bold text-gray-500 dark:text-zinc-400 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-purple-600 transition"
             >
               ?
             </button>
           </div>
-          <p className="text-sm text-gray-500 mt-1">テーマを入力するだけで、売れるnote記事を自動生成します</p>
+          <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">テーマを入力するだけで、売れるnote記事を自動生成します</p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 px-4 py-3 text-sm text-red-700 dark:text-red-400">
             {error}
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-180px)]">
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 overflow-hidden flex flex-col">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-white/10 p-5 overflow-hidden flex flex-col">
             <div className="flex items-center gap-2 mb-4">
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${step === "input" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"}`}>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${step === "input" ? "bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300" : "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300"}`}>
                 {step === "input" ? "STEP 1" : step === "plan" ? "STEP 2" : "完了"}
               </span>
-              <span className="text-sm font-semibold text-gray-700">
+              <span className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
                 {step === "input" ? "記事の設定" : step === "plan" ? "企画・タイトル選択" : "生成完了"}
               </span>
               {step !== "input" && (
                 <button
                   onClick={() => { setStep("input"); setPlanData(null); setArticleData(null); }}
-                  className="ml-auto text-xs text-gray-400 hover:text-gray-600"
+                  className="ml-auto text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300"
                 >
                   最初からやり直す
                 </button>
@@ -204,8 +204,8 @@ export default function NoteGeneratorPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 overflow-hidden flex flex-col">
-            <p className="text-sm font-semibold text-gray-700 mb-4">プレビュー</p>
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-white/10 p-5 overflow-hidden flex flex-col">
+            <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-4">プレビュー</p>
             <div className="flex-1 overflow-hidden flex flex-col">
               <PreviewPanel
                 step={step}
@@ -227,11 +227,11 @@ export default function NoteGeneratorPage() {
           }}
         >
           <div
-            className="relative w-full max-w-sm rounded-[24px] bg-white p-7 shadow-2xl"
+            className="relative w-full max-w-sm rounded-[24px] bg-white dark:bg-zinc-900 border dark:border-white/10 p-7 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* 進捗 */}
-            <p className="text-center text-xs font-semibold text-gray-400 mb-4">
+            <p className="text-center text-xs font-semibold text-gray-400 dark:text-zinc-500 mb-4">
               {tutorialStep + 1} / {NOTE_TUTORIAL_SLIDES.length}
             </p>
 
@@ -242,7 +242,7 @@ export default function NoteGeneratorPage() {
                   key={i}
                   className={[
                     "h-1.5 rounded-full transition-all",
-                    i === tutorialStep ? "w-6 bg-purple-600" : "w-1.5 bg-gray-200",
+                    i === tutorialStep ? "w-6 bg-purple-600" : "w-1.5 bg-gray-200 dark:bg-zinc-700",
                   ].join(" ")}
                 />
               ))}
@@ -251,10 +251,10 @@ export default function NoteGeneratorPage() {
             {/* コンテンツ */}
             <div className="text-center">
               <div className="text-4xl mb-3">{NOTE_TUTORIAL_SLIDES[tutorialStep].icon}</div>
-              <h2 className="text-base font-extrabold text-gray-900 mb-3">
+              <h2 className="text-base font-extrabold text-gray-900 dark:text-white mb-3">
                 {NOTE_TUTORIAL_SLIDES[tutorialStep].title}
               </h2>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line text-left">
+              <p className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed whitespace-pre-line text-left">
                 {NOTE_TUTORIAL_SLIDES[tutorialStep].body}
               </p>
             </div>
@@ -265,7 +265,7 @@ export default function NoteGeneratorPage() {
                 <button
                   type="button"
                   onClick={() => setTutorialStep(tutorialStep - 1)}
-                  className="flex-1 rounded-2xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
+                  className="flex-1 rounded-2xl border border-gray-200 dark:border-white/10 py-2.5 text-sm font-semibold text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-white/5 transition"
                 >
                   ← 戻る
                 </button>
@@ -299,7 +299,7 @@ export default function NoteGeneratorPage() {
                 localStorage.setItem(NOTE_TUTORIAL_KEY, "true");
                 setTutorialStep(null);
               }}
-              className="mt-3 w-full text-center text-xs text-gray-400 hover:text-gray-600 transition"
+              className="mt-3 w-full text-center text-xs text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition"
             >
               スキップ
             </button>

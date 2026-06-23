@@ -243,34 +243,34 @@ export default function MusicStandardPage() {
   const canGenerate = !!buildCombinedPrompt() && status !== "generating";
 
   return (
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)] dark:bg-none dark:bg-[#070A12]" />
 
       <div className="mx-auto max-w-[720px] px-4 py-10">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)] dark:shadow-[0_26px_70px_rgba(0,0,0,.6)]">
           <div className="flex items-center gap-3">
             <Link
               href="/music"
-              className="rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/10"
             >
               ← 戻る
             </Link>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-zinc-400">
               <span className="text-base">🎵</span>
               STANDARD
             </div>
           </div>
 
-          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             BGM生成 — STANDARD
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
             日本語でテーマやムードを入力してください。自動で英語に変換して生成します。
           </p>
 
           {/* ── ジャンル ── */}
           <div className="mt-6">
-            <label className="block text-xs font-bold text-slate-700">ジャンル</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">ジャンル</label>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {GENRES.map((g) => (
                 <button
@@ -282,7 +282,7 @@ export default function MusicStandardPage() {
                     "rounded-full border px-3 py-1 text-xs font-semibold transition",
                     genre === g
                       ? "border-indigo-500 bg-indigo-600 text-white"
-                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700",
+                      : "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-zinc-400 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                   ].join(" ")}
                 >
@@ -294,7 +294,7 @@ export default function MusicStandardPage() {
 
           {/* ── BPM ── */}
           <div className="mt-5">
-            <label className="block text-xs font-bold text-slate-700">BPM</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">BPM</label>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {BPM_OPTIONS.map((opt) => (
                 <button
@@ -306,7 +306,7 @@ export default function MusicStandardPage() {
                     "rounded-2xl border px-3 py-2 text-xs font-semibold transition",
                     bpmRange === opt.label
                       ? "border-indigo-500 bg-indigo-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                      : "border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/10",
                     "disabled:cursor-not-allowed disabled:opacity-60",
                   ].join(" ")}
                 >
@@ -318,7 +318,7 @@ export default function MusicStandardPage() {
 
           {/* ── プロンプト（テーマ・ムード） ── */}
           <div className="mt-5">
-            <label className="block text-xs font-bold text-slate-700">
+            <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300">
               プロンプト（テーマ・ムード）
             </label>
 
@@ -330,7 +330,7 @@ export default function MusicStandardPage() {
                   type="button"
                   onClick={() => appendMood(mood)}
                   disabled={status === "generating"}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-zinc-400 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {mood}
                 </button>
@@ -343,26 +343,26 @@ export default function MusicStandardPage() {
               disabled={status === "generating"}
               placeholder="例: さわやかな朝の音楽、集中できるジャズ、激しいロック…"
               rows={4}
-              className="mt-3 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+              className="mt-3 w-full resize-none rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3 text-sm text-slate-800 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
             />
           </div>
 
           {/* プログレスバー */}
           {status === "generating" && (
             <div className="mt-4">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-zinc-400">
                 <span>{stageLabel}</span>
                 <span>{Math.round(progress)}%</span>
               </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
               {/* 生成開始アナウンス */}
-              <div className="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-                <p className="text-xs font-semibold leading-relaxed text-indigo-700">
+              <div className="mt-3 rounded-2xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/50 px-4 py-3">
+                <p className="text-xs font-semibold leading-relaxed text-indigo-700 dark:text-indigo-300">
                   生成を開始しました。完成まで約3〜4分かかります。<br />
                   Verse → Chorus → Bridge の順に生成後、結合します。<br />
                   このページを閉じずにお待ちください。
@@ -373,13 +373,13 @@ export default function MusicStandardPage() {
 
           {/* エラー */}
           {status === "failed" && (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-              <p className="whitespace-pre-line text-sm font-semibold text-rose-700">
+            <div className="mt-4 rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/50 px-4 py-3">
+              <p className="whitespace-pre-line text-sm font-semibold text-rose-700 dark:text-rose-400">
                 {errorMsg || musicError("MUSIC-001")}
               </p>
               <button
                 onClick={handleReset}
-                className="mt-3 rounded-2xl border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                className="mt-3 rounded-2xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-white/5 px-4 py-2 text-xs font-semibold text-rose-700 dark:text-rose-400 transition hover:bg-rose-50 dark:hover:bg-rose-950/30"
               >
                 もう一度試す
               </button>
@@ -388,14 +388,14 @@ export default function MusicStandardPage() {
 
           {/* 完了後：再生 & ダウンロード & 歌詞 & この曲をどうする？ */}
           {status === "succeeded" && outputUrl && (
-            <div className="mt-6 rounded-[20px] border border-indigo-100 bg-indigo-50 p-4">
-              <p className="text-xs font-bold text-indigo-700">約3分の楽曲が完成しました！</p>
+            <div className="mt-6 rounded-[20px] border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950/50 p-4">
+              <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300">約3分の楽曲が完成しました！</p>
               <audio controls src={outputUrl} className="mt-3 w-full" />
 
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <button
                   onClick={() => shareOrDownloadAudio(outputUrl, "lifai_music.wav")}
-                  className="flex-1 rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition active:bg-indigo-100"
+                  className="flex-1 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-white/5 px-4 py-3 text-sm font-semibold text-indigo-700 dark:text-indigo-300 transition active:bg-indigo-100 dark:active:bg-indigo-900/30"
                 >
                   📤 WAVを保存 / シェア
                 </button>
@@ -410,7 +410,7 @@ export default function MusicStandardPage() {
                 <div className="mt-2">
                   <button
                     onClick={() => shareOrDownloadText(editedLyrics, `lifai_lyrics_${Date.now()}.txt`)}
-                    className="w-full rounded-2xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-700 transition active:bg-indigo-100"
+                    className="w-full rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-white/5 px-4 py-3 text-sm font-semibold text-indigo-700 dark:text-indigo-300 transition active:bg-indigo-100 dark:active:bg-indigo-900/30"
                   >
                     📄 歌詞を保存 / シェア
                   </button>
@@ -419,16 +419,16 @@ export default function MusicStandardPage() {
 
               {/* 歌詞折りたたみ + 編集 */}
               {lyrics && (
-                <div className="mt-3 overflow-hidden rounded-2xl border border-indigo-200 bg-white">
+                <div className="mt-3 overflow-hidden rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-white/5">
                   <button
                     onClick={() => { setLyricsOpen((v) => !v); setEditingLyrics(false); }}
-                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-bold text-indigo-700 active:bg-indigo-50 transition"
+                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-bold text-indigo-700 dark:text-indigo-300 active:bg-indigo-50 dark:active:bg-indigo-900/20 transition"
                   >
                     <span>歌詞を見る / 編集</span>
                     <span className="text-[11px]">{lyricsOpen ? "▲ 閉じる" : "▼ 開く"}</span>
                   </button>
                   {lyricsOpen && (
-                    <div className="border-t border-indigo-100 px-4 pb-4 pt-3">
+                    <div className="border-t border-indigo-100 dark:border-indigo-900 px-4 pb-4 pt-3">
                       {editingLyrics ? (
                         <>
                           <div className="mb-3 flex gap-2">
@@ -440,7 +440,7 @@ export default function MusicStandardPage() {
                             </button>
                             <button
                               onClick={() => { setEditedLyrics(lyrics ?? ""); setEditingLyrics(false); }}
-                              className="flex-1 rounded-2xl border border-slate-300 py-3 text-sm font-semibold text-slate-600 active:bg-slate-100"
+                              className="flex-1 rounded-2xl border border-slate-300 dark:border-white/10 py-3 text-sm font-semibold text-slate-600 dark:text-zinc-400 active:bg-slate-100 dark:active:bg-white/5"
                             >
                               ✕ キャンセル
                             </button>
@@ -456,7 +456,7 @@ export default function MusicStandardPage() {
                               e.target.style.height = "auto";
                               e.target.style.height = e.target.scrollHeight + "px";
                             }}
-                            className="w-full rounded-xl border border-indigo-200 p-3 leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                            className="w-full rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 p-3 leading-relaxed outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                             style={{ fontSize: "16px", minHeight: "180px", resize: "none" }}
                           />
                         </>
@@ -465,12 +465,12 @@ export default function MusicStandardPage() {
                           <div className="mb-2 flex justify-end">
                             <button
                               onClick={() => setEditingLyrics(true)}
-                              className="rounded-xl border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-600 active:bg-indigo-50"
+                              className="rounded-xl border border-indigo-200 dark:border-indigo-800 px-4 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-300 active:bg-indigo-50 dark:active:bg-indigo-900/20"
                             >
                               ✏️ 編集
                             </button>
                           </div>
-                          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-zinc-300">
                             {editedLyrics}
                           </p>
                         </>
@@ -481,38 +481,38 @@ export default function MusicStandardPage() {
               )}
 
               {/* この曲をどうする？ */}
-              <div className="mt-5 border-t border-indigo-200 pt-5">
-                <p className="text-xs font-bold text-slate-700">この曲をどうする？</p>
+              <div className="mt-5 border-t border-indigo-200 dark:border-indigo-800 pt-5">
+                <p className="text-xs font-bold text-slate-700 dark:text-zinc-300">この曲をどうする？</p>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {/* Card 1: LIFAI マーケット */}
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
+                  <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-4">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-slate-500 dark:text-zinc-400">
                       🔧 準備中
                     </span>
-                    <p className="mt-2 text-xs font-bold text-slate-800">LIFAIマーケットで売却</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                    <p className="mt-2 text-xs font-bold text-slate-800 dark:text-zinc-200">LIFAIマーケットで売却</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-zinc-400">
                       LIFAIの専用売買プラットフォームに出品できます。準備中のためもうしばらくお待ちください。
                     </p>
                     <button
                       disabled
-                      className="mt-3 w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-400"
+                      className="mt-3 w-full cursor-not-allowed rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-2 text-xs font-semibold text-slate-400 dark:text-zinc-600"
                     >
                       マーケットで売却
                     </button>
                   </div>
 
                   {/* Card 2: 自分でリリース */}
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 p-4">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                       ✅ 利用可能
                     </span>
-                    <p className="mt-2 text-xs font-bold text-slate-800">自分でリリース</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                    <p className="mt-2 text-xs font-bold text-slate-800 dark:text-zinc-200">自分でリリース</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-zinc-400">
                       TuneCore・NaraSuなど配信サービスを使って自分でリリースできます。
                     </p>
                     <button
                       onClick={() => setReleaseModalOpen(true)}
-                      className="mt-3 w-full rounded-2xl border border-emerald-300 bg-white px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                      className="mt-3 w-full rounded-2xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-white/5 px-4 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                     >
                       リリース方法を見る
                     </button>
@@ -533,7 +533,7 @@ export default function MusicStandardPage() {
                 {status === "generating" ? "生成中…" : "生成する"}
               </button>
               {!canGenerate && status === "idle" && (
-                <p className="mt-2 text-center text-[11px] text-slate-400">
+                <p className="mt-2 text-center text-[11px] text-slate-400 dark:text-zinc-600">
                   ジャンル・BPM・プロンプトのいずれかを選択してください
                 </p>
               )}
@@ -541,7 +541,7 @@ export default function MusicStandardPage() {
           )}
         </div>
 
-        <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-zinc-600">© LIFAI</div>
       </div>
 
       {/* リリースモーダル */}
@@ -551,28 +551,28 @@ export default function MusicStandardPage() {
           onClick={() => setReleaseModalOpen(false)}
         >
           <div
-            className="w-full max-w-[480px] rounded-[24px] bg-white p-6 shadow-2xl"
+            className="w-full max-w-[480px] rounded-[24px] bg-white dark:bg-zinc-900 border dark:border-white/10 p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-extrabold text-slate-900">自分でリリースする方法</p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white">自分でリリースする方法</p>
               <button
                 onClick={() => setReleaseModalOpen(false)}
-                className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100"
+                className="rounded-full p-1.5 text-slate-400 dark:text-zinc-500 transition hover:bg-slate-100 dark:hover:bg-white/10"
               >
                 ✕
               </button>
             </div>
             <div className="mt-4 space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold text-slate-800">TuneCoreへの申請手順</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">準備中・近日公開予定</p>
+              <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4">
+                <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">TuneCoreへの申請手順</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-zinc-400">準備中・近日公開予定</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold text-slate-800">NaraSuへの申請手順</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">準備中・近日公開予定</p>
+              <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4">
+                <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">NaraSuへの申請手順</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-zinc-400">準備中・近日公開予定</p>
               </div>
-              <p className="text-center text-[11px] text-slate-500">
+              <p className="text-center text-[11px] text-slate-500 dark:text-zinc-400">
                 詳細はLIFAIコミュニティで案内します
               </p>
             </div>

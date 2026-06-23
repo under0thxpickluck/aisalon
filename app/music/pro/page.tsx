@@ -5,6 +5,7 @@ import { shareOrDownloadAudio, shareOrDownloadText } from "@/app/lib/music-downl
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, getAuthSecret, setAuth } from "../../lib/auth";
+import { useTheme } from "../../lib/ThemeContext";
 
 const PRO_PLANS = ["500", "1000"];
 
@@ -175,8 +176,8 @@ const PRESETS = [
   { label: "🌙 ローファイ学習", prompt: "lo-fi hip hop, study beats, mellow piano, soft drums, chill atmosphere" },
 ];
 
-// ── ダークテーマカラー定数 ──────────────────────────
-const C = {
+// ── テーマカラー定数 ──────────────────────────
+const C_DARK = {
   bg: "#0a0a0a",
   card: "#1a1a1a",
   section: "#111111",
@@ -195,12 +196,33 @@ const C = {
   btnText: "#e0e0e0",
 } as const;
 
+const C_LIGHT = {
+  bg: "#f8fafc",
+  card: "#ffffff",
+  section: "#f1f5f9",
+  inner: "#e2e8f0",
+  border: "#cbd5e1",
+  borderSubtle: "#e2e8f0",
+  borderAccent: "#d4a017",
+  textPrimary: "#0f172a",
+  textSecondary: "#1e293b",
+  textMuted: "#475569",
+  textDim: "#94a3b8",
+  gold: "#b45309",
+  goldDark: "#92400e",
+  btnBg: "#ffffff",
+  btnBorder: "#cbd5e1",
+  btnText: "#1e293b",
+} as const;
+
 function musicError(code: "MUSIC-001" | "MUSIC-002" | "MUSIC-003"): string {
   return `エラーが発生しました（エラーコード: ${code}）\n公式LINEにお問い合わせください。`;
 }
 
 export default function MusicProPage() {
   const router = useRouter();
+  const { isDark } = useTheme();
+  const C = isDark ? C_DARK : C_LIGHT;
   const [planChecked, setPlanChecked] = useState(false);
 
   const [prompt, setPrompt] = useState("");

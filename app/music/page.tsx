@@ -70,28 +70,28 @@ export default function MusicPage() {
   if (loading) return <LoadingCat />;
 
   return (
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)] dark:bg-none dark:bg-[#070A12]" />
 
       <div className="mx-auto max-w-[720px] px-4 py-10">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)] dark:shadow-[0_26px_70px_rgba(0,0,0,.6)]">
           <div className="flex items-center gap-3">
             <Link
               href="/top"
-              className="rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/10"
             >
               ← 戻る
             </Link>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-zinc-400">
               <span className="text-base">🎵</span>
               BGM生成
             </div>
           </div>
 
-          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             BGM生成
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">
             モードを選んでBGM・ループ音源を生成します。
           </p>
 
@@ -117,19 +117,19 @@ export default function MusicPage() {
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {/* STANDARD カード */}
             <Link href="/music/standard">
-              <div className="relative cursor-pointer rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] active:translate-y-0">
+              <div className="relative cursor-pointer rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-[0_18px_50px_rgba(2,6,23,.08)] dark:shadow-[0_18px_50px_rgba(0,0,0,.4)] transition hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] dark:hover:shadow-[0_22px_60px_rgba(0,0,0,.5)] active:translate-y-0">
                 <div className="grid h-14 w-14 place-items-center rounded-[18px] bg-gradient-to-br from-indigo-600 to-indigo-400 text-[22px] text-white shadow-[0_10px_20px_rgba(2,6,23,.12)]">
                   🎵
                 </div>
                 <div className="mt-4">
-                  <div className="text-sm font-extrabold text-slate-700">
+                  <div className="text-sm font-extrabold text-slate-700 dark:text-zinc-200">
                     STANDARD
                   </div>
-                  <div className="mt-1 text-xs text-slate-500">
+                  <div className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
                     日本語でテーマを入力するだけで音楽を生成。全プラン利用可能。
                   </div>
                 </div>
-                <div className="mt-3 text-right text-xs font-semibold text-slate-500">
+                <div className="mt-3 text-right text-xs font-semibold text-slate-500 dark:text-zinc-400">
                   開く →
                 </div>
               </div>
@@ -138,31 +138,31 @@ export default function MusicPage() {
             {/* PRO カード */}
             {isPro ? (
               <Link href="/music/pro">
-                <div className="relative cursor-pointer rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_50px_rgba(2,6,23,.08)] transition hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] active:translate-y-0">
+                <div className="relative cursor-pointer rounded-[24px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-5 shadow-[0_18px_50px_rgba(2,6,23,.08)] dark:shadow-[0_18px_50px_rgba(0,0,0,.4)] transition hover:-translate-y-[1px] hover:shadow-[0_22px_60px_rgba(2,6,23,.12)] dark:hover:shadow-[0_22px_60px_rgba(0,0,0,.5)] active:translate-y-0">
                   <div className="grid h-14 w-14 place-items-center rounded-[18px] bg-gradient-to-br from-violet-600 to-violet-400 text-[22px] text-white shadow-[0_10px_20px_rgba(2,6,23,.12)]">
                     🎛️
                   </div>
                   <div className="mt-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-extrabold text-slate-700">
+                      <span className="text-sm font-extrabold text-slate-700 dark:text-zinc-200">
                         PRO
                       </span>
                       <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white">
                         Core / Infra
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
                       BPM・波形・ボーカルを細かく設定して高品質な音楽を生成。
                     </div>
                   </div>
-                  <div className="mt-3 text-right text-xs font-semibold text-slate-500">
+                  <div className="mt-3 text-right text-xs font-semibold text-slate-500 dark:text-zinc-400">
                     開く →
                   </div>
                 </div>
               </Link>
             ) : (
-              <div className="relative cursor-not-allowed rounded-[24px] border border-slate-200 bg-slate-100 p-5 opacity-70 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
-                <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-white">
+              <div className="relative cursor-not-allowed rounded-[24px] border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-5 opacity-70 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
+                <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-slate-800 dark:bg-zinc-700 px-2 py-0.5 text-[10px] font-semibold text-white">
                   <span>🔒</span>
                   Core/Infra限定
                 </div>
@@ -171,18 +171,18 @@ export default function MusicPage() {
                 </div>
                 <div className="mt-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-extrabold text-slate-700">
+                    <span className="text-sm font-extrabold text-slate-700 dark:text-zinc-200">
                       PRO
                     </span>
                     <span className="rounded-full bg-slate-600 px-2 py-0.5 text-[10px] font-semibold text-white">
                       Core / Infra
                     </span>
                   </div>
-                  <div className="mt-1 text-xs text-slate-500">
+                  <div className="mt-1 text-xs text-slate-500 dark:text-zinc-400">
                     BPM・波形・ボーカルを細かく設定して高品質な音楽を生成。
                   </div>
                 </div>
-                <div className="mt-3 text-right text-xs font-semibold text-slate-400">
+                <div className="mt-3 text-right text-xs font-semibold text-slate-400 dark:text-zinc-500">
                   公開予定
                 </div>
               </div>
@@ -190,7 +190,7 @@ export default function MusicPage() {
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-zinc-600">© LIFAI</div>
       </div>
     </main>
   );
