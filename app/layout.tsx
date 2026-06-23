@@ -4,6 +4,8 @@ import type { Metadata, Viewport } from "next";
 import { ToastHost } from "@/components/Toast";
 import { LifaiCatProvider } from "@/components/LifaiCat";
 import LifaiCatGlobal from "@/components/LifaiCatGlobal";
+import { ThemeProvider } from "@/app/lib/ThemeContext";
+import { GlobalThemeToggleWrapper } from "@/app/components/GlobalThemeToggleWrapper";
 
 export const metadata: Metadata = {
   title: {
@@ -13,8 +15,6 @@ export const metadata: Metadata = {
   description: "AI × LIFE × 副業。学びを収益に変えるオンラインサロン。",
   applicationName: "LIFAI",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://aisalon-sigma.vercel.app"),
-
-  // ✅ LINE / X / Facebook のカード表示
   openGraph: {
     type: "website",
     url: "/",
@@ -37,8 +37,6 @@ export const metadata: Metadata = {
     description: "AI × LIFE × 副業。学びを収益に変えるオンラインサロン。",
     images: ["/ogp.png"],
   },
-
-  // ✅ アイコン（PWA/タブ）
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -63,11 +61,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body>
-        <LifaiCatProvider>
-          <ToastHost />
-          {children}
-          <LifaiCatGlobal />
-        </LifaiCatProvider>
+        <ThemeProvider>
+          <LifaiCatProvider>
+            <ToastHost />
+            <GlobalThemeToggleWrapper />
+            {children}
+            <LifaiCatGlobal />
+          </LifaiCatProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

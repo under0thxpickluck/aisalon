@@ -7,7 +7,12 @@ html, body {
 }
 body {
   margin: 0;
+  background: #f8fafc;
+  color: #0f172a;
+}
+html.dark body {
   background: #070A12;
+  color: #ffffff;
 }
 .lifai-grid {
   background-image:
