@@ -17,12 +17,12 @@ export default function WorkCard({ work, variant = "gallery" }: Props) {
   const badgeColor = TAB_COLOR[work.tab];
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-neutral-100 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
       {/* プレビュー */}
       <div className="relative">
         {work.preview.type === "audio" && (
-          <div className="flex flex-col items-center justify-center gap-3 bg-neutral-50 px-4 py-6">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-2xl">
+          <div className="flex flex-col items-center justify-center gap-3 bg-neutral-50 dark:bg-gray-800 px-4 py-6">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900 text-2xl">
               🎵
             </div>
             {work.preview.src ? (
@@ -34,7 +34,7 @@ export default function WorkCard({ work, variant = "gallery" }: Props) {
         )}
 
         {work.preview.type === "image" && (
-          <div className="relative aspect-video w-full overflow-hidden bg-neutral-100">
+          <div className="relative aspect-video w-full overflow-hidden bg-neutral-100 dark:bg-gray-800">
             {work.preview.src ? (
               <Image
                 src={work.preview.src}
@@ -52,8 +52,8 @@ export default function WorkCard({ work, variant = "gallery" }: Props) {
         )}
 
         {work.preview.type === "text" && (
-          <div className="bg-neutral-50 px-5 py-4">
-            <p className="line-clamp-3 text-sm leading-relaxed text-neutral-600">
+          <div className="bg-neutral-50 dark:bg-gray-800 px-5 py-4">
+            <p className="line-clamp-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
               {work.preview.excerpt}
             </p>
           </div>
@@ -66,20 +66,20 @@ export default function WorkCard({ work, variant = "gallery" }: Props) {
           {work.category}
         </span>
 
-        <h3 className="mt-2 text-base font-bold leading-snug text-neutral-900">
+        <h3 className="mt-2 text-base font-bold leading-snug text-neutral-900 dark:text-white">
           {work.title}
         </h3>
 
-        <p className="mt-2 text-[13px] leading-relaxed text-neutral-500 line-clamp-3">
+        <p className="mt-2 text-[13px] leading-relaxed text-neutral-500 dark:text-neutral-400 line-clamp-3">
           {work.description}
         </p>
 
         {/* 生成条件 */}
-        <div className="mt-3 rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2">
-          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+        <div className="mt-3 rounded-lg bg-neutral-50 dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 px-3 py-2">
+          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
             📝 生成条件
           </p>
-          <p className="text-xs text-neutral-600 line-clamp-2">{work.prompt}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2">{work.prompt}</p>
         </div>
 
         {/* 用途タグ */}
@@ -87,7 +87,7 @@ export default function WorkCard({ work, variant = "gallery" }: Props) {
           {work.useCases.map(tag => (
             <span
               key={tag}
-              className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600"
+              className="rounded-full bg-neutral-100 dark:bg-gray-800 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-400"
             >
               {tag}
             </span>
@@ -98,7 +98,7 @@ export default function WorkCard({ work, variant = "gallery" }: Props) {
         <div className="mt-4 flex gap-2">
           <Link
             href={`/works/${work.slug}`}
-            className="flex-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-center text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+            className="flex-1 rounded-xl border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-center text-xs font-semibold text-neutral-700 dark:text-neutral-300 transition hover:bg-neutral-50 dark:hover:bg-gray-700"
           >
             詳しく見る →
           </Link>

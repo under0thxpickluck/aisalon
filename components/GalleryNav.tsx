@@ -42,7 +42,7 @@ export default function GalleryNav() {
   }, []);
 
   return (
-    <nav className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur-sm">
+    <nav className="sticky top-0 z-30 border-b border-neutral-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
       <div className="mx-auto max-w-5xl px-4">
         <div className="flex gap-1 overflow-x-auto py-2 [&::-webkit-scrollbar]:hidden">
           {NAV_ITEMS.map(({ id, label }) => (
@@ -51,8 +51,8 @@ export default function GalleryNav() {
               href={`#${id}`}
               className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 activeId === id
-                  ? "bg-neutral-900 text-white"
-                  : "text-neutral-600 hover:bg-neutral-100"
+                  ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900"
+                  : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-gray-800"
               }`}
             >
               {label}

@@ -46,20 +46,20 @@ export function AppSidebar({ activePage }: Props) {
   return (
     <aside className="w-52 flex-shrink-0 flex flex-col gap-4">
       {/* BP/EP残高 */}
-      <div className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">残高</p>
+      <div className="rounded-[18px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-sm">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2">残高</p>
         {balanceLoading ? (
-          <p className="text-[11px] text-slate-400">読み込み中…</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500">読み込み中…</p>
         ) : (
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-600">BP</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">BP</span>
               <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 {bp ?? "–"}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-600">EP</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">EP</span>
               <span className="rounded-full bg-violet-600 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 {ep ?? "–"}
               </span>
@@ -69,8 +69,8 @@ export function AppSidebar({ activePage }: Props) {
       </div>
 
       {/* ナビゲーション */}
-      <div className="rounded-[18px] border border-slate-200 bg-white p-3 shadow-sm">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2 px-1">メニュー</p>
+      <div className="rounded-[18px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3 shadow-sm">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-2 px-1">メニュー</p>
         <nav className="flex flex-col gap-0.5">
           {navItems.map((item) => (
             <Link
@@ -80,7 +80,7 @@ export function AppSidebar({ activePage }: Props) {
                 "flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition",
                 activePage === item.href
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-700 hover:bg-slate-50",
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-800",
               ].join(" ")}
             >
               <span>{item.icon}</span>
