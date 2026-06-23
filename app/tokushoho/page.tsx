@@ -6,7 +6,7 @@ export default function TokushohoPage() {
   const router = useRouter();
 
   return (
-    <main className="min-h-screen bg-neutral-50 dark:bg-gray-800 text-neutral-900 dark:text-white dark:text-white">
+    <main className="min-h-screen bg-neutral-50 dark:bg-gray-800 text-neutral-900 dark:text-white">
       <div className="mx-auto max-w-3xl px-6 py-16">
         {/* 上部：タイトル＋戻る */}
         <div className="mb-10 flex items-start justify-between gap-4">

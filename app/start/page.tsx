@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <main id="top" className="min-h-screen bg-neutral-50 dark:bg-gray-800 dark:bg-gray-900">
+    <main id="top" className="min-h-screen bg-neutral-50 dark:bg-gray-900">
       {/* =====================
           HERO
       ====================== */}
@@ -426,7 +426,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                <p className="mt-4 text-xs font-semibold text-neutral-500 dark:text-slate-400 group-hover:text-neutral-700 dark:text-slate-300">
+                <p className="mt-4 text-xs font-semibold text-neutral-500 group-hover:text-neutral-700 dark:text-slate-300">
                   詳しく見る
                 </p>
               </Link>

@@ -283,7 +283,7 @@ export default function VisionPage() {
     "linear-gradient(to bottom, rgba(24,24,27,0.14) 1px, transparent 1px)";
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white via-zinc-50 to-white dark:from-[#070A12] dark:via-[#0b1022] dark:to-[#070A12] text-zinc-900 dark:text-white dark:text-white">
+    <main className="min-h-screen bg-gradient-to-b from-white via-zinc-50 to-white dark:from-[#070A12] dark:via-[#0b1022] dark:to-[#070A12] text-zinc-900 dark:text-white">
       {/* subtle grid */}
       <div
         aria-hidden="true"
@@ -785,7 +785,7 @@ export default function VisionPage() {
               <div className="mt-2 text-sm text-white/80">進捗・目標・何が起きるかを公開して、安心して参加できる場所にします。</div>
             </div>
             <div className="flex gap-2">
-              <Link href="/purchase" className="rounded-xl bg-white text-zinc-900 dark:text-white px-5 py-3 text-sm font-semibold shadow-sm hover:bg-zinc-100">
+              <Link href="/purchase" className="rounded-xl bg-white text-zinc-900 px-5 py-3 text-sm font-semibold shadow-sm hover:bg-zinc-100">
                 クレジット購入へ
               </Link>
               <Link href="/apply" className="rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/20 hover:bg-white/15">

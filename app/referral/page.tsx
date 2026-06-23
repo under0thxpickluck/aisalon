@@ -57,7 +57,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[24px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-900 p-5 shadow-[0_18px_55px_rgba(2,6,23,.08)]">
+    <section className="rounded-[24px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 shadow-[0_18px_55px_rgba(2,6,23,.08)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-base font-extrabold text-slate-900 dark:text-white">{title}</div>
@@ -74,7 +74,7 @@ function Diagram() {
     <div className="rounded-[22px] border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 p-4">
       <div className="grid gap-4 lg:grid-cols-2">
         {/* 1段構造 */}
-        <div className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-900 p-4">
+        <div className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold text-slate-900 dark:text-white">① 紹介は1段のみ</div>
             <Badge tone="indigo">MLMではない</Badge>
@@ -101,7 +101,7 @@ function Diagram() {
         </div>
 
         {/* 追加購入10% */}
-        <div className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-900 p-4">
+        <div className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold text-slate-900 dark:text-white">② 追加購入は10%（上限あり）</div>
             <Badge tone="amber">月の上限で止まる</Badge>
@@ -146,7 +146,7 @@ function Node({
       ? "border-emerald-200 bg-emerald-50 text-emerald-900"
       : tone === "rose"
       ? "border-rose-200 bg-rose-50 text-rose-900"
-      : "border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-900 text-slate-900 dark:text-white";
+      : "border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-900 dark:text-white";
 
   return (
     <div className={`min-w-[140px] rounded-2xl border px-3 py-2 ${cls}`}>
@@ -224,7 +224,7 @@ export default function ReferralPage() {
         </div>
 
         {/* ヘッダー */}
-        <div className="rounded-[28px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-900 p-6 shadow-[0_30px_90px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 shadow-[0_30px_90px_rgba(2,6,23,.10)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-800 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -459,7 +459,7 @@ export default function ReferralPage() {
                   </ul>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-900 p-4">
+                <div className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                   <div className="text-sm font-extrabold text-slate-900 dark:text-white">一般的なMLM（多段）</div>
                   <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-300">
                     <li className="flex items-start gap-2">
@@ -488,7 +488,7 @@ export default function ReferralPage() {
                 </p>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 dark:bg-gray-900 p-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              <div className="mt-4 rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 ※ 実運用上は不正防止のため、紹介者の受取には「紹介者アカウント（無料）」の登録を推奨します。
               </div>
             </Card>
