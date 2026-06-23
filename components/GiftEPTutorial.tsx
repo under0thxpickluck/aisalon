@@ -174,11 +174,11 @@ export default function GiftEPTutorial({
         }}
       >
         <div
+          className="bg-white dark:bg-[#0F1A2E]"
           style={{
             pointerEvents: "auto",
             width: "100%",
             maxWidth: 400,
-            background: "#0F1A2E",
             border: "1px solid rgba(167,139,250,0.25)",
             borderRadius: 24,
             padding: "28px 24px 24px",
@@ -204,7 +204,7 @@ export default function GiftEPTutorial({
           {/* アイコン + タイトル */}
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <p style={{ fontSize: 40, lineHeight: 1, marginBottom: 10 }}>{current.icon}</p>
-            <p style={{ fontSize: 18, fontWeight: 800, color: "#EAF0FF" }}>{current.title}</p>
+            <p className="text-slate-900 dark:text-[#EAF0FF]" style={{ fontSize: 18, fontWeight: 800 }}>{current.title}</p>
           </div>
 
           {/* 本文 */}
@@ -215,15 +215,14 @@ export default function GiftEPTutorial({
             {page > 0 && (
               <button
                 onClick={() => setPage((p) => p - 1)}
+                className="text-slate-500 dark:text-[rgba(234,240,255,0.6)] bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10"
                 style={{
                   flex: 1,
                   padding: "12px",
                   borderRadius: 14,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  border: "1px solid",
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "rgba(234,240,255,0.6)",
                   cursor: "pointer",
                 }}
               >

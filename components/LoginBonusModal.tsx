@@ -34,15 +34,16 @@ export default function LoginBonusModal({ bp_earned, streak, onClose }: Props) {
   return (
     <AnimatedModal open={open} onBackdropClick={handleClose}>
       <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#18181b] border-slate-200 dark:border-white/[0.08]"
         style={{
-          background: "#18181b",
           borderRadius: "16px",
           padding: "24px",
           textAlign: "center",
           boxShadow: "0 32px 80px rgba(0,0,0,0.5)",
           maxWidth: "320px",
           width: "90vw",
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: "1px solid",
           position: "relative",
           overflow: "hidden",
         }}
@@ -50,10 +51,10 @@ export default function LoginBonusModal({ bp_earned, streak, onClose }: Props) {
         <RewardBurst count={10} colors={["#f59e0b", "#fbbf24", "#f97316"]} />
 
         <p
+          className="text-slate-500 dark:text-[#a1a1aa]"
           style={{
             fontSize: "12px",
             fontWeight: 700,
-            color: "#a1a1aa",
             letterSpacing: "0.05em",
             margin: "0 0 8px",
           }}
@@ -62,10 +63,10 @@ export default function LoginBonusModal({ bp_earned, streak, onClose }: Props) {
         </p>
 
         <p
+          className="text-slate-900 dark:text-[#f4f4f5]"
           style={{
             fontSize: "14px",
             fontWeight: 700,
-            color: "#f4f4f5",
             margin: "0 0 16px",
           }}
         >
@@ -85,9 +86,9 @@ export default function LoginBonusModal({ bp_earned, streak, onClose }: Props) {
         </div>
 
         <p
+          className="text-slate-500 dark:text-[#a1a1aa]"
           style={{
             fontSize: "12px",
-            color: "#a1a1aa",
             margin: "0 0 24px",
           }}
         >

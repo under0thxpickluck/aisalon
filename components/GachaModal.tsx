@@ -191,8 +191,9 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
       onBackdropClick={result ? undefined : handleClose}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#18181b]"
         style={{
-          background:   "#18181b",
           borderRadius: "16px",
           padding:      "24px",
           maxWidth:     "380px",
@@ -226,10 +227,10 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
             <div style={{ fontSize: "40px", marginBottom: "12px" }}>
               {GACHA_TUTORIAL_SLIDES[tutorialStep].icon}
             </div>
-            <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", marginBottom: "10px" }}>
+            <p className="text-slate-900 dark:text-[#f4f4f5]" style={{ fontSize: "15px", fontWeight: 900, marginBottom: "10px" }}>
               {GACHA_TUTORIAL_SLIDES[tutorialStep].title}
             </p>
-            <p style={{ fontSize: "13px", color: "#a1a1aa", lineHeight: 1.7, marginBottom: "24px", textAlign: "left" }}>
+            <p className="text-slate-500 dark:text-[#a1a1aa]" style={{ fontSize: "13px", lineHeight: 1.7, marginBottom: "24px", textAlign: "left" }}>
               {GACHA_TUTORIAL_SLIDES[tutorialStep].body}
             </p>
 
@@ -237,7 +238,8 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
               {tutorialStep > 0 && (
                 <button
                   onClick={() => setTutorialStep(tutorialStep - 1)}
-                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#a1a1aa", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+                  className="text-slate-500 dark:text-[#a1a1aa] border-slate-200 dark:border-white/[0.12]"
+                  style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1px solid", background: "transparent", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
                 >
                   ← 戻る
                 </button>
@@ -366,7 +368,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
               </div>
             )}
 
-            <p style={{ fontSize: "11px", color: "#52525b", marginBottom: "16px" }}>
+            <p className="text-slate-400 dark:text-[#52525b]" style={{ fontSize: "11px", marginBottom: "16px" }}>
               現在の残高: {result.bp_balance.toLocaleString()}BP
             </p>
 
@@ -379,7 +381,8 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
               </button>
               <button
                 onClick={handleClose}
-                style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#a1a1aa", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
+                className="text-slate-500 dark:text-[#a1a1aa] border-slate-200 dark:border-white/[0.12]"
+                style={{ flex: 1, padding: "12px", borderRadius: "12px", border: "1px solid", background: "transparent", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
               >
                 閉じる
               </button>
@@ -389,18 +392,19 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
           /* ===== 通常画面 ===== */
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-              <p style={{ fontSize: "16px", fontWeight: 900, color: "#f4f4f5", margin: 0 }}>
+              <p className="text-slate-900 dark:text-[#f4f4f5]" style={{ fontSize: "16px", fontWeight: 900, margin: 0 }}>
                 🎰 BPガチャ
               </p>
               <button
                 onClick={() => { setShowTutorial(true); setTutorialStep(0); }}
                 title="使い方を見る"
-                style={{ width: "26px", height: "26px", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.06)", color: "#a1a1aa", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
+                className="text-slate-500 dark:text-[#a1a1aa] border-slate-300 dark:border-white/20 bg-slate-100 dark:bg-white/[0.06]"
+                style={{ width: "26px", height: "26px", borderRadius: "50%", border: "1px solid", fontSize: "12px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}
               >
                 ?
               </button>
             </div>
-            <p style={{ fontSize: "12px", color: "#a1a1aa", marginBottom: "16px" }}>
+            <p className="text-slate-500 dark:text-[#a1a1aa]" style={{ fontSize: "12px", marginBottom: "16px" }}>
               10連150BP以上保証・100回天井あり
             </p>
 
@@ -411,7 +415,8 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
                 return (
                   <div
                     key={bp}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#27272a", borderRadius: "8px", padding: "6px 10px" }}
+                    className="bg-slate-100 dark:bg-[#27272a]"
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "8px", padding: "6px 10px" }}
                   >
                     <span style={{ fontSize: "12px", fontWeight: 700, color: style.color }}>
                       {bp.toLocaleString()}BP
@@ -504,13 +509,13 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
             <button
               onClick={handleClose}
               disabled={spinning}
+              className="text-slate-500 dark:text-[#a1a1aa] border-slate-200 dark:border-white/[0.12]"
               style={{
                 width:        "100%",
                 padding:      "11px",
                 borderRadius: "12px",
-                border:       "1px solid rgba(255,255,255,0.12)",
+                border:       "1px solid",
                 background:   "transparent",
-                color:        "#a1a1aa",
                 fontSize:     "13px",
                 fontWeight:   600,
                 cursor:       spinning ? "not-allowed" : "pointer",

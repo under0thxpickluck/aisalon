@@ -26,8 +26,9 @@ export default function BPGrantModal({ amount, onClose }: Props) {
   return (
     <AnimatedModal open={open} onBackdropClick={handleClose}>
       <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-zinc-900"
         style={{
-          background: "white",
           borderRadius: "28px",
           padding: "40px 32px",
           textAlign: "center",
@@ -62,7 +63,7 @@ export default function BPGrantModal({ amount, onClose }: Props) {
           <CountUpNumber to={amount} prefix="+" suffix=" BP 獲得！" duration={1.0} />
         </div>
 
-        <p style={{ marginTop: "8px", fontSize: "14px", color: "#64748b", fontWeight: 600 }}>
+        <p className="text-slate-500 dark:text-slate-400" style={{ marginTop: "8px", fontSize: "14px", fontWeight: 600 }}>
           売却BPが付与されました
         </p>
 

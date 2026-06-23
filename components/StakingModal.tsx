@@ -167,18 +167,19 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#18181b] border-slate-200 dark:border-white/[0.08]"
         style={{
-          background: "#18181b", borderRadius: "16px", padding: "24px",
+          borderRadius: "16px", padding: "24px",
           maxWidth: "400px", width: "90%",
           boxShadow: "0 32px 80px rgba(0,0,0,0.5)",
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: "1px solid",
           transform: visible ? "scale(1) translateY(0)" : "scale(0.88) translateY(24px)",
           transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
           cursor: "default",
         }}
       >
         {/* BP / EP タブ */}
-        <div style={{ display: "flex", gap: "6px", marginBottom: "16px", background: "#27272a", borderRadius: "10px", padding: "4px" }}>
+        <div className="bg-slate-100 dark:bg-[#27272a]" style={{ display: "flex", gap: "6px", marginBottom: "16px", borderRadius: "10px", padding: "4px" }}>
           <button
             style={{
               flex: 1, padding: "8px 4px", borderRadius: "7px", border: "none",
@@ -205,8 +206,8 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         {/* ヘッダー */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
           <div>
-            <p style={{ fontSize: "15px", fontWeight: 900, color: "#f4f4f5", margin: 0 }}>💎 BPステーキング</p>
-            <p style={{ fontSize: "11px", color: "#71717a", margin: "2px 0 0" }}>BPを預けてロック期間後に利息付きで受け取れます</p>
+            <p className="text-slate-900 dark:text-[#f4f4f5]" style={{ fontSize: "15px", fontWeight: 900, margin: 0 }}>💎 BPステーキング</p>
+            <p className="text-slate-500 dark:text-[#71717a]" style={{ fontSize: "11px", margin: "2px 0 0" }}>BPを預けてロック期間後に利息付きで受け取れます</p>
           </div>
           {bpBalance !== null && (
             <div style={{ textAlign: "right" }}>
@@ -245,10 +246,11 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         {/* チュートリアルボタン */}
         <button
           onClick={() => setShowTutorial(v => !v)}
+          className="bg-slate-100 dark:bg-[#27272a] text-slate-500 dark:text-[#a1a1aa] border-slate-200 dark:border-white/[0.08]"
           style={{
             width: "100%", padding: "8px 12px", marginBottom: "10px",
-            background: "#27272a", border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "8px", color: "#a1a1aa", fontSize: "11px",
+            border: "1px solid",
+            borderRadius: "8px", fontSize: "11px",
             fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex",
             alignItems: "center", justifyContent: "space-between",
           }}
@@ -259,12 +261,12 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
 
         {/* チュートリアルパネル */}
         {showTutorial && (
-          <div style={{
-            background: "#1c1c1f", border: "1px solid rgba(255,255,255,0.06)",
+          <div className="bg-slate-50 dark:bg-[#1c1c1f] text-slate-500 dark:text-[#a1a1aa] border-slate-200 dark:border-white/[0.06]" style={{
+            border: "1px solid",
             borderRadius: "10px", padding: "14px", marginBottom: "12px", fontSize: "11px",
-            color: "#a1a1aa", lineHeight: 1.7,
+            lineHeight: 1.7,
           }}>
-            <p style={{ fontWeight: 700, color: "#f4f4f5", margin: "0 0 8px" }}>📌 しくみ</p>
+            <p className="text-slate-900 dark:text-[#f4f4f5]" style={{ fontWeight: 700, margin: "0 0 8px" }}>📌 しくみ</p>
             <p style={{ margin: "0 0 6px" }}>① 毎月 LIFAI が報酬プールを準備します</p>
             <p style={{ margin: "0 0 6px" }}>② あなたがステークした瞬間の参加状況でレートが確定します</p>
             <p style={{ margin: "0 0 10px" }}>③ 参加者が増えるほど1人あたりの分け前は小さくなります</p>
@@ -272,7 +274,7 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
               → だから早く入るほど有利なレートを確保できます。<br />
               確定したレートは満期まで変わりません。
             </p>
-            <div style={{ background: "#27272a", borderRadius: "8px", padding: "8px 10px" }}>
+            <div className="bg-slate-100 dark:bg-[#27272a]" style={{ borderRadius: "8px", padding: "8px 10px" }}>
               <p style={{ margin: "0 0 4px", fontWeight: 700, color: "#4ade80", fontSize: "10px" }}>📌 最低保証レート</p>
               <p style={{ margin: 0, fontSize: "10px" }}>
                 30日: 最低3% ／ 60日: 最低7.5% ／ 90日: 最低15%<br />
@@ -293,10 +295,10 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
             </p>
             <div style={{ display: "flex", gap: "6px" }}>
               {PLANS.map((p) => (
-                <div key={p.days} style={{
-                  flex: 1, background: "#27272a", borderRadius: "8px", padding: "6px 4px", textAlign: "center",
+                <div key={p.days} className="bg-slate-100 dark:bg-[#27272a]" style={{
+                  flex: 1, borderRadius: "8px", padding: "6px 4px", textAlign: "center",
                 }}>
-                  <p style={{ fontSize: "10px", color: "#71717a", margin: "0 0 2px" }}>{p.label}</p>
+                  <p className="text-slate-500 dark:text-[#71717a]" style={{ fontSize: "10px", margin: "0 0 2px" }}>{p.label}</p>
                   <p style={{ fontSize: "13px", fontWeight: 800, color: "#4ade80", margin: 0 }}>
                     +{pct(poolInfo.confirmed_rates?.[p.days] ?? 0)}
                   </p>
@@ -307,7 +309,7 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         )}
 
         {/* ロック期間選択 */}
-        <p style={{ fontSize: "11px", fontWeight: 700, color: "#71717a", marginBottom: "8px" }}>ロック期間を選ぶ</p>
+        <p className="text-slate-500 dark:text-[#71717a]" style={{ fontSize: "11px", fontWeight: 700, marginBottom: "8px" }}>ロック期間を選ぶ</p>
         <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
           {PLANS.map((p) => (
             <button
@@ -336,10 +338,10 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
           type="number" min={100} value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="預けるBP数（最低100BP）"
+          className="bg-slate-100 dark:bg-[#27272a] text-slate-900 dark:text-[#f4f4f5] border-slate-200 dark:border-white/[0.12]"
           style={{
             width: "100%", padding: "10px 12px", borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.12)", background: "#27272a",
-            color: "#f4f4f5", fontSize: "14px", outline: "none",
+            border: "1px solid", fontSize: "14px", outline: "none",
             boxSizing: "border-box", marginBottom: "4px",
           }}
         />
@@ -348,11 +350,11 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
             BP残高が不足しています（残高: {bpBalance.toLocaleString()} BP）
           </p>
         )}
-        <p style={{ fontSize: "11px", color: "#52525b", marginBottom: "12px" }}>最低100BPから預け入れできます</p>
+        <p className="text-slate-400 dark:text-[#52525b]" style={{ fontSize: "11px", marginBottom: "12px" }}>最低100BPから預け入れできます</p>
 
         {/* 予想サマリー */}
         {hasPreview && currentRate !== null && (
-          <div style={{ background: "#27272a", borderRadius: "10px", padding: "12px", marginBottom: "12px", fontSize: "12px", color: "#a1a1aa" }}>
+          <div className="bg-slate-100 dark:bg-[#27272a] text-slate-500 dark:text-[#a1a1aa]" style={{ borderRadius: "10px", padding: "12px", marginBottom: "12px", fontSize: "12px" }}>
             <Row label="預入"     value={`${amountNum.toLocaleString()} BP`} />
             <Row label="確定利率" value={`+${pct(currentRate)}`} valueColor="#4ade80" />
             <Row label="利息"     value={`+${interest.toLocaleString()} BP`} valueColor="#4ade80" />
@@ -389,27 +391,27 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         )}
 
         {/* ステーク中一覧 */}
-        <p style={{ fontSize: "13px", fontWeight: 800, color: "#f4f4f5", marginBottom: "10px" }}>📋 ステーク中</p>
+        <p className="text-slate-900 dark:text-[#f4f4f5]" style={{ fontSize: "13px", fontWeight: 800, marginBottom: "10px" }}>📋 ステーク中</p>
 
         {loading ? (
           <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}><LoadingCat fullscreen={false} textColor="text-zinc-500" /></div>
         ) : activeStakes.length === 0 ? (
-          <p style={{ fontSize: "12px", color: "#52525b", textAlign: "center", padding: "12px 0" }}>まだステークがありません</p>
+          <p className="text-slate-400 dark:text-[#52525b]" style={{ fontSize: "12px", textAlign: "center", padding: "12px 0" }}>まだステークがありません</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
             {[...claimableStakes, ...lockedStakes].map((s) => (
-              <div key={s.stake_id} style={{
-                background: s.claimable ? "rgba(74,222,128,0.07)" : "#27272a",
+              <div key={s.stake_id} className={s.claimable ? "" : "bg-slate-100 dark:bg-[#27272a]"} style={{
+                background: s.claimable ? "rgba(74,222,128,0.07)" : undefined,
                 border: `1px solid ${s.claimable ? "rgba(74,222,128,0.3)" : "rgba(255,255,255,0.08)"}`,
                 borderRadius: "10px", padding: "12px",
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div>
-                    <p style={{ fontSize: "13px", fontWeight: 700, color: "#f4f4f5", margin: "0 0 2px" }}>
+                    <p className="text-slate-900 dark:text-[#f4f4f5]" style={{ fontSize: "13px", fontWeight: 700, margin: "0 0 2px" }}>
                       {s.staked_bp.toLocaleString()} BP
                       <span style={{ fontSize: "11px", color: "#4ade80", marginLeft: "6px" }}>→ {s.total_bp.toLocaleString()} BP</span>
                     </p>
-                    <p style={{ fontSize: "10px", color: "#71717a", margin: 0 }}>
+                    <p className="text-slate-500 dark:text-[#71717a]" style={{ fontSize: "10px", margin: 0 }}>
                       満期: {formatDate(s.expires_at)}　利率: +{(s.rate * 100).toFixed(1)}%
                     </p>
                   </div>
@@ -437,10 +439,11 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         {/* 閉じるボタン */}
         <button
           onClick={handleClose}
+          className="text-slate-500 dark:text-[#a1a1aa] border-slate-200 dark:border-white/[0.12]"
           style={{
             width: "100%", marginTop: "4px", padding: "11px", borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.12)", background: "transparent",
-            color: "#a1a1aa", fontSize: "13px", fontWeight: 600, cursor: "pointer",
+            border: "1px solid", background: "transparent",
+            fontSize: "13px", fontWeight: 600, cursor: "pointer",
           }}
         >
           閉じる

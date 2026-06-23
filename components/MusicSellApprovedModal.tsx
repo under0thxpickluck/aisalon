@@ -42,8 +42,8 @@ export default function MusicSellApprovedModal({ items, onClose }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#18181b] border-slate-200 dark:border-white/[0.08]"
         style={{
-          background: "#18181b",
           borderRadius: "16px",
           padding: "24px",
           textAlign: "center",
@@ -53,14 +53,14 @@ export default function MusicSellApprovedModal({ items, onClose }: Props) {
           transform: visible ? "scale(1) translateY(0)" : "scale(0.88) translateY(24px)",
           transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
           cursor: "default",
-          border: "1px solid rgba(255,255,255,0.08)",
+          border: "1px solid",
         }}
       >
         <p
+          className="text-slate-500 dark:text-[#a1a1aa]"
           style={{
             fontSize: "12px",
             fontWeight: 700,
-            color: "#a1a1aa",
             letterSpacing: "0.05em",
             margin: "0 0 8px",
           }}
@@ -71,10 +71,10 @@ export default function MusicSellApprovedModal({ items, onClose }: Props) {
         <p style={{ fontSize: "28px", margin: "0 0 4px" }}>🎵</p>
 
         <p
+          className="text-slate-900 dark:text-[#f4f4f5]"
           style={{
             fontSize: "15px",
             fontWeight: 700,
-            color: "#f4f4f5",
             margin: "0 0 16px",
           }}
         >
@@ -94,7 +94,7 @@ export default function MusicSellApprovedModal({ items, onClose }: Props) {
                   borderBottom: i < items.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
                 }}
               >
-                <span style={{ fontSize: "13px", color: "#d4d4d8", textAlign: "left", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span className="text-slate-700 dark:text-[#d4d4d8]" style={{ fontSize: "13px", textAlign: "left", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {item.title}
                 </span>
                 <span style={{ fontSize: "13px", fontWeight: 700, color: "#34d399", marginLeft: "8px" }}>
@@ -104,7 +104,7 @@ export default function MusicSellApprovedModal({ items, onClose }: Props) {
             ))}
           </div>
         ) : (
-          <p style={{ fontSize: "13px", color: "#a1a1aa", margin: "0 0 8px" }}>
+          <p className="text-slate-500 dark:text-[#a1a1aa]" style={{ fontSize: "13px", margin: "0 0 8px" }}>
             {items[0]?.title}
           </p>
         )}
@@ -122,9 +122,9 @@ export default function MusicSellApprovedModal({ items, onClose }: Props) {
         </p>
 
         <p
+          className="text-slate-500 dark:text-[#a1a1aa]"
           style={{
             fontSize: "12px",
-            color: "#a1a1aa",
             margin: "0 0 24px",
           }}
         >
