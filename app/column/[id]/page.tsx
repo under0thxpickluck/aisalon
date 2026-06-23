@@ -47,12 +47,12 @@ export default function ColumnDetailPage({ params }: { params: { id: string } })
 
   if (!post) {
     return (
-      <main className="min-h-screen text-slate-900">
+      <main className="min-h-screen text-slate-900 dark:text-white">
         <div className="mx-auto max-w-[920px] px-4 py-10">
-          <Link href="/column" className="text-xs font-semibold text-slate-500 hover:text-slate-800">
+          <Link href="/column" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
             ← 一覧へ
           </Link>
-          <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-6">
+          <div className="mt-4 rounded-[24px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 text-slate-900 dark:text-white">
             見つかりませんでした。
           </div>
         </div>
@@ -61,27 +61,27 @@ export default function ColumnDetailPage({ params }: { params: { id: string } })
   }
 
   return (
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)] dark:bg-none dark:bg-gray-950" />
 
       <div className="mx-auto max-w-[920px] px-4 py-10">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
-          <Link href="/column" className="text-xs font-semibold text-slate-500 hover:text-slate-800">
+        <div className="rounded-[28px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)] dark:shadow-none">
+          <Link href="/column" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
             ← 一覧へ
           </Link>
 
-          <div className="mt-3 text-[11px] font-semibold text-slate-500">
+          <div className="mt-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
             {formatJP(post.createdAt)} ・ {post.type === "news" ? "NEWS" : "COLUMN"}
           </div>
 
-          <h1 className="mt-2 text-xl font-extrabold tracking-tight text-slate-900">{post.title}</h1>
+          <h1 className="mt-2 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">{post.title}</h1>
 
-          <article className="mt-5 rounded-[22px] border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
+          <article className="mt-5 rounded-[22px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 text-sm leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
             {post.body}
           </article>
         </div>
 
-        <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">© LIFAI</div>
       </div>
     </main>
   );

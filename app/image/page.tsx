@@ -216,35 +216,35 @@ export default function ImagePage() {
   }, [authId, authCode, imageUrl, state]);
 
   return (
-    <main className="min-h-screen bg-[#0B1220] text-[#EAF0FF]">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#0B1220] text-slate-900 dark:text-[#EAF0FF]">
       <div className="mx-auto max-w-5xl px-4 py-6">
         {/* ヘッダー */}
         <div className="mb-6 flex items-center justify-between">
           <div>
             <button
               onClick={() => router.push("/top")}
-              className="mb-2 flex items-center gap-1 text-xs text-[#A8B3CF] hover:text-[#EAF0FF] transition"
+              className="mb-2 flex items-center gap-1 text-xs text-slate-500 dark:text-[#A8B3CF] hover:text-slate-800 dark:hover:text-[#EAF0FF] transition"
             >
               ← ダッシュボードに戻る
             </button>
             <h1 className="text-xl font-extrabold">AI 画像生成</h1>
-            <p className="mt-1 text-xs text-[#A8B3CF]">会話しながらイメージを固めて画像を生成</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-[#A8B3CF]">会話しながらイメージを固めて画像を生成</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowTutorial(true)}
-              className="rounded-full border border-white/10 bg-[#0d1a2e] px-3 py-1.5 text-xs font-semibold text-[#A8B3CF] transition hover:bg-white/10 hover:text-[#EAF0FF]"
+              className="rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-[#0d1a2e] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-[#A8B3CF] transition hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-800 dark:hover:text-[#EAF0FF]"
             >
               ？ 使い方
             </button>
-            <div className="rounded-full border border-white/10 bg-[#0d1a2e] px-4 py-1.5 text-xs font-bold text-[#EAF0FF]">
+            <div className="rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-[#0d1a2e] px-4 py-1.5 text-xs font-bold text-slate-800 dark:text-[#EAF0FF]">
               {balance} BP
             </div>
           </div>
         </div>
 
         {/* タブ */}
-        <div className="mb-6 flex gap-1 rounded-2xl border border-white/10 bg-[#0d1a2e] p-1">
+        <div className="mb-6 flex gap-1 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-[#0d1a2e] p-1">
           {(["generate", "history", "edit"] as Tab[]).map((t) => {
             const labels: Record<Tab, string> = { generate: "生成", history: "履歴", edit: "編集" };
             return (
@@ -254,7 +254,7 @@ export default function ImagePage() {
                 className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
                   tab === t
                     ? "bg-gradient-to-r from-[#7C5CFF] to-[#3AA0FF] text-white"
-                    : "text-[#A8B3CF] hover:text-[#EAF0FF]"
+                    : "text-slate-500 dark:text-[#A8B3CF] hover:text-slate-800 dark:hover:text-[#EAF0FF]"
                 }`}
               >
                 {labels[t]}
@@ -283,7 +283,7 @@ export default function ImagePage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => downloadImage(imageUrl, `lifai_image_${Date.now()}.png`)}
-                    className="flex-1 rounded-xl border border-white/10 bg-[#0d1a2e] py-2.5 text-xs font-semibold text-[#EAF0FF] transition hover:bg-white/10"
+                    className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-[#0d1a2e] py-2.5 text-xs font-semibold text-slate-700 dark:text-[#EAF0FF] transition hover:bg-slate-200 dark:hover:bg-white/10"
                   >
                     ⬇ ダウンロード
                   </button>
@@ -297,7 +297,7 @@ export default function ImagePage() {
                     className={`flex-1 rounded-xl border py-2.5 text-xs font-semibold transition ${
                       copied
                         ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
-                        : "border-white/10 bg-[#0d1a2e] text-[#EAF0FF] hover:bg-white/10"
+                        : "border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-[#0d1a2e] text-slate-700 dark:text-[#EAF0FF] hover:bg-slate-200 dark:hover:bg-white/10"
                     }`}
                   >
                     {copied ? "✓ コピー済み" : "🔗 URLコピー"}
@@ -311,7 +311,7 @@ export default function ImagePage() {
               />
 
               {/* 高品質オプション */}
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-[#0d1a2e] px-4 py-3">
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-[#0d1a2e] px-4 py-3">
                 <input
                   type="checkbox"
                   checked={hq}
@@ -320,18 +320,18 @@ export default function ImagePage() {
                 />
                 <div>
                   <p className="text-sm font-semibold">高品質モード</p>
-                  <p className="text-xs text-[#A8B3CF]">解像度・品質が向上します (+20BP)</p>
+                  <p className="text-xs text-slate-500 dark:text-[#A8B3CF]">解像度・品質が向上します (+20BP)</p>
                 </div>
               </label>
 
               <ImageCostBox cost={cost} balance={balance} />
 
               {genError && (
-                <p className="rounded-xl bg-[#FF6B6B]/10 px-4 py-2 text-sm text-[#FF6B6B]">{genError}</p>
+                <p className="rounded-xl bg-[#FF6B6B]/10 dark:bg-[#FF6B6B]/10 border border-red-200 dark:border-transparent px-4 py-2 text-sm text-red-600 dark:text-[#FF6B6B]">{genError}</p>
               )}
 
               {/* レート制限表示 */}
-              <div className="flex items-center justify-between text-xs text-[#A8B3CF]">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-[#A8B3CF]">
                 <span>今セッションの生成回数: {sessionCount} / {MAX_SESSION}</span>
                 {cooldownLeft > 0 && (
                   <span className="text-[#7C5CFF] font-semibold">次の生成まで {cooldownLeft}秒</span>
@@ -356,7 +356,7 @@ export default function ImagePage() {
           <div>
             {historyLoading ? (
               <div className="flex justify-center py-12">
-                <div className="h-8 w-8 rounded-full border-4 border-[#7C5CFF] border-t-transparent animate-spin" />
+                <div className="h-8 w-8 rounded-full border-4 border-[#7C5CFF] border-t-transparent animate-spin dark:border-[#7C5CFF]" />
               </div>
             ) : (
               <ImageHistoryGrid items={history} />
@@ -368,8 +368,8 @@ export default function ImagePage() {
         {tab === "edit" && (
           <div className="max-w-lg mx-auto">
             {!imageUrl ? (
-              <div className="rounded-2xl border border-dashed border-white/20 py-12 text-center">
-                <p className="text-sm text-[#A8B3CF]">
+              <div className="rounded-2xl border border-dashed border-slate-300 dark:border-white/20 py-12 text-center">
+                <p className="text-sm text-slate-500 dark:text-[#A8B3CF]">
                   まず「生成」タブで画像を作成してください
                 </p>
               </div>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getAuth, getAuthSecret } from "@/app/lib/auth";
+import { useTheme } from "@/app/lib/useTheme";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -29,6 +30,32 @@ const SERVICES = [
 
 export default function ChatPage() {
   const router = useRouter();
+  const { isDark } = useTheme();
+
+  const C = {
+    pageBg:       isDark ? "#0A0A0A"                      : "#F8FAFC",
+    pageColor:    isDark ? "#fff"                         : "#0F172A",
+    headerBg:     isDark ? "#0A0A0A"                      : "#F8FAFC",
+    headerBorder: isDark ? "rgba(255,255,255,0.08)"       : "rgba(0,0,0,0.08)",
+    backColor:    isDark ? "rgba(255,255,255,0.4)"        : "rgba(0,0,0,0.4)",
+    sidebarBg:    isDark ? "#0f0f0f"                      : "#F1F5F9",
+    sidebarBorder:isDark ? "rgba(255,255,255,0.08)"       : "rgba(0,0,0,0.08)",
+    sidebarColor: isDark ? "rgba(255,255,255,0.65)"       : "rgba(0,0,0,0.65)",
+    sidebarDivBorder: isDark ? "rgba(255,255,255,0.06)"  : "rgba(0,0,0,0.06)",
+    toggleColor:  isDark ? "rgba(255,255,255,0.4)"        : "rgba(0,0,0,0.4)",
+    labelOpacity: (opacity: string) => isDark ? opacity   : opacity,
+    msgBubbleAi:  isDark ? "rgba(255,255,255,0.08)"       : "rgba(0,0,0,0.06)",
+    inputAreaBg:  isDark ? "#0A0A0A"                      : "#F8FAFC",
+    inputAreaBorder: isDark ? "rgba(255,255,255,0.08)"   : "rgba(0,0,0,0.08)",
+    inputBg:      isDark ? "rgba(255,255,255,0.06)"       : "rgba(0,0,0,0.04)",
+    inputBorder:  isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)",
+    inputColor:   isDark ? "#fff"                         : "#0F172A",
+    clipColor:    isDark ? "rgba(255,255,255,0.4)"        : "rgba(0,0,0,0.4)",
+    subtleText:   isDark ? "rgba(255,255,255,0.2)"        : "rgba(0,0,0,0.3)",
+    dotColor:     isDark ? "#fff"                         : "#475569",
+    hintColor:    isDark ? "rgba(255,255,255,0.35)"       : "rgba(0,0,0,0.35)",
+  };
+
   const [messages, setMessages] = useState<Message[]>([GREETING]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -128,17 +155,17 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen" style={{ background: "#0A0A0A", color: "#fff" }}>
+    <div className="flex flex-col h-screen" style={{ background: C.pageBg, color: C.pageColor }}>
 
       {/* ── ヘッダー ── */}
       <header
         className="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0"
-        style={{ borderColor: "rgba(255,255,255,0.08)", background: "#0A0A0A" }}
+        style={{ borderColor: C.headerBorder, background: C.headerBg }}
       >
         <button
           onClick={() => router.push("/top")}
           className="text-sm font-medium mr-1"
-          style={{ color: "rgba(255,255,255,0.4)" }}
+          style={{ color: C.backColor }}
           aria-label="戻る"
         >
           ← 戻る
@@ -146,7 +173,7 @@ export default function ChatPage() {
         <Image src="/aibot/cat_normal.png" alt="リファ猫" width={32} height={32} className="rounded-full" />
         <div>
           <div className="text-sm font-bold">リファ猫に相談</div>
-          <div className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>何でも聞いてね</div>
+          <div className="text-xs" style={{ color: C.hintColor }}>何でも聞いてね</div>
         </div>
       </header>
 
@@ -158,8 +185,8 @@ export default function ChatPage() {
           className="flex-shrink-0 flex flex-col border-r overflow-hidden"
           style={{
             width: sidebarOpen ? 200 : 48,
-            borderColor: "rgba(255,255,255,0.08)",
-            background: "#0f0f0f",
+            borderColor: C.sidebarBorder,
+            background: C.sidebarBg,
             transition: "width 0.25s ease",
           }}
         >
@@ -167,7 +194,7 @@ export default function ChatPage() {
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             className="flex items-center justify-center h-12 flex-shrink-0 hover:bg-white/5 transition-colors"
-            style={{ color: "rgba(255,255,255,0.4)" }}
+            style={{ color: C.toggleColor }}
             aria-label={sidebarOpen ? "サイドバーを閉じる" : "サイドバーを開く"}
           >
             <span
@@ -182,7 +209,7 @@ export default function ChatPage() {
             </span>
           </button>
 
-          <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+          <div className="border-t" style={{ borderColor: C.sidebarDivBorder }} />
 
           {/* サービスリンク */}
           <nav className="flex-1 overflow-y-auto py-2">
@@ -191,7 +218,7 @@ export default function ChatPage() {
                 key={s.href + s.label}
                 onClick={() => router.push(s.href)}
                 className="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
-                style={{ color: "rgba(255,255,255,0.65)" }}
+                style={{ color: C.sidebarColor }}
                 title={s.label}
               >
                 <span className="text-lg flex-shrink-0 w-6 text-center">{s.icon}</span>
@@ -234,8 +261,8 @@ export default function ChatPage() {
                   style={{
                     background: msg.role === "user"
                       ? "linear-gradient(135deg, #4f46e5, #6366f1)"
-                      : "rgba(255,255,255,0.08)",
-                    color: "#fff",
+                      : C.msgBubbleAi,
+                    color: msg.role === "user" ? "#fff" : C.pageColor,
                     borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                     whiteSpace: "pre-wrap",
                   }}
@@ -269,12 +296,12 @@ export default function ChatPage() {
                 />
                 <div
                   className="rounded-2xl px-4 py-3 text-sm"
-                  style={{ background: "rgba(255,255,255,0.08)", borderRadius: "18px 18px 18px 4px" }}
+                  style={{ background: C.msgBubbleAi, borderRadius: "18px 18px 18px 4px" }}
                 >
                   <span className="inline-flex gap-1">
-                    <span className="animate-bounce" style={{ animationDelay: "0ms" }}>●</span>
-                    <span className="animate-bounce" style={{ animationDelay: "150ms" }}>●</span>
-                    <span className="animate-bounce" style={{ animationDelay: "300ms" }}>●</span>
+                    <span className="animate-bounce" style={{ animationDelay: "0ms", color: C.dotColor }}>●</span>
+                    <span className="animate-bounce" style={{ animationDelay: "150ms", color: C.dotColor }}>●</span>
+                    <span className="animate-bounce" style={{ animationDelay: "300ms", color: C.dotColor }}>●</span>
                   </span>
                 </div>
               </div>
@@ -286,7 +313,7 @@ export default function ChatPage() {
           {/* 入力エリア */}
           <div
             className="flex-shrink-0 px-4 py-3 border-t"
-            style={{ borderColor: "rgba(255,255,255,0.08)", background: "#0A0A0A" }}
+            style={{ borderColor: C.inputAreaBorder, background: C.inputAreaBg }}
           >
             {/* 添付画像プレビュー */}
             {attachedImages.length > 0 && (
@@ -313,7 +340,7 @@ export default function ChatPage() {
             )}
             <div
               className="flex gap-2 items-center rounded-2xl px-4 py-2"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ background: C.inputBg, border: C.inputBorder }}
             >
               {/* 非表示ファイル選択 */}
               <input
@@ -332,7 +359,7 @@ export default function ChatPage() {
                 disabled={isLoading || attachedImages.length >= 3}
                 className="flex-shrink-0 text-base transition-opacity"
                 style={{
-                  color: "rgba(255,255,255,0.4)",
+                  color: C.clipColor,
                   opacity: isLoading || attachedImages.length >= 3 ? 0.3 : 1,
                   cursor: isLoading || attachedImages.length >= 3 ? "not-allowed" : "pointer",
                   background: "none",
@@ -355,7 +382,7 @@ export default function ChatPage() {
                 }}
                 placeholder="何か聞いてみて…"
                 className="flex-1 bg-transparent text-sm outline-none"
-                style={{ color: "#fff" }}
+                style={{ color: C.inputColor }}
                 disabled={isLoading}
               />
               <button
@@ -372,7 +399,7 @@ export default function ChatPage() {
                 送信
               </button>
             </div>
-            <p className="text-center text-xs mt-2" style={{ color: "rgba(255,255,255,0.2)" }}>
+            <p className="text-center text-xs mt-2" style={{ color: C.subtleText }}>
               Enterで送信
             </p>
           </div>

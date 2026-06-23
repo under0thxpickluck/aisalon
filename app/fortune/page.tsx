@@ -364,9 +364,9 @@ function buildDiagnosisDetail(mainId: string, subId: string, mainJson: any, subJ
 // ─── UI Components ────────────────────────────────────────────────────────────
 function SectionCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+    <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-4">
       <p className="text-sm font-bold text-pink-400 mb-1">{title}</p>
-      <p className="text-sm text-white/80 leading-relaxed">{body}</p>
+      <p className="text-sm text-slate-600 dark:text-white/80 leading-relaxed">{body}</p>
     </div>
   );
 }
@@ -540,18 +540,18 @@ export default function FortunePage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   const header = (
-    <div className="flex items-center gap-4 px-4 py-3 border-b border-white/10">
-      <Link href="/top" className="text-sm text-white/50 hover:text-white transition-colors">
+    <div className="flex items-center gap-4 px-4 py-3 border-b border-slate-200 dark:border-white/10">
+      <Link href="/top" className="text-sm text-slate-400 dark:text-white/50 hover:text-slate-800 dark:hover:text-white transition-colors">
         ← ダッシュボードに戻る
       </Link>
-      <span className="text-white font-bold">団子占い 🍡</span>
+      <span className="text-slate-900 dark:text-white font-bold">団子占い 🍡</span>
     </div>
   );
 
   const diag = displayDiag ?? stored;
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-white">
 
       {/* ── Loading ─────────────────────────────────────────────────────── */}
       {view === 'loading' && <LoadingCat />}
@@ -562,19 +562,19 @@ export default function FortunePage() {
           {header}
           <div className="max-w-md mx-auto px-4 py-10 flex flex-col items-center gap-6">
             <h1 className="text-3xl font-bold tracking-tight">あなだん</h1>
-            <p className="text-white/40 text-sm text-center">
+            <p className="text-slate-500 dark:text-white/40 text-sm text-center">
               20問の性格診断で、あなたの「団子タイプ」を見つけよう
             </p>
 
             {stored ? (
               <>
-                <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-4 items-center">
-                  <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-white/5 rounded-xl overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex gap-4 items-center">
+                  <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-slate-200 dark:bg-white/5 rounded-xl overflow-hidden">
                     <DangoImage mainId={stored.mainId} className="w-full h-full object-contain" />
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-lg leading-snug">{stored.finalLabel}</p>
-                    <p className="text-sm text-white/40 mt-1 truncate">
+                    <p className="text-sm text-slate-400 dark:text-white/40 mt-1 truncate">
                       メイン: {stored.mainLabel} / サブ: {stored.subLabel}
                     </p>
                   </div>
@@ -587,13 +587,13 @@ export default function FortunePage() {
                   今日の占いへ 🔮
                 </button>
 
-                <p className="text-white/30 text-xs text-center">
+                <p className="text-slate-400 dark:text-white/30 text-xs text-center">
                   あなたの性格診断は確定済み。毎日の運勢を見よう。
                 </p>
 
                 <button
                   onClick={() => { setDisplayDiag(stored); setView('result'); }}
-                  className="text-sm text-white/40 hover:text-white/70 transition-colors border border-white/10 rounded-lg px-4 py-2"
+                  className="text-sm text-slate-400 dark:text-white/40 hover:text-slate-700 dark:hover:text-white/70 transition-colors border border-slate-200 dark:border-white/10 rounded-lg px-4 py-2"
                 >
                   診断結果を見る 🍡
                 </button>
@@ -606,7 +606,7 @@ export default function FortunePage() {
                 >
                   診断をはじめる 🍡
                 </button>
-                <p className="text-white/30 text-xs text-center">
+                <p className="text-slate-400 dark:text-white/30 text-xs text-center">
                   まずは20問の性格診断でタイプを決めよう。
                 </p>
               </>
@@ -621,10 +621,10 @@ export default function FortunePage() {
           {header}
           <div className="max-w-md mx-auto px-4 py-8">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-white/40">診断中</span>
+              <span className="text-xs text-slate-400 dark:text-white/40">診断中</span>
               <span className="text-sm font-bold text-pink-400">{quizIdx + 1} / {questions.length}</span>
             </div>
-            <div className="w-full bg-white/10 rounded-full h-1 mb-8">
+            <div className="w-full bg-slate-200 dark:bg-white/10 rounded-full h-1 mb-8">
               <div
                 className="bg-pink-500 h-1 rounded-full transition-all duration-300"
                 style={{ width: `${((quizIdx + 1) / questions.length) * 100}%` }}
@@ -638,10 +638,10 @@ export default function FortunePage() {
                 <button
                   key={key}
                   onClick={() => pickAnswer(key)}
-                  className="w-full text-left bg-white/5 hover:bg-pink-600/20 border border-white/10 hover:border-pink-500/50 rounded-xl px-4 py-3 transition-all"
+                  className="w-full text-left bg-slate-100 dark:bg-white/5 hover:bg-pink-50 dark:hover:bg-pink-600/20 border border-slate-200 dark:border-white/10 hover:border-pink-500/50 rounded-xl px-4 py-3 transition-all"
                 >
                   <span className="text-pink-400 font-bold mr-2">{key}.</span>
-                  <span className="text-white/90">{questions[quizIdx].choices[key]}</span>
+                  <span className="text-slate-700 dark:text-white/90">{questions[quizIdx].choices[key]}</span>
                 </button>
               ))}
             </div>
@@ -649,7 +649,7 @@ export default function FortunePage() {
             {quizIdx > 0 && (
               <button
                 onClick={() => setQuizIdx(quizIdx - 1)}
-                className="mt-6 text-sm text-white/30 hover:text-white/60 transition-colors"
+                className="mt-6 text-sm text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/60 transition-colors"
               >
                 ← ひとつ戻る
               </button>
@@ -665,13 +665,13 @@ export default function FortunePage() {
           <div className="max-w-md mx-auto px-4 py-8">
             <h2 className="text-2xl font-bold mb-4">{diag.finalLabel}</h2>
 
-            <div className="w-full bg-white/5 rounded-2xl overflow-hidden flex items-center justify-center h-52 mb-4">
+            <div className="w-full bg-slate-100 dark:bg-white/5 rounded-2xl overflow-hidden flex items-center justify-center h-52 mb-4">
               <DangoImage mainId={diag.mainId} className="h-full object-contain" />
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-4">
+            <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 mb-4">
               <p className="text-sm font-bold text-pink-400 mb-3">恋愛分析レポート</p>
-              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">
+              <p className="text-sm text-slate-600 dark:text-white/80 leading-relaxed whitespace-pre-line">
                 {buildDiagnosisDetail(diag.mainId, diag.subId, mainJson, subJson)}
               </p>
             </div>
@@ -685,7 +685,7 @@ export default function FortunePage() {
 
             <button
               onClick={() => setView('home')}
-              className="w-full bg-white/5 hover:bg-white/10 text-white/50 py-3 rounded-xl transition-colors"
+              className="w-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-500 dark:text-white/50 py-3 rounded-xl transition-colors"
             >
               ホームに戻る
             </button>
@@ -699,7 +699,7 @@ export default function FortunePage() {
           {header}
           <div className="max-w-md mx-auto px-4 py-8">
             <h2 className="text-xl font-bold">今日の運勢</h2>
-            <p className="text-white/30 text-xs mt-1 mb-1">{formatYmdJa(fortune.ymd)}</p>
+            <p className="text-slate-400 dark:text-white/30 text-xs mt-1 mb-1">{formatYmdJa(fortune.ymd)}</p>
             {(adDiag ?? diag) && (
               <p className="text-base font-bold text-pink-400 mb-6">{(adDiag ?? diag)!.finalLabel}</p>
             )}
