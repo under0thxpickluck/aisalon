@@ -33,7 +33,7 @@ export function PlanPicker({ value, onChange }: Props) {
             ].join(" ")}
           >
             <div className="text-sm font-extrabold">{p.title}</div>
-            <div className={active ? "text-xs font-semibold text-violet-700" : "text-xs font-semibold text-violet-200"}>
+            <div className={active ? "text-xs font-semibold text-violet-700 dark:text-violet-400" : "text-xs font-semibold text-violet-200"}>
               {p.sub}
             </div>
             <div className={active ? "mt-1 text-[11px] text-slate-500" : "mt-1 text-[11px] text-slate-300/70"}>
