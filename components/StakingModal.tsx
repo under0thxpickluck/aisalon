@@ -199,7 +199,7 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
             }}
           >
             ✨ EPステーキング
-            <span style={{ fontSize: "10px", background: "#3f3f46", color: "#71717a", borderRadius: "4px", padding: "1px 5px" }}>準備中</span>
+            <span style={{ fontSize: "10px", borderRadius: "4px", padding: "1px 5px" }} className="bg-slate-200 dark:bg-[#3f3f46] text-slate-500 dark:text-[#71717a]">準備中</span>
           </button>
         </div>
 
@@ -233,7 +233,7 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
                 <span>プール消費率</span>
                 <span>残り余裕 {Math.max(0, 100 - poolInfo.gauge_pct)}%</span>
               </div>
-              <div style={{ height: "6px", background: "#27272a", borderRadius: "3px" }}>
+              <div style={{ height: "6px", borderRadius: "3px" }} className="bg-slate-200 dark:bg-[#27272a]">
                 <div style={{
                   height: "6px", borderRadius: "3px", background: "#f59e0b",
                   width: `${poolInfo.gauge_pct}%`, transition: "width 0.5s ease",
@@ -400,9 +400,9 @@ export default function StakingModal({ loginId, onClose, onBpChanged }: Props) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
             {[...claimableStakes, ...lockedStakes].map((s) => (
-              <div key={s.stake_id} className={s.claimable ? "" : "bg-slate-100 dark:bg-[#27272a]"} style={{
+              <div key={s.stake_id} className={s.claimable ? "" : "bg-slate-100 dark:bg-[#27272a] border-slate-200 dark:border-white/[0.08]"} style={{
                 background: s.claimable ? "rgba(74,222,128,0.07)" : undefined,
-                border: `1px solid ${s.claimable ? "rgba(74,222,128,0.3)" : "rgba(255,255,255,0.08)"}`,
+                border: s.claimable ? "1px solid rgba(74,222,128,0.3)" : "1px solid",
                 borderRadius: "10px", padding: "12px",
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
