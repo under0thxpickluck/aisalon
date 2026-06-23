@@ -352,7 +352,7 @@ export default function PurchaseJamPage() {
               {!draft ? (
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {Array.from({ length: PLANS.length }).map((_, i) => (
-                    <div key={i} className="h-[170px] rounded-2xl border border-slate-200 bg-slate-50 animate-pulse" />
+                    <div key={i} className="h-[170px] rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-gray-800 animate-pulse" />
                   ))}
                 </div>
               ) : (
@@ -386,7 +386,7 @@ export default function PurchaseJamPage() {
                 {/* applyId表示（問い合わせ・復帰用） */}
                 {draft?.applyId ? (
                   <div className="mt-2 text-[11px] text-slate-500">
-                    申請ID：<span className="font-mono text-slate-700">{draft.applyId}</span>
+                    申請ID：<span className="font-mono text-slate-700 dark:text-zinc-300">{draft.applyId}</span>
                   </div>
                 ) : null}
 

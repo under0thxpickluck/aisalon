@@ -280,7 +280,7 @@ export default function ApplyPage() {
               </button>
             </div>
             {recoveryError && (
-              <div className="mt-3 text-xs font-semibold text-rose-700">{recoveryError}</div>
+              <div className="mt-3 text-xs font-semibold text-rose-700 dark:text-rose-400">{recoveryError}</div>
             )}
           </div>
         )}
