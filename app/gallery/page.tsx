@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 const CTA_OUTLINE =
-  "mt-7 inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-neutral-800 dark:text-neutral-100 dark:text-neutral-100 transition hover:border-neutral-300 hover:bg-neutral-50 dark:hover:bg-gray-700";
+  "mt-7 inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-neutral-800 dark:text-neutral-100 transition hover:border-neutral-300 hover:bg-neutral-50 dark:hover:bg-gray-700";
 
 export default function GalleryPage() {
   return (
@@ -23,14 +23,14 @@ export default function GalleryPage() {
             <div className="mb-8 flex items-center justify-between">
               <Link
                 href="/"
-                className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-gray-800 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 dark:text-neutral-200 transition hover:bg-neutral-50 dark:hover:bg-gray-700"
+                className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-gray-800 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 transition hover:bg-neutral-50 dark:hover:bg-gray-700"
               >
                 ← 最初に戻る
               </Link>
               <div className="flex gap-2">
                 <Link
                   href="/login"
-                  className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-gray-800 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 dark:text-neutral-200 transition hover:bg-neutral-50 dark:hover:bg-gray-700"
+                  className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-gray-800 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 transition hover:bg-neutral-50 dark:hover:bg-gray-700"
                 >
                   ログイン
                 </Link>
@@ -326,7 +326,7 @@ export default function GalleryPage() {
                   {[["ハイスコア", "1,248 pt"], ["ランキング", "3位 / 全体"], ["獲得EP", "+120 EP"]].map(([label, val]) => (
                     <div key={label} className="flex items-center justify-between">
                       <span className="text-neutral-400">{label}</span>
-                      <span className={`font-bold ${label === "獲得EP" ? "text-green-600" : "text-neutral-800"}`}>{val}</span>
+                      <span className={`font-bold ${label === "獲得EP" ? "text-green-600" : "text-neutral-800 dark:text-neutral-100"}`}>{val}</span>
                     </div>
                   ))}
                 </div>
@@ -337,7 +337,7 @@ export default function GalleryPage() {
                   {[["最終順位", "12位 / 128人"], ["バトル結果", "7勝 3敗"], ["獲得BP", "+80 BP"]].map(([label, val]) => (
                     <div key={label} className="flex items-center justify-between">
                       <span className="text-neutral-400">{label}</span>
-                      <span className={`font-bold ${label === "獲得BP" ? "text-indigo-600" : "text-neutral-800"}`}>{val}</span>
+                      <span className={`font-bold ${label === "獲得BP" ? "text-indigo-600" : "text-neutral-800 dark:text-neutral-100"}`}>{val}</span>
                     </div>
                   ))}
                 </div>
