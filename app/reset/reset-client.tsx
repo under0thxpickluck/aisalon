@@ -41,23 +41,23 @@ export default function ResetClient() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl border bg-white/80 p-6 shadow">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-white to-slate-50 dark:from-[#070A12] dark:to-[#0b1022] text-slate-900 dark:text-white">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 shadow">
         <h1 className="text-xl font-bold">初回パスワード設定</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
           メールのリンクから開いた場合のみ設定できます。
         </p>
 
         <div className="mt-5 space-y-3">
           <input
-            className="w-full rounded-xl border p-3"
+            className="w-full rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white dark:placeholder:text-slate-500 p-3 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
             placeholder="新しいパスワード（8文字以上）"
             type="password"
             value={pw}
             onChange={(e) => setPw(e.target.value)}
           />
           <input
-            className="w-full rounded-xl border p-3"
+            className="w-full rounded-xl border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white dark:placeholder:text-slate-500 p-3 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
             placeholder="確認用パスワード"
             type="password"
             value={pw2}
@@ -65,14 +65,14 @@ export default function ResetClient() {
           />
 
           <button
-            className="w-full rounded-xl bg-black text-white p-3 disabled:opacity-50"
+            className="w-full rounded-xl bg-black dark:bg-indigo-600 text-white p-3 disabled:opacity-50"
             disabled={loading}
             onClick={onSubmit}
           >
             {loading ? "送信中..." : "設定する"}
           </button>
 
-          {msg && <div className="text-sm text-red-600">{msg}</div>}
+          {msg && <div className="text-sm text-red-600 dark:text-red-400">{msg}</div>}
         </div>
       </div>
     </div>
