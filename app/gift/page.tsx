@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getAuth, getAuthSecret } from "@/app/lib/auth";
 import GiftEPTutorial, { useGiftEPTutorial } from "@/components/GiftEPTutorial";
 import { LoadingCat } from "@/components/LoadingCat";
+import { useTheme } from "@/app/lib/useTheme";
 
 type BalanceData = {
   balance: number;
@@ -12,8 +13,44 @@ type BalanceData = {
   next_expiry_date: string | null;
 };
 
+const C_DARK = {
+  text:      "#EAF0FF",
+  textMed:   "rgba(234,240,255,0.7)",
+  textSub:   "rgba(234,240,255,0.6)",
+  textMuted: "rgba(234,240,255,0.45)",
+  textDim:   "rgba(234,240,255,0.35)",
+  textFaint: "rgba(234,240,255,0.25)",
+  textGhost: "rgba(234,240,255,0.2)",
+  accent:    "#A78BFA",
+  accentSub: "rgba(167,139,250,0.7)",
+  border:    "rgba(255,255,255,0.08)",
+  borderSub: "rgba(255,255,255,0.05)",
+  bg:        "rgba(255,255,255,0.04)",
+  bgSub:     "rgba(255,255,255,0.07)",
+  error:     "#FCA5A5",
+};
+
+const C_LIGHT = {
+  text:      "#0f172a",
+  textMed:   "#334155",
+  textSub:   "#475569",
+  textMuted: "#64748b",
+  textDim:   "#94a3b8",
+  textFaint: "#94a3b8",
+  textGhost: "#cbd5e1",
+  accent:    "#7c3aed",
+  accentSub: "#6d28d9",
+  border:    "#e2e8f0",
+  borderSub: "#f1f5f9",
+  bg:        "#f8fafc",
+  bgSub:     "#f1f5f9",
+  error:     "#b91c1c",
+};
+
 export default function GiftEPTopPage() {
   const router = useRouter();
+  const { isDark } = useTheme();
+  const C = isDark ? C_DARK : C_LIGHT;
   const [myId, setMyId] = useState("");
   const [myCode, setMyCode] = useState("");
   const [data, setData] = useState<BalanceData | null>(null);
@@ -58,30 +95,30 @@ export default function GiftEPTopPage() {
 
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "40px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-          <Link href="/top" style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(255,255,255,0.04)", padding: "6px 14px", fontSize: 12,
-            fontWeight: 600, color: "rgba(234,240,255,0.65)", textDecoration: "none" }}>
+          <Link href="/top" style={{ borderRadius: 14, border: `1px solid ${C.border}`,
+            background: C.bg, padding: "6px 14px", fontSize: 12,
+            fontWeight: 600, color: C.textSub, textDecoration: "none" }}>
             ← 戻る
           </Link>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 9999,
-            border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
-            padding: "4px 12px", fontSize: 12, fontWeight: 600, color: "rgba(234,240,255,0.65)" }}>
+            border: `1px solid ${C.border}`, background: C.bg,
+            padding: "4px 12px", fontSize: 12, fontWeight: 600, color: C.textSub }}>
             🎁 GiftEP
           </div>
           <button
             onClick={openTutorial}
             style={{ marginLeft: "auto", width: 30, height: 30, borderRadius: 9999,
               border: "1px solid rgba(167,139,250,0.3)", background: "rgba(167,139,250,0.1)",
-              fontSize: 13, fontWeight: 700, color: "#A78BFA", cursor: "pointer",
+              fontSize: 13, fontWeight: 700, color: C.accent, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             ?
           </button>
         </div>
 
-        <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em", color: "#EAF0FF", marginBottom: 4 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em", color: C.text, marginBottom: 4 }}>
           GiftEP
         </h1>
-        <p style={{ fontSize: 12, color: "rgba(234,240,255,0.45)", marginBottom: 24 }}>
+        <p style={{ fontSize: 12, color: C.textMuted, marginBottom: 24 }}>
           贈れる・使える、LIFAI内限定ギフトクレジット（有効期限30日）
         </p>
 
@@ -90,15 +127,15 @@ export default function GiftEPTopPage() {
           {loading ? (
             <LoadingCat fullscreen={false} />
           ) : loadError ? (
-            <p style={{ fontSize: 12, color: "#FCA5A5" }}>{loadError}</p>
+            <p style={{ fontSize: 12, color: C.error }}>{loadError}</p>
           ) : (
             <>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(167,139,250,0.7)", marginBottom: 6 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.accentSub, marginBottom: 6 }}>
                 GiftEP残高
               </p>
-              <p style={{ fontSize: 36, fontWeight: 800, color: "#A78BFA", lineHeight: 1 }}>
+              <p style={{ fontSize: 36, fontWeight: 800, color: C.accent, lineHeight: 1 }}>
                 {(data?.balance ?? 0).toLocaleString()}
-                <span style={{ fontSize: 14, fontWeight: 600, marginLeft: 6, color: "rgba(167,139,250,0.6)" }}>GiftEP</span>
+                <span style={{ fontSize: 14, fontWeight: 600, marginLeft: 6, color: C.accentSub }}>GiftEP</span>
               </p>
               {data?.expiring_soon && data.expiring_soon > 0 ? (
                 <p style={{ marginTop: 10, fontSize: 11, color: "#FCD34D" }}>
@@ -106,7 +143,7 @@ export default function GiftEPTopPage() {
                   {data.next_expiry_date && `（${data.next_expiry_date}）`}
                 </p>
               ) : data?.next_expiry_date ? (
-                <p style={{ marginTop: 10, fontSize: 11, color: "rgba(234,240,255,0.35)" }}>
+                <p style={{ marginTop: 10, fontSize: 11, color: C.textDim }}>
                   次回失効日: {data.next_expiry_date}
                 </p>
               ) : null}
@@ -124,14 +161,14 @@ export default function GiftEPTopPage() {
               borderRadius: 18, padding: "16px 8px",
               textAlign: "center", textDecoration: "none", display: "block" }}>
               <p style={{ fontSize: 22, marginBottom: 6 }}>{item.icon}</p>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(234,240,255,0.7)" }}>{item.label}</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textMed }}>{item.label}</p>
             </Link>
           ))}
         </div>
 
         <div style={{ borderRadius: 16, border: "1px solid rgba(167,139,250,0.2)",
           background: "rgba(124,58,237,0.06)", padding: "14px 16px",
-          fontSize: 11, color: "rgba(167,139,250,0.7)", lineHeight: 1.9 }}>
+          fontSize: 11, color: C.accentSub, lineHeight: 1.9 }}>
           <p style={{ fontWeight: 700, color: "rgba(167,139,250,0.9)", marginBottom: 6 }}>⚠ GiftEP利用ルール</p>
           <p>・GiftEPは換金できません</p>
           <p>・受け取ったGiftEPは再送できません</p>
@@ -140,7 +177,7 @@ export default function GiftEPTopPage() {
           <p>・外部売買・換金目的での利用は永久BANの対象です</p>
         </div>
 
-        <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: "rgba(234,240,255,0.2)" }}>© LIFAI</div>
+        <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: C.textGhost }}>© LIFAI</div>
       </div>
     </main>
   );

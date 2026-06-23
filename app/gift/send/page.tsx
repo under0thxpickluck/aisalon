@@ -3,13 +3,50 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAuth, getAuthSecret } from "@/app/lib/auth";
+import { useTheme } from "@/app/lib/useTheme";
 
 type Step = "input" | "confirm" | "done";
 
 const LFW_PATTERN = /^LFW-[A-Z0-9]{6}$/;
 
+const C_DARK = {
+  text:      "#EAF0FF",
+  textMed:   "rgba(234,240,255,0.7)",
+  textSub:   "rgba(234,240,255,0.6)",
+  textMuted: "rgba(234,240,255,0.45)",
+  textDim:   "rgba(234,240,255,0.35)",
+  textFaint: "rgba(234,240,255,0.25)",
+  textGhost: "rgba(234,240,255,0.2)",
+  accent:    "#A78BFA",
+  accentSub: "rgba(167,139,250,0.7)",
+  border:    "rgba(255,255,255,0.08)",
+  borderSub: "rgba(255,255,255,0.05)",
+  bg:        "rgba(255,255,255,0.04)",
+  bgSub:     "rgba(255,255,255,0.07)",
+  error:     "#FCA5A5",
+};
+
+const C_LIGHT = {
+  text:      "#0f172a",
+  textMed:   "#334155",
+  textSub:   "#475569",
+  textMuted: "#64748b",
+  textDim:   "#94a3b8",
+  textFaint: "#94a3b8",
+  textGhost: "#cbd5e1",
+  accent:    "#7c3aed",
+  accentSub: "#6d28d9",
+  border:    "#e2e8f0",
+  borderSub: "#f1f5f9",
+  bg:        "#f8fafc",
+  bgSub:     "#f1f5f9",
+  error:     "#b91c1c",
+};
+
 export default function GiftSendPage() {
   const router = useRouter();
+  const { isDark } = useTheme();
+  const C = isDark ? C_DARK : C_LIGHT;
   const [myId, setMyId] = useState("");
   const [myCode, setMyCode] = useState("");
   const [epBalance, setEpBalance] = useState<number | null>(null);
@@ -44,13 +81,13 @@ export default function GiftSendPage() {
   const isLfw = LFW_PATTERN.test(toUser.trim().toUpperCase());
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)",
-    background: "rgba(255,255,255,0.04)", padding: "10px 14px",
-    fontSize: 13, color: "#EAF0FF", outline: "none", boxSizing: "border-box",
+    width: "100%", borderRadius: 14, border: `1px solid ${C.border}`,
+    background: C.bg, padding: "10px 14px",
+    fontSize: 13, color: C.text, outline: "none", boxSizing: "border-box",
   };
   const labelStyle: React.CSSProperties = {
     display: "block", marginBottom: 6, fontSize: 11, fontWeight: 700,
-    color: "rgba(234,240,255,0.55)", letterSpacing: "0.04em",
+    color: C.textMuted, letterSpacing: "0.04em",
   };
 
   const handleSend = async () => {
@@ -124,12 +161,12 @@ export default function GiftSendPage() {
 
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 16px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-          <Link href="/gift" style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(255,255,255,0.04)", padding: "6px 14px", fontSize: 12,
-            fontWeight: 600, color: "rgba(234,240,255,0.65)", textDecoration: "none" }}>
+          <Link href="/gift" style={{ borderRadius: 14, border: `1px solid ${C.border}`,
+            background: C.bg, padding: "6px 14px", fontSize: 12,
+            fontWeight: 600, color: C.textSub, textDecoration: "none" }}>
             ← 戻る
           </Link>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(234,240,255,0.45)" }}>🎁 GiftEPを贈る</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: C.textMuted }}>🎁 GiftEPを贈る</span>
         </div>
 
         <div className="bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.08]" style={{
@@ -138,13 +175,13 @@ export default function GiftSendPage() {
           {step === "done" ? (
             <div style={{ textAlign: "center", padding: "16px 0" }}>
               <p style={{ fontSize: 36, marginBottom: 16 }}>🎉</p>
-              <p style={{ fontSize: 16, fontWeight: 800, color: "#A78BFA", marginBottom: 8 }}>
+              <p style={{ fontSize: 16, fontWeight: 800, color: C.accent, marginBottom: 8 }}>
                 {isLfw ? "EPを送金しました！" : "GiftEPを送りました！"}
               </p>
-              <p style={{ fontSize: 12, color: "rgba(234,240,255,0.5)", marginBottom: 4 }}>
+              <p style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>
                 {Number(amount).toLocaleString()} {isLfw ? "EP" : "GiftEP"} → {toUser}
               </p>
-              <p style={{ fontSize: 11, color: "rgba(234,240,255,0.35)", marginBottom: 24 }}>
+              <p style={{ fontSize: 11, color: C.textDim, marginBottom: 24 }}>
                 {resultExpiry ? `有効期限: ${resultExpiry}` : ""}
               </p>
               <Link href="/gift" style={{ display: "inline-block", borderRadius: 16,
@@ -155,8 +192,8 @@ export default function GiftSendPage() {
             </div>
           ) : step === "confirm" ? (
             <>
-              <p style={{ fontSize: 14, fontWeight: 800, color: "#EAF0FF", marginBottom: 20 }}>送信内容を確認</p>
-              <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 16,
+              <p style={{ fontSize: 14, fontWeight: 800, color: C.text, marginBottom: 20 }}>送信内容を確認</p>
+              <div style={{ background: C.bgSub, borderRadius: 16,
                 padding: "16px", marginBottom: 20, display: "flex", flexDirection: "column", gap: 10 }}>
                 {(isLfw ? [
                   ["送信先", toUser],
@@ -169,8 +206,8 @@ export default function GiftSendPage() {
                   ["有効期限", "付与から30日"],
                 ]).map(([label, value]) => (
                   <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ fontSize: 11, color: "rgba(234,240,255,0.45)" }}>{label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#EAF0FF", textAlign: "right", maxWidth: "60%" }}>{value}</span>
+                    <span style={{ fontSize: 11, color: C.textMuted }}>{label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: C.text, textAlign: "right", maxWidth: "60%" }}>{value}</span>
                   </div>
                 ))}
               </div>
@@ -192,18 +229,18 @@ export default function GiftSendPage() {
               <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer" }}>
                 <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)}
                   style={{ accentColor: "#A78BFA", width: 16, height: 16 }} />
-                <span style={{ fontSize: 12, color: "rgba(234,240,255,0.7)" }}>
+                <span style={{ fontSize: 12, color: C.textMed }}>
                   上記の利用ルールに同意して送信する
                 </span>
               </label>
 
-              {error && <p style={{ fontSize: 12, color: "#FCA5A5", marginBottom: 12 }}>{error}</p>}
+              {error && <p style={{ fontSize: 12, color: C.error, marginBottom: 12 }}>{error}</p>}
 
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setStep("input")}
-                  style={{ flex: 1, borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)",
-                    background: "rgba(255,255,255,0.04)", padding: "12px", fontSize: 13,
-                    fontWeight: 600, color: "#EAF0FF", cursor: "pointer" }}>
+                  style={{ flex: 1, borderRadius: 14, border: `1px solid ${C.border}`,
+                    background: C.bg, padding: "12px", fontSize: 13,
+                    fontWeight: 600, color: C.text, cursor: "pointer" }}>
                   修正する
                 </button>
                 <button onClick={handleSend} disabled={!agreed || loading}
@@ -218,10 +255,10 @@ export default function GiftSendPage() {
             </>
           ) : (
             <>
-              <p style={{ fontSize: 14, fontWeight: 800, color: "#EAF0FF", marginBottom: 20 }}>GiftEPを贈る</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: C.text, marginBottom: 20 }}>GiftEPを贈る</p>
               {epBalance !== null && (
-                <p style={{ fontSize: 11, color: "rgba(234,240,255,0.4)", marginBottom: 16 }}>
-                  あなたのEP残高: <span style={{ color: "#A78BFA", fontWeight: 700 }}>{epBalance.toLocaleString()} EP</span>
+                <p style={{ fontSize: 11, color: C.textMuted, marginBottom: 16 }}>
+                  あなたのEP残高: <span style={{ color: C.accent, fontWeight: 700 }}>{epBalance.toLocaleString()} EP</span>
                 </p>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -241,7 +278,7 @@ export default function GiftSendPage() {
                   <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
                     placeholder="応援メッセージなど" style={{ ...inputStyle, resize: "none" }} />
                 </div>
-                {error && <p style={{ fontSize: 12, color: "#FCA5A5" }}>{error}</p>}
+                {error && <p style={{ fontSize: 12, color: C.error }}>{error}</p>}
                 <button
                   onClick={() => {
                     setError("");
@@ -260,7 +297,7 @@ export default function GiftSendPage() {
             </>
           )}
         </div>
-        <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: "rgba(234,240,255,0.2)" }}>© LIFAI</div>
+        <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: C.textGhost }}>© LIFAI</div>
       </div>
     </main>
   );
