@@ -87,19 +87,19 @@ function StepHeaderLite({ title, subtitle }: { title: string; subtitle?: string 
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 shadow-sm">
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1 text-xs text-slate-700 dark:text-zinc-300 shadow-sm">
           <span className="h-2 w-2 rounded-full bg-indigo-500" />
           Plan Select
         </div>
-        <div className="mt-3 text-xl font-extrabold tracking-tight text-slate-900">{title}</div>
-        {subtitle ? <div className="mt-1 text-sm text-slate-600">{subtitle}</div> : null}
+        <div className="mt-3 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">{title}</div>
+        {subtitle ? <div className="mt-1 text-sm text-slate-600 dark:text-zinc-400">{subtitle}</div> : null}
       </div>
 
-      <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
-        <span className="grid h-7 w-7 place-items-center rounded-xl bg-slate-900 text-white font-black">L</span>
+      <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-xs text-slate-600 dark:text-zinc-400 shadow-sm">
+        <span className="grid h-7 w-7 place-items-center rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black">L</span>
         <div className="leading-tight">
-          <div className="font-semibold text-slate-900">LIFAI</div>
-          <div className="text-[11px] text-slate-500">AI副業コミュニティ</div>
+          <div className="font-semibold text-slate-900 dark:text-white">LIFAI</div>
+          <div className="text-[11px] text-slate-500 dark:text-zinc-500">AI副業コミュニティ</div>
         </div>
       </div>
     </div>
@@ -125,10 +125,10 @@ function PlanCard({
       onClick={onSelect}
       className={[
         "relative w-full rounded-2xl border p-5 text-left transition",
-        "bg-white hover:bg-slate-50",
+        "bg-white dark:bg-gray-900 hover:bg-slate-50 dark:hover:bg-gray-800",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400",
-        selected ? "border-indigo-500 ring-2 ring-indigo-200 shadow-[0_18px_45px_rgba(99,102,241,.22)]" : "border-slate-200",
-        isBest && !selected ? "border-indigo-200 shadow-[0_18px_55px_rgba(99,102,241,.18)]" : "",
+        selected ? "border-indigo-500 ring-2 ring-indigo-200 shadow-[0_18px_45px_rgba(99,102,241,.22)]" : "border-slate-200 dark:border-gray-700",
+        isBest && !selected ? "border-indigo-200 dark:border-indigo-700 shadow-[0_18px_55px_rgba(99,102,241,.18)]" : "",
       ].join(" ")}
       aria-pressed={selected}
     >
@@ -154,10 +154,10 @@ function PlanCard({
 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-extrabold text-slate-900">{plan.title}</div>
+          <div className="text-sm font-extrabold text-slate-900 dark:text-white">{plan.title}</div>
           <div className="mt-1">
             <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-              <div className="text-xl font-extrabold text-slate-900">{plan.priceLabel}</div>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white">{plan.priceLabel}</div>
 
               {ENABLE_PRESALE ? (
                 <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-extrabold text-amber-900">
@@ -188,30 +188,30 @@ function PlanCard({
         <div
           className={[
             "grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm font-black",
-            selected ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-400",
+            selected ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-400 dark:text-zinc-500",
           ].join(" ")}
         >
           ✓
         </div>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">{plan.desc}</p>
+      <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400">{plan.desc}</p>
 
       <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="text-xs font-semibold text-slate-600">
-          含まれる内容：<span className="font-extrabold text-slate-900">{plan.bullets.length}</span>項目
+        <span className="text-xs font-semibold text-slate-600 dark:text-zinc-400">
+          含まれる内容：<span className="font-extrabold text-slate-900 dark:text-white">{plan.bullets.length}</span>項目
         </span>
         <span
           className={[
             "rounded-full px-3 py-1 text-xs font-bold",
-            selected ? "bg-indigo-600 text-white" : isBest ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "bg-slate-100 text-slate-600",
+            selected ? "bg-indigo-600 text-white" : isBest ? "bg-indigo-50 text-indigo-700 border border-indigo-200" : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-zinc-400",
           ].join(" ")}
         >
           {selected ? "選択済み" : "未選択"}
         </span>
       </div>
 
-      <div className="mt-3 text-xs font-semibold text-slate-500">{selected ? "選択中" : "クリックして選択"}</div>
+      <div className="mt-3 text-xs font-semibold text-slate-500 dark:text-zinc-500">{selected ? "選択中" : "クリックして選択"}</div>
     </button>
   );
 }
@@ -293,8 +293,8 @@ export default function PurchaseJamPage() {
   const canGoNext = !!selectedPlan && !!draft?.applyId && paidChecked;
 
   return (
-    <main className="min-h-screen bg-white text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_500px_at_15%_-10%,rgba(99,102,241,.18),transparent_60%),radial-gradient(800px_520px_at_110%_5%,rgba(56,189,248,.18),transparent_55%),linear-gradient(180deg,#ffffff,#f7f8fc_45%,#ffffff)]" />
+    <main className="min-h-screen bg-white dark:bg-[#070A12] text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_500px_at_15%_-10%,rgba(99,102,241,.18),transparent_60%),radial-gradient(800px_520px_at_110%_5%,rgba(56,189,248,.18),transparent_55%),linear-gradient(180deg,#ffffff,#f7f8fc_45%,#ffffff)] dark:bg-[radial-gradient(900px_500px_at_15%_-10%,rgba(99,102,241,.18),transparent_60%),radial-gradient(800px_520px_at_110%_5%,rgba(56,189,248,.18),transparent_55%),linear-gradient(180deg,#070A12,#0d1020_45%,#070A12)]" />
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]"
         style={{
@@ -320,20 +320,20 @@ export default function PurchaseJamPage() {
         <div className="mb-6 flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="text-sm text-slate-600 hover:text-slate-900 underline decoration-slate-200 hover:decoration-slate-400"
+            className="text-sm text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white underline decoration-slate-200 dark:decoration-zinc-600 hover:decoration-slate-400"
           >
             ← トップへ戻る
           </Link>
 
           <Link
             href="/login"
-            className="text-sm text-slate-600 hover:text-slate-900 underline decoration-slate-200 hover:decoration-slate-400"
+            className="text-sm text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white underline decoration-slate-200 dark:decoration-zinc-600 hover:decoration-slate-400"
           >
             ログインへ
           </Link>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-900 p-6 shadow-[0_30px_90px_rgba(2,6,23,.10)]">
           <StepHeaderLite
             title="JAMDAO コラボ購入（専用）"
             subtitle="①プラン選択 → ②支払い → ③「支払い完了」チェック → ④次へ（申請入力）"
@@ -341,11 +341,11 @@ export default function PurchaseJamPage() {
 
           <div className="mt-6 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
             {/* 左：プラン */}
-            <section className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="text-sm font-semibold text-slate-900">
+            <section className="rounded-[22px] border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-800 p-5 shadow-sm">
+              <div className="text-sm font-semibold text-slate-900 dark:text-white">
                 購入プラン <span className="text-rose-600">*</span>
               </div>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              <p className="mt-2 text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
                 JAMDAOコラボ限定条件で購入できます。選択するとカードが色付きになります。
               </p>
 
@@ -363,8 +363,8 @@ export default function PurchaseJamPage() {
                 </div>
               )}
 
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">
-                <div className="font-bold text-slate-900">選択中：</div>
+              <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4 text-xs text-slate-700 dark:text-zinc-300">
+                <div className="font-bold text-slate-900 dark:text-white">選択中：</div>
                 <div className="mt-1">
                   {selectedPlan ? (
                     <>
@@ -391,9 +391,9 @@ export default function PurchaseJamPage() {
                 ) : null}
 
                 {selectedPlan ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="text-sm font-extrabold text-slate-900">選択中プランの内容</div>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-800 p-4">
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">選択中プランの内容</div>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-700 dark:text-zinc-300">
                       {selectedPlan.bullets.map((t) => (
                         <li key={t} className="flex items-start gap-2">
                           <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
@@ -408,9 +408,9 @@ export default function PurchaseJamPage() {
 
             {/* 右：支払い方法 */}
             <aside className="grid gap-5">
-              <div className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="text-sm font-semibold text-slate-900">支払い方法</div>
-                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+              <div className="rounded-[22px] border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-800 p-5 shadow-sm">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white">支払い方法</div>
+                <p className="mt-1 text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
                   まずは下の方法でお支払いください。支払い完了後、このページに戻って「支払い完了」チェックを入れて次へ進んでください。
                 </p>
 
@@ -486,10 +486,10 @@ export default function PurchaseJamPage() {
                       }
                     }}
                   >
-                    <div className="text-sm font-extrabold text-slate-900">
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">
                       {payBusy ? "決済ページを準備中…" : "暗号通貨（NOWPayments）"}
                     </div>
-                    <div className="mt-1 text-xs text-slate-600">USDTなどで支払い（ウォレットがある方向け）</div>
+                    <div className="mt-1 text-xs text-slate-600 dark:text-zinc-400">USDTなどで支払い（ウォレットがある方向け）</div>
                   </button>
 
                   {/* ✅ 仮想通貨を持ってない人向け：MEXC誘導バナー */}
@@ -497,7 +497,7 @@ export default function PurchaseJamPage() {
                     href="https://promote.mexc.com/r/m54hsj74"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:opacity-95 transition"
+                    className="block overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-700 shadow-sm hover:opacity-95 transition"
                   >
                     <Image
                       src="/mexc.png"
@@ -509,26 +509,26 @@ export default function PurchaseJamPage() {
                     />
                   </a>
 
-                  <div className="px-1 text-[11px] text-slate-500">
+                  <div className="px-1 text-[11px] text-slate-500 dark:text-zinc-500">
                     ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
                   </div>
 
                   {/* ✅ 今後の追加枠 */}
-                  <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 opacity-80">
-                    <div className="text-sm font-extrabold text-slate-900">クレカ / 銀行振込（準備中）</div>
-                    <div className="mt-1 text-xs text-slate-600">
+                  <div className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-4 opacity-80">
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">クレカ / 銀行振込（準備中）</div>
+                    <div className="mt-1 text-xs text-slate-600 dark:text-zinc-400">
                       近日対応予定です。暗号通貨がない場合は、こちらが追加されるまでお待ちください。
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-sm font-semibold text-slate-900">支払い完了後</div>
-                  <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">支払い完了後</div>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
                     支払いが完了したら、このページに戻って下のチェックをONにしてください（ONにしないと次へ進めません）。
                   </p>
 
-                  <label className="mt-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                  <label className="mt-3 flex items-start gap-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-700 p-3">
                     <input
                       type="checkbox"
                       className="mt-1 h-4 w-4"
@@ -537,8 +537,8 @@ export default function PurchaseJamPage() {
                       disabled={!selectedPlan}
                     />
                     <div className="text-sm">
-                      <div className="font-extrabold text-slate-900">支払い完了しました</div>
-                      <div className="text-xs text-slate-600">※支払いが未完了のまま進むと、承認が遅れます</div>
+                      <div className="font-extrabold text-slate-900 dark:text-white">支払い完了しました</div>
+                      <div className="text-xs text-slate-600 dark:text-zinc-400">※支払いが未完了のまま進むと、承認が遅れます</div>
                     </div>
                   </label>
                 </div>
@@ -561,17 +561,17 @@ export default function PurchaseJamPage() {
 
               <Link
                 href="/login"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-800 px-4 py-3 text-sm font-semibold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 すでにIDをお持ちの方：ログイン
               </Link>
 
-              <div className="text-center text-xs text-slate-500">※選択内容はこの端末内に一時保存されます</div>
+              <div className="text-center text-xs text-slate-500 dark:text-zinc-500">※選択内容はこの端末内に一時保存されます</div>
             </aside>
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-slate-500">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-500 dark:text-zinc-500">© LIFAI</div>
       </div>
     </main>
   );

@@ -91,9 +91,9 @@ function isEmail(v: string) {
 
 function Box({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-[22px] border border-slate-300/60 bg-white p-5 shadow-[0_18px_45px_rgba(2,6,23,.10)]">
+    <section className="rounded-[22px] border border-slate-300/60 dark:border-white/10 bg-white dark:bg-gray-900 p-5 shadow-[0_18px_45px_rgba(2,6,23,.10)]">
       <div className="mb-4">
-        <div className="text-sm font-extrabold text-slate-900">{title}</div>
+        <div className="text-sm font-extrabold text-slate-900 dark:text-white">{title}</div>
       </div>
       {children}
     </section>
@@ -102,7 +102,7 @@ function Box({ title, children }: { title: string; children: React.ReactNode }) 
 
 function InputWrap({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-300/70 bg-slate-50 px-4 py-3">
+    <div className="rounded-2xl border border-slate-300/70 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3">
       {children}
     </div>
   );
@@ -243,8 +243,8 @@ export default function ApplyPage() {
   }
 
   return (
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.22),transparent_60%),radial-gradient(900px_600px_at_115%_0%,rgba(34,211,238,.18),transparent_55%),linear-gradient(180deg,#F4F6FB,#FFFFFF_45%,#F4F6FB)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.22),transparent_60%),radial-gradient(900px_600px_at_115%_0%,rgba(34,211,238,.18),transparent_55%),linear-gradient(180deg,#F4F6FB,#FFFFFF_45%,#F4F6FB)] dark:bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.22),transparent_60%),radial-gradient(900px_600px_at_115%_0%,rgba(34,211,238,.18),transparent_55%),linear-gradient(180deg,#070A12,#0d1020_45%,#070A12)]" />
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.12]"
         style={{
@@ -256,9 +256,9 @@ export default function ApplyPage() {
 
       <div className="mx-auto max-w-[920px] px-4 py-10">
         {showRecovery && (
-          <div className="mb-6 rounded-[22px] border border-amber-300 bg-amber-50 p-6 shadow-sm">
-            <div className="text-sm font-extrabold text-amber-900">支払い後にページを閉じてしまった方へ</div>
-            <p className="mt-2 text-xs text-amber-800 leading-relaxed">
+          <div className="mb-6 rounded-[22px] border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 p-6 shadow-sm">
+            <div className="text-sm font-extrabold text-amber-900 dark:text-amber-300">支払い後にページを閉じてしまった方へ</div>
+            <p className="mt-2 text-xs text-amber-800 dark:text-amber-400 leading-relaxed">
               支払い時に発行された注文IDを入力すると、申請フォームに進めます。<br />
               注文IDは「lifai_」で始まる番号です（例：lifai_1234567890）。
             </p>
@@ -268,7 +268,7 @@ export default function ApplyPage() {
                 value={recoveryInput}
                 onChange={(e) => setRecoveryInput(e.target.value)}
                 placeholder="例：lifai_1234567890"
-                className="flex-1 rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="flex-1 rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-white dark:bg-gray-800 px-4 py-3 text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
               <button
                 type="button"
@@ -288,36 +288,36 @@ export default function ApplyPage() {
         <div className="mb-6 flex items-center justify-between gap-3">
           <Link
             href="/purchase"
-            className="text-sm font-semibold text-slate-700 hover:text-slate-900 underline decoration-slate-300 hover:decoration-slate-500"
+            className="text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white underline decoration-slate-300 dark:decoration-zinc-600 hover:decoration-slate-500"
           >
             ← 戻る（権利購入）
           </Link>
 
           <div className="flex items-center gap-3">
-            <div className="relative h-9 w-9 overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+            <div className="relative h-9 w-9 overflow-hidden rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-gray-800 shadow-sm">
               <Image src="/lifai.png" alt="LIFAI" fill className="object-contain p-1" />
             </div>
 
             <div className="leading-tight">
-              <div className="text-sm font-extrabold tracking-wide text-slate-900">LIFAI</div>
-              <div className="text-[11px] font-semibold text-slate-600">AI教育サロン</div>
+              <div className="text-sm font-extrabold tracking-wide text-slate-900 dark:text-white">LIFAI</div>
+              <div className="text-[11px] font-semibold text-slate-600 dark:text-zinc-400">AI教育サロン</div>
             </div>
 
             <Link
               href="/login"
-              className="ml-2 inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-extrabold text-slate-800 hover:bg-slate-50"
+              className="ml-2 inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-extrabold text-slate-800 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-700"
             >
               ログイン
             </Link>
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-slate-300/70 bg-white p-6 shadow-[0_28px_80px_rgba(2,6,23,.14)]">
+        <div className="rounded-[28px] border border-slate-300/70 dark:border-white/10 bg-white dark:bg-gray-900 p-6 shadow-[0_28px_80px_rgba(2,6,23,.14)]">
           <StepHeader step={2} total={3} title="参加申請フォーム" subtitle="必要情報を入力して、最終確認へ進みます" />
 
           <div className="mt-6 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
             <Box title="基本情報（必須）">
-              <div className="mb-4 text-xs font-semibold text-slate-600">
+              <div className="mb-4 text-xs font-semibold text-slate-600 dark:text-zinc-400">
                 入力内容は端末内に一時保存されます。
               </div>
 
@@ -443,9 +443,9 @@ export default function ApplyPage() {
                 </div>
               </Box>
 
-              <section className="rounded-[22px] border border-slate-300/60 bg-white p-5 shadow-[0_18px_45px_rgba(2,6,23,.10)]">
+              <section className="rounded-[22px] border border-slate-300/60 dark:border-white/10 bg-white dark:bg-gray-900 p-5 shadow-[0_18px_45px_rgba(2,6,23,.10)]">
                 {errors.plan ? (
-                  <div className="mb-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+                  <div className="mb-3 rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-xs font-semibold text-amber-900 dark:text-amber-300">
                     {errors.plan}
                   </div>
                 ) : null}
@@ -463,12 +463,12 @@ export default function ApplyPage() {
                   最終確認へ（Step3） →
                 </Link>
 
-                <div className="mt-3 text-xs font-semibold text-slate-600">
+                <div className="mt-3 text-xs font-semibold text-slate-600 dark:text-zinc-400">
                   ※ ここではまだ送信されません。次の画面で確認→送信します。
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-xs text-slate-700">
-                  <div className="font-extrabold text-slate-900">ヒント</div>
+                <div className="mt-4 rounded-2xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3 text-xs text-slate-700 dark:text-zinc-300">
+                  <div className="font-extrabold text-slate-900 dark:text-white">ヒント</div>
                   <div className="mt-1">
                     「権利（プラン）」未選択の場合は、前のページでプランを選択してから戻ってきてください。
                   </div>
@@ -478,7 +478,7 @@ export default function ApplyPage() {
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs font-semibold text-slate-500">© LIFAI</div>
+        <div className="mt-6 text-center text-xs font-semibold text-slate-500 dark:text-zinc-500">© LIFAI</div>
       </div>
     </main>
   );

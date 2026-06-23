@@ -190,8 +190,8 @@ export default function ConfirmPage() {
   };
 
   return (
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_20%_-10%,rgba(99,102,241,.20),transparent_60%),radial-gradient(820px_560px_at_115%_0%,rgba(34,211,238,.16),transparent_55%),linear-gradient(180deg,#FFFFFF,#F3F6FF_55%,#FFFFFF)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_20%_-10%,rgba(99,102,241,.20),transparent_60%),radial-gradient(820px_560px_at_115%_0%,rgba(34,211,238,.16),transparent_55%),linear-gradient(180deg,#FFFFFF,#F3F6FF_55%,#FFFFFF)] dark:bg-[radial-gradient(900px_520px_at_20%_-10%,rgba(99,102,241,.20),transparent_60%),radial-gradient(820px_560px_at_115%_0%,rgba(34,211,238,.16),transparent_55%),linear-gradient(180deg,#070A12,#0d1020_55%,#070A12)]" />
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.10]"
         style={{
@@ -203,40 +203,40 @@ export default function ConfirmPage() {
 
       <div className="mx-auto max-w-[920px] px-4 py-10">
         <div className="mb-6 flex items-center justify-between gap-3">
-          <Link href="/apply" className="text-sm font-semibold text-slate-600 hover:text-slate-900">
+          <Link href="/apply" className="text-sm font-semibold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white">
             ← 戻る（Step2）
           </Link>
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-zinc-300 shadow-sm">
             <span className="h-2 w-2 rounded-full bg-indigo-500" />
             最終確認
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-900 p-6 shadow-[0_24px_70px_rgba(2,6,23,.10)]">
           <StepHeader step={3} total={3} title="最終確認" subtitle="内容を確認して送信してください" />
 
           {!draft ? (
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+            <div className="mt-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-zinc-300">
               読み込み中...
             </div>
           ) : null}
 
           {draft && missing ? (
-            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            <div className="mt-5 rounded-2xl border border-rose-200 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400">
               必須項目が足りません。Step2 に戻って入力してください。
             </div>
           ) : null}
 
           {err ? (
-            <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            <div className="mt-5 rounded-2xl border border-rose-200 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-900/20 px-4 py-3 text-sm font-semibold text-rose-700 dark:text-rose-400">
               {err}
             </div>
           ) : null}
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            <section className="rounded-[22px] border border-slate-200 bg-white p-5">
-              <div className="text-sm font-extrabold text-slate-900">申請内容</div>
+            <section className="rounded-[22px] border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-800 p-5">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-white">申請内容</div>
               <div className="mt-4 grid gap-3 text-sm">
                 <Row k="プラン" v={String(draft?.plan ?? "")} />
                 <Row k="メール" v={String(draft?.email ?? "")} />
@@ -256,9 +256,9 @@ export default function ConfirmPage() {
 
             <aside className="grid gap-5">
               {/* ✅ 支払い完了チェック（復活） */}
-              <div className="rounded-[22px] border border-slate-200 bg-white p-5">
-                <div className="text-sm font-extrabold text-slate-900">支払い方法</div>
-                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+              <div className="rounded-[22px] border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-800 p-5">
+                <div className="text-sm font-extrabold text-slate-900 dark:text-white">支払い方法</div>
+                <p className="mt-1 text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
                   お支払い完了後、このページに戻って「支払い完了」チェックを入れてから送信してください。
                 </p>
 
@@ -267,7 +267,7 @@ export default function ConfirmPage() {
                   href="https://promote.mexc.com/r/m54hsj74"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-4 block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:opacity-95 transition"
+                  className="mt-4 block overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-700 shadow-sm hover:opacity-95 transition"
                 >
                   <Image
                     src="/mexc.png"
@@ -277,17 +277,17 @@ export default function ConfirmPage() {
                     className="h-auto w-full"
                   />
                 </a>
-                <div className="mt-2 px-1 text-[11px] text-slate-500">
+                <div className="mt-2 px-1 text-[11px] text-slate-500 dark:text-zinc-500">
                   ※暗号通貨をお持ちでない方は、上のバナーから購入できます（外部サイト）
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-sm font-semibold text-slate-900">支払い完了後</div>
-                  <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                <div className="mt-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-4">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">支払い完了後</div>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
                     支払いが完了したら、下のチェックをONにしてください（ONにしないと送信できません）。
                   </p>
 
-                  <label className="mt-3 flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                  <label className="mt-3 flex items-start gap-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-700 p-3">
                     <input
                       type="checkbox"
                       className="mt-1 h-4 w-4"
@@ -296,8 +296,8 @@ export default function ConfirmPage() {
                       disabled={missing}
                     />
                     <div className="text-sm">
-                      <div className="font-extrabold text-slate-900">支払い完了しました</div>
-                      <div className="text-xs text-slate-600">
+                      <div className="font-extrabold text-slate-900 dark:text-white">支払い完了しました</div>
+                      <div className="text-xs text-slate-600 dark:text-zinc-400">
                         ※未完了のまま送信すると、承認が遅れる可能性があります
                       </div>
                     </div>
@@ -305,7 +305,7 @@ export default function ConfirmPage() {
 
                   {/* 参考表示（文章いじらないため、表示だけ小さく） */}
                   {draft?.applyId ? (
-                    <div className="mt-3 text-[11px] text-slate-500">
+                    <div className="mt-3 text-[11px] text-slate-500 dark:text-zinc-500">
                       {checking ? "支払い状況を確認中..." : isPaid ? "支払い状況：paid" : "支払い状況：未確認"}
                     </div>
                   ) : null}
@@ -327,7 +327,7 @@ export default function ConfirmPage() {
 
               <Link
                 href="/apply"
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-gray-800 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 入力を修正する（Step2へ）
               </Link>
@@ -335,7 +335,7 @@ export default function ConfirmPage() {
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-zinc-600">© LIFAI</div>
       </div>
     </main>
   );
@@ -343,9 +343,9 @@ export default function ConfirmPage() {
 
 function Row({ k, v, muted }: { k: string; v: string; muted?: boolean }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-slate-200 py-2">
-      <div className="text-slate-600">{k}</div>
-      <div className={["text-right font-semibold", muted ? "text-slate-500" : "text-slate-900"].join(" ")}>
+    <div className="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-white/10 py-2">
+      <div className="text-slate-600 dark:text-zinc-400">{k}</div>
+      <div className={["text-right font-semibold", muted ? "text-slate-500 dark:text-zinc-500" : "text-slate-900 dark:text-white"].join(" ")}>
         {v}
       </div>
     </div>
