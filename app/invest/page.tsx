@@ -1,4 +1,4 @@
-// app/invest/page.tsx
+﻿// app/invest/page.tsx
 import Link from "next/link";
 import Image from "next/image";
 import InvestGate from "./_gate";
@@ -38,7 +38,7 @@ const exampleText = [
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 shadow-sm">
+    <span className="inline-flex items-center rounded-full border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs font-semibold text-neutral-700 dark:text-slate-300 shadow-sm">
       {children}
     </span>
   );
@@ -56,13 +56,13 @@ function SectionTitle({
   return (
     <header className="mb-4">
       {eyebrow ? (
-        <p className="mb-2 text-xs font-bold tracking-wide text-neutral-500">
+        <p className="mb-2 text-xs font-bold tracking-wide text-neutral-500 dark:text-slate-400">
           {eyebrow}
         </p>
       ) : null}
-      <h2 className="text-xl font-bold text-neutral-900 md:text-2xl">{title}</h2>
+      <h2 className="text-xl font-bold text-neutral-900 dark:text-white md:text-2xl">{title}</h2>
       {desc ? (
-        <p className="mt-2 text-sm leading-relaxed text-neutral-600">{desc}</p>
+        <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-slate-400">{desc}</p>
       ) : null}
     </header>
   );
@@ -71,35 +71,35 @@ function SectionTitle({
 export default function Page() {
   return (
     <InvestGate>
-      <main className="min-h-screen bg-neutral-50">
+      <main className="min-h-screen bg-neutral-50 dark:bg-gray-900">
         {/* =====================
             HERO
         ====================== */}
         <section className="mx-auto max-w-5xl px-4 pb-6 pt-12">
-          <div className="rounded-2xl bg-white p-8 shadow-sm">
+          <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm dark:shadow-none">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Badge>For Supporters / Investors</Badge>
               <div className="flex flex-wrap gap-2">
                 <Link
                   href="/start"
-                  className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                  className="rounded-full border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-slate-300 hover:bg-neutral-50 dark:hover:bg-gray-600"
                 >
                   副業ページを見る
                 </Link>
                 <Link
                   href="/vision"
-                  className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                  className="rounded-full border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-slate-300 hover:bg-neutral-50 dark:hover:bg-gray-600"
                 >
                   LIFAIが目指すVisionを見る
                 </Link>
               </div>
             </div>
 
-            <h1 className="mt-5 text-2xl font-black leading-tight text-neutral-900 md:text-3xl">
+            <h1 className="mt-5 text-2xl font-black leading-tight text-neutral-900 dark:text-white md:text-3xl">
               LIFAIに出資をご検討いただく皆様へ
             </h1>
 
-            <p className="mt-4 text-sm leading-relaxed text-neutral-700 md:text-base">
+            <p className="mt-4 text-sm leading-relaxed text-neutral-700 dark:text-slate-300 md:text-base">
               LIFAIは、
               <span className="font-semibold">
                 「個人がスキルや時間に縛られず、仕組みとして収益を生み出せる世界」
@@ -113,27 +113,27 @@ export default function Page() {
               の構築を目指しています。
             </p>
 
-            <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-              <p className="text-sm font-semibold text-neutral-900">
+            <div className="mt-6 rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700 p-4">
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white">
                 本ページのご案内
               </p>
-              <ul className="mt-3 grid gap-2 text-sm text-neutral-700 md:grid-cols-2">
-                <li className="rounded-lg bg-white p-3 shadow-sm">
+              <ul className="mt-3 grid gap-2 text-sm text-neutral-700 dark:text-slate-300 md:grid-cols-2">
+                <li className="rounded-lg bg-white dark:bg-gray-600 p-3 shadow-sm dark:shadow-none">
                   LIFAIの出資について
                 </li>
-                <li className="rounded-lg bg-white p-3 shadow-sm">
+                <li className="rounded-lg bg-white dark:bg-gray-600 p-3 shadow-sm dark:shadow-none">
                   売上分配モデル
                 </li>
-                <li className="rounded-lg bg-white p-3 shadow-sm">
+                <li className="rounded-lg bg-white dark:bg-gray-600 p-3 shadow-sm dark:shadow-none">
                   回収見込みの考え方
                 </li>
-                <li className="rounded-lg bg-white p-3 shadow-sm">
+                <li className="rounded-lg bg-white dark:bg-gray-600 p-3 shadow-sm dark:shadow-none">
                   出資金の使い道・メリット
                 </li>
               </ul>
             </div>
 
-            <p className="mt-4 text-xs leading-relaxed text-neutral-500">
+            <p className="mt-4 text-xs leading-relaxed text-neutral-500 dark:text-slate-400">
               ※本ページは事業内容の説明を目的としたものであり、利益や回収時期を保証するものではありません。
             </p>
           </div>
@@ -145,7 +145,7 @@ export default function Page() {
         <section className="mx-auto max-w-5xl px-4 pb-16">
           <div className="grid gap-6">
             {/* 位置づけ */}
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm dark:shadow-none">
               <SectionTitle
                 eyebrow="Position"
                 title="LIFAIの出資について"
@@ -159,9 +159,9 @@ export default function Page() {
                 ].map((t) => (
                   <div
                     key={t}
-                    className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700"
+                    className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700 p-4 text-sm text-neutral-700 dark:text-slate-300"
                   >
-                    <span className="font-semibold text-neutral-900">✓</span>{" "}
+                    <span className="font-semibold text-neutral-900 dark:text-white">✓</span>{" "}
                     {t}
                   </div>
                 ))}
@@ -169,15 +169,15 @@ export default function Page() {
             </div>
 
             {/* 分配モデル */}
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm dark:shadow-none">
               <SectionTitle
                 eyebrow="Revenue Share"
                 title="出資と売上分配の考え方"
                 desc="ご出資額に応じて、LIFAI全体の月次実売上に対する一定割合を分配します。"
               />
 
-              <div className="overflow-hidden rounded-2xl border border-neutral-200">
-                <div className="grid grid-cols-3 bg-neutral-50 text-xs font-bold text-neutral-600">
+              <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-gray-700">
+                <div className="grid grid-cols-3 bg-neutral-50 dark:bg-gray-700 text-xs font-bold text-neutral-600 dark:text-slate-400">
                   <div className="p-4">出資額</div>
                   <div className="p-4">売上分配率</div>
                   <div className="p-4">回収見込み</div>
@@ -185,28 +185,28 @@ export default function Page() {
                 {TIERS.map((t, idx) => (
                   <div
                     key={t.amount}
-                    className={`grid grid-cols-3 text-sm ${
-                      idx !== TIERS.length - 1 ? "border-t border-neutral-200" : ""
+                    className={`grid grid-cols-3 text-sm bg-white dark:bg-gray-800 ${
+                      idx !== TIERS.length - 1 ? "border-t border-neutral-200 dark:border-gray-700" : ""
                     }`}
                   >
-                    <div className="p-4 font-semibold text-neutral-900">
+                    <div className="p-4 font-semibold text-neutral-900 dark:text-white">
                       {t.amount}
                     </div>
-                    <div className="p-4 text-neutral-800">{t.rate}</div>
-                    <div className="p-4 text-neutral-800">{t.payback}</div>
+                    <div className="p-4 text-neutral-800 dark:text-slate-300">{t.rate}</div>
+                    <div className="p-4 text-neutral-800 dark:text-slate-300">{t.payback}</div>
                   </div>
                 ))}
               </div>
 
-              <p className="mt-3 text-xs leading-relaxed text-neutral-500">
+              <p className="mt-3 text-xs leading-relaxed text-neutral-500 dark:text-slate-400">
                 ※売上分配率は「LIFAI全体の月次実売上」に対する割合です。※回収見込みは目安であり保証されるものではありません。
               </p>
 
-              <div className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                <p className="text-sm font-bold text-neutral-900">
+              <div className="mt-6 rounded-2xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700 p-5">
+                <p className="text-sm font-bold text-neutral-900 dark:text-white">
                   分配イメージ（例）
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-neutral-700">
+                <p className="mt-1 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                   LIFAI全体の月間売上が{" "}
                   <span className="font-semibold">{EXAMPLE_SALES}万円</span>{" "}
                   の場合、分配原資の目安は以下の通りです。
@@ -214,12 +214,12 @@ export default function Page() {
 
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   {exampleText.map((e) => (
-                    <div key={e.label} className="rounded-xl bg-white p-4 shadow-sm">
-                      <p className="text-xs font-bold text-neutral-500">{e.label}</p>
-                      <p className="mt-1 text-lg font-black text-neutral-900">
+                    <div key={e.label} className="rounded-xl bg-white dark:bg-gray-600 p-4 shadow-sm dark:shadow-none">
+                      <p className="text-xs font-bold text-neutral-500 dark:text-slate-400">{e.label}</p>
+                      <p className="mt-1 text-lg font-black text-neutral-900 dark:text-white">
                         月 {e.value}万円相当
                       </p>
-                      <p className="mt-1 text-xs text-neutral-500">
+                      <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
                         ※実際の分配額は売上状況により変動
                       </p>
                     </div>
@@ -229,15 +229,15 @@ export default function Page() {
             </div>
 
             {/* 回収見込み */}
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm dark:shadow-none">
               <SectionTitle
                 eyebrow="Payback"
                 title="回収見込み期間の考え方"
                 desc="回収見込み期間は、現在の売上設計・テスト運用時の推移をもとに算出しています。過度に楽観的な想定を避け、比較的保守的な期間を目安にしています。"
               />
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                <p className="text-sm font-semibold text-neutral-900">目安の考え方</p>
-                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-700">
+              <div className="rounded-2xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700 p-5">
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white">目安の考え方</p>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-700 dark:text-slate-300">
                   <li>仕組み構築（AI・テンプレ・導線）の強化期間を織り込む</li>
                   <li>売上が積み上がるまでの立ち上げ期間を織り込む</li>
                   <li>安定運用を前提に、無理のない想定を採用する</li>
@@ -246,7 +246,7 @@ export default function Page() {
             </div>
 
             {/* 協業（認知/広告） */}
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm dark:shadow-none">
               <SectionTitle
                 eyebrow="Collaboration / Awareness"
                 title="お金だけでなく「認知を増やす協力」ができる仕組み"
@@ -255,8 +255,8 @@ export default function Page() {
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                  <p className="text-sm font-bold text-neutral-900">① 自社宣伝バナーの表示枠</p>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+                  <p className="text-sm font-bold text-neutral-900 dark:text-white">① 自社宣伝バナーの表示枠</p>
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                     支援企業様は、LIFAI内の所定エリアに
                     <span className="font-semibold">自社バナー（ロゴ・LPリンク）</span>
                     を掲載できます。
@@ -264,7 +264,7 @@ export default function Page() {
                     「プロジェクトに参加している企業」として露出を増やし、
                     認知の土台を作ることが目的です。
                   </p>
-                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-700">
+                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-neutral-700 dark:text-slate-300">
                     <li>掲載場所：TOP / コンテンツ内 / 専用紹介ページ（予定）</li>
                     <li>掲載形式：バナー画像＋リンク（＋短い紹介文）</li>
                     <li>掲載ルール：公序良俗・法令・審査基準に沿って運用</li>
@@ -272,8 +272,8 @@ export default function Page() {
                 </div>
 
                 <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                  <p className="text-sm font-bold text-neutral-900">② 自社広告を回す（会員はBP獲得）</p>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+                  <p className="text-sm font-bold text-neutral-900 dark:text-white">② 自社広告を回す（会員はBP獲得）</p>
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                     支援企業様は、LIFAI内で自社の広告/告知を配信できます。
                     <br />
                     会員側は広告閲覧・指定アクション（例：LP閲覧/登録/体験など）で
@@ -281,9 +281,9 @@ export default function Page() {
                     “認知拡大”と“会員メリット”の両方が成立します。
                   </p>
 
-                  <div className="mt-4 rounded-xl bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold text-neutral-500">流れ（イメージ）</p>
-                    <ol className="mt-2 space-y-1 text-sm text-neutral-700">
+                  <div className="mt-4 rounded-xl bg-white dark:bg-gray-600 p-4 shadow-sm dark:shadow-none">
+                    <p className="text-xs font-bold text-neutral-500 dark:text-slate-400">流れ（イメージ）</p>
+                    <ol className="mt-2 space-y-1 text-sm text-neutral-700 dark:text-slate-300">
                       <li>1) 企業が広告/告知を掲載（期間・上限・条件を設定）</li>
                       <li>2) 会員が閲覧/アクション</li>
                       <li>3) 条件達成で会員にBP付与</li>
@@ -291,17 +291,17 @@ export default function Page() {
                     </ol>
                   </div>
 
-                  <p className="mt-3 text-xs leading-relaxed text-neutral-500">
+                  <p className="mt-3 text-xs leading-relaxed text-neutral-500 dark:text-slate-400">
                     ※BP付与は運営ルールに従い、上限・審査・不正防止を実装して運用します（保証ではありません）。
                   </p>
                 </div>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                <p className="text-sm font-bold text-neutral-900">
+              <div className="mt-6 rounded-2xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700 p-5">
+                <p className="text-sm font-bold text-neutral-900 dark:text-white">
                   目的：協業による「認知・集客・検証」を増やす
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+                <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                   LIFAIは “出資＝お金だけ” ではなく、
                   <span className="font-semibold">支援企業の露出・導線・検証</span>を増やすことも
                   同時に行い、プロジェクト全体の成長を加速させます。
@@ -313,21 +313,21 @@ export default function Page() {
                     { t: "会員側", d: "BP獲得で学習/活動のメリットが増える" },
                     { t: "LIFAI側", d: "協業が増えるほど価値が積み上がる" },
                   ].map((x) => (
-                    <div key={x.t} className="rounded-xl bg-white p-4 shadow-sm">
-                      <p className="text-xs font-bold text-neutral-500">{x.t}</p>
-                      <p className="mt-1 text-sm font-semibold text-neutral-900">{x.d}</p>
+                    <div key={x.t} className="rounded-xl bg-white dark:bg-gray-600 p-4 shadow-sm dark:shadow-none">
+                      <p className="text-xs font-bold text-neutral-500 dark:text-slate-400">{x.t}</p>
+                      <p className="mt-1 text-sm font-semibold text-neutral-900 dark:text-white">{x.d}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <p className="mt-4 text-xs leading-relaxed text-neutral-500">
+              <p className="mt-4 text-xs leading-relaxed text-neutral-500 dark:text-slate-400">
                 ※広告・バナー掲載は、運営の審査とガイドラインに基づき実施します。成果や費用対効果を保証するものではありません。
               </p>
             </div>
 
             {/* invest.png（使い道の前に表示） */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm dark:shadow-none overflow-hidden">
               <div className="relative w-full aspect-[16/9] md:aspect-[21/9]">
                 <Image
                   src="/invest.png"
@@ -340,7 +340,7 @@ export default function Page() {
             </div>
 
             {/* 使い道 */}
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm dark:shadow-none">
               <SectionTitle
                 eyebrow="Use of Funds"
                 title="ご出資金の使い道"
@@ -356,15 +356,15 @@ export default function Page() {
                 ].map((t) => (
                   <div
                     key={t}
-                    className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700"
+                    className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700 p-4 text-sm text-neutral-700 dark:text-slate-300"
                   >
-                    <span className="font-semibold text-neutral-900">•</span>{" "}
+                    <span className="font-semibold text-neutral-900 dark:text-white">•</span>{" "}
                     {t}
                   </div>
                 ))}
               </div>
 
-              <p className="mt-4 text-sm leading-relaxed text-neutral-700">
+              <p className="mt-4 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                 これらはすべて、副業ページで紹介している各副業モデルを{" "}
                 <span className="font-semibold">
                   安定して回し続けるための基盤投資
@@ -374,7 +374,7 @@ export default function Page() {
             </div>
 
             {/* メリット */}
-            <div className="rounded-2xl bg-white p-8 shadow-sm">
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-sm dark:shadow-none">
               <SectionTitle
                 eyebrow="Benefits"
                 title="出資いただくメリット"
@@ -389,17 +389,17 @@ export default function Page() {
                 ].map((t) => (
                   <div
                     key={t}
-                    className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700"
+                    className="rounded-xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-700 p-4 text-sm text-neutral-700 dark:text-slate-300"
                   >
-                    <span className="font-semibold text-neutral-900">✓</span>{" "}
+                    <span className="font-semibold text-neutral-900 dark:text-white">✓</span>{" "}
                     {t}
                   </div>
                 ))}
               </div>
 
               <div className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
-                <p className="text-sm font-bold text-neutral-900">お問い合わせ</p>
-                <p className="mt-2 text-sm leading-relaxed text-neutral-700">
+                <p className="text-sm font-bold text-neutral-900 dark:text-white">お問い合わせ</p>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                   出資に関する詳細条件（契約形態・分配方法・レポート形式など）は、
                   個別にご案内します。
                 </p>
@@ -412,14 +412,14 @@ export default function Page() {
                   </Link>
                   <Link
                     href="/"
-                    className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                    className="rounded-full border border-neutral-200 dark:border-gray-700 bg-white dark:bg-gray-700 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-slate-300 hover:bg-neutral-50 dark:hover:bg-gray-600"
                   >
                     TOPへ戻る
                   </Link>
                 </div>
               </div>
 
-              <p className="mt-4 text-xs leading-relaxed text-neutral-500">
+              <p className="mt-4 text-xs leading-relaxed text-neutral-500 dark:text-slate-400">
                 ※本ページは説明目的です。投資助言・勧誘ではなく、契約にあたっては別途書面等で条件を提示します。
               </p>
             </div>

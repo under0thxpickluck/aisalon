@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -54,10 +54,10 @@ function PresaleHeader({
   const pct = goal > 0 ? Math.min(100, Math.max(0, (raised / goal) * 100)) : 0;
 
   return (
-    <div className="mt-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
+    <div className="mt-6 rounded-[24px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-[0_18px_50px_rgba(2,6,23,.08)]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-extrabold text-slate-700">プレセール終了まで</p>
+          <p className="text-xs font-extrabold text-slate-700 dark:text-slate-300">プレセール終了まで</p>
 
           <div className="mt-2 flex items-center gap-2">
             <TimeBox label="日" value={pad2(days)} />
@@ -73,20 +73,19 @@ function PresaleHeader({
 
         <div className="w-full md:max-w-md">
           <div className="flex items-end justify-between">
-            <p className="text-xs font-extrabold text-slate-700">{currencyLabel}調達額</p>
-            <p className="text-sm font-extrabold text-slate-900">
-              {formatMoney(raised)} / {formatMoney(goal)}
+            <p className="text-xs font-extrabold text-slate-700 dark:text-slate-300">{currencyLabel}調達額</p>
+            <p className="text-sm font-extrabold text-slate-900 dark:text-white">{formatMoney(raised)} / {formatMoney(goal)}
             </p>
           </div>
 
-          <div className="mt-2 h-3 w-full overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+          <div className="mt-2 h-3 w-full overflow-hidden rounded-full border border-slate-200 dark:border-gray-700 bg-slate-100 dark:bg-gray-700">
             <div
               className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500"
               style={{ width: `${pct}%` }}
             />
           </div>
 
-          <p className="mt-2 text-xs text-slate-600">進捗：{pct.toFixed(1)}%</p>
+          <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">進捗：{pct.toFixed(1)}%</p>
         </div>
       </div>
     </div>
@@ -95,9 +94,9 @@ function PresaleHeader({
 
 function TimeBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-      <p className="text-base font-extrabold leading-none text-slate-900">{value}</p>
-      <p className="mt-1 text-[10px] font-bold text-slate-500">{label}</p>
+    <div className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 px-3 py-2 text-center">
+      <p className="text-base font-extrabold leading-none text-slate-900 dark:text-white">{value}</p>
+      <p className="mt-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">{label}</p>
     </div>
   );
 }
@@ -146,18 +145,18 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
   }, [fetchBalance, refreshTrigger]);
 
   return (
-    <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-semibold text-slate-700">
-      <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-extrabold text-white leading-none">
+    <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+      <span className="rounded-full bg-slate-900 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-extrabold text-white leading-none">
         WALLET
       </span>
       <div className="flex flex-col gap-0.5 leading-none">
         <span className="flex items-center gap-0.5">
-          <span className="text-slate-500">BP</span>
-          <span className="font-extrabold text-slate-900">{bp}</span>
+          <span className="text-slate-500 dark:text-slate-400">BP</span>
+          <span className="font-extrabold text-slate-900 dark:text-white">{bp}</span>
         </span>
         <span className="flex items-center gap-0.5">
-          <span className="text-slate-500">EP</span>
-          <span className="font-extrabold text-slate-900">{ep}</span>
+          <span className="text-slate-500 dark:text-slate-400">EP</span>
+          <span className="font-extrabold text-slate-900 dark:text-white">{ep}</span>
         </span>
       </div>
       {err ? <span className="text-[10px] opacity-50">(!)</span> : null}
@@ -187,25 +186,25 @@ function NoticeBoard() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-      <p className="text-[10px] font-extrabold tracking-wide text-slate-500">お知らせ</p>
+    <div className="mt-3 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 px-3 py-2.5">
+      <p className="text-[10px] font-extrabold tracking-wide text-slate-500 dark:text-slate-400">お知らせ</p>
       {NOTICES.length === 0 ? (
-        <p className="mt-1 text-xs text-slate-400">最新のお知らせはありません</p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">最新のお知らせはありません</p>
       ) : (
-        <ul className="mt-1 divide-y divide-slate-100">
+        <ul className="mt-1 divide-y divide-slate-100 dark:divide-gray-700">
           {NOTICES.map((n) => (
             <li key={n.id}>
               <button
                 onClick={() => setOpenId(openId === n.id ? null : n.id)}
-                className="flex w-full items-start gap-2 rounded px-1 py-2 text-left transition hover:bg-slate-100"
+                className="flex w-full items-start gap-2 rounded px-1 py-2 text-left transition hover:bg-slate-100 dark:hover:bg-gray-700"
               >
-                <span className="mt-0.5 shrink-0 text-[10px] text-slate-400">{n.date}</span>
-                <span className="flex-1 text-xs font-semibold text-slate-700">{n.title}</span>
-                <span className="shrink-0 text-[10px] text-slate-400">{openId === n.id ? "▲" : "▼"}</span>
+                <span className="mt-0.5 shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{n.date}</span>
+                <span className="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-300">{n.title}</span>
+                <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">{openId === n.id ? "▲" : "▼"}</span>
               </button>
               {openId === n.id && (
                 <div className="px-1 pb-2">
-                  <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600">{n.body}</p>
+                  <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-400">{n.body}</p>
                 </div>
               )}
             </li>
@@ -590,8 +589,8 @@ export default function AppHomePage() {
     )}
     </AnimatePresence>
 
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)] dark:bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.12),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.08),transparent_55%),linear-gradient(180deg,#070A12,#0a0f1e_55%,#070A12)]" />
       <div
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.06]"
         style={{
@@ -602,14 +601,14 @@ export default function AppHomePage() {
       />
 
       <div className="mx-auto max-w-[920px] px-4 py-6">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 shadow-[0_26px_70px_rgba(2,6,23,.10)] dark:shadow-[0_26px_70px_rgba(0,0,0,.4)]">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600">
+              <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,.4)]" />
                 LIFAI APP HOME
               </div>
-              <h1 className="truncate text-sm font-extrabold tracking-tight text-slate-900">
+              <h1 className="truncate text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
                 LIFAIへようこそ
               </h1>
             </div>
@@ -630,7 +629,7 @@ export default function AppHomePage() {
 
           {/* ✅ アプリグリッド（LINEミニアプリ風 4列） */}
           <div className="mt-6">
-            <p className="mb-3 text-xs font-extrabold text-slate-700">アプリ</p>
+            <p className="mb-3 text-xs font-extrabold text-slate-700 dark:text-slate-300">アプリ</p>
             <motion.div
               className="grid grid-cols-4 gap-3 px-2"
               initial="hidden"
@@ -659,7 +658,7 @@ export default function AppHomePage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-zinc-600 text-center leading-tight" style={{ opacity: app.disabled ? 0.6 : 1 }}>
+                  <span className="text-[11px] text-zinc-600 dark:text-zinc-400 text-center leading-tight" style={{ opacity: app.disabled ? 0.6 : 1 }}>
                     {app.label}
                   </span>
                 </motion.button>
@@ -680,12 +679,12 @@ export default function AppHomePage() {
           />
 
 
-<div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+<div className="mt-6 rounded-2xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
             問い合わせはTOPページにございます。
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">© LIFAI</div>
       </div>
     </main>
 </>
