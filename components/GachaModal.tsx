@@ -192,14 +192,16 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-[#18181b]"
+        className="bg-white dark:bg-[#18181b] border-slate-200 dark:border-white/[0.08]"
         style={{
           borderRadius: "16px",
           padding:      "24px",
           maxWidth:     "380px",
           width:        "92vw",
           boxShadow:    "0 32px 80px rgba(0,0,0,0.5)",
-          border:       "1px solid rgba(255,255,255,0.08)",
+          border:       "1px solid",
+          transform:    visible ? "scale(1) translateY(0)" : "scale(0.88) translateY(24px)",
+          transition:   "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
           cursor:       "default",
           maxHeight:    "90vh",
           overflowY:    "auto",
@@ -262,7 +264,8 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
             </div>
             <button
               onClick={() => { setShowTutorial(false); setTutorialStep(0); }}
-              style={{ marginTop: "10px", width: "100%", background: "none", border: "none", color: "#52525b", fontSize: "12px", cursor: "pointer" }}
+              className="text-slate-500 dark:text-[#52525b]"
+              style={{ marginTop: "10px", width: "100%", background: "none", border: "none", color: undefined, fontSize: "12px", cursor: "pointer" }}
             >
               スキップ
             </button>
@@ -421,7 +424,7 @@ export default function GachaModal({ loginId, onClose, onBpEarned }: Props) {
                     <span style={{ fontSize: "12px", fontWeight: 700, color: style.color }}>
                       {bp.toLocaleString()}BP
                     </span>
-                    <span style={{ fontSize: "10px", color: "#52525b" }}>{pct}</span>
+                    <span style={{ fontSize: "10px" }} className="text-slate-500 dark:text-[#52525b]">{pct}</span>
                   </div>
                 );
               })}
