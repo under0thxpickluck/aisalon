@@ -55,6 +55,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="ja">
       <head>
         <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('lifai_theme_v1');if(t!=='light'){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3054861636143808"
           crossOrigin="anonymous"
