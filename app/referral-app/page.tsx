@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAuth, getAuthSecret } from "@/app/lib/auth";
 import { QRCodeSVG } from "qrcode.react";
+import { useTheme } from "@/app/lib/useTheme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ function kindLabel(kind: string): string {
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
-const C = {
+const C_DARK = {
   bg:        "#08111E",
   card:      "#0D1B2A",
   cardAlt:   "#0A1628",
@@ -91,6 +92,23 @@ const C = {
   emBg:      "rgba(16,185,129,0.1)",
   emBorder:  "rgba(16,185,129,0.2)",
   shadow:    "0 8px 40px rgba(0,0,0,0.5)",
+  shadowEm:  "0 0 24px rgba(16,185,129,0.12)",
+};
+
+const C_LIGHT = {
+  bg:        "#f8fafc",
+  card:      "#ffffff",
+  cardAlt:   "#f1f5f9",
+  border:    "#e2e8f0",
+  borderEm:  "rgba(16,185,129,0.35)",
+  text:      "#0f172a",
+  textMuted: "#64748b",
+  textDim:   "#94a3b8",
+  em:        "#10B981",
+  emDim:     "rgba(16,185,129,0.7)",
+  emBg:      "rgba(16,185,129,0.1)",
+  emBorder:  "rgba(16,185,129,0.2)",
+  shadow:    "0 8px 40px rgba(0,0,0,0.08)",
   shadowEm:  "0 0 24px rgba(16,185,129,0.12)",
 };
 
@@ -108,7 +126,7 @@ function Skel({ w = "100%", h = 16 }: { w?: string | number; h?: number }) {
 
 // ─── Monthly Bonuses ──────────────────────────────────────────────────────────
 
-function MonthlyBonuses({ bonuses }: { bonuses: Bonus[] }) {
+function MonthlyBonuses({ bonuses, c }: { bonuses: Bonus[]; c: typeof C_DARK }) {
   const monthKeys = Array.from(new Set(bonuses.map((b) => getMonthKey(b.ts)).filter(Boolean)))
     .sort().reverse();
 
@@ -129,8 +147,8 @@ function MonthlyBonuses({ bonuses }: { bonuses: Bonus[] }) {
   };
 
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, overflow: "hidden", boxShadow: C.shadow }}>
-      <p style={{ padding: "14px 18px 10px", fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em" }}>
+    <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 20, overflow: "hidden", boxShadow: c.shadow }}>
+      <p style={{ padding: "14px 18px 10px", fontSize: 11, fontWeight: 700, color: c.textMuted, letterSpacing: "0.08em" }}>
         月別報酬
       </p>
       {monthKeys.map((key) => {
@@ -138,36 +156,36 @@ function MonthlyBonuses({ bonuses }: { bonuses: Bonus[] }) {
         const total = mb.reduce((s, b) => s + b.amount, 0);
         const isOpen = openMonths.has(key);
         return (
-          <div key={key} style={{ borderTop: `1px solid ${C.border}` }}>
+          <div key={key} style={{ borderTop: `1px solid ${c.border}` }}>
             <button
               onClick={() => toggle(key)}
               style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "13px 18px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
             >
-              <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{getMonthLabel(key)}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{getMonthLabel(key)}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: C.em }}>{formatAmount(total)}</span>
-                <span style={{ fontSize: 10, color: C.textDim }}>{isOpen ? "▲" : "▼"}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: c.em }}>{formatAmount(total)}</span>
+                <span style={{ fontSize: 10, color: c.textDim }}>{isOpen ? "▲" : "▼"}</span>
               </div>
             </button>
             {isOpen && (
               <div style={{ padding: "0 18px 14px" }}>
-                <div style={{ overflowX: "auto", borderRadius: 12, border: `1px solid ${C.border}` }}>
+                <div style={{ overflowX: "auto", borderRadius: 12, border: `1px solid ${c.border}` }}>
                   <table style={{ minWidth: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                     <thead>
                       <tr style={{ background: "rgba(255,255,255,0.03)" }}>
                         {["日付","種別","金額","メモ"].map(h => (
-                          <th key={h} style={{ padding: "8px 12px", textAlign: h === "金額" ? "right" : "left", fontWeight: 700, color: C.textDim, whiteSpace: "nowrap" }}>{h}</th>
+                          <th key={h} style={{ padding: "8px 12px", textAlign: h === "金額" ? "right" : "left", fontWeight: 700, color: c.textDim, whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {mb.map((b, i) => (
-                        <tr key={b.ts + b.kind + i} style={{ borderTop: `1px solid ${C.border}` }}>
-                          <td style={{ padding: "8px 12px", color: C.textMuted, whiteSpace: "nowrap" }}>{formatDate(b.ts)}</td>
-                          <td style={{ padding: "8px 12px", color: C.textMuted }}>{kindLabel(b.kind)}</td>
-                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: C.em }}>{formatAmount(b.amount)}</td>
-                          <td style={{ padding: "8px 12px", color: C.textDim, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.memo || "—"}</td>
+                        <tr key={b.ts + b.kind + i} style={{ borderTop: `1px solid ${c.border}` }}>
+                          <td style={{ padding: "8px 12px", color: c.textMuted, whiteSpace: "nowrap" }}>{formatDate(b.ts)}</td>
+                          <td style={{ padding: "8px 12px", color: c.textMuted }}>{kindLabel(b.kind)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: c.em }}>{formatAmount(b.amount)}</td>
+                          <td style={{ padding: "8px 12px", color: c.textDim, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.memo || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -184,15 +202,15 @@ function MonthlyBonuses({ bonuses }: { bonuses: Bonus[] }) {
 
 // ─── Referral Tree (vertical list / Option A) ─────────────────────────────────
 
-function ReferralTree({ referrals }: { referrals: Referral[] }) {
+function ReferralTree({ referrals, c }: { referrals: Referral[]; c: typeof C_DARK }) {
   if (referrals.length === 0) return null;
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "18px 18px 14px", boxShadow: C.shadow }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", marginBottom: 16 }}>紹介ツリー</p>
+    <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 20, padding: "18px 18px 14px", boxShadow: c.shadow }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: c.textMuted, letterSpacing: "0.08em", marginBottom: 16 }}>紹介ツリー</p>
       {/* Root */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.em, boxShadow: `0 0 8px ${C.em}`, flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 800, color: C.em }}>あなた</span>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.em, boxShadow: `0 0 8px ${c.em}`, flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 800, color: c.em }}>あなた</span>
       </div>
       {/* Children */}
       <div style={{ paddingLeft: 3 }}>
@@ -210,11 +228,11 @@ function ReferralTree({ referrals }: { referrals: Referral[] }) {
               </div>
               <div style={{ display: "flex", alignItems: "center", height: 20, marginBottom: 4, paddingLeft: 6, marginTop: 14 }}>
                 <div style={{ width: 10, height: 1, background: "rgba(16,185,129,0.3)", marginRight: 8 }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 10, background: C.cardAlt,
-                  border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 12px", minWidth: 0 }}>
-                  <span style={{ fontFamily: "monospace", fontSize: 12, color: C.text, fontWeight: 600 }}>{maskId(r.login_id)}</span>
-                  <span style={{ fontSize: 11, color: C.emDim, fontWeight: 700 }}>${r.plan}</span>
-                  <span style={{ fontSize: 10, color: C.textDim, whiteSpace: "nowrap" }}>{formatDate(r.approved_at)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, background: c.cardAlt,
+                  border: `1px solid ${c.border}`, borderRadius: 10, padding: "6px 12px", minWidth: 0 }}>
+                  <span style={{ fontFamily: "monospace", fontSize: 12, color: c.text, fontWeight: 600 }}>{maskId(r.login_id)}</span>
+                  <span style={{ fontSize: 11, color: c.emDim, fontWeight: 700 }}>${r.plan}</span>
+                  <span style={{ fontSize: 10, color: c.textDim, whiteSpace: "nowrap" }}>{formatDate(r.approved_at)}</span>
                 </div>
               </div>
             </div>
@@ -230,7 +248,7 @@ function ReferralTree({ referrals }: { referrals: Referral[] }) {
 const APP_PASSWORD = "boss";
 const SESSION_KEY = "referral_app_authed";
 
-function PasswordGate({ onAuth }: { onAuth: () => void }) {
+function PasswordGate({ onAuth, c }: { onAuth: () => void; c: typeof C_DARK }) {
   const [pw, setPw] = useState("");
   const [error, setError] = useState(false);
 
@@ -244,18 +262,18 @@ function PasswordGate({ onAuth }: { onAuth: () => void }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
-      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 24, padding: 32, width: "100%", maxWidth: 360, boxShadow: C.shadow }}>
-        <h2 style={{ fontSize: 16, fontWeight: 800, textAlign: "center", marginBottom: 6, color: C.text }}>🤝 リファラ</h2>
-        <p style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginBottom: 24 }}>紹介実績・報酬・コード共有</p>
+    <div style={{ minHeight: "100vh", background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}>
+      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 24, padding: 32, width: "100%", maxWidth: 360, boxShadow: c.shadow }}>
+        <h2 style={{ fontSize: 16, fontWeight: 800, textAlign: "center", marginBottom: 6, color: c.text }}>🤝 リファラ</h2>
+        <p style={{ fontSize: 11, color: c.textMuted, textAlign: "center", marginBottom: 24 }}>紹介実績・報酬・コード共有</p>
         <input
           type="password"
           value={pw}
           onChange={(e) => { setPw(e.target.value); setError(false); }}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
           placeholder="パスワードを入力"
-          style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: `1px solid ${error ? "rgba(252,165,165,0.5)" : C.border}`,
-            borderRadius: 14, padding: "12px 16px", fontSize: 13, color: C.text, outline: "none",
+          style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: `1px solid ${error ? "rgba(252,165,165,0.5)" : c.border}`,
+            borderRadius: 14, padding: "12px 16px", fontSize: 13, color: c.text, outline: "none",
             marginBottom: 10, boxSizing: "border-box" }}
         />
         {error && <p style={{ fontSize: 12, color: "#FCA5A5", textAlign: "center", marginBottom: 10 }}>パスワードが違います</p>}
@@ -277,6 +295,8 @@ function PasswordGate({ onAuth }: { onAuth: () => void }) {
 
 export default function ReferralAppPage() {
   const router = useRouter();
+  const { isDark } = useTheme();
+  const C = isDark ? C_DARK : C_LIGHT;
   const [authed, setAuthed] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -336,7 +356,7 @@ export default function ReferralAppPage() {
     }
   };
 
-  if (!authed) return <PasswordGate onAuth={() => setAuthed(true)} />;
+  if (!authed) return <PasswordGate onAuth={() => setAuthed(true)} c={C} />;
 
   const auth = getAuth();
   const purchasePath = "/purchase";
@@ -496,7 +516,7 @@ export default function ReferralAppPage() {
 
         {/* ③ 月別報酬 */}
         {!loading && data && data.bonuses.length > 0 && (
-          <MonthlyBonuses bonuses={data.bonuses} />
+          <MonthlyBonuses bonuses={data.bonuses} c={C} />
         )}
 
         {/* ④ 紹介した人リスト */}
@@ -555,7 +575,7 @@ export default function ReferralAppPage() {
 
         {/* ⑤ 紹介ツリー */}
         {!loading && data && data.referrals.length > 0 && (
-          <ReferralTree referrals={data.referrals} />
+          <ReferralTree referrals={data.referrals} c={C} />
         )}
 
         <div style={{ textAlign: "center", fontSize: 11, color: C.textDim, marginTop: 8 }}>© LIFAI</div>

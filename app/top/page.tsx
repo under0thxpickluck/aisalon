@@ -618,7 +618,7 @@ export default function AppHomePage() {
 
               <button
                 onClick={logout}
-                className="rounded-2xl border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-2xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700"
               >
                 LOGOUT
               </button>

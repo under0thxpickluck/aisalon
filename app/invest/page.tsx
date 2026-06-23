@@ -254,7 +254,7 @@ export default function Page() {
               />
 
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+                <div className="rounded-2xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-800 p-5">
                   <p className="text-sm font-bold text-neutral-900 dark:text-white">① 自社宣伝バナーの表示枠</p>
                   <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                     支援企業様は、LIFAI内の所定エリアに
@@ -271,7 +271,7 @@ export default function Page() {
                   </ul>
                 </div>
 
-                <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5">
+                <div className="rounded-2xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-800 p-5">
                   <p className="text-sm font-bold text-neutral-900 dark:text-white">② 自社広告を回す（会員はBP獲得）</p>
                   <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
                     支援企業様は、LIFAI内で自社の広告/告知を配信できます。
