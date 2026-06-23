@@ -58,7 +58,9 @@
       "Bash(npx --yes tsc --noEmit)",
       "Bash(bash \"C:\\\\Users\\\\unite\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\6.0.3\\\\skills\\\\subagent-driven-development\\\\scripts\\\\task-brief\" \"docs/superpowers/plans/2026-06-23-dark-light-mode.md\" 1)",
       "Bash(bash \"C:\\\\Users\\\\unite\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\6.0.3\\\\skills\\\\subagent-driven-development\\\\scripts\\\\review-package\" 0f99519 HEAD)",
-      "Bash(bash *)"
+      "Bash(bash *)",
+      "Bash(awk '/^--- a\\\\/app\\\\/purchase\\\\/jam\\\\/page.tsx/,/^--- a\\\\/app\\\\//' \"C:\\\\Users\\\\unite\\\\aisalon\\\\aisalon\\\\.superpowers\\\\sdd\\\\review-d207aae..6147c83.diff\")",
+      "Bash(awk '/^--- a\\\\/app\\\\/apply\\\\/page.tsx/,/^--- a\\\\/app\\\\/confirm/' \"C:\\\\Users\\\\unite\\\\aisalon\\\\aisalon\\\\.superpowers\\\\sdd\\\\review-d207aae..6147c83.diff\")"
     ]
   }
 }

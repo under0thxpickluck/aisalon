@@ -1002,7 +1002,7 @@ export default function Music2Page() {
               type="button"
               onClick={() => setTutorialStep(0)}
               title="使い方を見る"
-              className="ml-auto flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-500 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 transition"
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-slate-500 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
             >
               ?
             </button>
@@ -1140,7 +1140,7 @@ export default function Music2Page() {
 
               {/* BGM設定 */}
               {isBgmMode && (
-                <div className={`mt-5 rounded-[18px] border p-4 ${isPro ? "border-violet-500/30 bg-[#0d0d1a] dark:bg-[#0d0d1a]" : "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5"}`}>
+                <div className={`mt-5 rounded-[18px] border p-4 ${isPro ? "border-violet-500/30 bg-slate-900 dark:bg-[#0d0d1a]" : "border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5"}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">🎚️</span>
                     <span className={`text-[11px] font-black tracking-widest ${isPro ? "text-violet-400" : "text-slate-600 dark:text-zinc-400"}`}>BGM SETTINGS</span>
@@ -1294,7 +1294,7 @@ export default function Music2Page() {
 
               {/* Pro追加設定（isPro === true の場合のみ表示） */}
               {isPro && !isBgmMode && !isUltraMode && (
-                <div className="mt-5 rounded-[18px] border border-violet-500/30 bg-[#0d0d1a] p-4 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
+                <div className="mt-5 rounded-[18px] border border-violet-500/30 bg-slate-900 dark:bg-[#0d0d1a] p-4 shadow-[0_0_20px_rgba(139,92,246,0.15)]">
                   {/* ヘッダー */}
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-sm">🎛️</span>
