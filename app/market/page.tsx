@@ -105,15 +105,13 @@ function ItemCard({ item }: { item: MarketItem }) {
     <Link href={`/market/${item.item_id}`} style={{ textDecoration: "none" }}>
       <div
         style={{
-          background: "#111D35",
-          border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: 24,
           padding: 20,
           boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
           cursor: "pointer",
           transition: "transform 0.15s, box-shadow 0.15s",
         }}
-        className="hover:-translate-y-[2px] hover:shadow-[0_16px_50px_rgba(99,102,241,0.2)] active:scale-[0.99]"
+        className="bg-slate-100 dark:bg-[#111D35] border border-slate-200 dark:border-white/[0.08] hover:-translate-y-[2px] hover:shadow-[0_16px_50px_rgba(99,102,241,0.2)] active:scale-[0.99]"
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -224,14 +222,12 @@ function TutorialModal({ onClose }: { onClose: () => void }) {
         zIndex: 50,
         pointerEvents: "none",
       }} />
-      <div style={{
+      <div className="bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.12]" style={{
         position: "fixed",
         bottom: 24,
         left: "50%",
         transform: "translateX(-50%)",
         width: "min(480px, calc(100vw - 32px))",
-        background: "#0F1A2E",
-        border: "1px solid rgba(255,255,255,0.12)",
         borderRadius: 24,
         padding: "20px 24px",
         zIndex: 60,
@@ -410,13 +406,9 @@ export default function MarketPage() {
   const loadMore = () => setPage(p => p + 1);
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0B1220] dark:text-[#EAF0FF]">
       {/* Radial glow */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: -10,
-        pointerEvents: "none",
+      <div className="pointer-events-none fixed inset-0 -z-10 dark:block hidden" style={{
         background: [
           "radial-gradient(ellipse 800px 500px at 15% -10%, rgba(99,102,241,0.18) 0%, transparent 60%)",
           "radial-gradient(ellipse 600px 400px at 85% 0%, rgba(124,58,237,0.12) 0%, transparent 55%)",
@@ -426,13 +418,7 @@ export default function MarketPage() {
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 16px" }}>
-        <div style={{
-          background: "#0F1A2E",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 28,
-          padding: 24,
-          boxShadow: "0 26px 70px rgba(0,0,0,0.5)",
-        }}>
+        <div className="bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.08] rounded-[28px] p-6 shadow-[0_26px_70px_rgba(0,0,0,0.5)]">
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -669,14 +655,7 @@ export default function MarketPage() {
         </div>
 
         {/* FAQ */}
-        <div style={{
-          marginTop: 24,
-          background: "#0F1A2E",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 24,
-          padding: "20px 24px",
-          boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
-        }}>
+        <div className="mt-6 bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.08] rounded-[24px] px-6 py-5 shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
           <p style={{ fontSize: 13, fontWeight: 800, color: "#EAF0FF", marginBottom: 16 }}>よくある質問（FAQ）</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {[

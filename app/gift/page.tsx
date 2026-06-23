@@ -50,10 +50,10 @@ export default function GiftEPTopPage() {
   }, [router]);
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0B1220] dark:text-[#EAF0FF]">
       <GiftEPTutorial open={tutorialOpen} onClose={closeTutorial} />
 
-      <div style={{ position: "fixed", inset: 0, zIndex: -10, pointerEvents: "none",
+      <div className="pointer-events-none fixed inset-0 -z-10 dark:block hidden" style={{
         background: "radial-gradient(ellipse 800px 500px at 20% -10%, rgba(124,58,237,0.18) 0%, transparent 60%)" }} />
 
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "40px 16px" }}>
@@ -85,7 +85,7 @@ export default function GiftEPTopPage() {
           贈れる・使える、LIFAI内限定ギフトクレジット（有効期限30日）
         </p>
 
-        <div style={{ background: "#0F1A2E", border: "1px solid rgba(255,255,255,0.08)",
+        <div className="bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.08]" style={{
           borderRadius: 24, padding: 24, boxShadow: "0 8px 40px rgba(0,0,0,0.4)", marginBottom: 16 }}>
           {loading ? (
             <LoadingCat fullscreen={false} />
@@ -120,8 +120,8 @@ export default function GiftEPTopPage() {
             { href: "/gift/history", icon: "📋", label: "履歴" },
             { href: "/gift/use", icon: "✨", label: "使い道" },
           ].map(item => (
-            <Link key={item.href} href={item.href} style={{ background: "#0F1A2E",
-              border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px 8px",
+            <Link key={item.href} href={item.href} className="bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.08]" style={{
+              borderRadius: 18, padding: "16px 8px",
               textAlign: "center", textDecoration: "none", display: "block" }}>
               <p style={{ fontSize: 22, marginBottom: 6 }}>{item.icon}</p>
               <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(234,240,255,0.7)" }}>{item.label}</p>

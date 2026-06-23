@@ -306,18 +306,16 @@ export default function ItemDetailPage() {
 
   // ── Shared styles ──
   const cardStyle: React.CSSProperties = {
-    background: "#0F1A2E",
-    border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 28,
     padding: 24,
     boxShadow: "0 26px 70px rgba(0,0,0,0.5)",
   };
+  const cardClassName = "bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.08]";
   const subCardStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 20,
     padding: "14px 16px",
   };
+  const subCardClassName = "bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08]";
   const inputStyle: React.CSSProperties = {
     width: "100%",
     background: "rgba(255,255,255,0.04)",
@@ -334,7 +332,7 @@ export default function ItemDetailPage() {
 
   if (error || !item) {
     return (
-      <main style={{ display: "flex", minHeight: "100vh", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "#0B1220" }}>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-[#0B1220]">
         <p style={{ fontSize: 13, color: "#FCA5A5" }}>{error || "商品が見つかりません"}</p>
         <Link href="/market" style={{ fontSize: 12, fontWeight: 700, color: "#A78BFA", textDecoration: "none" }}>
           ← マーケットに戻る
@@ -349,13 +347,9 @@ export default function ItemDetailPage() {
     !isOwnItem && available > 0 && item.status === "active" && !activeOrder && !confirmDone;
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0B1220] dark:text-[#EAF0FF]">
       {/* Radial glow */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: -10,
-        pointerEvents: "none",
+      <div className="pointer-events-none fixed inset-0 -z-10 dark:block hidden" style={{
         background: [
           "radial-gradient(ellipse 800px 500px at 15% -10%, rgba(99,102,241,0.18) 0%, transparent 60%)",
           "radial-gradient(ellipse 600px 400px at 85% 0%, rgba(124,58,237,0.12) 0%, transparent 55%)",
@@ -365,7 +359,7 @@ export default function ItemDetailPage() {
       {showToast && <PurchaseToast onDismiss={() => setShowToast(false)} />}
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 16px" }}>
-        <div style={cardStyle}>
+        <div style={cardStyle} className={cardClassName}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Link
@@ -422,18 +416,18 @@ export default function ItemDetailPage() {
             </p>
 
             <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
-              <div style={subCardStyle}>
+              <div style={subCardStyle} className={subCardClassName}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(234,240,255,0.4)" }}>価格</p>
                 <p style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: "#EAF0FF" }}>
                   {item.price.toLocaleString()}{" "}
                   <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(234,240,255,0.4)" }}>{item.currency}</span>
                 </p>
               </div>
-              <div style={subCardStyle}>
+              <div style={subCardStyle} className={subCardClassName}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(234,240,255,0.4)" }}>在庫</p>
                 <p style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: "#EAF0FF" }}>{available}</p>
               </div>
-              <div style={subCardStyle}>
+              <div style={subCardStyle} className={subCardClassName}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(234,240,255,0.4)" }}>アセット数</p>
                 <p style={{ marginTop: 4, fontSize: 18, fontWeight: 800, color: "#EAF0FF" }}>{item.asset_count}</p>
               </div>
@@ -481,7 +475,7 @@ export default function ItemDetailPage() {
           })()}
 
           {/* 購入セクション */}
-          <div style={{ marginTop: 28, ...subCardStyle, padding: 20 }}>
+          <div style={{ marginTop: 28, ...subCardStyle, padding: 20 }} className={subCardClassName}>
             <p style={{ fontSize: 11, fontWeight: 800, color: "rgba(234,240,255,0.7)", marginBottom: 12 }}>購入</p>
 
             {/* 利用規約・注意 */}

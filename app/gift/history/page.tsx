@@ -63,8 +63,8 @@ export default function GiftHistoryPage() {
   const statusColor = (s: string) => s === "expired" ? "rgba(234,240,255,0.3)" : "#A78BFA";
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>
-      <div style={{ position: "fixed", inset: 0, zIndex: -10, pointerEvents: "none",
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0B1220] dark:text-[#EAF0FF]">
+      <div className="pointer-events-none fixed inset-0 -z-10 dark:block hidden" style={{
         background: "radial-gradient(ellipse 600px 400px at 20% -10%, rgba(124,58,237,0.12) 0%, transparent 60%)" }} />
 
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "40px 16px" }}>
@@ -105,7 +105,7 @@ export default function GiftHistoryPage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {current.data.map(tx => (
-            <div key={tx.id} style={{ background: "#0F1A2E", border: "1px solid rgba(255,255,255,0.07)",
+            <div key={tx.id} className="bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.07]" style={{
               borderRadius: 20, padding: "16px 18px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>

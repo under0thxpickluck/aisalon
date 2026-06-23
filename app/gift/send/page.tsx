@@ -118,8 +118,8 @@ export default function GiftSendPage() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>
-      <div style={{ position: "fixed", inset: 0, zIndex: -10, pointerEvents: "none",
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0B1220] dark:text-[#EAF0FF]">
+      <div className="pointer-events-none fixed inset-0 -z-10 dark:block hidden" style={{
         background: "radial-gradient(ellipse 600px 400px at 20% -10%, rgba(124,58,237,0.15) 0%, transparent 60%)" }} />
 
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "40px 16px" }}>
@@ -132,7 +132,7 @@ export default function GiftSendPage() {
           <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(234,240,255,0.45)" }}>🎁 GiftEPを贈る</span>
         </div>
 
-        <div style={{ background: "#0F1A2E", border: "1px solid rgba(255,255,255,0.08)",
+        <div className="bg-white dark:bg-[#0F1A2E] border border-slate-200 dark:border-white/[0.08]" style={{
           borderRadius: 24, padding: 24, boxShadow: "0 8px 40px rgba(0,0,0,0.4)" }}>
 
           {step === "done" ? (

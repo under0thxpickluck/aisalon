@@ -57,19 +57,19 @@ function StatusBadge({ status }: { status: LocalOrder["status"] }) {
   switch (status) {
     case "paid":
       return (
-        <span className="rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+        <span className="rounded-full border border-amber-200 dark:border-[rgba(251,191,36,0.3)] bg-amber-100 dark:bg-[rgba(251,191,36,0.1)] px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-[#FCD34D]">
           支払い済
         </span>
       );
     case "confirmed":
       return (
-        <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+        <span className="rounded-full border border-emerald-200 dark:border-[rgba(16,185,129,0.3)] bg-emerald-100 dark:bg-[rgba(16,185,129,0.1)] px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-[#6EE7B7]">
           受領確定済
         </span>
       );
     case "refunded":
       return (
-        <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+        <span className="rounded-full border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-[rgba(234,240,255,0.4)]">
           返金済
         </span>
       );
@@ -214,34 +214,34 @@ export default function OrdersPage() {
   };
 
   return (
-    <main className="min-h-screen text-slate-900">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)]" />
+    <main className="min-h-screen text-slate-900 dark:text-white dark:bg-[#0B1220]">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(900px_520px_at_12%_-10%,rgba(99,102,241,.16),transparent_60%),radial-gradient(900px_520px_at_112%_0%,rgba(34,211,238,.12),transparent_55%),linear-gradient(180deg,#FFFFFF,#F6F7FB_55%,#FFFFFF)] dark:bg-none dark:bg-[radial-gradient(ellipse_800px_500px_at_15%_-10%,rgba(99,102,241,0.18)_0%,transparent_60%)]" />
 
       <div className="mx-auto max-w-[720px] px-4 py-10">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
+        <div className="rounded-[28px] border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#0F1A2E] p-6 shadow-[0_26px_70px_rgba(2,6,23,.10)]">
 
           <div className="flex items-center gap-3">
             <Link
               href="/market"
-              className="rounded-2xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-[rgba(234,240,255,0.65)] hover:bg-slate-50 dark:hover:bg-white/[0.07]"
             >
               ← 戻る
             </Link>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-1 text-xs font-semibold text-slate-600 dark:text-[rgba(234,240,255,0.65)]">
               <span className="text-base">📦</span>
               購入履歴
             </div>
           </div>
 
-          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900">購入履歴</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="mt-6 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">購入履歴</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-[rgba(234,240,255,0.5)]">
             {ordersSource === "gas" ? "サーバーから取得した購入履歴です。" : "このデバイスでの購入履歴です。"}
           </p>
 
           {/* 利用ルール */}
-          <div className="mt-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3">
-            <p className="mb-1.5 text-xs font-bold text-violet-700">利用ルール</p>
-            <ul className="space-y-1 text-xs text-violet-600">
+          <div className="mt-4 rounded-2xl border border-violet-100 dark:border-[rgba(167,139,250,0.2)] bg-violet-50 dark:bg-[rgba(124,58,237,0.06)] px-4 py-3">
+            <p className="mb-1.5 text-xs font-bold text-violet-700 dark:text-[rgba(167,139,250,0.9)]">利用ルール</p>
+            <ul className="space-y-1 text-xs text-violet-600 dark:text-[rgba(167,139,250,0.7)]">
               <li>⚠ EP（Exchangeポイント）は換金できません</li>
               <li>⚠ 外部売買は禁止されています</li>
               <li>⚠ 違反時はアカウント停止となる場合があります</li>
@@ -250,18 +250,18 @@ export default function OrdersPage() {
 
           {/* ── 出品中アイテム（売却申請） ── */}
           <div className="mt-8">
-            <h2 className="text-base font-extrabold text-slate-900">出品中のアイテム</h2>
-            <p className="mt-1 text-xs text-slate-500">運営への売却申請ができます。</p>
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">出品中のアイテム</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-[rgba(234,240,255,0.5)]">運営への売却申請ができます。</p>
 
             <div className="mt-4 space-y-3">
               {listingsLoading ? (
                 <LoadingCat fullscreen={false} textColor="text-slate-400" />
               ) : myListings.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-center">
-                  <p className="text-sm text-slate-400">出品中のアイテムはありません</p>
+                <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] px-4 py-5 text-center">
+                  <p className="text-sm text-slate-400 dark:text-[rgba(234,240,255,0.4)]">出品中のアイテムはありません</p>
                   <Link
                     href="/market/create"
-                    className="mt-2 inline-block text-xs font-semibold text-indigo-600 hover:underline"
+                    className="mt-2 inline-block text-xs font-semibold text-indigo-600 dark:text-[#A78BFA] hover:underline"
                   >
                     出品する →
                   </Link>
@@ -271,14 +271,14 @@ export default function OrdersPage() {
                   const isRequested = requestedIds.has(item.item_id);
                   const isRequesting = requestingId === item.item_id;
                   return (
-                    <div key={item.item_id} className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+                    <div key={item.item_id} className="rounded-[20px] border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.04] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-slate-400">{itemTypeLabel(item.item_type)}</p>
-                          <p className="mt-0.5 truncate text-sm font-extrabold text-slate-800">
+                          <p className="text-xs text-slate-400 dark:text-[rgba(234,240,255,0.4)]">{itemTypeLabel(item.item_type)}</p>
+                          <p className="mt-0.5 truncate text-sm font-extrabold text-slate-800 dark:text-[#EAF0FF]">
                             {item.title || "（タイトル不明）"}
                           </p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-slate-500 dark:text-[rgba(234,240,255,0.5)]">
                             {item.price.toLocaleString()} {item.currency}
                           </p>
                         </div>
@@ -289,10 +289,10 @@ export default function OrdersPage() {
                             className={[
                               "rounded-2xl px-4 py-2 text-xs font-semibold transition",
                               isRequested
-                                ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"
+                                ? "cursor-not-allowed border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] text-slate-400 dark:text-[rgba(234,240,255,0.4)]"
                                 : isRequesting
-                                ? "cursor-not-allowed border border-indigo-200 bg-indigo-50 text-indigo-400"
-                                : "border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50",
+                                ? "cursor-not-allowed border border-indigo-200 dark:border-[rgba(99,102,241,0.3)] bg-indigo-50 dark:bg-[rgba(99,102,241,0.08)] text-indigo-400 dark:text-[#A5B4FC]"
+                                : "border border-indigo-200 dark:border-[rgba(99,102,241,0.3)] bg-white dark:bg-[rgba(99,102,241,0.08)] text-indigo-700 dark:text-[#A78BFA] hover:bg-indigo-50 dark:hover:bg-[rgba(99,102,241,0.15)]",
                             ].join(" ")}
                           >
                             {isRequested ? "申請中" : isRequesting ? "送信中…" : "売却申請"}
@@ -300,12 +300,12 @@ export default function OrdersPage() {
                         </div>
                       </div>
                       {isRequested && (
-                        <p className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+                        <p className="mt-2 rounded-xl border border-indigo-100 dark:border-[rgba(99,102,241,0.2)] bg-indigo-50 dark:bg-[rgba(99,102,241,0.08)] px-3 py-2 text-xs text-indigo-700 dark:text-[#A5B4FC]">
                           ご利用ありがとうございます。24時間〜48時間以内に売却申請の可否の返答が行われます。今しばらくお待ちください。
                         </p>
                       )}
                       {requestErrors[item.item_id] && (
-                        <p className="mt-2 text-xs text-rose-600">{requestErrors[item.item_id]}</p>
+                        <p className="mt-2 text-xs text-rose-600 dark:text-[#FCA5A5]">{requestErrors[item.item_id]}</p>
                       )}
                     </div>
                   );
@@ -314,53 +314,53 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          <div className="mt-8 border-t border-slate-100" />
+          <div className="mt-8 border-t border-slate-100 dark:border-white/[0.06]" />
 
           <div className="mt-6 space-y-4">
             {orders.length === 0 ? (
               <div className="py-16 text-center">
-                <p className="text-sm text-slate-400">購入履歴がありません</p>
+                <p className="text-sm text-slate-400 dark:text-[rgba(234,240,255,0.4)]">購入履歴がありません</p>
                 <Link
                   href="/market"
-                  className="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:underline"
+                  className="mt-3 inline-block text-xs font-semibold text-indigo-600 dark:text-[#A78BFA] hover:underline"
                 >
                   マーケットで探す →
                 </Link>
               </div>
             ) : (
               orders.map(order => (
-                <div key={order.order_id} className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+                <div key={order.order_id} className="rounded-[20px] border border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.04] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <StatusBadge status={order.status} />
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-slate-400 dark:text-[rgba(234,240,255,0.4)]">
                           {itemTypeLabel(order.item_type)}
                         </span>
                       </div>
-                      <p className="truncate text-sm font-extrabold text-slate-800">
+                      <p className="truncate text-sm font-extrabold text-slate-800 dark:text-[#EAF0FF]">
                         {order.item_title || "（タイトル不明）"}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">注文ID: {order.order_id}</p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="mt-1 text-xs text-slate-500 dark:text-[rgba(234,240,255,0.5)]">注文ID: {order.order_id}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-[rgba(234,240,255,0.4)]">
                         {new Date(order.created_at).toLocaleString("ja-JP")}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-base font-extrabold text-slate-900">
+                      <p className="text-base font-extrabold text-slate-900 dark:text-white">
                         {order.price.toLocaleString()}
                       </p>
-                      <p className="text-[10px] text-slate-500">{order.currency}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-[rgba(234,240,255,0.5)]">{order.currency}</p>
                     </div>
                   </div>
 
                   {order.status === "paid" && (
                     <div className="mt-3 space-y-2">
-                      <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      <p className="rounded-xl border border-amber-100 dark:border-[rgba(251,191,36,0.2)] bg-amber-50 dark:bg-[rgba(251,191,36,0.06)] px-3 py-2 text-xs text-amber-700 dark:text-[#FCD34D]">
                         商品を受け取ったら「受領確定」してください。確定後に出品者へ代金が支払われます。
                       </p>
                       {confirmErrors[order.order_id] && (
-                        <p className="text-xs text-rose-600">{confirmErrors[order.order_id]}</p>
+                        <p className="text-xs text-rose-600 dark:text-[#FCA5A5]">{confirmErrors[order.order_id]}</p>
                       )}
                       <button
                         onClick={() => handleConfirm(order)}
@@ -371,7 +371,7 @@ export default function OrdersPage() {
                       </button>
                       <Link
                         href={`/market/${order.item_id}`}
-                        className="block w-full rounded-2xl border border-slate-200 bg-white py-2.5 text-center text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                        className="block w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] py-2.5 text-center text-xs font-semibold text-slate-700 dark:text-[rgba(234,240,255,0.65)] transition hover:bg-slate-50 dark:hover:bg-white/[0.07]"
                       >
                         商品詳細を見る
                       </Link>
@@ -380,7 +380,7 @@ export default function OrdersPage() {
 
                   {order.status === "confirmed" && (
                     <div className="mt-3">
-                      <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                      <p className="rounded-xl border border-emerald-100 dark:border-[rgba(16,185,129,0.25)] bg-emerald-50 dark:bg-[rgba(16,185,129,0.08)] px-3 py-2 text-xs text-emerald-700 dark:text-[#6EE7B7]">
                         ✅ 受領確定済みです。
                       </p>
                     </div>
@@ -388,7 +388,7 @@ export default function OrdersPage() {
 
                   {order.status === "refunded" && (
                     <div className="mt-3">
-                      <p className="rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs text-slate-600">
+                      <p className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] px-3 py-2 text-xs text-slate-600 dark:text-[rgba(234,240,255,0.5)]">
                         返金が完了しています。
                       </p>
                     </div>
@@ -399,7 +399,7 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        <div className="mt-6 text-center text-xs text-slate-400">© LIFAI</div>
+        <div className="mt-6 text-center text-xs text-slate-400 dark:text-[rgba(234,240,255,0.2)]">© LIFAI</div>
       </div>
     </main>
   );

@@ -27,8 +27,8 @@ const FEATURES = [
 
 export default function GiftUsePage() {
   return (
-    <main style={{ minHeight: "100vh", background: "#0B1220", color: "#EAF0FF" }}>
-      <div style={{ position: "fixed", inset: 0, zIndex: -10, pointerEvents: "none",
+    <main className="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0B1220] dark:text-[#EAF0FF]">
+      <div className="pointer-events-none fixed inset-0 -z-10 dark:block hidden" style={{
         background: "radial-gradient(ellipse 600px 400px at 20% -10%, rgba(124,58,237,0.12) 0%, transparent 60%)" }} />
 
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "40px 16px" }}>
@@ -48,8 +48,9 @@ export default function GiftUsePage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {FEATURES.map(f => (
-            <div key={f.title} style={{ background: "#0F1A2E",
-              border: `1px solid ${f.available ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.06)"}`,
+            <div key={f.title}
+              className={`bg-white dark:bg-[#0F1A2E] ${f.available ? "border-[rgba(167,139,250,0.2)]" : "border-slate-200 dark:border-white/[0.06]"} border`}
+              style={{
               borderRadius: 20, padding: "18px 20px",
               opacity: f.available ? 1 : 0.5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
