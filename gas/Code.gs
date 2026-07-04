@@ -4452,7 +4452,8 @@ function handle_(key, body) {
     }
     if (!loginOk) return json_({ ok: false, reason: "invalid" });
 
-    return json_({ ok: true, group: foundIn5000Sheet ? "5000" : "" });
+    // login_id を応答に含める（MIRAIX SSO が正準IDを必要とするため。既存クライアントは無視するだけ）
+    return json_({ ok: true, group: foundIn5000Sheet ? "5000" : "", login_id: loginId });
   }
 
   // =========================================================
