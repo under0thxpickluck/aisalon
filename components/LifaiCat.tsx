@@ -441,7 +441,7 @@ export default function LifaiCat(props: LifaiCatProps) {
   // Todo list
   const todos: { label: string; href: string }[] = [];
   if (missions?.fortune === false)
-    todos.push({ label: '🔮 占いを見る +10BP',        href: '/fortune'   });
+    todos.push({ label: '🔮 占いを見る',        href: '/fortune'   });
   if (missions?.login === false)
     todos.push({ label: '✨ ログインボーナス受け取る', href: '/top'       });
   if (missions?.music === false)
