@@ -13297,6 +13297,7 @@ function doPost(e) {
     if (action === "lootify_login")  return json_(handle_lootify_login_(body));
     if (action === "lootify_me")     return json_(handle_lootify_me_(body));
     if (action === "lootify_logout") return json_({ ok: true, code: "OK", message: "" });
+    if (action === "ep_send_to_lfw") return json_(epSendToLfw_(key, body));
     if (action === "create_aisalon_sell_request")  return json_(handle_create_aisalon_sell_request_(body));
     if (action === "get_aisalon_sell_requests")    return json_(handle_get_aisalon_sell_requests_(body));
     if (action === "update_aisalon_deposit_status") return json_(handle_update_aisalon_deposit_status_(body));
