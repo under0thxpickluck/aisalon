@@ -658,7 +658,13 @@ export default function RumblePage() {
         setMsg(`🔨 分解完了！ +${data.gained_shard} 力のかけら`);
         setDismantleModal(null);
       } else {
-        setDismantleMsg(data.error === "item_locked" ? "ロック中は分解できません" : "エラーが発生しました");
+        setDismantleMsg(
+          data.error === "item_locked"
+            ? "ロック中は分解できません"
+            : data.error === "item_equipped"
+            ? "装備中は分解できません（先に別の装備に付け替えてください）"
+            : "エラーが発生しました"
+        );
       }
     } catch {
       setDismantleMsg("通信エラー");
