@@ -9332,6 +9332,7 @@ function rumbleEquipment_(params) {
   var userId = String(params.userId || "");
   var sheet  = getEquipmentSheet_();
   ensureEquipmentCols_(sheet);
+  ensureEquipmentNewCols_(sheet); // enhance_level/luck/stability/locked 列を保証
   var data    = sheet.getDataRange().getValues();
   var headers = data[0];
   var idx     = {};
@@ -9347,6 +9348,11 @@ function rumbleEquipment_(params) {
         name:     String(data[i][idx["name"]]),
         bonus:    Number(data[i][idx["bonus"]] || 0),
         equipped: String(data[i][idx["equipped"]]) === "true",
+        // 強化コスト誤表示の修正: リロード後もフロントが実レベルを把握できるよう返却する
+        enhance_level: Number(data[i][idx["enhance_level"]] || 0),
+        luck:          Number(data[i][idx["luck"]] || 0),
+        stability:     Number(data[i][idx["stability"]] || 0),
+        locked:        String(data[i][idx["locked"]]) === "true",
       });
     }
   }

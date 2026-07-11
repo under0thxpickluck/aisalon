@@ -24,6 +24,7 @@ type Equipment = {
   id: string; slot: string; rarity: string;
   name: string; bonus: number; equipped: boolean;
   enhance_level?: number; luck?: number; stability?: number;
+  locked?: boolean;
 };
 
 type GachaResult = {
