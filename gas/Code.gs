@@ -10765,6 +10765,34 @@ function musicBoostSubscribe_(params) {
     return json_({ ok: false, error: "no_slots_available", available: availSlots, needed: deltaSlots });
   }
 
+  // ── カード決済経路（paymentMethod:"card" 等）の保護 ──────────────
+  // カードでの有効化は Square Webhook（サーバー側・adminKey保持）経由のみ許可。
+  // クライアントが paymentMethod を注入して無料でブーストを有効化するのを防ぐ。
+  if (paymentMethod !== "ep") {
+    var secrets_mb = getSecrets_();
+    if (String(params.adminKey || "") !== secrets_mb.ADMIN_SECRET) {
+      return json_({ ok: false, error: "admin_unauthorized" });
+    }
+    // 冪等性: 同じ square_payment_id での二重有効化を防ぐ（Squareのwebhookリトライ対策）
+    var paymentId_mb = String(params.square_payment_id || "");
+    if (paymentId_mb) {
+      var led_mb = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("wallet_ledger");
+      if (led_mb) {
+        var ledVals_mb = led_mb.getDataRange().getValues();
+        if (ledVals_mb.length >= 2) {
+          var ledIdx_mb = indexMap_(ledVals_mb[0]);
+          for (var lm = 1; lm < ledVals_mb.length; lm++) {
+            if (String(ledVals_mb[lm][ledIdx_mb["kind"]]) === "music_boost_card" &&
+                String(ledVals_mb[lm][ledIdx_mb["memo"]]).indexOf(paymentId_mb) !== -1) {
+              Logger.log("[musicBoostSubscribe_] duplicate paymentId: " + paymentId_mb);
+              return json_({ ok: true, duplicate: true, message: "already_processed" });
+            }
+          }
+        }
+      }
+    }
+  }
+
   // ── EP決済処理 ────────────────────────────────────────────
   if (paymentMethod === "ep") {
     var epCost = plan.price * 100;
@@ -10814,6 +10842,18 @@ function musicBoostSubscribe_(params) {
     newId, userId, planId, plan.percent, plan.price,
     plan.slots, "active", nowJst, expiresAt, "", nowJst
   ]);
+
+  // カード決済の有効化は wallet_ledger に記録（監査＋square_payment_id での冪等チェック用）
+  if (paymentMethod !== "ep") {
+    appendWalletLedger_({
+      kind:     "music_boost_card",
+      login_id: userId,
+      email:    "",
+      amount:   0,
+      memo:     "Music Boost " + planId + " カード決済有効化" +
+                (params.square_payment_id ? " payment_id:" + String(params.square_payment_id) : ""),
+    });
+  }
 
   var returnPayload = {
     ok:         true,
