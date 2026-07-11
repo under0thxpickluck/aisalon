@@ -194,6 +194,8 @@ export default function RumblePage() {
   const [spectatorLoading,   setSpectatorLoading]   = useState(false);
   const [spectatorPlayers,   setSpectatorPlayers]   = useState<SpectatorPlayer[]>([]);
   const [battleLogs,         setBattleLogs]         = useState<{ text: string; color: string; id: number }[]>([]);
+  // モーダル用の全件保持（ライブ表示のbattleLogsはslice(-20)で切り詰めるため別持ち）
+  const [fullBattleLogs,     setFullBattleLogs]     = useState<{ text: string; color: string; id: number }[]>([]);
   const [spectatorPhase,     setSpectatorPhase]     = useState<"waiting" | "live" | "result">("waiting");
   const [isPlaying,          setIsPlaying]          = useState(false);
   const [logCounter,         setLogCounter]         = useState(0);
@@ -208,6 +210,7 @@ export default function RumblePage() {
   const [prevSpectatorData,  setPrevSpectatorData]  = useState<SpectatorData | null>(null);
   const [prevLoading,        setPrevLoading]        = useState(false);
   const [prevBattleLogs,     setPrevBattleLogs]     = useState<{ text: string; color: string; id: number }[]>([]);
+  const [prevFullBattleLogs, setPrevFullBattleLogs] = useState<{ text: string; color: string; id: number }[]>([]);
   const [prevPhase,          setPrevPhase]          = useState<"waiting" | "live" | "result">("waiting");
   const [prevIsPlaying,      setPrevIsPlaying]      = useState(false);
   const [prevLogCounter,     setPrevLogCounter]     = useState(0);
@@ -490,6 +493,7 @@ export default function RumblePage() {
     setIsPlaying(true);
     setSpectatorPhase("live");
     setBattleLogs([]);
+    setFullBattleLogs([]);
     setSpectatorPlayers(spectatorData.players.map(p => ({ ...p, status: "alive" as const })));
 
     let counter = 0;
@@ -500,6 +504,7 @@ export default function RumblePage() {
         const next = [...prev, { text, color, id }];
         return next.slice(-20);
       });
+      setFullBattleLogs(prev => [...prev, { text, color, id }]); // モーダル用は全件保持
       setLogCounter(id);
     };
 
@@ -555,11 +560,13 @@ export default function RumblePage() {
     setPrevIsPlaying(true);
     setPrevPhase("live");
     setPrevBattleLogs([]);
+    setPrevFullBattleLogs([]);
     let counter = 0;
     const addLog = (text: string, color = "text-white") => {
       counter++;
       const id = counter;
       setPrevBattleLogs(prev => [...prev, { text, color, id }].slice(-20));
+      setPrevFullBattleLogs(prev => [...prev, { text, color, id }]); // モーダル用は全件保持
       setPrevLogCounter(id);
     };
     for (const event of prevSpectatorData.events) {
@@ -968,7 +975,7 @@ export default function RumblePage() {
       {/* バトルログモーダル */}
       {showBattleLogModal && (() => {
         const isToday   = battleLogModalMode === "today";
-        const logs      = isToday ? battleLogs      : prevBattleLogs;
+        const logs      = isToday ? fullBattleLogs  : prevFullBattleLogs; // モーダルは全件表示（ライブ表示は20件のまま）
         const playing   = isToday ? isPlaying       : prevIsPlaying;
         const phase     = isToday ? spectatorPhase  : prevPhase;
         const sData     = isToday ? spectatorData   : prevSpectatorData;
@@ -977,11 +984,13 @@ export default function RumblePage() {
         const handleReplay = () => {
           if (isToday) {
             setBattleLogs([]);
+            setFullBattleLogs([]);
             setShowWinners(false);
             setSpectatorPlayers((spectatorData?.players ?? []).map(p => ({ ...p, status: "alive" as const })));
             handleSpectatorPlay();
           } else {
             setPrevBattleLogs([]);
+            setPrevFullBattleLogs([]);
             setPrevPhase("waiting");
             handlePrevPlay();
           }
