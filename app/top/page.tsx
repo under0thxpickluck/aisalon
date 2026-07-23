@@ -167,7 +167,7 @@ function BalanceBadge({ auth, refreshTrigger }: { auth: AuthState; refreshTrigge
 
 
 // ── お知らせ（データは data/notices.ts で管理・空配列のときは「なし」表示） ────
-const NOTICE_VISIBLE_COUNT = 3;
+const NOTICE_VISIBLE_COUNT = 0;
 
 function NoticeBoard() {
   const [openId, setOpenId] = useState<string | null>(null);
