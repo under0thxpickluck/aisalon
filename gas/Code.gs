@@ -12332,12 +12332,12 @@ function imageHistory_(body) {
 function adjustImageBp_(userId, delta, note) {
   try {
     var ss    = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("users");
+    var sheet = ss.getSheetByName("applies");
     if (!sheet) return;
     var data   = sheet.getDataRange().getValues();
     var header = data[0];
     var idIdx  = header.indexOf("login_id");
-    var bpIdx  = header.indexOf("bp");
+    var bpIdx  = header.indexOf("bp_balance");
     if (idIdx < 0 || bpIdx < 0) return;
     for (var i = 1; i < data.length; i++) {
       if (str_(data[i][idIdx]) === userId) {

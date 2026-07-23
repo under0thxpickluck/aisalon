@@ -82,16 +82,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "generation_failed" }, { status: 500 });
     }
 
-    // 確定 + 履歴
+    // 確定
     await gasPost("bp_commit", { id, lock_id: lockId });
-    await gasPost("image_log", {
+
+    // 履歴ログは結果を待たずに記録（saveLogと同じfire-and-forgetパターン）
+    gasPost("image_log", {
       id,
       prompt: buildJacketPrompt({ theme, genre, mood, title }),
       image_url: imageUrl,
       bp_used: JACKET_BP,
       type: "jacket",
       meta_json: JSON.stringify({ jobId, title, genre, mood }),
-    });
+    }).catch(() => {});
 
     return NextResponse.json({ ok: true, imageUrl, bpUsed: JACKET_BP });
   } catch {
