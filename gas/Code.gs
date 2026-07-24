@@ -5852,17 +5852,19 @@ function planToGrant_(plan) {
   const n = parseMoneyLike_(p);
 
   // 画像のポイント表（固定）
-  // Starter 34 USDT -> 300BP付与
-  // Builder 57 USDT -> 600BP付与
-  // Automation 114 USDT -> 1200BP付与
-  // Core 567 USDT -> 6000BP付与
-  // Infra 1,134 USDT -> 12000BP付与
+  // ※ plan列には購入フロー由来の値（30/50/100/500/1000）が入るため、
+  //    GAS内部値（34/57/114/567/1134）と両対応させる（monthly_bp_recover / get_balance と同じ方針）
+  // Starter    34 USDT / plan "30"   -> 300BP付与
+  // Builder    57 USDT / plan "50"   -> 600BP付与
+  // Automation 114 USDT / plan "100"  -> 1200BP付与
+  // Core       567 USDT / plan "500"  -> 6000BP付与
+  // Infra      1,134 USDT / plan "1000" -> 12000BP付与
   if (Number.isFinite(n)) {
-    if (n === 34) return { bp: 300, ep: 0 };
-    if (n === 57) return { bp: 600, ep: 0 };
-    if (n === 114) return { bp: 1200, ep: 0 };
-    if (n === 567) return { bp: 6000, ep: 0 };
-    if (n === 1134) return { bp: 12000, ep: 0 };
+    if (n === 34 || n === 30) return { bp: 300, ep: 0 };
+    if (n === 57 || n === 50) return { bp: 600, ep: 0 };
+    if (n === 114 || n === 100) return { bp: 1200, ep: 0 };
+    if (n === 567 || n === 500) return { bp: 6000, ep: 0 };
+    if (n === 1134 || n === 1000) return { bp: 12000, ep: 0 };
   }
 
   return { bp: 0, ep: 0 };
