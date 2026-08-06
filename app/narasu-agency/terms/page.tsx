@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isGatePassed, saveDraft, loadDraft } from "@/lib/narasu-agency/storage";
 import { NARASU_TERMS_VERSION } from "@/lib/narasu-agency/constants";
+import { NarasuBalanceCheckModal } from "@/components/NarasuBalanceCheckModal";
 
 const TERMS_TEXT = `
 narasu代理申請サービス 確認事項
@@ -77,6 +78,8 @@ narasu代理申請サービス 確認事項
 export default function NarasuTermsPage() {
   const router = useRouter();
   const [agreed, setAgreed] = useState(false);
+  // 入力を始める前に、必要BP/EPが足りているかを先に確認してもらう
+  const [balanceChecked, setBalanceChecked] = useState(false);
 
   useEffect(() => {
     if (!isGatePassed()) {
@@ -118,6 +121,9 @@ export default function NarasuTermsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
+      {!balanceChecked && (
+        <NarasuBalanceCheckModal onConfirm={() => setBalanceChecked(true)} />
+      )}
       <div className="mx-auto max-w-xl">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-xl font-extrabold text-slate-900">代理申請に関する確認事項</h1>

@@ -241,107 +241,10 @@ export default function Page() {
           </div>
 
           <p className="mt-6 text-xs leading-relaxed text-neutral-500 dark:text-slate-400">
-            ※ ポイントの付与条件・上限・交換内容は、ランクや運営状況により変更される場合があります。
+            ※ ポイントの付与条件・上限・交換内容は、運営状況により変更される場合があります。
           </p>
         </div>
       </section>
-
-      {/* =====================
-          RANK UP (TEXT + TABLE)
-      ====================== */}
-      <section className="mx-auto max-w-5xl px-4 pb-16">
-        <div className="rounded-2xl bg-white dark:bg-gray-900 p-8 shadow-sm">
-          <header className="mb-6">
-            <p className="mb-2 text-xs font-bold tracking-wide text-neutral-500 dark:text-slate-400">
-              Rank Up
-            </p>
-            <h2 className="text-xl font-bold text-neutral-900 dark:text-white md:text-2xl">
-              ランクアップの仕組みについて
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-600 dark:text-slate-400">
-              LIFAIでは、サービスの利用状況やアクションに応じて会員ランクが段階的に上がる仕組みを採用しています。
-              ランクアップは<span className="font-semibold">「一定の条件を達成すること」</span>で行われ、
-              金額だけでなく、実際の利用や行動でも条件を満たすことができます。
-            </p>
-          </header>
-
-          {/* Explanation */}
-          <div className="rounded-2xl border border-neutral-200 dark:border-gray-700 bg-neutral-50 dark:bg-gray-800 p-6">
-            <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-              ランクアップ条件の考え方
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-neutral-700 dark:text-slate-300">
-              各プランには、<span className="font-semibold">「条件達成MAX」</span>が設定されています。
-              これは、いずれかの条件を満たすことで次のランクへ進める、という意味です。
-              無理にすべてを達成する必要はなく、
-              <span className="font-semibold">自分の使い方に合った方法を選べる設計</span>
-              になっています。
-            </p>
-          </div>
-
-          {/* Table (2 columns only) */}
-          <div className="mt-6 overflow-hidden rounded-2xl border border-neutral-200 dark:border-gray-700">
-            <div className="grid grid-cols-2 bg-neutral-50 dark:bg-gray-800 text-xs font-bold text-neutral-600 dark:text-slate-400">
-              <div className="p-4">プラン</div>
-              <div className="p-4">条件達成MAX</div>
-            </div>
-
-            {/* $50 */}
-            <div className="grid grid-cols-2 border-t border-neutral-200 dark:border-gray-700 text-sm">
-              <div className="p-4 font-semibold text-neutral-900 dark:text-white">$67</div>
-              <div className="p-4 text-neutral-800 dark:text-slate-200">
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>ワークフロー3件購入</li>
-                  <li>14日ログインを継続</li>
-                </ul>
-                <p className="mt-2 text-xs text-neutral-500 dark:text-slate-400">※いずれか達成でOK</p>
-              </div>
-            </div>
-
-            {/* $100 */}
-            <div className="grid grid-cols-2 border-t border-neutral-200 dark:border-gray-700 text-sm">
-              <div className="p-4 font-semibold text-neutral-900 dark:text-white">$134</div>
-              <div className="p-4 text-neutral-800 dark:text-slate-200">
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>ワークフロー5件購入</li>
-                  <li>BPを1,000消費</li>
-                </ul>
-                <p className="mt-2 text-xs text-neutral-500 dark:text-slate-400">※いずれか達成でOK</p>
-              </div>
-            </div>
-
-            {/* $500 */}
-            <div className="grid grid-cols-2 border-t border-neutral-200 dark:border-gray-700 text-sm">
-              <div className="p-4 font-semibold text-neutral-900 dark:text-white">$667</div>
-              <div className="p-4 text-neutral-800 dark:text-slate-200">
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>ワークフロー10件購入</li>
-                  <li>BPの消費合計が3,000に到達</li>
-                </ul>
-                <p className="mt-2 text-xs text-neutral-500 dark:text-slate-400">※いずれか達成でOK</p>
-              </div>
-            </div>
-
-            {/* $1000 */}
-            <div className="grid grid-cols-2 border-t border-neutral-200 dark:border-gray-700 text-sm">
-              <div className="p-4 font-semibold text-neutral-900 dark:text-white">$1340</div>
-              <div className="p-4 text-neutral-800 dark:text-slate-200">
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>BPを5,000消費</li>
-                  <li>紹介者が20人に到達</li>
-                  <li>自社広告を1回出稿</li>
-                </ul>
-                <p className="mt-2 text-xs text-neutral-500 dark:text-slate-400">※いずれか達成でOK</p>
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-4 text-xs leading-relaxed text-neutral-500 dark:text-slate-400">
-            ※ 条件の内容や必要数は、運営状況により変更される場合があります。
-          </p>
-        </div>
-      </section>
-
 
       {/* =====================>
           今できる副業一覧（4つ）
