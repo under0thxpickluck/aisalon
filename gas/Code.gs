@@ -13501,72 +13501,6 @@ function doPost(e) {
     var body = JSON.parse(e && e.postData && e.postData.contents ? e.postData.contents : "{}");
     var action = str_(body.action);
 
-    // 診断用: keyなしで、この稼働中の/execがバインドしているシートを返す
-    if (action === "which_sheet") {
-      var ss_wc = SpreadsheetApp.getActiveSpreadsheet();
-      return json_({ ok: true, name: ss_wc.getName(), id: ss_wc.getId(), url: ss_wc.getUrl() });
-    }
-
-    // 診断用: 全タブの数式を走査し、IMPORTRANGE または LIFAIOV_DB(17rV5) 参照を検出
-    if (action === "diag_importrange") {
-      var ss_di = SpreadsheetApp.getActiveSpreadsheet();
-      var out_di = { ok: true, spreadsheet: ss_di.getName(), sheets: [], hits: [] };
-      ss_di.getSheets().forEach(function(sh_di) {
-        out_di.sheets.push(sh_di.getName());
-        var rng_di = sh_di.getDataRange();
-        var f_di = rng_di.getFormulas();
-        for (var r_di = 0; r_di < f_di.length; r_di++) {
-          for (var c_di = 0; c_di < f_di[r_di].length; c_di++) {
-            var cell_di = f_di[r_di][c_di];
-            if (!cell_di) continue;
-            var up_di = cell_di.toUpperCase();
-            if (up_di.indexOf("IMPORTRANGE") !== -1 || cell_di.indexOf("17rV59Ij") !== -1) {
-              out_di.hits.push({
-                sheet: sh_di.getName(),
-                cell: sh_di.getRange(r_di + 1, c_di + 1).getA1Notation(),
-                formula: cell_di.slice(0, 300)
-              });
-            }
-          }
-        }
-      });
-      return json_(out_di);
-    }
-
-    // 診断用: 指定タブ（既定 music_boost）の内容を最大200行返す
-    if (action === "diag_dump") {
-      var name_dd = str_(body.sheet) || "music_boost";
-      var lim_dd = Number(body.limit) || 200;
-      var ss_dd = SpreadsheetApp.getActiveSpreadsheet();
-      var sh_dd = ss_dd.getSheetByName(name_dd);
-      if (!sh_dd) return json_({ ok: false, error: "sheet_not_found", sheet: name_dd });
-      var vals_dd = sh_dd.getDataRange().getValues();
-      return json_({ ok: true, spreadsheet: ss_dd.getName(), sheet: name_dd, total_rows: vals_dd.length, rows: vals_dd.slice(0, lim_dd + 1) });
-    }
-
-    // 診断用: applies タブの music_boost 申請列（login_id/artist/album/tracks）だけを抽出
-    if (action === "diag_mbtracks") {
-      var ss_mt = SpreadsheetApp.getActiveSpreadsheet();
-      var sh_mt = ss_mt.getSheetByName("applies");
-      if (!sh_mt) return json_({ ok: false, error: "applies_not_found" });
-      var vals_mt = sh_mt.getDataRange().getValues();
-      var head_mt = vals_mt[0];
-      var iLogin_mt = head_mt.indexOf("login_id");
-      var iArtist_mt = head_mt.indexOf("music_boost_artist");
-      var iAlbum_mt = head_mt.indexOf("music_boost_album");
-      var iTracks_mt = head_mt.indexOf("music_boost_tracks_json");
-      var res_mt = [];
-      for (var i_mt = 1; i_mt < vals_mt.length; i_mt++) {
-        var ar_mt = iArtist_mt >= 0 ? String(vals_mt[i_mt][iArtist_mt] || "") : "";
-        var al_mt = iAlbum_mt >= 0 ? String(vals_mt[i_mt][iAlbum_mt] || "") : "";
-        var tr_mt = iTracks_mt >= 0 ? String(vals_mt[i_mt][iTracks_mt] || "") : "";
-        if (ar_mt.trim() || al_mt.trim() || tr_mt.trim()) {
-          res_mt.push({ login_id: iLogin_mt >= 0 ? vals_mt[i_mt][iLogin_mt] : "", artist: ar_mt, album: al_mt, tracks: tr_mt.slice(0, 500) });
-        }
-      }
-      return json_({ ok: true, spreadsheet: ss_mt.getName(), count: res_mt.length, rows: res_mt });
-    }
-
     // lootify HP 専用アクション
     if (action === "lootify_login")  return json_(handle_lootify_login_(body));
     if (action === "lootify_me")     return json_(handle_lootify_me_(body));
@@ -13904,11 +13838,4 @@ function epSendToLfw_(key, body) {
   } finally {
     lock.releaseLock();
   }
-}
-
-// 診断用: このGASがバインドしているスプレッドシートの識別情報をログ出力する
-// （aisalon / lifaiov 双方で実行し、getId() が一致しないか確認するため）
-function whichSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  Logger.log(ss.getName() + " | " + ss.getId() + " | " + ss.getUrl());
 }
