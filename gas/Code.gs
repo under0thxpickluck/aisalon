@@ -2218,8 +2218,10 @@ function handle_(key, body) {
       var ledIdx_sq    = indexMap_(ledHeader_sq);
       for (var li = 1; li < ledVals_sq.length; li++) {
         var ledRow_sq = ledVals_sq[li];
-        if (str_(ledRow_sq[ledIdx_sq["kind"]]) === "square_bp_purchase" &&
-            str_(ledRow_sq[ledIdx_sq["memo"]]).indexOf(paymentId_sq) !== -1) {
+        // wallet_ledger のヘッダ名ドリフト（実列が kind/memo でない場合がある）に依存せず、
+        // payment_id が行内のいずれかのセルに存在するかで重複判定する。
+        // （appendWalletLedger_ は memo 列に "... payment_id:XXX" を書き込む）
+        if (ledRow_sq.join("").indexOf(paymentId_sq) !== -1) {
           Logger.log("[square_grant_bp] duplicate paymentId: " + paymentId_sq);
           return json_({ ok: true, duplicate: true, message: "already_processed" });
         }
@@ -10870,8 +10872,8 @@ function musicBoostSubscribe_(params) {
         if (ledVals_mb.length >= 2) {
           var ledIdx_mb = indexMap_(ledVals_mb[0]);
           for (var lm = 1; lm < ledVals_mb.length; lm++) {
-            if (String(ledVals_mb[lm][ledIdx_mb["kind"]]) === "music_boost_card" &&
-                String(ledVals_mb[lm][ledIdx_mb["memo"]]).indexOf(paymentId_mb) !== -1) {
+            // ヘッダ名ドリフトに依存せず payment_id の存在で重複判定（memo列に "... payment_id:XXX"）
+            if (String(ledVals_mb[lm].join("")).indexOf(paymentId_mb) !== -1) {
               Logger.log("[musicBoostSubscribe_] duplicate paymentId: " + paymentId_mb);
               return json_({ ok: true, duplicate: true, message: "already_processed" });
             }
