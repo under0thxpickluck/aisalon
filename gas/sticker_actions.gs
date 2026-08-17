@@ -6,13 +6,29 @@
 //    以下の手順で反映してください。
 //
 //    1. このファイルの中身を、稼働中の GAS プロジェクトの Code.gs の末尾に貼り付ける
+//
 //    2. doPost のアクション振り分けに、下の3行を追加する
 //         if (action === "sticker_get")     return stickerGet_(body);
 //         if (action === "sticker_save")    return stickerSave_(body);
 //         if (action === "sticker_credits") return stickerCredits_(body);
-//       （Code.gs には振り分けが2箇所あります。bp_lock を検索して両方に追加してください）
+//
+//       ⚠️ ここが最大の罠。Code.gs には doPost が「4つ」定義されている。
+//          JavaScript は同名関数を後勝ちで上書きするため、
+//          実際に動くのは【ファイル内で最後の doPost】だけで、他の3つは死にコード。
+//          bp_lock や image_log で検索すると死んでいる方にも当たるので当てにしないこと。
+//
+//       正しい探し方: 「lootify_login」を検索する（1箇所しかヒットしない = 本番の doPost）。
+//          その少し下にある
+//             if (action === "image_history")  return imageHistory_(body);
+//          の直後に3行を追加する。
+//          ※ ダブルクォート " の行が本番。シングルクォート ' の行は死んでいる方。
+//
 //    3. 「デプロイ」→「デプロイを管理」→ 既存デプロイの鉛筆アイコン
 //       → バージョンを「新バージョン」にして更新
+//       （ここを飛ばすと旧バージョンが配信され続け、コードを直しても反映されない）
+//
+//    4. 反映確認: node scripts/check-sticker-gas.mjs
+//       すべて OK になれば完了。bad_action が返る場合は 2 か 3 が未完了。
 //
 //    シート（sticker_projects）は初回アクセス時に自動で作られます。
 //
