@@ -16,7 +16,7 @@ import {
   exampleFor,
   isValidTheme,
 } from "@/app/lib/sticker/templates";
-import { isValidStickerCount } from "@/app/lib/sticker/line_spec";
+import { isOfferedCount } from "@/app/lib/sticker/cost";
 import type { CharacterProfile, StickerTheme } from "@/app/lib/sticker/types";
 
 export const runtime = "nodejs";
@@ -130,7 +130,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (!isValidStickerCount(Number(count))) {
+    // 新規作成は提供中の枚数のみ。
+    // （start 側は既存プロジェクトを完了させるため LINE 規格に対して緩く検証する）
+    if (!isOfferedCount(Number(count))) {
       return NextResponse.json(
         { ok: false, error: "invalid_sticker_count" },
         { status: 400 }

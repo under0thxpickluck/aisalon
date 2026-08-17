@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LINE_SPEC } from "@/app/lib/sticker/line_spec";
-import { STICKER_BP, packCost, bpPerSticker } from "@/app/lib/sticker/cost";
+import {
+  STICKER_BP,
+  packCost,
+  bpPerSticker,
+  OFFERED_COUNTS,
+} from "@/app/lib/sticker/cost";
 import { THEME_LABELS } from "@/app/lib/sticker/templates";
 import type { StickerCount, StickerTheme } from "@/app/lib/sticker/types";
 
@@ -253,22 +257,22 @@ export default function StickerSetupForm({ balance, busy, onSubmit }: Props) {
         <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">
           スタンプ数
         </label>
-        <div className="grid grid-cols-5 gap-2">
-          {LINE_SPEC.allowedCounts.map((n) => (
+        <div className="grid grid-cols-2 gap-2">
+          {OFFERED_COUNTS.map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => setCount(n)}
               className={[
-                "relative rounded-xl border py-2 text-sm font-bold transition",
+                "relative rounded-xl border py-3 text-base font-bold transition",
                 count === n
                   ? "border-indigo-600 bg-indigo-600 text-white"
                   : "border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-700 dark:text-slate-300 hover:border-indigo-400",
               ].join(" ")}
             >
-              {n}
+              {n}個
               {n === 8 && (
-                <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-1.5 text-[9px] font-bold text-white">
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-1.5 text-[9px] font-bold text-white">
                   おすすめ
                 </span>
               )}
@@ -278,11 +282,9 @@ export default function StickerSetupForm({ balance, busy, onSubmit }: Props) {
         <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
           1枚あたり約 {bpPerSticker(count)}BP・完成まで{estimateLabel(count)}
         </p>
-        {count >= 24 && (
-          <p className="mt-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-            枚数が多いほど時間がかかります。まずは8枚で試すことをおすすめします。
-          </p>
-        )}
+        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+          LINEは8・16・24・32・40個で申請できます。24個以上は先行公開が終わりしだい開放します。
+        </p>
       </section>
 
       <section className="rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 p-4">

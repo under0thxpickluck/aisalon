@@ -17,6 +17,9 @@ export const STICKER_BP = {
 } as const;
 
 // 枚数パック（一括先払い）
+// LINEが受け付ける枚数はすべて定義しておく。
+// 既に作りかけのプロジェクトが最後まで進めるようにするため、
+// 提供をやめた枚数の価格も消さない。
 export const STICKER_PACK_BP: Record<StickerCount, number> = {
   8: 120,
   16: 220,
@@ -24,6 +27,19 @@ export const STICKER_PACK_BP: Record<StickerCount, number> = {
   32: 420,
   40: 500,
 };
+
+/**
+ * 画面で選べる枚数。
+ *
+ * LINEは 8/16/24/32/40 を受け付けるが（line_spec.ts の allowedCounts）、
+ * 現状は 8 と 16 だけを提供する。24枚以上は完成まで5分以上かかり、
+ * 途中離脱や失敗の影響が大きいため。
+ */
+export const OFFERED_COUNTS = [8, 16] as const;
+
+export function isOfferedCount(n: number): n is StickerCount {
+  return (OFFERED_COUNTS as readonly number[]).includes(n);
+}
 
 export function packCost(count: number): number {
   if (!isValidStickerCount(count)) {
