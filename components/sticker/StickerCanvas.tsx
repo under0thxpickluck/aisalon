@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { canvasSizeFor, innerBox } from "@/app/lib/sticker/line_spec";
 import { composeToCanvas, loadImage, type TextStyle } from "@/app/lib/sticker/client/composer";
+import type { EffectStyle } from "@/app/lib/sticker/client/effects";
 
 type Props = {
   imageUrl: string;
   text: string;
   style: TextStyle;
+  effect: EffectStyle;
   /** 表示幅（px）。実際の合成は常にLINE規格サイズで行い、表示だけ縮める */
   displayWidth?: number;
   className?: string;
@@ -19,6 +21,7 @@ export default function StickerCanvas({
   imageUrl,
   text,
   style,
+  effect,
   displayWidth = 160,
   className = "",
 }: Props) {
@@ -45,6 +48,7 @@ export default function StickerCanvas({
           innerHeight: inner.height,
           text,
           style,
+          effect,
         });
         const target = ref.current;
         if (!target || cancelled) return;
@@ -62,7 +66,7 @@ export default function StickerCanvas({
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, text, style, spec.width, spec.height]);
+  }, [imageUrl, text, style, effect, spec.width, spec.height]);
 
   if (failed) {
     return (

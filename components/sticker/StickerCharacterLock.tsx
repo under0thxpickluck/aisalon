@@ -10,6 +10,8 @@ type Props = {
   busy: boolean;
   onLock: () => void;
   onRetry: () => void;
+  /** セリフ編集など、確定ボタンの手前に差し込む内容 */
+  children?: React.ReactNode;
 };
 
 // STEP2: キャラクターを確定する（Character LOCK）。
@@ -22,6 +24,7 @@ export default function StickerCharacterLock({
   busy,
   onLock,
   onRetry,
+  children,
 }: Props) {
   const packBp = packCost(count);
   const enough = balance >= packBp;
@@ -73,6 +76,8 @@ export default function StickerCharacterLock({
           </p>
         </div>
       )}
+
+      {children}
 
       {!enough && (
         <p className="rounded-xl bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-300">

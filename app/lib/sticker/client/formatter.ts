@@ -16,6 +16,7 @@ import {
   loadImage,
   type TextStyle,
 } from "./composer";
+import type { EffectStyle } from "./effects";
 
 export type ExportedFile = {
   name: string;
@@ -49,6 +50,7 @@ async function renderOne(
   imageUrl: string,
   text: string,
   style: TextStyle,
+  effect: EffectStyle,
   kind: "sticker" | "main" | "tab"
 ): Promise<Blob> {
   const img = await loadImage(imageUrl);
@@ -61,6 +63,7 @@ async function renderOne(
     innerHeight: inner.height,
     text,
     style,
+    effect,
   });
   return toPngUnderLimit(composed);
 }
@@ -69,18 +72,20 @@ async function renderOne(
 export function renderSticker(
   imageUrl: string,
   text: string,
-  style: TextStyle
+  style: TextStyle,
+  effect: EffectStyle
 ): Promise<Blob> {
-  return renderOne(imageUrl, text, style, "sticker");
+  return renderOne(imageUrl, text, style, effect, "sticker");
 }
 
 /** メイン画像（240x240・セリフ入り） */
 export function renderMain(
   imageUrl: string,
   text: string,
-  style: TextStyle
+  style: TextStyle,
+  effect: EffectStyle
 ): Promise<Blob> {
-  return renderOne(imageUrl, text, style, "main");
+  return renderOne(imageUrl, text, style, effect, "main");
 }
 
 const NO_TEXT_STYLE: TextStyle = {
@@ -93,8 +98,11 @@ const NO_TEXT_STYLE: TextStyle = {
 
 /** タブ画像（96x74・文字なし。小さすぎて文字が潰れるため） */
 export function renderTab(imageUrl: string): Promise<Blob> {
-  return renderOne(imageUrl, "", NO_TEXT_STYLE, "tab");
+  // エフェクトも入れない。96x74ではキャラクターの判別を最優先する。
+  return renderOne(imageUrl, "", NO_TEXT_STYLE, NO_EFFECT, "tab");
 }
+
+const NO_EFFECT: EffectStyle = { id: "none", color: "#000000" };
 
 export type BuildProgress = (done: number, total: number) => void;
 
@@ -105,6 +113,7 @@ export type BuildProgress = (done: number, total: number) => void;
 export async function buildExportFiles(
   items: StickerItem[],
   style: TextStyle,
+  effect: EffectStyle,
   onProgress?: BuildProgress
 ): Promise<ExportedFile[]> {
   const ready = items.filter((it) => selectedAssetUrl(it));
@@ -119,7 +128,7 @@ export async function buildExportFiles(
   const coverUrl = selectedAssetUrl(ready[0]);
   files.push({
     name: "main.png",
-    blob: await renderMain(coverUrl, ready[0].text, style),
+    blob: await renderMain(coverUrl, ready[0].text, style, effect),
   });
   step();
   files.push({ name: "tab.png", blob: await renderTab(coverUrl) });
@@ -130,7 +139,7 @@ export async function buildExportFiles(
     const url = selectedAssetUrl(item);
     files.push({
       name: stickerFileName(item.index),
-      blob: await renderSticker(url, item.text, style),
+      blob: await renderSticker(url, item.text, style, effect),
     });
     step();
   }

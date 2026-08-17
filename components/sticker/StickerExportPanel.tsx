@@ -11,11 +11,13 @@ import { buildExportFiles } from "@/app/lib/sticker/client/formatter";
 import { buildZip, downloadBlob, safeFileName } from "@/app/lib/sticker/client/zip_builder";
 import { selectedAssetUrl, type StickerExportMeta, type StickerItem } from "@/app/lib/sticker/types";
 import type { TextStyle } from "@/app/lib/sticker/client/composer";
+import type { EffectStyle } from "@/app/lib/sticker/client/effects";
 
 type Props = {
   items: StickerItem[];
   meta: StickerExportMeta;
   style: TextStyle;
+  effect: EffectStyle;
   onMetaChange: (meta: StickerExportMeta) => void;
 };
 
@@ -27,6 +29,7 @@ export default function StickerExportPanel({
   items,
   meta,
   style,
+  effect,
   onMetaChange,
 }: Props) {
   const [busy, setBusy] = useState(false);
@@ -66,7 +69,7 @@ export default function StickerExportPanel({
     setProgress(0);
     setTotal(doneCount + 2); // スタンプ + main + tab
     try {
-      const files = await buildExportFiles(items, style, (d, t) => {
+      const files = await buildExportFiles(items, style, effect, (d, t) => {
         setProgress(d);
         setTotal(t);
       });

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { PROFILE_SYSTEM_PROMPT } from "@/app/lib/sticker/character_prompt";
+import {
+  PROFILE_SYSTEM_PROMPT,
+  PROFILE_FROM_IMAGE_SYSTEM_PROMPT,
+} from "@/app/lib/sticker/character_prompt";
 import {
   extractJson,
   normalizeProfile,
@@ -22,14 +25,36 @@ export const maxDuration = 60;
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function buildProfile(sourcePrompt: string): Promise<CharacterProfile> {
+async function buildProfile(
+  sourcePrompt: string,
+  sourceImageUrl: string
+): Promise<CharacterProfile> {
+  // 画像がある場合は画像から特徴を読み取る（gpt-4o-mini は画像入力に対応）
+  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = sourceImageUrl
+    ? [
+        { role: "system", content: PROFILE_FROM_IMAGE_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text:
+                sourcePrompt ||
+                "この画像の主役を、LINEスタンプ用マスコットにするための設計書を作ってください。",
+            },
+            { type: "image_url", image_url: { url: sourceImageUrl } },
+          ],
+        },
+      ]
+    : [
+        { role: "system", content: PROFILE_SYSTEM_PROMPT },
+        { role: "user", content: sourcePrompt },
+      ];
+
   const res = await client.chat.completions.create({
     model: "gpt-4o-mini",
     max_tokens: 600,
-    messages: [
-      { role: "system", content: PROFILE_SYSTEM_PROMPT },
-      { role: "user", content: sourcePrompt },
-    ],
+    messages,
   });
   const raw = res.choices?.[0]?.message?.content ?? "";
   return normalizeProfile(extractJson(raw));
@@ -83,11 +108,12 @@ async function buildManifest(
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, code, sourcePrompt, theme, themeCustom, count } =
+    const { id, code, sourcePrompt, sourceImageUrl, theme, themeCustom, count } =
       (await req.json()) as {
         id?: string;
         code?: string;
         sourcePrompt?: string;
+        sourceImageUrl?: string;
         theme?: StickerTheme;
         themeCustom?: string;
         count?: number;
@@ -96,9 +122,11 @@ export async function POST(req: NextRequest) {
     if (!id || !code) {
       return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
     }
-    if (!sourcePrompt || !sourcePrompt.trim()) {
+    // 文章と画像のどちらか一方があればよい
+    const safeImageUrl = (sourceImageUrl ?? "").trim();
+    if (!sourcePrompt?.trim() && !safeImageUrl) {
       return NextResponse.json(
-        { ok: false, error: "source_prompt_required" },
+        { ok: false, error: "source_required" },
         { status: 400 }
       );
     }
@@ -120,7 +148,7 @@ export async function POST(req: NextRequest) {
 
     // キャラ定義とスタンプ企画を並列で作る
     const [profileResult, manifestRaw] = await Promise.allSettled([
-      buildProfile(sourcePrompt.trim()),
+      buildProfile((sourcePrompt ?? "").trim(), safeImageUrl),
       buildManifest(safeTheme, safeCustom, Number(count), ""),
     ]);
 

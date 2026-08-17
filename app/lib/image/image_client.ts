@@ -25,16 +25,19 @@ export type ImageOptions = {
   keyPrefix?: string;
 };
 
-async function uploadGeneratedImage(
-  b64Json: string,
+/**
+ * 任意の画像バイト列をR2に保存し、公開URLを返す。
+ * R2が未設定のときは data: URI を返す（呼び元でその扱いを決める）。
+ */
+export async function uploadImageBuffer(
+  buffer: Buffer,
+  contentType = "image/png",
   keyPrefix = "images"
 ): Promise<string> {
   const { accountId, accessKey, secretKey, bucket, publicUrl } = getR2Config();
-  const cleanBase64 = b64Json.replace(/^data:image\/\w+;base64,/, "");
-  const buffer = Buffer.from(cleanBase64, "base64");
 
   if (!accountId || !accessKey || !secretKey || !bucket || !publicUrl) {
-    return `data:image/png;base64,${cleanBase64}`;
+    return `data:${contentType};base64,${buffer.toString("base64")}`;
   }
 
   const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
@@ -44,16 +47,29 @@ async function uploadGeneratedImage(
     credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
   });
 
+  const ext = contentType.includes("jpeg")
+    ? "jpg"
+    : contentType.includes("webp")
+      ? "webp"
+      : "png";
   const month = new Date().toISOString().slice(0, 7);
-  const key = `${keyPrefix}/${month}/${randomUUID()}.png`;
+  const key = `${keyPrefix}/${month}/${randomUUID()}.${ext}`;
   await s3.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     Body: buffer,
-    ContentType: "image/png",
+    ContentType: contentType,
   }));
 
   return `${publicUrl.replace(/\/$/, "")}/${key}`;
+}
+
+async function uploadGeneratedImage(
+  b64Json: string,
+  keyPrefix = "images"
+): Promise<string> {
+  const cleanBase64 = b64Json.replace(/^data:image\/\w+;base64,/, "");
+  return uploadImageBuffer(Buffer.from(cleanBase64, "base64"), "image/png", keyPrefix);
 }
 
 /** URL の画像を OpenAI へ渡せる File に変換する */
