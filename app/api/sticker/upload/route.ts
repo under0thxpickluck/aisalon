@@ -13,7 +13,16 @@ const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 // /api/sticker/plan と /api/sticker/character に渡される。
 export async function POST(req: NextRequest) {
   try {
-    const form = await req.formData();
+    // multipart 以外が来ると formData() は例外を投げる。
+    // 不正なリクエストで500を返さないよう、ここで400に落とす。
+    const form = await req.formData().catch(() => null);
+    if (!form) {
+      return NextResponse.json(
+        { ok: false, error: "multipart_required" },
+        { status: 400 }
+      );
+    }
+
     const id = String(form.get("id") ?? "");
     const code = String(form.get("code") ?? "");
     const file = form.get("file");
