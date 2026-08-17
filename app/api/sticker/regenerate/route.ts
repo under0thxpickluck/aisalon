@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
         { status: e.status }
       );
     }
+    console.error("[sticker/regenerate] failed:", e);
     return NextResponse.json(
       { ok: false, error: "generation_failed" },
       { status: 500 }

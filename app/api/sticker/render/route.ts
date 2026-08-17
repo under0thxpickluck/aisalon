@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
       imageUrl,
       credits: consumed.credits,
     });
-  } catch {
+  } catch (e) {
+    console.error("[sticker/render] failed:", e);
     // 生成に失敗したらクレジットを戻す（＝無料リトライ）
     const restored = await changeCredits(id, projectId, 1).catch(() => null);
     return NextResponse.json(

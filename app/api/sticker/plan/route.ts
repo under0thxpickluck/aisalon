@@ -146,7 +146,8 @@ export async function POST(req: NextRequest) {
         manifest: manifestRaw.status === "rejected",
       },
     });
-  } catch {
+  } catch (e) {
+    console.error("[sticker/plan] failed:", e);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 }

@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
         { status: e.status }
       );
     }
+    console.error("[sticker/start] failed:", e);
     return NextResponse.json({ ok: false, error: "start_failed" }, { status: 500 });
   }
 }

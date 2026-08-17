@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
       project: res.project ?? null,
       credits: Number(res.credits ?? 0),
     });
-  } catch {
+  } catch (e) {
+    console.error("[sticker/project] failed:", e);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 }
@@ -75,7 +76,8 @@ export async function PUT(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true, credits: Number(res.credits ?? 0) });
-  } catch {
+  } catch (e) {
+    console.error("[sticker/project] failed:", e);
     return NextResponse.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 }
