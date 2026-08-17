@@ -89,6 +89,27 @@ async function fetchAsUploadable(url: string, name: string) {
   });
 }
 
+// gpt-image-1 の課金はトークン建て（2026-08時点）:
+//   テキスト入力 $5 / 1M・画像入力 $10 / 1M・画像出力 $40 / 1M
+// images.edit は参照画像の入力トークンも課金されるため、
+// 実使用量を残しておかないと原価が読めない。
+const PRICE_PER_1M = { text: 5, image: 10, output: 40 } as const;
+
+function logUsage(label: string, usage: any) {
+  if (!usage) return;
+  const textIn = Number(usage.input_tokens_details?.text_tokens ?? 0);
+  const imageIn = Number(usage.input_tokens_details?.image_tokens ?? 0);
+  const out = Number(usage.output_tokens ?? 0);
+  const usd =
+    (textIn * PRICE_PER_1M.text +
+      imageIn * PRICE_PER_1M.image +
+      out * PRICE_PER_1M.output) /
+    1_000_000;
+  console.log(
+    `[image-cost] ${label} text_in=${textIn} image_in=${imageIn} out=${out} usd=${usd.toFixed(4)}`
+  );
+}
+
 export async function generateImage(
   prompt: string,
   opts: ImageOptions = {}
@@ -100,6 +121,8 @@ export async function generateImage(
     ...(opts.quality ? { quality: opts.quality } : {}),
     ...(opts.background ? { background: opts.background } : {}),
   });
+
+  logUsage(`generate q=${opts.quality ?? "auto"}`, (res as any).usage);
 
   const item = res.data?.[0];
   if (item?.url) {
@@ -132,6 +155,11 @@ export async function editImage(_params: {
     ...(_params.quality ? { quality: _params.quality } : {}),
     ...(_params.background ? { background: _params.background } : {}),
   });
+
+  logUsage(
+    `edit q=${_params.quality ?? "auto"} refs=${files.length}`,
+    (res as any).usage
+  );
 
   const item = res.data?.[0];
   if (item?.url) {
