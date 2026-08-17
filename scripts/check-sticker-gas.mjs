@@ -63,14 +63,20 @@ const credNeg = await call("sticker_credits", {
 show("2) sticker_credits（残高なしで減算）", credNeg);
 results.creditsGuard = credNeg.json?.ok === false && credNeg.json?.error === "no_credits";
 
-// 3) sticker_credits — 付与（ここで初めてテスト行ができる）
+// テスト行が前回実行から残っている場合に備え、開始時点の残高を基準にする。
+// 絶対値で判定すると、行が残っているだけで誤ってNGになる。
+const before = await call("sticker_get", { id: TEST_USER, project_id: TEST_PROJECT });
+const start = Number(before.json?.project?.credits ?? 0);
+console.log(`\n（テスト行の開始残高: ${start}。以降は差分で判定する）`);
+
+// 3) sticker_credits — 付与（行が無ければここで作られる）
 const credAdd = await call("sticker_credits", {
   id: TEST_USER,
   project_id: TEST_PROJECT,
   delta: 40,
 });
-show("3) sticker_credits（+40 付与）", credAdd);
-results.creditsGrant = credAdd.json?.ok === true && credAdd.json?.credits === 40;
+show(`3) sticker_credits（+40 付与 → ${start + 40} を期待）`, credAdd);
+results.creditsGrant = credAdd.json?.ok === true && credAdd.json?.credits === start + 40;
 
 // 4) sticker_save — credits を書き換えないことを確認する
 const save = await call("sticker_save", {
@@ -80,9 +86,9 @@ const save = await call("sticker_save", {
   status: "rendering",
   project_json: JSON.stringify({ version: 1, hello: "world" }),
 });
-show("4) sticker_save（保存）", save);
+show(`4) sticker_save（保存 → ${start + 40} のまま を期待）`, save);
 results.save = save.json?.ok === true;
-results.saveKeepsCredits = save.json?.credits === 40;
+results.saveKeepsCredits = save.json?.credits === start + 40;
 
 // 5) sticker_credits — 消費
 const credUse = await call("sticker_credits", {
@@ -90,16 +96,24 @@ const credUse = await call("sticker_credits", {
   project_id: TEST_PROJECT,
   delta: -1,
 });
-show("5) sticker_credits（-1 消費）", credUse);
-results.creditsConsume = credUse.json?.ok === true && credUse.json?.credits === 39;
+show(`5) sticker_credits（-1 消費 → ${start + 39} を期待）`, credUse);
+results.creditsConsume = credUse.json?.ok === true && credUse.json?.credits === start + 39;
 
 // 6) sticker_get — 保存内容が読み戻せるか
 const get2 = await call("sticker_get", { id: TEST_USER, project_id: TEST_PROJECT });
 show("6) sticker_get（読み戻し）", get2);
 results.roundTrip =
   get2.json?.ok === true &&
-  get2.json?.project?.credits === 39 &&
+  get2.json?.project?.credits === start + 39 &&
   JSON.parse(get2.json?.project?.project_json || "{}").hello === "world";
+
+// 後始末: このスクリプトが増やした分を戻し、何度実行しても残高が膨らまないようにする
+const restore = await call("sticker_credits", {
+  id: TEST_USER,
+  project_id: TEST_PROJECT,
+  delta: -39,
+});
+console.log(`\n（後始末: 残高を ${restore.json?.credits ?? "?"} に戻した）`);
 
 // 判定
 console.log("\n================ 判定 ================");
