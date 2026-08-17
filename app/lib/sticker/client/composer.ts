@@ -44,14 +44,27 @@ export const TEXT_PRESETS: { id: string; label: string; style: Partial<TextStyle
   },
 ];
 
-/** R2 の画像を canvas に描くため crossOrigin を付けて読み込む */
+/**
+ * canvas に描く画像は必ず同一オリジンのプロキシ経由にする。
+ *
+ * R2の公開ドメイン（pub-*.r2.dev）はCORSヘッダを返さず設定もできないため、
+ * 直接読むと crossOrigin='anonymous' が失敗し、
+ * 仮に読めても canvas が汚染されて toBlob() が SecurityError になる。
+ */
+export function toSameOriginUrl(url: string): string {
+  if (!url) return url;
+  // data: と相対パスはそのまま扱える
+  if (url.startsWith("data:") || url.startsWith("/")) return url;
+  return `/api/sticker/image?url=${encodeURIComponent(url)}`;
+}
+
 export function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("image_load_failed"));
-    img.src = url;
+    img.src = toSameOriginUrl(url);
   });
 }
 
