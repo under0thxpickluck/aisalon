@@ -1,0 +1,73 @@
+// LINE Sticker Studio の BP 価格表。
+//
+// 1BP ≒ $0.01（BPパック 500BP = $5 / app/lib/bp-config.ts）で換算している。
+// gpt-image-1 1024x1024 の実売単価は概ね medium $0.042 / high $0.167。
+
+import type { StickerCount } from "./types";
+import { isValidStickerCount } from "./line_spec";
+
+export const STICKER_BP = {
+  // キャラクター基準画像（high 1枚 + medium 2枚）— 原価 約$0.25
+  character: 50,
+  // 1枚だけの再生成 — 原価 約$0.042
+  regenerate: 15,
+  // 文字の変更・LINE規格変換・ZIP書き出しは再生成を伴わないため無料
+  textEdit: 0,
+  export: 0,
+} as const;
+
+// 枚数パック（一括先払い）
+export const STICKER_PACK_BP: Record<StickerCount, number> = {
+  8: 120,
+  16: 220,
+  24: 320,
+  32: 420,
+  40: 500,
+};
+
+export function packCost(count: number): number {
+  if (!isValidStickerCount(count)) {
+    throw new Error(`invalid_sticker_count: ${count}`);
+  }
+  return STICKER_PACK_BP[count];
+}
+
+/** パック購入で得られる生成クレジット数（＝枚数） */
+export function creditsForPack(count: number): number {
+  if (!isValidStickerCount(count)) {
+    throw new Error(`invalid_sticker_count: ${count}`);
+  }
+  return count;
+}
+
+/** 1枚あたりの実効BP。UIで「1枚あたり○BP」と出すため。 */
+export function bpPerSticker(count: number): number {
+  return Math.round((packCost(count) / count) * 10) / 10;
+}
+
+export type StickerCostPlan = {
+  characterBp: number;
+  packBp: number;
+  totalBp: number;
+  credits: number;
+  perSticker: number;
+};
+
+/**
+ * キャラクター未生成の状態から最後までにかかる総BP。
+ * キャラ生成済みなら characterAlreadyPaid = true を渡す。
+ */
+export function planCost(
+  count: number,
+  characterAlreadyPaid: boolean
+): StickerCostPlan {
+  const characterBp = characterAlreadyPaid ? 0 : STICKER_BP.character;
+  const pack = packCost(count);
+  return {
+    characterBp,
+    packBp: pack,
+    totalBp: characterBp + pack,
+    credits: creditsForPack(count),
+    perSticker: bpPerSticker(count),
+  };
+}
