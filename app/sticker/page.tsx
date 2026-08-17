@@ -15,6 +15,7 @@ import StickerLoadingOverlay, {
   type OverlayKind,
 } from "@/components/sticker/StickerLoadingOverlay";
 import StickerBatchProgress from "@/components/sticker/StickerBatchProgress";
+import StickerBetaModal from "@/components/sticker/StickerBetaModal";
 import {
   DEFAULT_TEXT_STYLE,
   TEXT_PRESETS,
@@ -46,6 +47,9 @@ const CONCURRENCY = 2;
 // 生成に失敗したときサーバー側でクレジットが返却されるため、
 // 自動で作り直しても二重課金にはならない。
 const RENDER_ATTEMPTS = 3;
+
+// 先行公開のお知らせを見たかどうか。一度閉じたら再表示しない。
+const BETA_NOTICE_KEY = "addval_sticker_beta_v1";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -89,6 +93,7 @@ export default function StickerPage() {
   const [authCode, setAuthCode] = useState("");
   const [balance, setBalance] = useState(0);
   const [booting, setBooting] = useState(true);
+  const [showBeta, setShowBeta] = useState(false);
 
   const [step, setStep] = useState<Step>("setup");
   const [project, setProject] = useState<StickerProject | null>(null);
@@ -186,6 +191,13 @@ export default function StickerPage() {
     setAuthId(id);
     setAuthCode(code);
     refreshBalance(id);
+
+    // 先行公開のお知らせは初回のみ
+    try {
+      if (!localStorage.getItem(BETA_NOTICE_KEY)) setShowBeta(true);
+    } catch {
+      /* プライベートモード等で localStorage が使えなくても機能は使える */
+    }
 
     // 前回の続きがあれば復元する（途中離脱してもクレジットは残っている）
     (async () => {
@@ -626,9 +638,19 @@ export default function StickerPage() {
             >
               ← ホームに戻る
             </Link>
-            <h1 className="mt-1 text-xl font-extrabold text-slate-800 dark:text-slate-100">
-              LINE Sticker Studio
-            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
+                LINE Sticker Studio
+              </h1>
+              <button
+                type="button"
+                onClick={() => setShowBeta(true)}
+                className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white transition hover:bg-amber-600"
+                title="先行公開について"
+              >
+                先行公開
+              </button>
+            </div>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               キャラクターを固定したまま、LINEスタンプを一括で作ります
             </p>
@@ -833,6 +855,18 @@ export default function StickerPage() {
       </div>
 
       {overlay && <StickerLoadingOverlay kind={overlay} />}
+
+      <StickerBetaModal
+        open={showBeta}
+        onClose={() => {
+          setShowBeta(false);
+          try {
+            localStorage.setItem(BETA_NOTICE_KEY, "1");
+          } catch {
+            /* 保存できなくても閉じられればよい */
+          }
+        }}
+      />
     </main>
   );
 }

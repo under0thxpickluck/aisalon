@@ -19,24 +19,9 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(ovUrl);
   }
 
-  // ✅ /sticker は限定公開中。共有パスワードでガードする。
-  //    ユーザー名は任意（パスワードのみ照合）。
-  //    API側（/api/sticker/*）はここでガードしない —
-  //    Basic認証はパススコープが違う fetch に自動付与されないことがあり、
-  //    一括生成が途中で401になって壊れるため。APIはLIFAIのログイン必須。
-  if (pathname === "/sticker" || pathname.startsWith("/sticker/")) {
-    const stickerPass = process.env.STICKER_PASS || "nagoya01";
-    const auth = req.headers.get("authorization");
-    if (!auth?.startsWith("Basic ")) return unauthorized("LIFAI Sticker");
-
-    const decoded = Buffer.from(auth.slice(6), "base64").toString();
-    const pass = decoded.slice(decoded.indexOf(":") + 1);
-    if (pass !== stickerPass) return unauthorized("LIFAI Sticker");
-
-    return NextResponse.next();
-  }
-
   // ✅ /admin, /api/admin をガード（/note-generator は BP 課金に移行）
+  // ※ /sticker は先行公開に切り替えたためパスワード不要。
+  //    ページ側で LIFAI のログインを必須にしている。
   const isProtected =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin");
@@ -64,7 +49,5 @@ export const config = {
     "/api/5000/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
-    "/sticker",
-    "/sticker/:path*",
   ],
 };
