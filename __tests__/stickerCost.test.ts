@@ -1,11 +1,37 @@
 import {
   STICKER_BP,
   STICKER_PACK_BP,
+  OFFERED_COUNTS,
+  isOfferedCount,
   packCost,
   creditsForPack,
   bpPerSticker,
   planCost,
 } from "@/app/lib/sticker/cost";
+import { LINE_SPEC } from "@/app/lib/sticker/line_spec";
+
+describe("OFFERED_COUNTS", () => {
+  it("画面で選べるのは8と16のみ", () => {
+    expect([...OFFERED_COUNTS]).toEqual([8, 16]);
+    expect(isOfferedCount(8)).toBe(true);
+    expect(isOfferedCount(16)).toBe(true);
+    expect(isOfferedCount(24)).toBe(false);
+    expect(isOfferedCount(40)).toBe(false);
+    expect(isOfferedCount(10)).toBe(false);
+  });
+
+  it("提供する枚数はすべてLINEが受け付ける枚数である", () => {
+    for (const n of OFFERED_COUNTS) {
+      expect(LINE_SPEC.allowedCounts as readonly number[]).toContain(n);
+    }
+  });
+
+  it("提供をやめた枚数も価格は残す（作りかけを完了させるため）", () => {
+    expect(STICKER_PACK_BP[24]).toBeGreaterThan(0);
+    expect(STICKER_PACK_BP[40]).toBeGreaterThan(0);
+    expect(() => packCost(40)).not.toThrow();
+  });
+});
 
 describe("packCost", () => {
   it("枚数ごとのパック価格を返す", () => {

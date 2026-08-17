@@ -419,7 +419,7 @@ export default function AppHomePage() {
       { id: "gift",          label: "GiftEP",   icon: "🎁", color: "from-emerald-400 to-teal-500",  href: "/gift",       desc: "EP贈与 · LIFAI内限定ギフトクレジット" },
       { id: "gift-exchange", label: "Gift交換", icon: "🎀", color: "from-rose-400 to-pink-500",      href: "#",           desc: "ギフトポイントの交換・利用（近日公開）", badge: "準備中", disabled: true },
       { id: "image",         label: "画像生成",    icon: "🖼️", color: "from-violet-500 to-indigo-600", href: "/image",       desc: "AIと会話して画像を生成・編集" },
-      { id: "sticker",       label: "LINEスタンプ", icon: "💬", color: "from-green-500 to-emerald-600", href: "/sticker",     desc: "キャラを固定して8〜40枚一括生成・提出用ZIPまで", badge: "先行公開" },
+      { id: "sticker",       label: "LINEスタンプ", icon: "💬", color: "from-green-500 to-emerald-600", href: "/sticker",     desc: "キャラを固定して8〜16枚一括生成・提出用ZIPまで", badge: "先行公開" },
     ],
     []
   );
