@@ -8,6 +8,8 @@
     "app/api/sticker/character/**": { "maxDuration": 300 },
     "app/api/sticker/render/**": { "maxDuration": 120 },
     "app/api/sticker/regenerate/**": { "maxDuration": 120 },
-    "app/api/sticker/plan/**": { "maxDuration": 60 }
+    "app/api/sticker/plan/**": { "maxDuration": 60 },
+    "app/api/sticker/upload/**": { "maxDuration": 60 },
+    "app/api/sticker/image/**": { "maxDuration": 60 }
   }
 }

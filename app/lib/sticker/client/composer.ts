@@ -2,6 +2,10 @@
 //
 // 画像AIには文字を描かせない（日本語が崩れるため）。文字は必ずここで重ねる。
 // この方式なら文字の修正が再生成なしで済み、BPも消費しない。
+//
+// 重ね順: 背景エフェクト → キャラクター → 文字
+
+import { drawEffect, DEFAULT_EFFECT, type EffectStyle } from "./effects";
 
 export type TextStyle = {
   /** 文字色 */
@@ -68,6 +72,49 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
+// これより長いセリフは自動で2行に割る。
+// 1行のままだと横幅に合わせて字が小さくなり、スタンプとして読めなくなるため。
+export const AUTO_WRAP_MIN = 6;
+
+// 行頭に来てはいけない文字（禁則処理）
+const NO_LINE_START =
+  "、。，．・！？!?」』）］｝ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヵヶ々〆〜:;：；";
+// 行末に来てはいけない文字
+const NO_LINE_END = "「『（［｛(";
+
+/**
+ * セリフを表示用の行に分ける。
+ * 手動の改行があればそれを優先し、無ければ中央付近で自動的に2行へ割る。
+ */
+export function wrapText(text: string, maxLines = 2): string[] {
+  const manual = text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (manual.length > 1) return manual.slice(0, maxLines);
+
+  const t = (manual[0] ?? "").trim();
+  if (!t) return [];
+
+  // 絵文字などのサロゲートペアを壊さないよう1文字ずつに分ける
+  const chars = Array.from(t);
+  if (chars.length <= AUTO_WRAP_MIN) return [t];
+
+  let split = Math.ceil(chars.length / 2);
+  // 行頭禁則にあたる文字が来たら、区切りを1つ後ろへずらす
+  for (let i = 0; i < 2 && NO_LINE_START.includes(chars[split] ?? ""); i++) {
+    split++;
+  }
+  // 行末禁則にあたる文字で終わるなら、区切りを1つ前へ戻す
+  for (let i = 0; i < 2 && NO_LINE_END.includes(chars[split - 1] ?? ""); i++) {
+    split--;
+  }
+  if (split <= 0 || split >= chars.length) return [t];
+
+  return [chars.slice(0, split).join(""), chars.slice(split).join("")];
+}
+
 /**
  * 指定した最大幅に収まるフォントサイズを二分探索で求める。
  * セリフの長さがバラバラでも文字の大きさが破綻しないようにするため。
@@ -100,6 +147,8 @@ export type ComposeOptions = {
   innerHeight: number;
   text: string;
   style: TextStyle;
+  /** キャラクターの後ろに描く背景エフェクト */
+  effect?: EffectStyle;
 };
 
 /**
@@ -119,6 +168,10 @@ export function composeToCanvas(
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.imageSmoothingQuality = "high";
 
+  // 背景エフェクトを先に描く（キャラクターの後ろになる）。
+  // 背景は塗りつぶさないので透過は保たれる。
+  drawEffect(ctx, canvas.width, canvas.height, opts.effect ?? DEFAULT_EFFECT);
+
   // イラストをアスペクト比を保って内側領域に収める
   const scale = Math.min(
     opts.innerWidth / img.width,
@@ -133,7 +186,8 @@ export function composeToCanvas(
   const text = opts.text.trim();
   if (!text || opts.style.position === "none") return canvas;
 
-  const lines = text.split("\n").filter(Boolean).slice(0, 2);
+  // 長いセリフは自動で2行に割る。1行のままだと字が小さくなって読めないため。
+  const lines = wrapText(text);
   if (!lines.length) return canvas;
 
   const maxTextWidth = canvas.width * 0.9;

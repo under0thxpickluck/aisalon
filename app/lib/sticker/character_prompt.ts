@@ -61,6 +61,29 @@ export function buildMasterPrompt(
     .join(", ");
 }
 
+/**
+ * ①' アップロード画像から基準画像を作るときのプロンプト。
+ * 元画像を images.edit に渡す前提で書く。
+ * 写真でも絵でも、スタンプとして成立する形に描き起こさせる。
+ */
+export function buildMasterFromImagePrompt(
+  profile: CharacterProfile | null,
+  note: string
+): string {
+  return [
+    "redraw the main subject of this image as a cute mascot character for a messaging sticker",
+    "keep the recognizable features, colors and silhouette of the original",
+    profileSummary(profile),
+    note,
+    "front facing, standing, neutral friendly expression",
+    STICKER_BASE,
+    "clear silhouette",
+    NO_TEXT,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 /** ② LOCK前にユーザーへ見せる表情バリエーションのプロンプト */
 export function buildVariantPrompt(
   profile: CharacterProfile | null,
@@ -107,6 +130,32 @@ export function buildStickerPrompt(
     .filter(Boolean)
     .join(", ");
 }
+
+/** 画像から CharacterProfile を起こすときのシステムプロンプト */
+export const PROFILE_FROM_IMAGE_SYSTEM_PROMPT = `あなたはキャラクターデザイナーです。
+渡された画像に写っている主役を、LINEスタンプ用マスコットに落とし込むための設計書をJSONで作ります。
+
+出力するキーと形式は、文章から作る場合とまったく同じにしてください。
+
+{
+  "name": "キャラクターの名前（日本語・短く。画像から推測してよい）",
+  "species": "英語。例: shiba inu dog / young woman / robot",
+  "body": "英語。頭身。例: 2.5 head tall chibi",
+  "color": "英語。主要な色",
+  "eyes": "英語",
+  "ears": "英語。無ければ空文字",
+  "tail": "英語。無ければ空文字",
+  "clothes": "英語。無いなら なし",
+  "style": "英語。例: hand drawn kawaii mascot",
+  "lineWidth": "英語。例: thick bold",
+  "extra": "英語。見た目の特徴で外せないもの。無ければ空文字"
+}
+
+ルール:
+- name 以外はすべて英語で書く（画像生成AIに渡すため）
+- 画像に写っている特徴のうち、小さく表示しても判別できるものだけを残す
+- 実在の人物名・ブランド名・既存キャラクター名は絶対に書かない
+- 特定の個人と分かる特徴（ほくろの位置など）は書かない`;
 
 /** LLM に CharacterProfile を作らせるときのシステムプロンプト */
 export const PROFILE_SYSTEM_PROMPT = `あなたはキャラクターデザイナーです。

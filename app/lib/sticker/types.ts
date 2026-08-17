@@ -49,6 +49,8 @@ export type StickerItem = {
 
 export type StickerCharacter = {
   sourcePrompt: string;
+  /** ユーザーがアップロードした元画像。文章から作った場合は空文字 */
+  sourceImageUrl: string;
   profile: CharacterProfile | null;
   masterUrl: string;
   variantUrls: string[];

@@ -4,15 +4,29 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAuth, getAuthSecret } from "@/app/lib/auth";
-import StickerSetupForm from "@/components/sticker/StickerSetupForm";
+import StickerSetupForm, {
+  type SetupValues,
+} from "@/components/sticker/StickerSetupForm";
 import StickerCharacterLock from "@/components/sticker/StickerCharacterLock";
+import StickerManifestEditor from "@/components/sticker/StickerManifestEditor";
 import StickerGrid from "@/components/sticker/StickerGrid";
 import StickerExportPanel from "@/components/sticker/StickerExportPanel";
+import StickerLoadingOverlay, {
+  type OverlayKind,
+} from "@/components/sticker/StickerLoadingOverlay";
+import StickerBatchProgress from "@/components/sticker/StickerBatchProgress";
 import {
   DEFAULT_TEXT_STYLE,
   TEXT_PRESETS,
   type TextStyle,
 } from "@/app/lib/sticker/client/composer";
+import {
+  DEFAULT_EFFECT,
+  EFFECT_COLORS,
+  EFFECT_LABELS,
+  type EffectId,
+  type EffectStyle,
+} from "@/app/lib/sticker/client/effects";
 import { toStickerItems, normalizeProfile } from "@/app/lib/sticker/manifest";
 import { STICKER_BP } from "@/app/lib/sticker/cost";
 import { appendAsset } from "@/app/lib/sticker/types";
@@ -24,8 +38,41 @@ import type {
 } from "@/app/lib/sticker/types";
 
 // 同時に走らせる生成本数。
-// gpt-image-1 は1枚30〜60秒かかるため、多すぎるとレート制限に当たる。
-const CONCURRENCY = 3;
+// gpt-image-1 は1枚30〜60秒かかる。3本だとレート制限や
+// タイムアウトで失敗が目立ったため2本に落としている。
+const CONCURRENCY = 2;
+
+// 1枚あたりの再試行回数。
+// 生成に失敗したときサーバー側でクレジットが返却されるため、
+// 自動で作り直しても二重課金にはならない。
+const RENDER_ATTEMPTS = 3;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// 通信自体が落ちることがあるので、JSONが取れるまで数回試す。
+async function postJson(
+  url: string,
+  body: unknown,
+  retries = 1
+): Promise<any> {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json().catch(() => null);
+      if (data) return data;
+      throw new Error("invalid_response");
+    } catch (e) {
+      lastError = e;
+      if (attempt < retries) await sleep(1200 * (attempt + 1));
+    }
+  }
+  throw lastError ?? new Error("request_failed");
+}
 
 type Step = "setup" | "character" | "grid" | "export";
 
@@ -46,9 +93,17 @@ export default function StickerPage() {
   const [step, setStep] = useState<Step>("setup");
   const [project, setProject] = useState<StickerProject | null>(null);
   const [style, setStyle] = useState<TextStyle>(DEFAULT_TEXT_STYLE);
+  // 背景エフェクトはCanvasで描くだけなのでBPを消費しない。いつでも切り替えられる。
+  const [effect, setEffect] = useState<EffectStyle>(DEFAULT_EFFECT);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  // 画面全体を覆う「作成中」表示。数十秒なにも起きない待ちにだけ使う。
+  const [overlay, setOverlay] = useState<OverlayKind | null>(null);
+  // 一括生成の進捗バー用。残り時間を実測から出すために開始時点を持つ。
+  const [batch, setBatch] = useState<{ startedAt: number; doneAtStart: number } | null>(
+    null
+  );
 
   // 並列生成中でも常に最新のプロジェクトを参照するための実体
   const projectRef = useRef<StickerProject | null>(null);
@@ -185,37 +240,56 @@ export default function StickerPage() {
   }, []);
 
   // ── STEP1: キャラクター生成 ────────────────────────────────
-  const handleSetup = async (v: {
-    sourcePrompt: string;
-    theme: StickerTheme;
-    themeCustom: string;
-    count: StickerCount;
-  }) => {
+  const handleSetup = async (v: SetupValues) => {
     setBusy(true);
+    setOverlay(v.sourceImage ? "upload" : "character");
     setError("");
     setNotice("");
     try {
-      const planRes = await fetch("/api/sticker/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: authId, code: authCode, ...v }),
-      }).then((r) => r.json());
+      // 画像から作る場合は、先にR2へ上げてURLにしておく
+      let sourceImageUrl = "";
+      if (v.sourceImage) {
+        const fd = new FormData();
+        fd.append("id", authId);
+        fd.append("code", authCode);
+        fd.append("file", v.sourceImage);
+        const up = await fetch("/api/sticker/upload", { method: "POST", body: fd })
+          .then((r) => r.json())
+          .catch(() => null);
+        if (!up?.ok) {
+          setError(
+            up?.error === "too_large"
+              ? "画像が大きすぎます。8MB以下にしてください。"
+              : "画像のアップロードに失敗しました。もう一度お試しください。"
+          );
+          return;
+        }
+        sourceImageUrl = up.url as string;
+        setOverlay("character");
+      }
+
+      const planRes = await postJson("/api/sticker/plan", {
+        id: authId,
+        code: authCode,
+        sourcePrompt: v.sourcePrompt,
+        sourceImageUrl,
+        theme: v.theme,
+        themeCustom: v.themeCustom,
+        count: v.count,
+      });
 
       if (!planRes?.ok) {
         setError("企画の作成に失敗しました。もう一度お試しください。");
         return;
       }
 
-      const charRes = await fetch("/api/sticker/character", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: authId,
-          code: authCode,
-          sourcePrompt: v.sourcePrompt,
-          profile: planRes.profile,
-        }),
-      }).then((r) => r.json());
+      const charRes = await postJson("/api/sticker/character", {
+        id: authId,
+        code: authCode,
+        sourcePrompt: v.sourcePrompt,
+        sourceImageUrl,
+        profile: planRes.profile,
+      });
 
       if (!charRes?.ok) {
         setError(
@@ -237,6 +311,7 @@ export default function StickerPage() {
         themeCustom: v.themeCustom,
         character: {
           sourcePrompt: v.sourcePrompt,
+          sourceImageUrl,
           profile,
           masterUrl: charRes.masterUrl,
           variantUrls: charRes.variantUrls ?? [],
@@ -264,6 +339,7 @@ export default function StickerPage() {
       setError("通信に失敗しました。時間をおいてお試しください。");
     } finally {
       setBusy(false);
+      setOverlay(null);
     }
   };
 
@@ -272,18 +348,16 @@ export default function StickerPage() {
     const p = projectRef.current;
     if (!p) return;
     setBusy(true);
+    setOverlay("retry");
     setError("");
     try {
-      const res = await fetch("/api/sticker/character", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: authId,
-          code: authCode,
-          sourcePrompt: p.character.sourcePrompt,
-          profile: p.character.profile,
-        }),
-      }).then((r) => r.json());
+      const res = await postJson("/api/sticker/character", {
+        id: authId,
+        code: authCode,
+        sourcePrompt: p.character.sourcePrompt,
+        sourceImageUrl: p.character.sourceImageUrl ?? "",
+        profile: p.character.profile,
+      });
 
       if (!res?.ok) {
         setError(
@@ -306,6 +380,7 @@ export default function StickerPage() {
       flushSave();
     } finally {
       setBusy(false);
+      setOverlay(null);
     }
   };
 
@@ -324,11 +399,12 @@ export default function StickerPage() {
         ),
       }));
 
-      try {
-        const res = await fetch("/api/sticker/render", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      // 生成失敗時はサーバーがクレジットを返すため、そのまま作り直してよい。
+      // クレジット切れ(no_credits)だけは何度試しても無駄なので即座に諦める。
+      let res: any = null;
+      for (let attempt = 1; attempt <= RENDER_ATTEMPTS; attempt++) {
+        try {
+          res = await postJson("/api/sticker/render", {
             id: authId,
             code: authCode,
             projectId: p.projectId,
@@ -339,28 +415,26 @@ export default function StickerPage() {
               pose: item.pose,
               expression: item.expression,
             },
-          }),
-        }).then((r) => r.json());
+          });
+        } catch {
+          res = null;
+        }
 
-        commit((prev) => ({
-          ...prev,
-          credits: Number(res?.credits ?? prev.credits),
-          items: prev.items.map((i) => {
-            if (i.index !== index) return i;
-            if (!res?.ok) return { ...i, status: "failed" as const };
-            return appendAsset(i, res.imageUrl as string);
-          }),
-        }));
-      } catch {
-        commit((prev) => ({
-          ...prev,
-          items: prev.items.map((i) =>
-            i.index === index ? { ...i, status: "failed" as const } : i
-          ),
-        }));
-      } finally {
-        flushSave();
+        if (res?.ok) break;
+        if (res?.error === "no_credits") break;
+        if (attempt < RENDER_ATTEMPTS) await sleep(2000 * attempt);
       }
+
+      commit((prev) => ({
+        ...prev,
+        credits: Number(res?.credits ?? prev.credits),
+        items: prev.items.map((i) => {
+          if (i.index !== index) return i;
+          if (!res?.ok) return { ...i, status: "failed" as const };
+          return appendAsset(i, res.imageUrl as string);
+        }),
+      }));
+      flushSave();
     },
     [authId, authCode, commit, flushSave]
   );
@@ -376,6 +450,11 @@ export default function StickerPage() {
     let cursor = 0;
     const myRun = runIdRef.current;
 
+    setBatch({
+      startedAt: Date.now(),
+      doneAtStart: p.items.length - queue.length,
+    });
+
     const worker = async () => {
       while (aliveRef.current && runIdRef.current === myRun) {
         const at = cursor++;
@@ -385,6 +464,7 @@ export default function StickerPage() {
     };
 
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+    setBatch(null);
     if (runIdRef.current !== myRun) return;
 
     commit((prev) => ({
@@ -399,6 +479,7 @@ export default function StickerPage() {
     const p = projectRef.current;
     if (!p) return;
     setBusy(true);
+    setOverlay("start");
     setError("");
     try {
       const res = await fetch("/api/sticker/start", {
@@ -433,6 +514,7 @@ export default function StickerPage() {
       runBatch();
     } finally {
       setBusy(false);
+      setOverlay(null);
     }
   };
 
@@ -515,6 +597,7 @@ export default function StickerPage() {
     runIdRef.current += 1;
     projectRef.current = null;
     setProject(null);
+    setBatch(null);
     setStep("setup");
     setNotice("");
     setError("");
@@ -586,7 +669,12 @@ export default function StickerPage() {
               busy={busy}
               onLock={handleLock}
               onRetry={handleRetryCharacter}
-            />
+            >
+              <StickerManifestEditor
+                items={project.items}
+                onChange={handleTextChange}
+              />
+            </StickerCharacterLock>
           )}
 
           {(step === "grid" || step === "export") && project && (
@@ -647,15 +735,75 @@ export default function StickerPage() {
                     </span>
                   </div>
 
+                  {/* 背景エフェクト（Canvasで描くだけなのでBPは不要） */}
+                  <div className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800/50 px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                        背景エフェクト
+                      </span>
+                      {(Object.keys(EFFECT_LABELS) as EffectId[]).map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setEffect((e) => ({ ...e, id }))}
+                          className={[
+                            "rounded-lg border px-2 py-1 text-[10px] font-semibold transition",
+                            effect.id === id
+                              ? "border-indigo-600 bg-indigo-600 text-white"
+                              : "border-slate-300 dark:border-gray-600 text-slate-600 dark:text-slate-300",
+                          ].join(" ")}
+                        >
+                          {EFFECT_LABELS[id]}
+                        </button>
+                      ))}
+                    </div>
+
+                    {effect.id !== "none" && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                          色
+                        </span>
+                        {EFFECT_COLORS.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setEffect((e) => ({ ...e, color: c.value }))}
+                            aria-label={c.label}
+                            className={[
+                              "h-6 w-6 rounded-full border-2 transition",
+                              effect.color === c.value
+                                ? "border-indigo-600 scale-110"
+                                : "border-transparent",
+                            ].join(" ")}
+                            style={{ backgroundColor: c.value }}
+                          />
+                        ))}
+                        <span className="ml-auto text-[10px] text-slate-400">
+                          エフェクトの変更も無料です
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   <StickerGrid
                     items={project.items}
                     style={style}
+                    effect={effect}
                     onRegenerate={handleRegenerate}
                     onTextChange={handleTextChange}
                     onSelectVersion={handleSelectVersion}
                   />
 
-                  {!allDone && project.credits > 0 && (
+                  {batch && (
+                    <StickerBatchProgress
+                      done={doneCount}
+                      total={totalCount}
+                      startedAt={batch.startedAt}
+                      doneAtStart={batch.doneAtStart}
+                    />
+                  )}
+
+                  {!batch && !allDone && project.credits > 0 && (
                     <button
                       type="button"
                       onClick={runBatch}
@@ -672,6 +820,7 @@ export default function StickerPage() {
                   items={project.items}
                   meta={project.meta}
                   style={style}
+                  effect={effect}
                   onMetaChange={(meta) => {
                     commit((prev) => ({ ...prev, meta }));
                     flushSave();
@@ -682,6 +831,8 @@ export default function StickerPage() {
           )}
         </div>
       </div>
+
+      {overlay && <StickerLoadingOverlay kind={overlay} />}
     </main>
   );
 }

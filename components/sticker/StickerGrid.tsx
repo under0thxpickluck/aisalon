@@ -6,10 +6,12 @@ import { STICKER_BP } from "@/app/lib/sticker/cost";
 import { MAX_TEXT_LENGTH } from "@/app/lib/sticker/manifest";
 import { selectedAssetUrl, type StickerItem } from "@/app/lib/sticker/types";
 import type { TextStyle } from "@/app/lib/sticker/client/composer";
+import type { EffectStyle } from "@/app/lib/sticker/client/effects";
 
 type Props = {
   items: StickerItem[];
   style: TextStyle;
+  effect: EffectStyle;
   onRegenerate: (index: number) => void;
   onTextChange: (index: number, text: string) => void;
   onSelectVersion: (index: number, version: number) => void;
@@ -20,6 +22,7 @@ type Props = {
 export default function StickerGrid({
   items,
   style,
+  effect,
   onRegenerate,
   onTextChange,
   onSelectVersion,
@@ -72,31 +75,38 @@ export default function StickerGrid({
                   imageUrl={url}
                   text={item.text}
                   style={style}
+                  effect={effect}
                   displayWidth={140}
                 />
               )}
             </div>
 
             {isEditing ? (
-              <input
-                autoFocus
-                value={item.text}
-                maxLength={MAX_TEXT_LENGTH}
-                onChange={(e) => onTextChange(item.index, e.target.value)}
-                onBlur={() => setEditing(null)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === "Escape") setEditing(null);
-                }}
-                className="w-full rounded-lg border border-indigo-400 bg-white dark:bg-gray-800 px-2 py-1 text-center text-xs font-bold text-slate-800 dark:text-slate-100 outline-none"
-              />
+              <div>
+                <textarea
+                  autoFocus
+                  rows={2}
+                  value={item.text}
+                  maxLength={MAX_TEXT_LENGTH + 1} // 改行1文字分だけ余裕を持たせる
+                  onChange={(e) => onTextChange(item.index, e.target.value)}
+                  onBlur={() => setEditing(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setEditing(null);
+                  }}
+                  className="w-full resize-none rounded-lg border border-indigo-400 bg-white dark:bg-gray-800 px-2 py-1 text-center text-xs font-bold text-slate-800 dark:text-slate-100 outline-none"
+                />
+                <p className="mt-0.5 text-center text-[9px] text-slate-400">
+                  Enterで改行・Escで完了
+                </p>
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setEditing(item.index)}
                 className="w-full truncate rounded-lg px-2 py-1 text-center text-xs font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-gray-800"
-                title="クリックで文字を編集（無料）"
+                title="クリックで文字を編集（無料・Enterで改行できます）"
               >
-                {item.text || "（文字なし）"}
+                {item.text ? item.text.replace(/\n/g, " ⏎ ") : "（文字なし）"}
               </button>
             )}
 
