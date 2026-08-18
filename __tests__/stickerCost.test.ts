@@ -35,8 +35,14 @@ describe("OFFERED_COUNTS", () => {
 
 describe("packCost", () => {
   it("枚数ごとのパック価格を返す", () => {
-    expect(packCost(8)).toBe(120);
+    expect(packCost(8)).toBe(240);
+    expect(packCost(16)).toBe(400);
     expect(packCost(40)).toBe(500);
+  });
+
+  it("提供中の枚数は 8個=1枚30BP・16個=1枚25BP", () => {
+    expect(bpPerSticker(8)).toBe(30);
+    expect(bpPerSticker(16)).toBe(25);
   });
 
   it("許可されていない枚数は例外", () => {
@@ -61,6 +67,11 @@ describe("creditsForPack", () => {
 });
 
 describe("planCost", () => {
+  it("提供中の枚数の総額はキャラ代込みで 8個=290BP・16個=450BP", () => {
+    expect(planCost(8, false).totalBp).toBe(290);
+    expect(planCost(16, false).totalBp).toBe(450);
+  });
+
   it("キャラ未生成ならキャラ代を含む", () => {
     const p = planCost(40, false);
     expect(p.characterBp).toBe(STICKER_BP.character);
