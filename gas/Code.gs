@@ -11192,6 +11192,9 @@ function musicBoostAdminList_(params) {
       status:     String(row[idx["status"]]),
       started_at: String(row[idx["started_at"]]),
       expires_at: String(row[idx["expires_at"]]),
+      // 解約日時（財務管理のサブスク一覧で「いつまで使っていたか」を表示するため追加）
+      // 旧シートに列が無いケースを考慮し、存在しなければ空文字を返す（既存構造は変更しない）
+      canceled_at: (idx["canceled_at"] === undefined) ? "" : String(row[idx["canceled_at"]] || ""),
     };
   });
 

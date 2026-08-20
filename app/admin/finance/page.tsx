@@ -6,8 +6,9 @@ import AffiliateTab from "./AffiliateTab";
 import TreeTab from "./TreeTab";
 import MonthlyTab from "./MonthlyTab";
 import CcPendingTab from "./CcPendingTab";
+import SubscriptionsTab from "./SubscriptionsTab";
 
-type Tab = "users" | "affiliate" | "tree" | "monthly" | "cc_pending";
+type Tab = "users" | "affiliate" | "tree" | "monthly" | "cc_pending" | "subscriptions";
 
 export default function FinancePage() {
   const [activeTab, setActiveTab] = useState<Tab>("users");
@@ -18,6 +19,7 @@ export default function FinancePage() {
     { key: "tree",       label: "紹介ツリー" },
     { key: "monthly",    label: "月次集計" },
     { key: "cc_pending", label: "CC付与待ち" },
+    { key: "subscriptions", label: "サブスク" },
   ];
 
   return (
@@ -55,6 +57,7 @@ export default function FinancePage() {
         {activeTab === "tree"       && <TreeTab />}
         {activeTab === "monthly"    && <MonthlyTab />}
         {activeTab === "cc_pending" && <CcPendingTab />}
+        {activeTab === "subscriptions" && <SubscriptionsTab />}
       </div>
     </main>
   );
