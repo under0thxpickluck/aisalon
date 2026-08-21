@@ -506,10 +506,18 @@ export default function StickerPage() {
       }).then((r) => r.json());
 
       if (!res?.ok) {
+        // 原因がわからないと問い合わせようがないので、サーバーが返した
+        // エラーコードを画面にも残す（BPの扱いは今までどおり返金済み）。
+        const code = String(res?.error ?? "");
+        console.error("[sticker] start failed:", res);
         setError(
-          res?.error === "insufficient_bp"
+          code === "insufficient_bp"
             ? "BPが足りません。"
-            : "生成の開始に失敗しました。BPは消費されていません。"
+            : code === "gas_not_deployed"
+            ? "サーバー側の設定が未反映のため開始できませんでした。BPは消費されていません。運営にご連絡ください（gas_not_deployed）。"
+            : `生成の開始に失敗しました。BPは消費されていません。${
+                code ? `（${code}）` : ""
+              }`
         );
         return;
       }
@@ -524,6 +532,10 @@ export default function StickerPage() {
       await refreshBalance(authId);
       await flushSave();
       runBatch();
+    } catch (e) {
+      // 通信断や応答がJSONでないときに、何も表示されないまま止まるのを防ぐ
+      console.error("[sticker] start request failed:", e);
+      setError("通信に失敗しました。BPは消費されていません。もう一度お試しください。");
     } finally {
       setBusy(false);
       setOverlay(null);

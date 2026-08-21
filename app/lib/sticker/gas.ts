@@ -15,7 +15,29 @@ export async function gasPost(
     cache: "no-store",
     body: JSON.stringify({ action, ...body }),
   });
-  return r.json();
+
+  // GAS はエラー時にHTMLを返すことがある。例外で潰すと原因が追えなくなるため、
+  // 本文の先頭だけを載せた ok:false として返し、呼び出し側の判定を統一する。
+  const text = await r.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      ok: false,
+      error: `non_json_response(HTTP ${r.status}): ${text.slice(0, 200)}`,
+    };
+  }
+}
+
+/** GASの応答からエラー内容を1行の文字列にする（ログ・調査用） */
+export function gasErrText(res: any): string {
+  if (!res) return "no_response";
+  if (typeof res.error === "string" && res.error) return res.error;
+  try {
+    return JSON.stringify(res).slice(0, 200);
+  } catch {
+    return "unknown_error";
+  }
 }
 
 /**
@@ -27,7 +49,9 @@ export async function withBp<T>(
   work: () => Promise<T>
 ): Promise<T> {
   const balRes = await gasPost("get_balance", { id: params.id });
-  if (!balRes?.ok) throw new BpError("balance_fetch_failed", 502);
+  if (!balRes?.ok) {
+    throw new BpError("balance_fetch_failed", 502, undefined, gasErrText(balRes));
+  }
   if (Number(balRes.bp ?? 0) < params.amount) {
     throw new BpError("insufficient_bp", 402, params.amount);
   }
@@ -37,7 +61,9 @@ export async function withBp<T>(
     amount: params.amount,
     reason: params.reason,
   });
-  if (!lockRes?.ok) throw new BpError("bp_lock_failed", 502);
+  if (!lockRes?.ok) {
+    throw new BpError("bp_lock_failed", 502, undefined, gasErrText(lockRes));
+  }
   const lockId = lockRes.lock_id as string;
 
   let result: T;
@@ -66,10 +92,13 @@ export function assertStorableUrl(url: string): void {
 export class BpError extends Error {
   status: number;
   required?: number;
-  constructor(message: string, status: number, required?: number) {
+  /** GASが返した生のエラー内容。原因調査のためだけに使う */
+  detail?: string;
+  constructor(message: string, status: number, required?: number, detail?: string) {
     super(message);
     this.status = status;
     this.required = required;
+    this.detail = detail;
   }
 }
 

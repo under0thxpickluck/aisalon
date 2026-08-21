@@ -40,7 +40,17 @@ export async function POST(req: NextRequest) {
       { id, amount, reason: `sticker_pack_${count}` },
       async () => {
         const res = await changeCredits(id, projectId, grant);
-        if (!res.ok) throw new Error("credit_grant_failed");
+        if (!res.ok) {
+          // GAS が bad_action を返すのは sticker_* が本番GASに未反映のとき。
+          // 原因が全く違うので、まとめて credit_grant_failed にせず区別する。
+          console.error("[sticker/start] credit grant failed:", res.error);
+          throw new BpError(
+            res.error === "bad_action" ? "gas_not_deployed" : "credit_grant_failed",
+            502,
+            undefined,
+            res.error
+          );
+        }
         return res.credits;
       }
     );
@@ -48,8 +58,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, credits, bpUsed: amount });
   } catch (e) {
     if (e instanceof BpError) {
+      if (e.detail) console.error("[sticker/start]", e.message, "-", e.detail);
       return NextResponse.json(
-        { ok: false, error: e.message, required: e.required },
+        { ok: false, error: e.message, required: e.required, detail: e.detail },
         { status: e.status }
       );
     }
