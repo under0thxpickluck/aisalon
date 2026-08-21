@@ -20,6 +20,8 @@ export function middleware(req: NextRequest) {
   }
 
   // ✅ /admin, /api/admin をガード（/note-generator は BP 課金に移行）
+  // ※ /sticker は先行公開に切り替えたためパスワード不要。
+  //    ページ側で LIFAI のログインを必須にしている。
   const isProtected =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin");

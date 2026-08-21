@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "../lib/useTheme";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { MUSIC_BOOST_PLANS } from "../lib/music-boost-plans";
 
 // ── チュートリアル ────────────────────────────────────────────────────────────
 
@@ -41,18 +42,7 @@ const BOOST_TUTORIAL_SLIDES = [
   },
 ] as const;
 
-const PLANS = [
-  { id: "starter",  label: "Starter",  percent: 2,  price: 9,    slots: 10,  color: "from-gray-600 to-gray-500",     recommend: "推奨：8曲以上配信済みの方",   squareUrl: "https://square.link/u/Z8JfMUyE" },
-  { id: "light",    label: "Light",    percent: 5,  price: 29,   slots: 25,  color: "from-blue-700 to-blue-500",     recommend: "推奨：16曲以上配信済みの方",  squareUrl: "https://square.link/u/a3n7mj8b" },
-  { id: "basic",    label: "Basic",    percent: 10, price: 59,   slots: 50,  color: "from-green-700 to-green-500",   recommend: "推奨：30曲以上配信済みの方",  squareUrl: "https://square.link/u/AknPSYzR" },
-  { id: "growth",   label: "Growth",   percent: 15, price: 99,   slots: 75,  color: "from-teal-700 to-teal-500",     recommend: "推奨：50曲以上配信済みの方",  squareUrl: "https://square.link/u/0Tl1BZwU" },
-  { id: "pro",      label: "Pro",      percent: 20, price: 149,  slots: 100, color: "from-purple-700 to-purple-500", recommend: "推奨：75曲以上配信済みの方",  squareUrl: "https://square.link/u/6EQ6FZPS" },
-  { id: "advanced", label: "Advanced", percent: 25, price: 199,  slots: 125, color: "from-indigo-700 to-indigo-500", recommend: "推奨：100曲以上配信済みの方", squareUrl: "https://square.link/u/yXfPqP2m" },
-  { id: "premium",  label: "Premium",  percent: 30, price: 299,  slots: 150, color: "from-pink-700 to-pink-500",     recommend: "推奨：150曲以上配信済みの方", squareUrl: "https://square.link/u/f19KQa9n" },
-  { id: "elite",    label: "Elite",    percent: 35, price: 499,  slots: 175, color: "from-orange-700 to-orange-500", recommend: "推奨：200曲以上配信済みの方", squareUrl: "https://square.link/u/n532LqZd" },
-  { id: "master",   label: "Master",   percent: 40, price: 699,  slots: 200, color: "from-red-700 to-red-500",       recommend: "推奨：300曲以上配信済みの方", squareUrl: "https://square.link/u/GRD64dbi" },
-  { id: "legend",   label: "Legend",   percent: 45, price: 1000, slots: 225, color: "from-yellow-600 to-yellow-400", recommend: "推奨：500曲以上配信済みの方", squareUrl: "https://square.link/u/PX68xQhf" },
-];
+const PLANS = MUSIC_BOOST_PLANS;
 
 type BoostStatus = {
   current_boost: {
@@ -173,7 +163,7 @@ export default function MusicBoostPage() {
           user_id: userId,
           pack_id: packId,
           bp_amount: 0, // music-boost は BP付与なし（Webhook側でログ記録のみ）
-          price_cents: Math.round(plan.price * 100),
+          price_cents: plan.price, // JPY は最小単位＝円のため換算不要（そのまま請求額）
           label: `Music Boost ${plan.label} (${plan.percent}% / ${plan.slots}枠)`,
           redirect_path: "/music-boost", // 決済後に music-boost ページへ戻る
         }),
@@ -379,7 +369,7 @@ export default function MusicBoostPage() {
             <span className="bg-white/20 text-xs px-2 py-1 rounded-full">契約中</span>
           </div>
           <p className="text-3xl font-black mb-1">{status.current_boost.percent}%</p>
-          <p className="text-white/80 text-sm mb-3">${status.current_boost.price_usd}/月</p>
+          <p className="text-white/80 text-sm mb-3">¥{currentPlan.price.toLocaleString()}/月</p>
           <p className="text-white/60 text-xs">
             有効期限: {new Date(status.current_boost.expires_at).toLocaleDateString("ja-JP")}
           </p>
@@ -419,7 +409,7 @@ export default function MusicBoostPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-black text-purple-400">{plan.percent}%</p>
-                  <p className={`text-sm ${th.planPrice}`}>${plan.price}/月</p>
+                  <p className={`text-sm ${th.planPrice}`}>¥{plan.price.toLocaleString()}/月</p>
                 </div>
               </div>
               {selected === plan.id && !isCurrent && (
@@ -587,7 +577,7 @@ export default function MusicBoostPage() {
               </div>
               <div className="flex justify-between">
                 <span>費用</span>
-                <span className="font-bold text-purple-300">{(confirmPlan.price * 100).toLocaleString()} EP</span>
+                <span className="font-bold text-purple-300">{confirmPlan.ep.toLocaleString()} EP</span>
               </div>
               <div className="flex justify-between">
                 <span>有効期間</span>

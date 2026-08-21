@@ -44,6 +44,9 @@ GAS actions (全一覧):
 | `music_boost_set_tracks` | `/api/music-boost/info` (PATCH) | 楽曲リスト（`tracks` 配列）を全置換保存 |
 | `my_referral_dashboard` | `/api/referral/dashboard` (POST) | 自分が紹介した人リスト＋報酬履歴・合計を返す |
 | `user_reset_request` | `/api/auth/forgot-password` (POST) | ユーザー自身によるPW再設定申請→トークン再発行＋メール送信（approved限定、列挙攻撃対策で常にok:true返却） |
+| `sticker_get` | `/api/sticker/project` (POST) | LINEスタンプ企画の取得（project_id省略で一覧） |
+| `sticker_save` | `/api/sticker/project` (PUT) | LINEスタンプ企画の保存。**credits列は触らない** |
+| `sticker_credits` | `/api/sticker/start`, `/api/sticker/render` | 生成クレジットの原子的な増減（LockService使用、0未満不可） |
 
 ### GAS Sheets
 
@@ -53,6 +56,7 @@ GAS actions (全一覧):
 | `ref_tree` | 紹介ツリー表示用（`ref_tree_build` で全消し→再生成） |
 | `ref_events` | 紹介紐づけの監査ログ |
 | `wallet_ledger` | 紹介配当などの金融取引履歴 |
+| `sticker_projects` | LINEスタンプ（1行＝1プロジェクト。`project_json` 列に全体をJSONで保存） |
 
 ### GAS 認証の仕組み
 
@@ -67,6 +71,8 @@ GAS actions (全一覧):
 - **`getValuesSafe_` / `getSheetValuesSafe_`**: 同一処理の関数が2つ存在（`getValuesSafe_` を使うこと）。
 - **login_id は永続不変**: `approveRowCore_` 内で一度発行された `login_id` は絶対に上書きしない（パスワードリセット・再承認・メール再送のいずれでも変わらない）。`if (!loginId)` の判定でのみ新規発行する。
 - **Music Boost 楽曲データ**: `applies` シートの `music_boost_tracks_json` カラムに `[{"artist":"...","album":"..."}]` 形式のJSON文字列を保存。上限なし。`music_boost_artist` / `music_boost_album` カラムは後方互換のために残す。
+- **`doPost` が4つ定義されている（最重要）**: `Code.gs` には `function doPost(e)` が4つあり、JavaScriptの後勝ち上書きにより**ファイル内で最後の1つしか動かない**（残り3つは死にコード）。新しいアクションの振り分けを追加するときは、`lootify_login` を検索して見つかる**最後の `doPost`** に入れること。`bp_lock` や `image_log` など既存アクション名で検索すると死にコード側にも当たり、追加しても `bad_action` が返り続ける。生きている方は `var` とダブルクォート、死んでいる方は `const` とシングルクォートで書かれている。
+- **GASへの反映手順**: `gas/Code.gs` を編集 → 全文をGASエディタに貼り付け → 「デプロイを管理」→ 既存デプロイを**新バージョン**で更新。pushだけでは反映されない。反映確認は `node scripts/check-gas-sync.mjs`（本番とリポジトリの一致も判定する）。
 
 ### Payments: NOWPayments
 

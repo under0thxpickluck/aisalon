@@ -2218,8 +2218,10 @@ function handle_(key, body) {
       var ledIdx_sq    = indexMap_(ledHeader_sq);
       for (var li = 1; li < ledVals_sq.length; li++) {
         var ledRow_sq = ledVals_sq[li];
-        if (str_(ledRow_sq[ledIdx_sq["kind"]]) === "square_bp_purchase" &&
-            str_(ledRow_sq[ledIdx_sq["memo"]]).indexOf(paymentId_sq) !== -1) {
+        // wallet_ledger のヘッダ名ドリフト（実列が kind/memo でない場合がある）に依存せず、
+        // payment_id が行内のいずれかのセルに存在するかで重複判定する。
+        // （appendWalletLedger_ は memo 列に "... payment_id:XXX" を書き込む）
+        if (ledRow_sq.join("").indexOf(paymentId_sq) !== -1) {
           Logger.log("[square_grant_bp] duplicate paymentId: " + paymentId_sq);
           return json_({ ok: true, duplicate: true, message: "already_processed" });
         }
@@ -10722,17 +10724,19 @@ function rumbleShardStatus_(params) {
 // 追加日: 2026-03 / 既存コードへの変更なし・追記のみ
 // ============================================================
 
+// price = 月額（円・税込 / Next.js 側 app/music-boost/page.tsx の PLANS と手動で一致させること）
+// ep    = EP決済時の必要EP数（円価格とは連動しない固定値。EP決済休止中だが自動更新で使用）
 var MUSIC_BOOST_PLANS = [
-  { id: "starter",  percent: 2,  price: 9,    slots: 10  },
-  { id: "light",    percent: 5,  price: 29,   slots: 25  },
-  { id: "basic",    percent: 10, price: 59,   slots: 50  },
-  { id: "growth",   percent: 15, price: 99,   slots: 75  },
-  { id: "pro",      percent: 20, price: 149,  slots: 100 },
-  { id: "advanced", percent: 25, price: 199,  slots: 125 },
-  { id: "premium",  percent: 30, price: 299,  slots: 150 },
-  { id: "elite",    percent: 35, price: 499,  slots: 175 },
-  { id: "master",   percent: 40, price: 699,  slots: 200 },
-  { id: "legend",   percent: 45, price: 1000, slots: 225 },
+  { id: "starter",  percent: 2,  price: 1440,   ep: 900,    slots: 10  },
+  { id: "light",    percent: 5,  price: 4640,   ep: 2900,   slots: 25  },
+  { id: "basic",    percent: 10, price: 9440,   ep: 5900,   slots: 50  },
+  { id: "growth",   percent: 15, price: 15840,  ep: 9900,   slots: 75  },
+  { id: "pro",      percent: 20, price: 23840,  ep: 14900,  slots: 100 },
+  { id: "advanced", percent: 25, price: 31840,  ep: 19900,  slots: 125 },
+  { id: "premium",  percent: 30, price: 47840,  ep: 29900,  slots: 150 },
+  { id: "elite",    percent: 35, price: 79840,  ep: 49900,  slots: 175 },
+  { id: "master",   percent: 40, price: 111840, ep: 69900,  slots: 200 },
+  { id: "legend",   percent: 45, price: 160000, ep: 100000, slots: 225 },
 ];
 var MUSIC_BOOST_TOTAL_SLOTS = 10000;
 
@@ -10742,6 +10746,8 @@ function getMusicBoostSheet_() {
   if (!sheet) {
     sheet = ss.insertSheet("music_boost");
     sheet.appendRow([
+      // price_usd 列は 2026-08 の円建て改定以降「円」の金額を保持する
+      // （既存シートのヘッダー互換のためカラム名は price_usd のまま）
       "id","user_id","plan_id","percent","price_usd",
       "slots_used","status","started_at","expires_at",
       "canceled_at","updated_at"
@@ -10870,8 +10876,8 @@ function musicBoostSubscribe_(params) {
         if (ledVals_mb.length >= 2) {
           var ledIdx_mb = indexMap_(ledVals_mb[0]);
           for (var lm = 1; lm < ledVals_mb.length; lm++) {
-            if (String(ledVals_mb[lm][ledIdx_mb["kind"]]) === "music_boost_card" &&
-                String(ledVals_mb[lm][ledIdx_mb["memo"]]).indexOf(paymentId_mb) !== -1) {
+            // ヘッダ名ドリフトに依存せず payment_id の存在で重複判定（memo列に "... payment_id:XXX"）
+            if (String(ledVals_mb[lm].join("")).indexOf(paymentId_mb) !== -1) {
               Logger.log("[musicBoostSubscribe_] duplicate paymentId: " + paymentId_mb);
               return json_({ ok: true, duplicate: true, message: "already_processed" });
             }
@@ -10883,7 +10889,7 @@ function musicBoostSubscribe_(params) {
 
   // ── EP決済処理 ────────────────────────────────────────────
   if (paymentMethod === "ep") {
-    var epCost = plan.price * 100;
+    var epCost = plan.ep; // 円価格とは連動しない固定EP額
 
     // applies シートからユーザーのEP残高を確認
     var appliesSheet = getOrCreateSheet_();
@@ -10954,7 +10960,7 @@ function musicBoostSubscribe_(params) {
     expires_at: expiresAt,
   };
   if (paymentMethod === "ep") {
-    returnPayload.ep_cost = plan.price * 100;
+    returnPayload.ep_cost = plan.ep;
   }
   return json_(returnPayload);
 }
@@ -11026,7 +11032,7 @@ function musicBoostAutoRenew_() {
       continue;
     }
 
-    var epCost = plan.price * 100;
+    var epCost = plan.ep; // 円価格とは連動しない固定EP額
 
     // ユーザーの EP 残高とメールアドレスを取得
     var userEp    = 0;
@@ -11186,6 +11192,9 @@ function musicBoostAdminList_(params) {
       status:     String(row[idx["status"]]),
       started_at: String(row[idx["started_at"]]),
       expires_at: String(row[idx["expires_at"]]),
+      // 解約日時（財務管理のサブスク一覧で「いつまで使っていたか」を表示するため追加）
+      // 旧シートに列が無いケースを考慮し、存在しなければ空文字を返す（既存構造は変更しない）
+      canceled_at: (idx["canceled_at"] === undefined) ? "" : String(row[idx["canceled_at"]] || ""),
     };
   });
 
@@ -13562,6 +13571,9 @@ function doPost(e) {
     if (action === "bp_refund")      return imageBpRefund_(body);
     if (action === "image_log")      return imageLog_(body);
     if (action === "image_history")  return imageHistory_(body);
+    if (action === "sticker_get")     return stickerGet_(body);
+    if (action === "sticker_save")    return stickerSave_(body);
+    if (action === "sticker_credits") return stickerCredits_(body);
     if (action === "music_history_save") return musicHistorySave_(body);
     if (action === "music_history_list") return musicHistoryList_(body);
     if (action === "monitor_song_stats")          return json_(monitorSongStats_());
@@ -13835,5 +13847,193 @@ function epSendToLfw_(key, body) {
     };
   } finally {
     lock.releaseLock();
+  }
+}
+
+// =====================================================
+// LINE Sticker Studio
+// =====================================================
+//
+// 呼び元: /api/sticker/* （app/lib/sticker/gas.ts 経由）
+//
+// 設計上の約束:
+//   credits 列は stickerCredits_ だけが書き換える。
+//   stickerSave_ は credits を一切触らない。
+//   これによりクライアントがクレジットを増やすことができない。
+
+var STICKER_SHEET_NAME = "sticker_projects";
+var STICKER_HEADER = [
+  "project_id", "user_id", "name", "status",
+  "credits", "project_json", "created_at", "updated_at"
+];
+// スプレッドシートのセル上限（50000文字）に対する安全マージン
+var STICKER_JSON_MAX = 45000;
+
+function stickerSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(STICKER_SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(STICKER_SHEET_NAME);
+    sh.appendRow(STICKER_HEADER);
+  }
+  return sh;
+}
+
+function stickerIdx_(header) {
+  return {
+    projectId: header.indexOf("project_id"),
+    userId:    header.indexOf("user_id"),
+    name:      header.indexOf("name"),
+    status:    header.indexOf("status"),
+    credits:   header.indexOf("credits"),
+    json:      header.indexOf("project_json"),
+    createdAt: header.indexOf("created_at"),
+    updatedAt: header.indexOf("updated_at")
+  };
+}
+
+// 該当ユーザー・該当プロジェクトの行番号（1始まり・ヘッダー込み）を返す。無ければ -1
+function stickerFindRow_(data, idx, userId, projectId) {
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idx.userId]) === userId &&
+        String(data[i][idx.projectId]) === projectId) {
+      return i + 1;
+    }
+  }
+  return -1;
+}
+
+// action: sticker_get
+// body: { id, project_id }
+// project_id を省略すると、そのユーザーのプロジェクト一覧を新しい順に返す
+function stickerGet_(body) {
+  try {
+    var id = str_(body.id);
+    var projectId = str_(body.project_id || "");
+    if (!id) return json_({ ok: false, error: "invalid_params" });
+
+    var sh = stickerSheet_();
+    var data = sh.getDataRange().getValues();
+    if (data.length < 2) return json_({ ok: true, projects: [], project: null, credits: 0 });
+
+    var idx = stickerIdx_(data[0]);
+    var rows = [];
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idx.userId]) !== id) continue;
+      if (projectId && String(data[i][idx.projectId]) !== projectId) continue;
+      rows.push({
+        project_id:   String(data[i][idx.projectId]),
+        name:         String(data[i][idx.name]),
+        status:       String(data[i][idx.status]),
+        credits:      num_(data[i][idx.credits]),
+        project_json: String(data[i][idx.json] || ""),
+        created_at:   String(data[i][idx.createdAt]),
+        updated_at:   String(data[i][idx.updatedAt])
+      });
+    }
+
+    // 更新が新しい順
+    rows.sort(function(a, b) {
+      return a.updated_at < b.updated_at ? 1 : (a.updated_at > b.updated_at ? -1 : 0);
+    });
+
+    return json_({
+      ok: true,
+      projects: rows,
+      project: rows.length ? rows[0] : null,
+      credits: rows.length ? rows[0].credits : 0
+    });
+  } catch (e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: sticker_save
+// body: { id, project_id, name, status, project_json }
+// credits 列は書き換えない（stickerCredits_ の専任）
+function stickerSave_(body) {
+  try {
+    var id        = str_(body.id);
+    var projectId = str_(body.project_id);
+    var name      = str_(body.name || "");
+    var status    = str_(body.status || "draft");
+    var payload   = str_(body.project_json || "");
+
+    if (!id || !projectId) return json_({ ok: false, error: "invalid_params" });
+    if (payload.length > STICKER_JSON_MAX) {
+      return json_({ ok: false, error: "project_too_large" });
+    }
+
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sh = stickerSheet_();
+      var data = sh.getDataRange().getValues();
+      var idx = stickerIdx_(data[0]);
+      var now = new Date().toISOString();
+      var row = stickerFindRow_(data, idx, id, projectId);
+
+      if (row < 0) {
+        sh.appendRow([projectId, id, name, status, 0, payload, now, now]);
+        return json_({ ok: true, credits: 0 });
+      }
+
+      sh.getRange(row, idx.name + 1).setValue(name);
+      sh.getRange(row, idx.status + 1).setValue(status);
+      sh.getRange(row, idx.json + 1).setValue(payload);
+      sh.getRange(row, idx.updatedAt + 1).setValue(now);
+
+      return json_({ ok: true, credits: num_(sh.getRange(row, idx.credits + 1).getValue()) });
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    return json_({ ok: false, error: String(e) });
+  }
+}
+
+// action: sticker_credits
+// body: { id, project_id, delta }
+// 生成クレジットを原子的に増減する。0未満にはならない。
+// delta が負で残高が足りないときは ok:false / error:"no_credits" を返す。
+function stickerCredits_(body) {
+  try {
+    var id        = str_(body.id);
+    var projectId = str_(body.project_id);
+    var delta     = num_(body.delta);
+
+    if (!id || !projectId || !delta) return json_({ ok: false, error: "invalid_params" });
+
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var sh = stickerSheet_();
+      var data = sh.getDataRange().getValues();
+      var idx = stickerIdx_(data[0]);
+      var now = new Date().toISOString();
+      var row = stickerFindRow_(data, idx, id, projectId);
+
+      // 行がまだ無い状態で付与された場合はその場で作る（start が save より先に走ったとき）
+      if (row < 0) {
+        if (delta < 0) return json_({ ok: false, error: "no_credits", credits: 0 });
+        sh.appendRow([projectId, id, "", "rendering", delta, "", now, now]);
+        return json_({ ok: true, credits: delta });
+      }
+
+      var current = num_(sh.getRange(row, idx.credits + 1).getValue());
+      var next = current + delta;
+      if (next < 0) {
+        return json_({ ok: false, error: "no_credits", credits: current });
+      }
+
+      sh.getRange(row, idx.credits + 1).setValue(next);
+      sh.getRange(row, idx.updatedAt + 1).setValue(now);
+      return json_({ ok: true, credits: next });
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    return json_({ ok: false, error: String(e) });
   }
 }
